@@ -1,0 +1,90 @@
+[BLOCK:palette]
+~00 HELLO WORLD!
+~11 HELLO WORLD!
+~22 HELLO WORLD!
+~33 HELLO WORLD!
+~44 HELLO WORLD!
+~55 HELLO WORLD!
+~66 HELLO WORLD!
+~77 HELLO WORLD!
+~88 HELLO WORLD!
+~99 HELLO WORLD!
+~AA HELLO WORLD!
+~BB HELLO WORLD!
+~CC HELLO WORLD!
+~DD HELLO WORLD!
+~EE HELLO WORLD!
+~FF HELLO WORLD!
+
+~00 ~11 ~22 ~33 ~44 ~55 ~66 ~77 ~88 ~99 ~AA ~BB ~CC ~DD ~EE ~FF
+
+[BLOCK:intro]
+~4-~E=~7[ ~3PROLOGUE ~7]~E=~4-
+
+~6A long time ago, in a galaxy far, far away...
+The systems of the Outer Strand once governed themselves: a thousand worlds, a thousand flags, no single hand on the scale.
+That ended with ~4{{emperor}}~6.
+What followed was not war. It was appetite. One world at a time, ~4{{the_empire}}~6 rose, and the stars grew quiet beneath it.
+This is the story of one pilot who refused to stay quiet too.
+[BLOCK:stage1]
+~4-~E=~7[ ~3CHAPTER 1 ~7]~E=~4-
+
+~6A century of silence ended the day ~4{{emperor}}~6 rose from the lower hive-courts of ~2{{emperor_homeworld}}~6, a slug-lord no one took seriously until the granaries began to vanish into his vaults.
+
+By famine, by debt, by the quiet purchase of dying parliaments, he swallowed world after world, until his banner, ~4{{the_empire}}~6, flew over a hundred systems.
+
+Now refugees flee toward ~3{{planet1}}~6 ahead of his collection fleets. A convoy broker has hired an independent pilot to slip past the blockade with medicine and grain. The Empire's patrols are already listening for ships that fly too quiet, too low, too desperate.
+
+[BLOCK:stage2]
+~4-~E=~7[ ~3CHAPTER 2 ~7]~E=~4-
+ 
+The aid run worked, barely. But someone on {{planet1}}'s docks knew a face, and {{the_empire}} intelligence does not forget.
+
+The same broker who arranged the aid now speaks in lower tones, introducing a new cargo bound for {{planet2}}: rifles, not rations, meant for a resistance cell calling itself {{resistance}}.
+
+The pilot is no longer anonymous. Patrol chatter now carries a name, a ship designation, a bounty class. What began as charity has become rebellion, whether the pilot chose it or not.
+
+[BLOCK:stage3]
+~4-~E=~7[ ~3CHAPTER 3 ~7]~E=~4-
+
+A new client on {{planet3}}. Clean paperwork, easy terms, too easy.
+
+Too late, the pilot learns the cargo manifest was bait. The "buyer" is Maw Internal Security, and the meet is an ambush built to end {{resistance}}'s newest courier in one stroke.
+
+There is no slipping away quietly this time. The only road out is through.
+
+[BLOCK:stage4]
+~4-~E=~7[ ~3CHAPTER 4 ~7]~E=~4-
+
+The Empire's bounty boards now carry a face, a price, and the word TRAITOR stamped beneath it.
+
+There is no pretending neutrality anymore. {{resistance}} offers what little it has left: trust, and a data core too dangerous to transmit. It must fly in the hold of a ship bound for {{planet4}}, past eyes that are now actively hunting it.
+
+The pilot carries war secrets now, not grain.
+
+[BLOCK:stage5]
+~4-~E=~7[ ~3CHAPTER 5 ~7]~E=~4-
+
+Deep inside the Maw's research directorate, a scientist has chosen to vanish rather than finish what {{emperor}} ordered her to build. She is bound for {{planet5}}, if she survives the trip.
+
+{{resistance}} has one shot at extraction, and so does {{emperor}}'s fleet, racing to silence her before she reaches free space. Whoever reaches her escort ship first decides whether her knowledge saves worlds, or dies with her.
+
+[BLOCK:stage6]
+~4-~E=~7[ ~3CHAPTER 6 ~7]~E=~4-
+
+The cargo bay is empty. There is nothing left to smuggle, nothing left to deliver.
+
+Ahead lies {{emperor_homeworld}}, throne-world of the empire that swallowed a hundred systems one starving planet at a time. {{emperor}} waits behind a wall of warships built from the wealth of everyone this pilot has flown for.
+
+This is no longer a courier's run. This is the reckoning.
+
+[BLOCK:outro]
+-=[ EPILOGUE ]=-
+
+{{emperor_homeworld}} burns behind the wreckage of the Maw's last fleet.
+In the ruin of {{emperor}}'s throne hall, the pilot finds what the propaganda never showed: star charts, older than the empire itself, marking a single world of origin.
+The name on every Maw banner, every imperial seal, every oath of conquest, is {{emperor_homeworld}}.
+
+The local records have another name for it.
+
+They call it {{emperor_homeworld_true_name}}.
