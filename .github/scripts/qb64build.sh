@@ -79,7 +79,7 @@ case "$(uname -s)" in
     WIN_LINK=$(cygpath -w "$QB64_DIR/code/3d")
     WIN_TARGET=$(cygpath -w "$REPODIR")
     WIN_LINK="$WIN_LINK" WIN_TARGET="$WIN_TARGET" \
-      powershell -Command 'New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET'
+      powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET'
     ;;
   *)
     ln -sfn "$REPODIR" "$QB64_DIR/code/3d"
@@ -93,8 +93,13 @@ case "$(uname -s)" in
     QB64_WIN=$(cygpath -w "$QB64")
     SRC_WIN=$(cygpath -w "$QB64_DIR/code/3d/sss.bas")
     OUT_WIN=$(cygpath -w "$REPODIR/builds")
+    # QB64-PE exits 1 on Windows even after a successful -x compile; verify output instead
     QB64_WIN="$QB64_WIN" SRC_WIN="$SRC_WIN" OUT_WIN="$OUT_WIN" \
-      powershell -Command '& $env:QB64_WIN -x -w "-s:ExeDefaultDir=$env:OUT_WIN" $env:SRC_WIN'
+      powershell -Command '& $env:QB64_WIN -x -w "-s:ExeDefaultDir=$env:OUT_WIN" $env:SRC_WIN; exit 0'
+    if [ ! -f "$REPODIR/builds/sss.exe" ]; then
+      echo "ERROR: sss.exe not produced by QB64-PE"
+      exit 1
+    fi
     ;;
   *)
     if command -v xvfb-run &>/dev/null; then
