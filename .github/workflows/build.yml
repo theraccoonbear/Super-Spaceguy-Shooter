@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libgl1-mesa-dev libasound2-dev libx11-dev libxext-dev xvfb
+
+      - name: Download QB64-PE
+        run: |
+          curl -fsSL -o qb64pe_lnx.tar.gz \
+            https://github.com/QB64-Phoenix-Edition/QB64pe/releases/latest/download/qb64pe_lnx.tar.gz
+          tar xzf qb64pe_lnx.tar.gz
+
+      - name: Build sss.bas
+        run: |
+          mkdir -p builds
+          xvfb-run ./qb64pe/qb64pe -x -w -s:ExeDefaultDir=./builds ./code/3d/sss.bas
