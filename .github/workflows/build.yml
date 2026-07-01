@@ -37,10 +37,27 @@ jobs:
           sudo apt-get install -y libgl1-mesa-dev libasound2-dev libx11-dev libxext-dev
           curl -fsSL -o qb64pe_lnx.tar.gz "${{ steps.qb64pe_release.outputs.asset_url }}"
           tar xzf qb64pe_lnx.tar.gz
-          cd qb64pe && bash setup_lnx.sh && cd ..
+          cd qb64pe && bash setup_lnx.sh 1 && cd ..
           mv qb64pe qb64pe-bin
 
       - name: Build sss.bas
         run: |
           sudo apt-get install -y libgl1-mesa-dev libasound2-dev libx11-dev libxext-dev xvfb
           QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+
+      - name: Upload artifact
+        if: github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sss-linux
+          path: builds/sss
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv builds/sss builds/sss-linux
+          gh release create "${{ github.ref_name }}" builds/sss-linux \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
