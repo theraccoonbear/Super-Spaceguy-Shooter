@@ -88,9 +88,20 @@ esac
 
 echo "==> Building sss.bas..."
 mkdir -p "$REPODIR/builds"
-if command -v xvfb-run &>/dev/null; then
-  xvfb-run "$QB64" -x -w -s:ExeDefaultDir="$REPODIR/builds" "$QB64_DIR/code/3d/sss.bas"
-else
-  "$QB64" -x -w -s:ExeDefaultDir="$REPODIR/builds" "$QB64_DIR/code/3d/sss.bas"
-fi
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    QB64_WIN=$(cygpath -w "$QB64")
+    SRC_WIN=$(cygpath -w "$QB64_DIR/code/3d/sss.bas")
+    OUT_WIN=$(cygpath -w "$REPODIR/builds")
+    QB64_WIN="$QB64_WIN" SRC_WIN="$SRC_WIN" OUT_WIN="$OUT_WIN" \
+      powershell -Command '& $env:QB64_WIN -x -w "-s:ExeDefaultDir=$env:OUT_WIN" $env:SRC_WIN'
+    ;;
+  *)
+    if command -v xvfb-run &>/dev/null; then
+      xvfb-run "$QB64" -x -w -s:ExeDefaultDir="$REPODIR/builds" "$QB64_DIR/code/3d/sss.bas"
+    else
+      "$QB64" -x -w -s:ExeDefaultDir="$REPODIR/builds" "$QB64_DIR/code/3d/sss.bas"
+    fi
+    ;;
+esac
 echo "==> Build complete"
