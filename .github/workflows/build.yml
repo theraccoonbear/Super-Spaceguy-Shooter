@@ -45,6 +45,10 @@ jobs:
           sudo apt-get install -y libgl1-mesa-dev libglu1-mesa libasound2-dev libx11-dev libxext-dev xvfb
           QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
+      - name: Dump C++ compile log on failure
+        if: failure()
+        run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
+
       - name: Upload artifact
         if: github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
