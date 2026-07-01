@@ -68,16 +68,12 @@ jobs:
           esac
           mv qb64pe qb64pe-bin
 
-      - name: Build QB64-PE from source (Windows)
+      - name: Install QB64-PE (Windows pre-built)
         if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os == 'Windows'
         shell: pwsh
         run: |
           Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.7z
           7z x qb64pe.7z
-          Get-ChildItem -Name
-          cd qb64pe
-          cmd /c setup_win.bat 1
-          cd ..
           Rename-Item qb64pe qb64pe-bin
 
       - name: Build sss.bas
