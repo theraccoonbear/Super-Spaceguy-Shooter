@@ -34,7 +34,7 @@ jobs:
           RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/QB64-Phoenix-Edition/QB64pe/releases/latest)
           case "$(uname -s)" in
             Darwin*)          FILTER="osx" ;;
-            MINGW*|MSYS*|CYGWIN*) FILTER="win" ;;
+            MINGW*|MSYS*|CYGWIN*) FILTER="win-x64" ;;
             *)                FILTER="lnx" ;;
           esac
           ASSET_URL=$(echo "$RELEASE_JSON" \
