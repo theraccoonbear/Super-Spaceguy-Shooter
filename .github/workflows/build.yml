@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -50,7 +51,7 @@ jobs:
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
 
       - name: Upload artifact
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: sss-linux
