@@ -73,7 +73,8 @@ jobs:
         shell: pwsh
         run: |
           Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.7z
-          7z x qb64pe.7z -o.
+          7z x qb64pe.7z
+          Get-ChildItem -Name
           cd qb64pe
           cmd /c setup_win.bat 1
           cd ..
