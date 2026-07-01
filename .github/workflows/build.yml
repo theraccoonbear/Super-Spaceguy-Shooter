@@ -72,8 +72,8 @@ jobs:
         if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os == 'Windows'
         shell: pwsh
         run: |
-          Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.zip
-          Expand-Archive qb64pe.zip -DestinationPath .
+          Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.7z
+          7z x qb64pe.7z -o.
           cd qb64pe
           cmd /c setup_win.bat 1
           cd ..
