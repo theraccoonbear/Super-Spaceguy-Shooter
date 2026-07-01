@@ -11,7 +11,7 @@ case "$(uname -s)" in
     QB64_BIN_NAME="qb64pe"
     ;;
   MINGW*|MSYS*|CYGWIN*)
-    QB64_ASSET_FILTER="win"
+    QB64_ASSET_FILTER="win-x64"
     QB64_SETUP_SCRIPT="setup_win.bat"
     QB64_BIN_NAME="qb64pe.exe"
     ;;
