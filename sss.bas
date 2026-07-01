@@ -1,5 +1,10 @@
+' ============================================================
+' Super Spaceguy Shooter  —  sss.bas
+' 3rd person pseudo-rail 3D space shooter
+' Player moves freely in Y/Z (up/down, left/right)
+' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
+' ============================================================
 $Resize:stretch
-' _FULLSCREEN _SQUAREPIXELS
 $EMBED:'code/3d/assets/sss-title-final.png':'TITLEIMG'
 $EMBED:'code/3d/assets/planet-01-clean.png':'PLANET01'
 $EMBED:'code/3d/assets/planet-02-clean.png':'PLANET02'
@@ -188,13 +193,6 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'stage.bas'
 '$INCLUDE:'game.bas'
 
-' ============================================================
-' Super Spaceguy Shooter  —  sss.bas
-' Side-scrolling 3D space shooter.
-' Player moves freely in Y/Z (up/down, left/right) — no walls.
-' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
-' ============================================================
-
 ' --- screen ---
 scrW = 320 : scrH = 240
 SCREEN _NEWIMAGE(scrW, scrH, 32)
@@ -316,14 +314,6 @@ SND_Init
 ' MAIN LOOP
 ' ============================================================
 DO
-    ' If _Resize Then
-    '     scrW = _ResizeWidth : scrH = _ResizeHeight
-    '     _FreeImage backBuffer
-    '     Screen _NewImage(scrW, scrH, 32)
-    '     backBuffer = _NewImage(scrW, scrH, 32)
-    '     E3D_MatPerspective cam, scrW / scrH, projMat
-    ' End If
-
     ' --- input ---
     E3D_InputUpdate held()
 
@@ -1153,23 +1143,23 @@ DO
     _DISPLAY
 LOOP
 
-Sub StarfieldReset(srX As Single, srY As Single, srZ As Single)
+SUB StarfieldReset(srX AS SINGLE, srY AS SINGLE, srZ AS SINGLE)
     E3D_StarfieldInit srX, srY, srZ
     E3D_StarfieldAddLayer srX, srY, srZ, 200, 50, 50, 40, 0.010, 0.020, 0
     E3D_StarfieldAddLayer srX, srY, srZ,  60, 40, 30, 25, 0.035, 0.070, 1
     E3D_StarfieldAddLayer srX, srY, srZ,  15, 25, 15, 12, 0.100, 0.180, 2
-End Sub
+END SUB
 
-Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
+SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit
-    If lives <= 0 Then
+    IF lives <= 0 THEN
         shipLives = shipLives - 1
-        If shipLives <= 0 Then
+        IF shipLives <= 0 THEN
             gameOver = -1
-        Else
+        ELSE
             lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
-        End If
-    End If
-End Sub
+        END IF
+    END IF
+END SUB
