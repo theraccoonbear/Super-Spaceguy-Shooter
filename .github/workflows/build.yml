@@ -19,11 +19,12 @@ jobs:
 
       - name: Download QB64-PE
         run: |
-          curl -fsSL -o qb64pe_lnx.tar.gz \
-            https://github.com/QB64-Phoenix-Edition/QB64pe/releases/latest/download/qb64pe_lnx.tar.gz
+          ASSET_URL=$(curl -fsSL https://api.github.com/repos/QB64-Phoenix-Edition/QB64pe/releases/latest \
+            | jq -r '.assets[] | select(.name | ascii_downcase | contains("lnx")) | .browser_download_url')
+          curl -fsSL -o qb64pe_lnx.tar.gz "$ASSET_URL"
           tar xzf qb64pe_lnx.tar.gz
 
       - name: Build sss.bas
         run: |
           mkdir -p builds
-          xvfb-run ./qb64pe/qb64pe -x -w -s:ExeDefaultDir=./builds ./code/3d/sss.bas
+          xvfb-run ./qb64pe/qb64pe -x -w -s:ExeDefaultDir=./builds sss.bas
