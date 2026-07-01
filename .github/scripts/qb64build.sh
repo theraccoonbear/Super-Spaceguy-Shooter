@@ -78,7 +78,8 @@ case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     WIN_LINK=$(cygpath -w "$QB64_DIR/code/3d")
     WIN_TARGET=$(cygpath -w "$REPODIR")
-    cmd //c "mklink /J \"$WIN_LINK\" \"$WIN_TARGET\""
+    WIN_LINK="$WIN_LINK" WIN_TARGET="$WIN_TARGET" \
+      powershell -Command 'New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET'
     ;;
   *)
     ln -sfn "$REPODIR" "$QB64_DIR/code/3d"
