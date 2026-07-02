@@ -1,4 +1,4 @@
-Const E3D_SCENE_MAX  = 450
+Const E3D_SCENE_MAX  = 4000
 Const E3D_SCENE_VMAX = 8
 
 Dim Shared E3D_scnVCount(1 To E3D_SCENE_MAX)                       As Integer
