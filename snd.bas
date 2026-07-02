@@ -219,7 +219,8 @@ Sub SND_GameFill(isManeuver As Integer)
             End If
 
             SPK_Advance
-            _SNDRAW (Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musicSample + sndEfx + spkSampleOut
+            _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + sndEfx) * volSfx _
+                  + musicSample * volMusic + spkSampleOut * volSpeech
         Next sndK
     End If
 End Sub
@@ -257,7 +258,7 @@ Sub SND_TitleFill()
                 musicSample = musicSample + (Sin(titleBgmLeadPhase) + Sin(titleBgmLeadPhase * 2) * 0.3 + Sin(titleBgmLeadPhase * 3) * 0.15) * 0.055
             End If
             SPK_Advance
-            _SNDRAW musicSample + spkSampleOut
+            _SNDRAW musicSample * volMusic + spkSampleOut * volSpeech
         Next sndK
     End If
 End Sub
