@@ -1,17 +1,5 @@
 ' settings.bas -- volume config screen and persistent settings
 
-Dim Shared volMusic   As Single : volMusic   = 1.0
-Dim Shared volSfx     As Single : volSfx     = 1.0
-Dim Shared volSpeech  As Single : volSpeech  = 1.0
-Dim Shared optSel     As Integer
-Dim Shared optUpWas   As Integer
-Dim Shared optDnWas   As Integer
-Dim Shared optLfWas   As Integer
-Dim Shared optRtWas   As Integer
-Dim Shared optLfRpt   As Integer
-Dim Shared optRtRpt   As Integer
-Dim Shared optEscWas  As Integer
-
 Sub SETTINGS_Save ()
     Dim sfH As Integer
     sfH = FreeFile
