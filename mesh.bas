@@ -264,16 +264,43 @@ Sub E3D_LoadMesh (mdat As String, meshName As String, mesh As E3D_Mesh, box As E
     Loop
 End Sub
 
+' Compute and store normalized face normals in object space after mesh load.
+' Call once per mesh after E3D_LoadMesh; amortizes cross-product+sqrt across all frames.
+Sub E3D_BakeMeshNormals (mesh As E3D_Mesh)
+    Dim fi As Integer
+    Dim ex1 As Single, ey1 As Single, ez1 As Single
+    Dim ex2 As Single, ey2 As Single, ez2 As Single
+    Dim nx As Single, ny As Single, nz As Single, mag As Single
+    Dim fv1 As Integer, fv2 As Integer, fv3 As Integer
+    For fi = 1 To mesh.fCount
+        fv1 = mesh.faces(fi).vIdx(1)
+        fv2 = mesh.faces(fi).vIdx(2)
+        fv3 = mesh.faces(fi).vIdx(3)
+        ex1 = mesh.verts(fv2).x - mesh.verts(fv1).x
+        ey1 = mesh.verts(fv2).y - mesh.verts(fv1).y
+        ez1 = mesh.verts(fv2).z - mesh.verts(fv1).z
+        ex2 = mesh.verts(fv3).x - mesh.verts(fv1).x
+        ey2 = mesh.verts(fv3).y - mesh.verts(fv1).y
+        ez2 = mesh.verts(fv3).z - mesh.verts(fv1).z
+        nx = ey1 * ez2 - ez1 * ey2
+        ny = ez1 * ex2 - ex1 * ez2
+        nz = ex1 * ey2 - ey1 * ex2
+        mag = Sqr(nx * nx + ny * ny + nz * nz)
+        If mag > 0.00001 Then
+            mesh.faces(fi).nx = nx / mag
+            mesh.faces(fi).ny = ny / mag
+            mesh.faces(fi).nz = nz / mag
+        End If
+    Next fi
+End Sub
+
 ' Lit version — flat shading from a directional light. Used by sss.bas.
 ' Face baseClr drives the color; if 0, falls back to hue cycle.
 Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3D_Coord, tt As Single, lightDir As E3D_Coord, facePolys() As E3D_Polygon, faceClrs() As Long, faceDepths() As Single, faceCount As Integer)
     Dim worldVerts(1 To 64) As E3D_Coord
     Dim i As Integer, fi As Integer, vi As Integer
-    Dim fv1 As Integer, fv2 As Integer, fv3 As Integer, fvn As Integer, fvi As Integer
-    Dim ex1 As Single, ey1 As Single, ez1 As Single
-    Dim ex2 As Single, ey2 As Single, ez2 As Single
+    Dim fv1 As Integer, fvn As Integer, fvi As Integer
     Dim fnx As Single, fny As Single, fnz As Single
-    Dim fnMag As Single
     Dim vvx As Single, vvy As Single, vvz As Single
     Dim depthSum As Single
     Dim facePoly As E3D_Polygon
@@ -286,18 +313,11 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
 
     faceCount = 0
     For fi = 1 To mesh.fCount
+        ' Rotate baked object-space normal by the 3x3 rotation part of modelMat
+        fnx = mesh.faces(fi).nx * modelMat.m(0,0) + mesh.faces(fi).ny * modelMat.m(0,1) + mesh.faces(fi).nz * modelMat.m(0,2)
+        fny = mesh.faces(fi).nx * modelMat.m(1,0) + mesh.faces(fi).ny * modelMat.m(1,1) + mesh.faces(fi).nz * modelMat.m(1,2)
+        fnz = mesh.faces(fi).nx * modelMat.m(2,0) + mesh.faces(fi).ny * modelMat.m(2,1) + mesh.faces(fi).nz * modelMat.m(2,2)
         fv1 = mesh.faces(fi).vIdx(1)
-        fv2 = mesh.faces(fi).vIdx(2)
-        fv3 = mesh.faces(fi).vIdx(3)
-        ex1 = worldVerts(fv2).x - worldVerts(fv1).x
-        ey1 = worldVerts(fv2).y - worldVerts(fv1).y
-        ez1 = worldVerts(fv2).z - worldVerts(fv1).z
-        ex2 = worldVerts(fv3).x - worldVerts(fv1).x
-        ey2 = worldVerts(fv3).y - worldVerts(fv1).y
-        ez2 = worldVerts(fv3).z - worldVerts(fv1).z
-        fnx = ey1 * ez2 - ez1 * ey2
-        fny = ez1 * ex2 - ex1 * ez2
-        fnz = ex1 * ey2 - ey1 * ex2
         vvx = camPos.x - worldVerts(fv1).x
         vvy = camPos.y - worldVerts(fv1).y
         vvz = camPos.z - worldVerts(fv1).z
@@ -308,18 +328,14 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
             For vi = 1 To fvn
                 fvi = mesh.faces(fi).vIdx(vi)
                 E3D_AddCoord facePoly, worldVerts(fvi)
-                depthSum = depthSum + worldVerts(fvi).x   ' X is depth in sss.bas (forward axis)
+                depthSum = depthSum + worldVerts(fvi).x
             Next vi
             faceCount = faceCount + 1
             facePolys(faceCount) = facePoly
             faceDepths(faceCount) = depthSum / fvn
 
-            fnMag = Sqr(fnx * fnx + fny * fny + fnz * fnz)
-            If fnMag > 0.00001 Then
-                lit = (fnx / fnMag) * lightDir.x + (fny / fnMag) * lightDir.y + (fnz / fnMag) * lightDir.z
-            Else
-                lit = 0
-            End If
+            ' Normal already unit-length after rotation by orthonormal matrix
+            lit = fnx * lightDir.x + fny * lightDir.y + fnz * lightDir.z
             If lit < 0.15 Then lit = 0.15
 
             If mesh.faces(fi).baseClr = 0 Then
