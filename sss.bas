@@ -256,6 +256,10 @@ E3D_LoadMesh mdl, "ENEMY_VWEDGE", meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_
 E3D_LoadMesh mdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
 E3D_LoadMesh mdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
 E3D_LoadMesh mdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
+Dim mlI As Integer
+For mlI = 1 To MESH_COUNT
+    E3D_BakeMeshNormals meshLib(mlI)
+Next mlI
 
 ' --- init player ---
 player.active  = -1

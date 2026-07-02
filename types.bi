@@ -26,6 +26,9 @@ Type E3D_Face
     vIdx(1 To 8) As Integer
     vCount As Integer
     baseClr As Long
+    nx As Single
+    ny As Single
+    nz As Single
 End Type
 
 Type E3D_Mesh

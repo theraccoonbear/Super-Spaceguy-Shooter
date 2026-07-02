@@ -45,19 +45,16 @@ Sub E3D_SceneFlush (vpMat As E3D_Matrix4, scrW As Single, scrH As Single)
     Dim di As Integer, v As Integer, vc As Integer
     Dim c As E3D_Coord
 
-    Do
-        didSwap = 0
-        For scI = 1 To E3D_scnCount - 1
-            oi1 = E3D_scnOrder(scI)
-            oi2 = E3D_scnOrder(scI + 1)
-            If E3D_scnDepths(oi1) < E3D_scnDepths(oi2) Then
-                oiTmp = oi1
-                E3D_scnOrder(scI)     = oi2
-                E3D_scnOrder(scI + 1) = oiTmp
-                didSwap = 1
-            End If
-        Next scI
-    Loop While didSwap
+    ' Insertion sort — O(n) on nearly-sorted data (typical between frames)
+    For scI = 2 To E3D_scnCount
+        oiTmp = E3D_scnOrder(scI)
+        oi1 = scI - 1
+        Do While oi1 >= 1 And E3D_scnDepths(E3D_scnOrder(oi1)) < E3D_scnDepths(oiTmp)
+            E3D_scnOrder(oi1 + 1) = E3D_scnOrder(oi1)
+            oi1 = oi1 - 1
+        Loop
+        E3D_scnOrder(oi1 + 1) = oiTmp
+    Next scI
 
     For scI = 1 To E3D_scnCount
         di = E3D_scnOrder(scI)
