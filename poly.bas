@@ -81,41 +81,35 @@ End Sub
 
 Sub E3D_DrawPoly (poly As E3D_Polygon, clr As Long)
     Dim i1 As Integer, i2 As Integer, last As Integer
-    Dim c1 As E3D_Coord, c2 As E3D_Coord
-    Dim cx As Single, cy As Single
-    Dim area As Single
+    Dim yMin As Integer, yMax As Integer, scanY As Integer
+    Dim xLeft As Single, xRight As Single, xInt As Single
+    Dim ya As Single, yb As Single
 
     last = poly.count
     If last < 2 Then Exit Sub
 
-    For i1 = 1 To last - 1
-        i2 = i1 + 1
-        c1 = poly.coords(i1)
-        c2 = poly.coords(i2)
-        E3D_DrawLine c1, c2, clr
+    ' Y extents
+    yMin = Int(poly.coords(1).y) : yMax = yMin
+    For i1 = 2 To last
+        If Int(poly.coords(i1).y) < yMin Then yMin = Int(poly.coords(i1).y)
+        If Int(poly.coords(i1).y) > yMax Then yMax = Int(poly.coords(i1).y)
     Next i1
-    E3D_DrawLine poly.coords(last), poly.coords(1), clr
 
-    cx = 0 : cy = 0
-    For i1 = 1 To last
-        cx = cx + poly.coords(i1).x
-        cy = cy + poly.coords(i1).y
-    Next i1
-    cx = cx / last
-    cy = cy / last
-
-    ' Shoelace area — tiny polygons produce gaps in their pixel outline that
-    ' let Paint escape and flood the screen. Use PSet for those instead.
-    area = 0
-    For i1 = 1 To last - 1
-        area = area + poly.coords(i1).x * poly.coords(i1 + 1).y - poly.coords(i1 + 1).x * poly.coords(i1).y
-    Next i1
-    area = area + poly.coords(last).x * poly.coords(1).y - poly.coords(1).x * poly.coords(last).y
-    area = Abs(area) * 0.5
-
-    If area < 4 Then
-        If cx >= 0 And cx < 32767 And cy >= 0 And cy < 32767 Then PSet (cx, cy), clr
-    ElseIf cx > 0 And cx < 32767 And cy > 0 And cy < 32767 Then
-        Paint (cx, cy), clr, clr
-    End If
+    ' Scanline fill: all game faces are convex so min/max X per row is correct
+    For scanY = yMin To yMax
+        xLeft = 1E+09 : xRight = -1E+09
+        For i1 = 1 To last
+            i2 = (i1 Mod last) + 1
+            ya = poly.coords(i1).y
+            yb = poly.coords(i2).y
+            If (ya <= scanY And yb > scanY) Or (yb <= scanY And ya > scanY) Then
+                xInt = poly.coords(i1).x + (scanY - ya) / (yb - ya) * (poly.coords(i2).x - poly.coords(i1).x)
+                If xInt < xLeft  Then xLeft  = xInt
+                If xInt > xRight Then xRight = xInt
+            End If
+        Next i1
+        If xRight >= xLeft Then
+            Line (xLeft, scanY)-(xRight, scanY), clr
+        End If
+    Next scanY
 End Sub
