@@ -174,6 +174,7 @@ DIM SHARED shipCinVX AS SINGLE
 DIM SHARED cinematicFade AS INTEGER
 DIM SHARED cinPhase AS SINGLE
 DIM SHARED gameState AS INTEGER
+DIM SHARED prevGameState AS INTEGER : prevGameState = -1
 DIM SHARED crawlNextState AS INTEGER
 DIM SHARED pauseFlag AS INTEGER
 DIM SHARED invTimer AS INTEGER
@@ -330,6 +331,12 @@ DO
     dbgT0 = Timer
     ' --- input ---
     E3D_InputUpdate held()
+
+    ' Detect state transitions for speech triggers
+    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE THEN
+        SPK_Say "SUPER SPACE GUY SHOOER"
+    END IF
+    prevGameState = gameState
 
     SELECT CASE gameState
 
@@ -1064,6 +1071,7 @@ DO
         IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0
         escWas = held(E3D_KEY_ESCAPE)
         IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
+            SPK_Say "CHAPTER ONE"
             CRAWL_Prep "stage1", scrH : crawlNextState = GS_PLAYING : gameState = GS_CRAWL : introTimer = 0
         END IF
         SND_TitleFill
