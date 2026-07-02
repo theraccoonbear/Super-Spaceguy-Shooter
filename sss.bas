@@ -1090,7 +1090,6 @@ DO
         IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0
         escWas = held(E3D_KEY_ESCAPE)
         IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
-            SPK_Say "CHAPTER ONE"
             CRAWL_Prep "stage1", scrH : crawlNextState = GS_PLAYING : gameState = GS_CRAWL : introTimer = 0
         END IF
         SND_TitleFill
@@ -1105,6 +1104,11 @@ DO
         tt = tt + 0.025
         crawlTimer = crawlTimer + 1
         crawlScroll = crawlScroll - CRAWL_SPEED
+        ' Fire speech when first line reaches screen center
+        IF crawlSpeechDone = 0 AND crawlScroll <= scrH / 2 THEN
+            SPK_Say crawlSpeechText$
+            crawlSpeechDone = 1
+        END IF
 
         cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
         cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
@@ -1137,11 +1141,13 @@ DO
         ' auto-advance when last line has cleared the top fade band
         IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
             IF crawlNextState = GS_PLAYING THEN StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
+            SPK_Say ""
             gameState = crawlNextState
         END IF
         ' SPACE to skip (locked 1 sec to prevent accidental carry-through from intro)
         IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
             IF crawlNextState = GS_PLAYING THEN StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
+            SPK_Say ""
             gameState = crawlNextState
         END IF
 

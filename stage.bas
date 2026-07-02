@@ -76,13 +76,6 @@ Sub STAGE_Update
             _DEST backBuffer
             Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
             If planetNameIdx < PLANET_COUNT Then
-                Select Case planetNameIdx + 1
-                    Case 2 : SPK_Say "CHAPTER TWO"
-                    Case 3 : SPK_Say "CHAPTER THREE"
-                    Case 4 : SPK_Say "CHAPTER FOUR"
-                    Case 5 : SPK_Say "CHAPTER FIVE"
-                    Case 6 : SPK_Say "CHAPTER SIX"
-                End Select
                 CRAWL_Prep "stage" + LTrim$(Str$(planetNameIdx + 1)), scrH
                 crawlNextState = GS_PLAYING
             Else

@@ -17,9 +17,45 @@ DIM SHARED crawlLines$(0 TO 63)
 DIM SHARED crawlLineCount AS INTEGER
 DIM SHARED crawlScroll AS SINGLE
 DIM SHARED crawlTimer AS INTEGER
+DIM SHARED crawlSpeechText$
+DIM SHARED crawlSpeechDone AS INTEGER
 DIM crawlIdx AS INTEGER
 DIM crawlLY AS INTEGER
 DIM crawlFY AS INTEGER
+
+' Strip ~X color codes; expand single digits to English words for speech.
+Function CRAWL_StripColor$(scS As String)
+    Dim scR As String, scI As Integer, scC As Integer, scH As Integer
+    scR = "" : scI = 1
+    Do While scI <= Len(scS)
+        scC = Asc(Mid$(scS, scI, 1))
+        If scC = 126 And scI < Len(scS) Then  ' ~ : check for color code
+            scH = Asc(UCase$(Mid$(scS, scI + 1, 1)))
+            If (scH >= 48 And scH <= 57) Or (scH >= 65 And scH <= 70) Then
+                scI = scI + 2  ' skip ~X
+            Else
+                scR = scR + Chr$(scC) : scI = scI + 1
+            End If
+        ElseIf scC >= 48 And scC <= 57 Then  ' 0-9 -> word
+            Select Case scC - 48
+                Case 0 : scR = scR + " ZERO "
+                Case 1 : scR = scR + " ONE "
+                Case 2 : scR = scR + " TWO "
+                Case 3 : scR = scR + " THREE "
+                Case 4 : scR = scR + " FOUR "
+                Case 5 : scR = scR + " FIVE "
+                Case 6 : scR = scR + " SIX "
+                Case 7 : scR = scR + " SEVEN "
+                Case 8 : scR = scR + " EIGHT "
+                Case 9 : scR = scR + " NINE "
+            End Select
+            scI = scI + 1
+        Else
+            scR = scR + Chr$(scC) : scI = scI + 1
+        End If
+    Loop
+    CRAWL_StripColor$ = scR
+End Function
 
 ' Returns visible character count of s, excluding ~X color codes.
 Function CRAWL_VisLen%(cwlS As String)
@@ -132,4 +168,15 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
         END IF
     NEXT cpCI
     crawlScroll = cpStartY + CRAWL_LINE_H * 2
+
+    ' Build plain-text speech string from finished line array
+    Dim cpSI As Integer, cpSLine As String
+    crawlSpeechText$ = ""
+    For cpSI = 0 To crawlLineCount - 1
+        cpSLine = LTrim$(RTrim$(CRAWL_StripColor$(crawlLines$(cpSI))))
+        If Len(cpSLine) > 0 Then
+            crawlSpeechText$ = crawlSpeechText$ + cpSLine + " "
+        End If
+    Next cpSI
+    crawlSpeechDone = 0
 END SUB
