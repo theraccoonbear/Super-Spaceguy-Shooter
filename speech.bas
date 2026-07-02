@@ -48,15 +48,17 @@ Dim Shared spkSampleOut  As Single  ' current sample; written by SPK_Advance, re
 ' F1/F2 per phoneme (Hz, Peterson & Barney 1952 for vowels; Klatt 1980 for consonants)
 Dim Shared spkF1(0 To 39) As Single
 Dim Shared spkF2(0 To 39) As Single
-' Voiced-source wavetable (512 samples, rebuilt at each phoneme boundary)
+' Voiced-source wavetable (512 samples per phoneme+stress; library pre-built at init)
+' Building at runtime from trig would stall the audio fill loop and kill _SNDRAW.
 Const SPK_WAVE_LEN = 512
-Dim Shared spkWave(0 To SPK_WAVE_LEN - 1) As Single
+Dim Shared spkWaveLib(0 To 39, 0 To 2, 0 To SPK_WAVE_LEN - 1) As Single  ' [phone][stress][sample]
+Dim Shared spkWave(0 To SPK_WAVE_LEN - 1) As Single      ' active phoneme wavetable
+Dim Shared spkWavePrev(0 To SPK_WAVE_LEN - 1) As Single  ' previous phoneme (coarticulation blend)
 Dim Shared spkWavePhase As Single  ' position in wavetable [0, SPK_WAVE_LEN)
 Dim Shared spkWaveStep  As Single  ' samples advanced per audio sample
-' F3 formant, previous-phoneme wavetable (coarticulation), fricative HP filter
+' F3 formant, previous-phoneme tracking, fricative HP filter
 Dim Shared spkF3(0 To 39) As Single
-Dim Shared spkWavePrev(0 To SPK_WAVE_LEN - 1) As Single
-Dim Shared spkPrevPhoneID As Integer  ' phoneme ID of wave in spkWavePrev; 0=SPK_AA default ok
+Dim Shared spkPrevPhoneID As Integer
 Dim Shared spkHpCoeff As Single
 Dim Shared spkHpX1    As Single
 Dim Shared spkHpY1    As Single
@@ -183,87 +185,97 @@ Sub SPK_Init()
     spkWavePhase = 0.0 : spkWaveStep = 0.0
     spkPrevPhoneID = SPK_SIL
 
+    SPK_BuildAllWaves   ' pre-build all 40x3 wavetables before entering audio loop
     SPK_LoadDict
 End Sub
 
 ' ============================================================
-' Build a 512-sample voiced-source wavetable shaped by the F1/F2
-' formants of the given phoneme.  Called once per phoneme boundary.
-'
-' Each harmonic k of the fundamental f0 gets amplitude:
-'   gain = (bandpass(k*f0, F1, Q1) + bandpass(k*f0, F2, Q2)) / k
-' where bandpass is the standard 2-pole magnitude response (peaks at 1.0).
-' The /k gives sawtooth spectral tilt.  Output is normalized to peak 1.0.
+' Pre-build all phoneme wavetables at startup (120 builds, done once).
+' Called from SPK_Init before any audio fill loop starts.
+' Doing this upfront keeps SPK_BuildWave (called per phoneme in the
+' real-time audio path) down to a fast array copy instead of trig.
+' ============================================================
+Sub SPK_BuildAllWaves()
+    Dim bwPhone As Integer, bwSt As Integer, bwK As Integer, bwI As Integer
+    Dim bwF0 As Single, bwF1 As Single, bwF2 As Single, bwF3 As Single
+    Dim bwHf As Single, bwR1 As Single, bwR2 As Single, bwR3 As Single
+    Dim bwG1 As Single, bwG2 As Single, bwG3 As Single, bwG As Single
+    Dim bwPh As Single, bwS As Single, bwPk As Single
+    Const bwQ1 = 9.0 : Const bwQ2 = 12.0 : Const bwQ3 = 10.0 : Const bwNH = 32
+
+    For bwSt = 0 To 2
+        Select Case bwSt
+            Case 1    : bwF0 = 155.0
+            Case 2    : bwF0 = 130.0
+            Case Else : bwF0 = 110.0
+        End Select
+        For bwPhone = 0 To 39
+            bwF1 = spkF1(bwPhone) : bwF2 = spkF2(bwPhone) : bwF3 = spkF3(bwPhone)
+            For bwI = 0 To SPK_WAVE_LEN - 1
+                bwPh = 6.2832 * bwI / SPK_WAVE_LEN
+                bwS = 0.0
+                For bwK = 1 To bwNH
+                    bwHf = bwK * bwF0
+                    If bwF1 > 0 Then
+                        bwR1 = bwHf / bwF1
+                        bwG1 = 1.0 / Sqr(1.0 + bwQ1*bwQ1*(bwR1 - 1.0/bwR1)*(bwR1 - 1.0/bwR1))
+                    Else
+                        bwG1 = 0.5
+                    End If
+                    If bwF2 > 0 Then
+                        bwR2 = bwHf / bwF2
+                        bwG2 = 1.0 / Sqr(1.0 + bwQ2*bwQ2*(bwR2 - 1.0/bwR2)*(bwR2 - 1.0/bwR2))
+                    Else
+                        bwG2 = 0.5
+                    End If
+                    If bwF3 > 0 Then
+                        bwR3 = bwHf / bwF3
+                        bwG3 = 1.0 / Sqr(1.0 + bwQ3*bwQ3*(bwR3 - 1.0/bwR3)*(bwR3 - 1.0/bwR3))
+                    Else
+                        bwG3 = 0.0
+                    End If
+                    bwG = (bwG1 + bwG2 + bwG3 * 0.5) / bwK
+                    bwS = bwS + Sin(bwK * bwPh) * bwG
+                Next bwK
+                spkWaveLib(bwPhone, bwSt, bwI) = bwS
+            Next bwI
+            bwPk = 0.001
+            For bwI = 0 To SPK_WAVE_LEN - 1
+                If Abs(spkWaveLib(bwPhone, bwSt, bwI)) > bwPk Then bwPk = Abs(spkWaveLib(bwPhone, bwSt, bwI))
+            Next bwI
+            For bwI = 0 To SPK_WAVE_LEN - 1
+                spkWaveLib(bwPhone, bwSt, bwI) = spkWaveLib(bwPhone, bwSt, bwI) / bwPk
+            Next bwI
+        Next bwPhone
+    Next bwSt
+End Sub
+
+' ============================================================
+' Load next phoneme's wavetable from pre-built library (fast array copy).
+' Saves outgoing wave to spkWavePrev for coarticulation blend.
 ' ============================================================
 Sub SPK_BuildWave(phoneID As Integer, stress As Integer)
-    Dim f0 As Single, f1v As Single, f2v As Single, f3v As Single
-    Dim k As Integer, i As Integer
-    Dim hf As Single, r1 As Single, r2 As Single, r3 As Single
-    Dim g1 As Single, g2 As Single, g3 As Single, g As Single
-    Dim ph As Single, s As Single, pk As Single
-    Const Q1 = 9.0    ' F1 Q (BW≈F/9)
-    Const Q2 = 12.0   ' F2 Q (BW≈F/12)
-    Const Q3 = 10.0   ' F3 Q (BW≈F/10)
-    Const NHARM = 32  ' 32*110Hz=3520Hz; covers all F3 values up to ~3010Hz
+    Dim bwJ As Integer, bwSIdx As Integer
 
-    ' Save outgoing wave before rebuilding (coarticulation crossfade in SPK_Advance)
-    For i = 0 To SPK_WAVE_LEN - 1
-        spkWavePrev(i) = spkWave(i)
-    Next i
+    For bwJ = 0 To SPK_WAVE_LEN - 1
+        spkWavePrev(bwJ) = spkWave(bwJ)
+    Next bwJ
 
     Select Case stress
-        Case 1    : f0 = 155.0
-        Case 2    : f0 = 130.0
-        Case Else : f0 = 110.0
+        Case 1    : bwSIdx = 1 : spkWaveStep = SPK_WAVE_LEN * 155.0 / SAMPLE_RATE
+        Case 2    : bwSIdx = 2 : spkWaveStep = SPK_WAVE_LEN * 130.0 / SAMPLE_RATE
+        Case Else : bwSIdx = 0 : spkWaveStep = SPK_WAVE_LEN * 110.0 / SAMPLE_RATE
     End Select
-    spkWaveStep = SPK_WAVE_LEN * f0 / SAMPLE_RATE
 
-    f1v = spkF1(phoneID) : f2v = spkF2(phoneID) : f3v = spkF3(phoneID)
+    For bwJ = 0 To SPK_WAVE_LEN - 1
+        spkWave(bwJ) = spkWaveLib(phoneID, bwSIdx, bwJ)
+    Next bwJ
 
-    For i = 0 To SPK_WAVE_LEN - 1
-        ph = 6.2832 * i / SPK_WAVE_LEN
-        s = 0.0
-        For k = 1 To NHARM
-            hf = k * f0
-            If f1v > 0 Then
-                r1 = hf / f1v
-                g1 = 1.0 / Sqr(1.0 + Q1*Q1 * (r1 - 1.0/r1) * (r1 - 1.0/r1))
-            Else
-                g1 = 0.5
-            End If
-            If f2v > 0 Then
-                r2 = hf / f2v
-                g2 = 1.0 / Sqr(1.0 + Q2*Q2 * (r2 - 1.0/r2) * (r2 - 1.0/r2))
-            Else
-                g2 = 0.5
-            End If
-            If f3v > 0 Then
-                r3 = hf / f3v
-                g3 = 1.0 / Sqr(1.0 + Q3*Q3 * (r3 - 1.0/r3) * (r3 - 1.0/r3))
-            Else
-                g3 = 0.0
-            End If
-            g = (g1 + g2 + g3 * 0.5) / k   ' F3 at half weight; /k = sawtooth tilt
-            s = s + Sin(k * ph) * g
-        Next k
-        spkWave(i) = s
-    Next i
-
-    pk = 0.001
-    For i = 0 To SPK_WAVE_LEN - 1
-        If Abs(spkWave(i)) > pk Then pk = Abs(spkWave(i))
-    Next i
-    For i = 0 To SPK_WAVE_LEN - 1
-        spkWave(i) = spkWave(i) / pk
-    Next i
-
-    ' HP filter coefficient for fricative noise shaping (r = exp(-2*pi*fc/44100))
-    ' Larger r = lower cutoff = more midrange passes
     Select Case phoneID
-        Case SPK_S, SPK_Z              : spkHpCoeff = 0.607  ' fc≈3500Hz: hissy
-        Case SPK_SH, SPK_ZH, SPK_CH, SPK_JH : spkHpCoeff = 0.774  ' fc≈1800Hz: shush
-        Case SPK_F, SPK_V, SPK_TH, SPK_DH   : spkHpCoeff = 0.843  ' fc≈1200Hz: airy
-        Case SPK_HH                    : spkHpCoeff = 0.958  ' fc≈300Hz: aspiration
+        Case SPK_S, SPK_Z              : spkHpCoeff = 0.607
+        Case SPK_SH, SPK_ZH, SPK_CH, SPK_JH : spkHpCoeff = 0.774
+        Case SPK_F, SPK_V, SPK_TH, SPK_DH   : spkHpCoeff = 0.843
+        Case SPK_HH                    : spkHpCoeff = 0.958
         Case Else                      : spkHpCoeff = 0.900
     End Select
     spkHpX1 = 0.0 : spkHpY1 = 0.0
