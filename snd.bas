@@ -256,7 +256,8 @@ Sub SND_TitleFill()
                 If titleBgmLeadPhase > 6.2832 Then titleBgmLeadPhase = titleBgmLeadPhase - 6.2832
                 musicSample = musicSample + (Sin(titleBgmLeadPhase) + Sin(titleBgmLeadPhase * 2) * 0.3 + Sin(titleBgmLeadPhase * 3) * 0.15) * 0.055
             End If
-            _SNDRAW musicSample
+            SPK_Advance
+            _SNDRAW musicSample + spkSampleOut
         Next sndK
     End If
 End Sub
