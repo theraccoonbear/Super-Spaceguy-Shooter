@@ -31,9 +31,6 @@ total=$(wc -l < "$TMP")
 # ---- extract matching entries from CMU dict ----
 DATATMP="$(mktemp)"
 {
-  # Custom pronunciations for game-specific or deliberate mispronunciations
-  printf 'SHOOER SH UW1 ER0\n'    # deliberate mispronunciation of SHOOTER
-
   found=0
   while IFS= read -r word; do
     entry=$(grep "^${word} " "$DICT" | head -1)

@@ -334,7 +334,7 @@ DO
 
     ' Detect state transitions for speech triggers
     IF gameState = GS_TITLE AND prevGameState <> GS_TITLE THEN
-        SPK_Say "SUPER SPACE GUY SHOOER"
+        SPK_Say "SUPER SPACE GUY SHOOTER"
     END IF
     prevGameState = gameState
 
