@@ -95,21 +95,33 @@ Sub E3D_DrawPoly (poly As E3D_Polygon, clr As Long)
         If Int(poly.coords(i1).y) > yMax Then yMax = Int(poly.coords(i1).y)
     Next i1
 
-    ' Scanline fill: all game faces are convex so min/max X per row is correct
+    ' Scanline fill — even-odd rule; works for convex and concave polygons.
+    ' Up to 16 intersections per scanline (well above any face in our meshes).
+    Dim xHits(1 To 16) As Single, hitCount As Integer, h As Integer, hTmp As Single
     For scanY = yMin To yMax
-        xLeft = 1E+09 : xRight = -1E+09
+        hitCount = 0
         For i1 = 1 To last
             i2 = (i1 Mod last) + 1
             ya = poly.coords(i1).y
             yb = poly.coords(i2).y
             If (ya <= scanY And yb > scanY) Or (yb <= scanY And ya > scanY) Then
-                xInt = poly.coords(i1).x + (scanY - ya) / (yb - ya) * (poly.coords(i2).x - poly.coords(i1).x)
-                If xInt < xLeft  Then xLeft  = xInt
-                If xInt > xRight Then xRight = xInt
+                hitCount = hitCount + 1
+                xHits(hitCount) = poly.coords(i1).x + (scanY - ya) / (yb - ya) * (poly.coords(i2).x - poly.coords(i1).x)
             End If
         Next i1
-        If xRight >= xLeft Then
-            Line (xLeft, scanY)-(xRight, scanY), clr
-        End If
+        ' Insertion-sort the hits (count is tiny — 2 or 4 in practice)
+        For h = 2 To hitCount
+            hTmp = xHits(h)
+            i1 = h - 1
+            Do While i1 >= 1 And xHits(i1) > hTmp
+                xHits(i1 + 1) = xHits(i1)
+                i1 = i1 - 1
+            Loop
+            xHits(i1 + 1) = hTmp
+        Next h
+        ' Fill pairs
+        For h = 1 To hitCount - 1 Step 2
+            Line (xHits(h), scanY)-(xHits(h + 1), scanY), clr
+        Next h
     Next scanY
 End Sub
