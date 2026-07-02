@@ -42,8 +42,17 @@ Dim Shared spkStress(0 To SPK_PHONE_MAX - 1) As Integer
 Dim Shared spkPhoneCount As Integer
 Dim Shared spkPhoneIdx   As Integer
 Dim Shared spkSamplePos  As Integer
-Dim Shared spkCarrierPhase As Single
 Dim Shared spkSampleOut  As Single  ' current sample; written by SPK_Advance, read by snd.bas
+
+' Formant synthesis
+' F1/F2 per phoneme (Hz, Peterson & Barney 1952 for vowels; Klatt 1980 for consonants)
+Dim Shared spkF1(0 To 39) As Single
+Dim Shared spkF2(0 To 39) As Single
+' Voiced-source wavetable (512 samples, rebuilt at each phoneme boundary)
+Const SPK_WAVE_LEN = 512
+Dim Shared spkWave(0 To SPK_WAVE_LEN - 1) As Single
+Dim Shared spkWavePhase As Single  ' position in wavetable [0, SPK_WAVE_LEN)
+Dim Shared spkWaveStep  As Single  ' samples advanced per audio sample
 
 ' ============================================================
 Sub SPK_Init()
@@ -111,10 +120,108 @@ Sub SPK_Init()
     spkLetterSeq(24) = "W AY1"                ' Y
     spkLetterSeq(25) = "Z IY1"                ' Z
 
+    ' ---- Formant frequency table (F1, F2 in Hz) ----
+    ' Vowels 0-14: Peterson & Barney (1952) male mean values
+    spkF1(SPK_AA)=730 : spkF2(SPK_AA)=1090   ' father
+    spkF1(SPK_AE)=660 : spkF2(SPK_AE)=1720   ' cat
+    spkF1(SPK_AH)=520 : spkF2(SPK_AH)=1190   ' cut
+    spkF1(SPK_AO)=570 : spkF2(SPK_AO)= 840   ' caught
+    spkF1(SPK_AW)=760 : spkF2(SPK_AW)=1290   ' cow (onset)
+    spkF1(SPK_AY)=740 : spkF2(SPK_AY)=1640   ' bite (onset)
+    spkF1(SPK_EH)=530 : spkF2(SPK_EH)=1840   ' bed
+    spkF1(SPK_ER)=490 : spkF2(SPK_ER)=1350   ' bird
+    spkF1(SPK_EY)=440 : spkF2(SPK_EY)=2060   ' bait (onset)
+    spkF1(SPK_IH)=390 : spkF2(SPK_IH)=1990   ' bit
+    spkF1(SPK_IY)=270 : spkF2(SPK_IY)=2290   ' beat
+    spkF1(SPK_OW)=470 : spkF2(SPK_OW)= 830   ' boat (onset)
+    spkF1(SPK_OY)=570 : spkF2(SPK_OY)= 840   ' boy (onset)
+    spkF1(SPK_UH)=440 : spkF2(SPK_UH)=1020   ' book
+    spkF1(SPK_UW)=310 : spkF2(SPK_UW)= 870   ' boot
+    ' Sonorants 15-21: Klatt (1980) approximations
+    spkF1(SPK_L) =360 : spkF2(SPK_L) =1000   ' lateral
+    spkF1(SPK_M) =280 : spkF2(SPK_M) = 900   ' bilabial nasal
+    spkF1(SPK_N) =280 : spkF2(SPK_N) =1700   ' alveolar nasal
+    spkF1(SPK_NG)=280 : spkF2(SPK_NG)=2300   ' velar nasal
+    spkF1(SPK_R) =490 : spkF2(SPK_R) =1350   ' rhotic (like ER)
+    spkF1(SPK_W) =290 : spkF2(SPK_W) = 610   ' glide
+    spkF1(SPK_YW)=270 : spkF2(SPK_YW)=2200   ' palatal glide
+    ' Voiced fricatives / stops 22-28: light buzz formants
+    spkF1(SPK_DH)=300 : spkF2(SPK_DH)=1800
+    spkF1(SPK_V) =300 : spkF2(SPK_V) =1200
+    spkF1(SPK_Z) =300 : spkF2(SPK_Z) =1800
+    spkF1(SPK_ZH)=300 : spkF2(SPK_ZH)=2000
+    spkF1(SPK_B) =300 : spkF2(SPK_B) = 800
+    spkF1(SPK_D) =300 : spkF2(SPK_D) =1700
+    spkF1(SPK_G) =300 : spkF2(SPK_G) =2200
+    ' Unvoiced + affricates + silence: zeros (wavetable unused for these)
+    ' (array default-initialises to 0; no explicit assignment needed)
+
     spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
-    spkCarrierPhase = 0.0
+    spkWavePhase = 0.0 : spkWaveStep = 0.0
 
     SPK_LoadDict
+End Sub
+
+' ============================================================
+' Build a 512-sample voiced-source wavetable shaped by the F1/F2
+' formants of the given phoneme.  Called once per phoneme boundary.
+'
+' Each harmonic k of the fundamental f0 gets amplitude:
+'   gain = (bandpass(k*f0, F1, Q1) + bandpass(k*f0, F2, Q2)) / k
+' where bandpass is the standard 2-pole magnitude response (peaks at 1.0).
+' The /k gives sawtooth spectral tilt.  Output is normalized to peak 1.0.
+' ============================================================
+Sub SPK_BuildWave(phoneID As Integer, stress As Integer)
+    Dim f0 As Single, f1v As Single, f2v As Single
+    Dim k As Integer, i As Integer
+    Dim hf As Single, r1 As Single, r2 As Single
+    Dim g1 As Single, g2 As Single, g As Single
+    Dim ph As Single, s As Single, pk As Single
+    Const Q1 = 9.0    ' F1 Q factor  (BW = F/Q; ~80Hz at 730Hz)
+    Const Q2 = 12.0   ' F2 Q factor  (BW = F/Q; ~90Hz at 1090Hz)
+    Const NHARM = 24  ' harmonics to sum (covers up to ~2640Hz at f0=110Hz)
+
+    Select Case stress
+        Case 1    : f0 = 155.0
+        Case 2    : f0 = 130.0
+        Case Else : f0 = 110.0
+    End Select
+    spkWaveStep = SPK_WAVE_LEN * f0 / SAMPLE_RATE
+
+    f1v = spkF1(phoneID) : f2v = spkF2(phoneID)
+
+    For i = 0 To SPK_WAVE_LEN - 1
+        ph = 6.2832 * i / SPK_WAVE_LEN
+        s = 0.0
+        For k = 1 To NHARM
+            hf = k * f0
+            ' Bandpass magnitude: 1 / sqrt(1 + Q^2*(ratio - 1/ratio)^2)
+            If f1v > 0 Then
+                r1 = hf / f1v
+                g1 = 1.0 / Sqr(1.0 + Q1*Q1 * (r1 - 1.0/r1) * (r1 - 1.0/r1))
+            Else
+                g1 = 0.5  ' flat spectrum fallback if no formant defined
+            End If
+            If f2v > 0 Then
+                r2 = hf / f2v
+                g2 = 1.0 / Sqr(1.0 + Q2*Q2 * (r2 - 1.0/r2) * (r2 - 1.0/r2))
+            Else
+                g2 = 0.5
+            End If
+            g = (g1 + g2) / k   ' spectral tilt: /k for sawtooth-like rolloff
+            s = s + Sin(k * ph) * g
+        Next k
+        spkWave(i) = s
+    Next i
+
+    ' Normalize peak to 1.0
+    pk = 0.001  ' small floor avoids div/0 for all-zero wavetables (unvoiced)
+    For i = 0 To SPK_WAVE_LEN - 1
+        If Abs(spkWave(i)) > pk Then pk = Abs(spkWave(i))
+    Next i
+    For i = 0 To SPK_WAVE_LEN - 1
+        spkWave(i) = spkWave(i) / pk
+    Next i
 End Sub
 
 ' ============================================================
@@ -231,6 +338,7 @@ Sub SPK_Say(text As String)
     Dim idx As Integer, pi As Integer
 
     spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
+    spkWavePhase = 0.0
 
     uc = UCASE$(text)
     ' Strip non-alpha characters except spaces
@@ -290,7 +398,8 @@ End Sub
 ' ============================================================
 Sub SPK_Advance()
     Dim phoneID As Integer, stress As Integer, dur As Integer
-    Dim env As Single, freq As Single, s As Single, t As Single
+    Dim env As Single, s As Single, t As Single
+    Dim wIdx As Integer, buzz As Single
 
     If spkPhoneIdx >= spkPhoneCount Then
         spkSampleOut = 0.0
@@ -301,6 +410,10 @@ Sub SPK_Advance()
     stress  = spkStress(spkPhoneIdx)
     dur     = spkDur(phoneID, stress)
 
+    ' Rebuild wavetable at phoneme boundary (once per phoneme)
+    If spkSamplePos = 0 Then SPK_BuildWave phoneID, stress
+
+    ' Amplitude envelope: 10ms fade in/out
     If spkSamplePos < SPK_FADE Then
         env = spkSamplePos / SPK_FADE
     ElseIf spkSamplePos > dur - SPK_FADE Then
@@ -310,27 +423,24 @@ Sub SPK_Advance()
         env = 1.0
     End If
 
-    Select Case stress
-        Case 1  : freq = 155.0
-        Case 2  : freq = 130.0
-        Case Else : freq = 110.0
-    End Select
-    spkCarrierPhase = spkCarrierPhase + 6.2832 * freq / SAMPLE_RATE
-    If spkCarrierPhase > 6.2832 Then spkCarrierPhase = spkCarrierPhase - 6.2832
+    ' Advance wavetable (formant-shaped voiced source)
+    wIdx = Int(spkWavePhase)
+    buzz = spkWave(wIdx) + (spkWavePhase - wIdx) * (spkWave((wIdx + 1) And (SPK_WAVE_LEN - 1)) - spkWave(wIdx))
+    spkWavePhase = spkWavePhase + spkWaveStep
+    If spkWavePhase >= SPK_WAVE_LEN Then spkWavePhase = spkWavePhase - SPK_WAVE_LEN
 
     Select Case phoneID
         Case SPK_AA To SPK_UW, SPK_L To SPK_YW
-            s = (Sin(spkCarrierPhase) _
-               + Sin(spkCarrierPhase * 2) * 0.50 _
-               + Sin(spkCarrierPhase * 3) * 0.25 _
-               + Sin(spkCarrierPhase * 4) * 0.12) * 0.22
+            s = buzz * 0.50
         Case SPK_DH, SPK_V, SPK_Z, SPK_ZH
-            s = (Sin(spkCarrierPhase) + Sin(spkCarrierPhase * 2) * 0.5) * 0.08 _
-              + (Rnd * 2.0 - 1.0) * 0.12
+            s = buzz * 0.22 + (Rnd * 2.0 - 1.0) * 0.10
         Case SPK_B, SPK_D, SPK_G
             t = spkSamplePos / dur
-            If t < 0.60 Then s = 0.0 _
-            Else s = (Sin(spkCarrierPhase) + Sin(spkCarrierPhase * 2) * 0.5) * 0.20
+            If t < 0.60 Then
+                s = buzz * 0.05  ' quiet voice bar during closure
+            Else
+                s = buzz * 0.35  ' voiced release
+            End If
         Case SPK_F, SPK_S, SPK_SH, SPK_TH
             s = (Rnd * 2.0 - 1.0) * 0.18
         Case SPK_HH
