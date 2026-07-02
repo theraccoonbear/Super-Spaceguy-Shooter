@@ -50,37 +50,38 @@ Sub SPK_Init()
     Dim i As Integer
 
     ' Vowels 0-14: duration driven by stress
+    ' Typical English stressed vowel ~150-200ms, unstressed ~70-90ms
     For i = 0 To 14
-        spkDur(i, 0) = 2205   ' ~50ms  unstressed
-        spkDur(i, 1) = 4410   ' ~100ms primary
-        spkDur(i, 2) = 3307   ' ~75ms  secondary
+        spkDur(i, 0) = 3969   ' ~90ms  unstressed
+        spkDur(i, 1) = 8820   ' ~200ms primary
+        spkDur(i, 2) = 6174   ' ~140ms secondary
     Next i
-    ' Sonorants 15-21
+    ' Sonorants 15-21 (L M N NG R W Y): ~120ms
     For i = 15 To 21
-        spkDur(i, 0) = 2646 : spkDur(i, 1) = 2646 : spkDur(i, 2) = 2646
+        spkDur(i, 0) = 5292 : spkDur(i, 1) = 5292 : spkDur(i, 2) = 5292
     Next i
-    ' Voiced fricatives 22-25
+    ' Voiced fricatives 22-25 (DH V Z ZH): ~110ms
     For i = 22 To 25
-        spkDur(i, 0) = 2425 : spkDur(i, 1) = 2425 : spkDur(i, 2) = 2425
+        spkDur(i, 0) = 4851 : spkDur(i, 1) = 4851 : spkDur(i, 2) = 4851
     Next i
-    ' Voiced stops 26-28
+    ' Voiced stops 26-28 (B D G): ~80ms -- shorter, burst is perceptual cue
     For i = 26 To 28
-        spkDur(i, 0) = 2646 : spkDur(i, 1) = 2646 : spkDur(i, 2) = 2646
+        spkDur(i, 0) = 3528 : spkDur(i, 1) = 3528 : spkDur(i, 2) = 3528
     Next i
-    ' Unvoiced fricatives 29-33
+    ' Unvoiced fricatives 29-33 (F S SH TH HH): ~140ms -- need length to register
     For i = 29 To 33
-        spkDur(i, 0) = 2646 : spkDur(i, 1) = 2646 : spkDur(i, 2) = 2646
+        spkDur(i, 0) = 6174 : spkDur(i, 1) = 6174 : spkDur(i, 2) = 6174
     Next i
-    ' Unvoiced stops 34-36
+    ' Unvoiced stops 34-36 (P T K): ~75ms
     For i = 34 To 36
-        spkDur(i, 0) = 2205 : spkDur(i, 1) = 2205 : spkDur(i, 2) = 2205
+        spkDur(i, 0) = 3307 : spkDur(i, 1) = 3307 : spkDur(i, 2) = 3307
     Next i
-    ' Affricates 37-38
+    ' Affricates 37-38 (CH JH): ~130ms
     For i = 37 To 38
-        spkDur(i, 0) = 2866 : spkDur(i, 1) = 2866 : spkDur(i, 2) = 2866
+        spkDur(i, 0) = 5733 : spkDur(i, 1) = 5733 : spkDur(i, 2) = 5733
     Next i
-    ' Silence 39: 25ms inter-word gap
-    spkDur(39, 0) = 1103 : spkDur(39, 1) = 1103 : spkDur(39, 2) = 1103
+    ' Silence 39: ~50ms inter-word gap
+    spkDur(39, 0) = 2205 : spkDur(39, 1) = 2205 : spkDur(39, 2) = 2205
 
     ' Letter-name phoneme sequences (for unknown-word fallback)
     spkLetterSeq(0)  = "EY1"                   ' A
