@@ -393,12 +393,28 @@ End Sub
 Sub SPK_Say(text As String)
     Dim wrd As String, rest As String, p As Integer, uc As String
     Dim idx As Integer, pi As Integer
+    Dim spkPpI As Integer, spkPpOut As String
+    Dim spkPI2 As Integer, spkPI3 As Integer
 
     spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
     spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
 
-    uc = UCASE$(text)
-    ' Strip non-alpha characters except spaces
+    ' Pre-pass: replace punctuation with pause tokens before alpha stripping
+    spkPpOut = "" : spkPpI = 1
+    Do While spkPpI <= Len(text)
+        If Mid$(text, spkPpI, 3) = "..." Then
+            spkPpOut = spkPpOut + " STOPPAUSE " : spkPpI = spkPpI + 3
+        ElseIf Mid$(text, spkPpI, 1) = "." Or Mid$(text, spkPpI, 1) = "!" Or Mid$(text, spkPpI, 1) = "?" Then
+            spkPpOut = spkPpOut + " STOPPAUSE " : spkPpI = spkPpI + 1
+        ElseIf Mid$(text, spkPpI, 1) = "," Or Mid$(text, spkPpI, 1) = ";" Or Mid$(text, spkPpI, 1) = ":" Then
+            spkPpOut = spkPpOut + " CMAPAUSE " : spkPpI = spkPpI + 1
+        Else
+            spkPpOut = spkPpOut + Mid$(text, spkPpI, 1) : spkPpI = spkPpI + 1
+        End If
+    Loop
+
+    uc = UCASE$(spkPpOut)
+    ' Strip non-alpha characters except spaces (pause tokens survive as they're all alpha)
     Dim cleaned As String : cleaned = ""
     Dim ci As Integer
     For ci = 1 To LEN(uc)
@@ -422,6 +438,24 @@ Sub SPK_Say(text As String)
         End If
 
         If LEN(wrd) = 0 Then GoTo nextWord
+
+        ' Punctuation pause tokens — inject silence instead of doing dict lookup
+        If wrd = "CMAPAUSE" Then
+            For spkPI2 = 1 To 2  ' ~100ms extra pause at comma/semicolon/colon
+                If spkPhoneCount < SPK_PHONE_MAX Then
+                    spkPhones(spkPhoneCount) = SPK_SIL : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                End If
+            Next spkPI2
+            GoTo nextWord
+        End If
+        If wrd = "STOPPAUSE" Then
+            For spkPI3 = 1 To 4  ' ~200ms extra pause at sentence end
+                If spkPhoneCount < SPK_PHONE_MAX Then
+                    spkPhones(spkPhoneCount) = SPK_SIL : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                End If
+            Next spkPI3
+            GoTo nextWord
+        End If
 
         SPK_DictFind wrd, idx
         If idx >= 0 Then
