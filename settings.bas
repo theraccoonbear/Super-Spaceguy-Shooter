@@ -66,6 +66,8 @@ Sub OPTS_Update ()
                 Case 1 : volSfx    = volSfx    - 0.1 : If volSfx    < 0 Then volSfx    = 0
                 Case 2 : volSpeech = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
             End Select
+            If optSel = 1 Then SND_Pup                             ' hear SFX level on every step
+            If optSel = 2 And Not optLfWas Then SPK_Say "OH YEAH"  ' hear speech on first press only
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
         End If
         optLfRpt = optLfRpt + 1
@@ -80,6 +82,8 @@ Sub OPTS_Update ()
                 Case 1 : volSfx    = volSfx    + 0.1 : If volSfx    > 1 Then volSfx    = 1
                 Case 2 : volSpeech = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
             End Select
+            If optSel = 1 Then SND_Pup
+            If optSel = 2 And Not optRtWas Then SPK_Say "OH YEAH"
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
         End If
         optRtRpt = optRtRpt + 1
