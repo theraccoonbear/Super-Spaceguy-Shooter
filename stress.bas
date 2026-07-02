@@ -145,12 +145,12 @@ Do
 
     _Dest 0
     _PutImage , backBuffer, 0
-    Line (0, 0)-(SCR_W - 1, 56), _RGBA(0, 0, 0, 200), BF
+    Line (0, 0)-(SCR_W - 1, 81), _RGBA(0, 0, 0, 200), BF
     Color polyClr : _PrintString (2, 2),  "POLY  " + LTrim$(Str$(E3D_scnCount)) + " / " + LTrim$(Str$(E3D_SCENE_MAX))
-    Color fpsClr  : _PrintString (2, 13), "FPS   " + LTrim$(Str$(fps))
-    Color _RGB(140, 140, 160) : _PrintString (2, 24), "ms    " + Left$(Str$(frameMs + 1000), 6)
-    Color _RGB(200, 200, 220) : _PrintString (2, 35), "BALLS " + LTrim$(Str$(ballCount)) + " / " + LTrim$(Str$(BALL_MAX))
-    Color _RGB(160, 160, 130) : _PrintString (2, 46), "[=] add  [-] rem  [ESC/Q] quit"
+    Color fpsClr  : _PrintString (2, 18), "FPS   " + LTrim$(Str$(fps))
+    Color _RGB(140, 140, 160) : _PrintString (2, 34), "ms    " + Left$(Str$(frameMs + 1000), 6)
+    Color _RGB(200, 200, 220) : _PrintString (2, 50), "BALLS " + LTrim$(Str$(ballCount)) + " / " + LTrim$(Str$(BALL_MAX))
+    Color _RGB(160, 160, 130) : _PrintString (2, 66), "[=] add  [-] rem  [ESC/Q] quit"
 
     _Limit 60
     _Display
