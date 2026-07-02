@@ -298,6 +298,10 @@ DIM escWas AS INTEGER
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
 DIM isManeuver AS INTEGER
+DIM dbgOverlay AS INTEGER
+DIM dbgGraveWas AS INTEGER
+DIM dbgT0 AS DOUBLE
+DIM dbgFrameMs AS SINGLE
 
 ' --- formation → mesh lookup ---
 wavePrev = -1 : thrusterScale = 0.30
@@ -314,6 +318,7 @@ SND_Init
 ' MAIN LOOP
 ' ============================================================
 DO
+    dbgT0 = Timer
     ' --- input ---
     E3D_InputUpdate held()
 
@@ -1138,6 +1143,39 @@ DO
         _PUTIMAGE , backBuffer, 0
 
     END SELECT
+
+    ' --- debug overlay toggle: ` (backtick) ---
+    IF _KEYDOWN(96) AND NOT dbgGraveWas THEN dbgOverlay = 1 - dbgOverlay
+    dbgGraveWas = _KEYDOWN(96)
+
+    dbgFrameMs = (Timer - dbgT0) * 1000
+
+    IF dbgOverlay THEN
+        Dim dbgPolyClr As Long, dbgFpsClr As Long, dbgFps As Single
+        If E3D_scnCount > 350 Then
+            dbgPolyClr = _RGB(255, 80, 60)
+        ElseIf E3D_scnCount > 200 Then
+            dbgPolyClr = _RGB(255, 210, 50)
+        Else
+            dbgPolyClr = _RGB(80, 210, 80)
+        End If
+        If dbgFrameMs > 0.0001 Then dbgFps = 1000 / dbgFrameMs Else dbgFps = 999
+        If dbgFps < 30 Then
+            dbgFpsClr = _RGB(255, 80, 60)
+        ElseIf dbgFps < 50 Then
+            dbgFpsClr = _RGB(255, 210, 50)
+        Else
+            dbgFpsClr = _RGB(80, 210, 80)
+        End If
+        _DEST 0
+        LINE (0, 0)-(85, 34), _RGBA(0, 0, 0, 190), BF
+        COLOR dbgPolyClr
+        _PRINTSTRING (2, 2),  "POLY " + LTrim$(Str$(E3D_scnCount)) + "/450"
+        COLOR dbgFpsClr
+        _PRINTSTRING (2, 13), "FPS  " + LTrim$(Str$(CInt(dbgFps)))
+        COLOR _RGB(140, 140, 160)
+        _PRINTSTRING (2, 24), "ms   " + Left$(Str$(dbgFrameMs + 1000), 6)
+    End If
 
     _LIMIT 60
     _DISPLAY
