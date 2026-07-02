@@ -109,11 +109,13 @@ Sub E3D_DrawPoly (poly As E3D_Polygon, clr As Long)
                 xHits(hitCount) = poly.coords(i1).x + (scanY - ya) / (yb - ya) * (poly.coords(i2).x - poly.coords(i1).x)
             End If
         Next i1
-        ' Insertion-sort the hits (count is tiny — 2 or 4 in practice)
+        ' Insertion-sort the hits (count is tiny — 2 or 4 in practice).
+        ' Guard and array access split: QB64-PE And has no short-circuit.
         For h = 2 To hitCount
             hTmp = xHits(h)
             i1 = h - 1
-            Do While i1 >= 1 And xHits(i1) > hTmp
+            Do While i1 >= 1
+                If xHits(i1) <= hTmp Then Exit Do
                 xHits(i1 + 1) = xHits(i1)
                 i1 = i1 - 1
             Loop
