@@ -45,11 +45,15 @@ Sub E3D_SceneFlush (vpMat As E3D_Matrix4, scrW As Single, scrH As Single)
     Dim di As Integer, v As Integer, vc As Integer
     Dim c As E3D_Coord
 
-    ' Insertion sort — O(n) on nearly-sorted data (typical between frames)
+    ' Insertion sort — O(n) on nearly-sorted data (typical between frames).
+    ' Guard and array access are split across two lines because QB64-PE And
+    ' is bitwise (no short-circuit): the array subscript would be evaluated
+    ' even when oi1=0, causing a subscript-out-of-range crash.
     For scI = 2 To E3D_scnCount
         oiTmp = E3D_scnOrder(scI)
         oi1 = scI - 1
-        Do While oi1 >= 1 And E3D_scnDepths(E3D_scnOrder(oi1)) < E3D_scnDepths(oiTmp)
+        Do While oi1 >= 1
+            If E3D_scnDepths(E3D_scnOrder(oi1)) >= E3D_scnDepths(oiTmp) Then Exit Do
             E3D_scnOrder(oi1 + 1) = E3D_scnOrder(oi1)
             oi1 = oi1 - 1
         Loop
