@@ -229,9 +229,9 @@ E3D_MatMul projMat, viewMat, vpMat
 DIM lmag AS SINGLE
 lmag = SQR(cx * cx + cy * cy + cz * cz)
 IF lmag > 0.0001 AND dispScale > 0.0001 THEN
-    lightDir.x = (cx / lmag) / dispScale * 1.6
-    lightDir.y = (cy / lmag) / dispScale * 1.6
-    lightDir.z = (cz / lmag) / dispScale * 1.6
+    lightDir.x = (cx / lmag) / dispScale * 1.0
+    lightDir.y = (cy / lmag) / dispScale * 1.0
+    lightDir.z = (cz / lmag) / dispScale * 1.0
 END IF
 
 ' --- render ---
