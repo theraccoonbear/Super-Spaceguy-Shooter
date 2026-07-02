@@ -48,4 +48,4 @@ total=$(wc -l < "$TMP")
 } > "$OUT"
 
 rm -f "$TMP"
-echo "Wrote $OUT  ($(wc -l < "$OUT") lines)"
+echo "Wrote $OUT  ($(grep -vc '^#\|^$' "$OUT") entries)"

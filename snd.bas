@@ -1,4 +1,3 @@
-Const SAMPLE_RATE         = 44100
 Const AUDIO_BUFFER_TARGET = 0.10
 Const BGM_BPM             = 140
 Const TITLE_BPM           = 112
@@ -219,7 +218,8 @@ Sub SND_GameFill(isManeuver As Integer)
                 If sndWhooshPos >= SND_WHOOSH_LEN Then sndWhooshPos = -1
             End If
 
-            _SNDRAW (Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musicSample + sndEfx
+            SPK_Advance
+            _SNDRAW (Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musicSample + sndEfx + spkSampleOut
         Next sndK
     End If
 End Sub

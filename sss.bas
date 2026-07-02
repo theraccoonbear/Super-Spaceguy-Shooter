@@ -16,7 +16,9 @@ $EMBED:'code/3d/assets/emperor.png':'EMPERORIMG'
 $EMBED:'code/3d/assets/models.e3d':'MODELS'
 $EMBED:'code/3d/assets/gametext.txt':'GAMETEXT'
 $EMBED:'code/3d/assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'code/3d/assets/speech_dict.txt':'SPEECHDICT'
 ' --- constants needed by included files ---
+CONST SAMPLE_RATE = 44100  ' audio sample rate; used by snd.bas and speech.bas
 CONST GS_TITLE     = 0
 CONST GS_PLAYING   = 1
 CONST GS_GAMEOVER  = 2
@@ -183,6 +185,7 @@ DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
 DIM SHARED vpMat AS E3D_Matrix4
+'$INCLUDE:'speech.bas'
 '$INCLUDE:'effects.bas'
 '$INCLUDE:'snd.bas'
 '$INCLUDE:'behavior.bas'
@@ -318,6 +321,7 @@ fTypeToMesh(4) = MESH_ENEMY_PINCER
 fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 
 SND_Init
+SPK_Init
 
 ' ============================================================
 ' MAIN LOOP
@@ -596,6 +600,7 @@ DO
             ' --- boss ---
             IF gameState = GS_PLAYING AND boss.active = 0 AND bossWarnTimer = 0 AND score >= stageScore THEN
                 bossWarnTimer = BOSS_WARN_FRAMES
+                SPK_Say "WARNING BOSS INCOMING"
             END IF
             IF bossWarnTimer > 0 THEN
                 bossWarnTimer = bossWarnTimer - 1
@@ -780,6 +785,7 @@ DO
                 IF score > highScore THEN highScore = score
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
+                SPK_Say "GAME OVER"
                 gameOver = 0
             END IF
         END IF  ' not pauseFlag
