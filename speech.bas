@@ -148,7 +148,7 @@ Sub SPK_Init()
     spkF1(SPK_UH)=440 : spkF2(SPK_UH)=1020   ' book
     spkF1(SPK_UW)=310 : spkF2(SPK_UW)= 870   ' boot
     ' Sonorants 15-21: Klatt (1980) approximations
-    spkF1(SPK_L) =360 : spkF2(SPK_L) =1000   ' lateral
+    spkF1(SPK_L) =360 : spkF2(SPK_L) =1200   ' lateral (raised F2 + anti-res in wavetable)
     spkF1(SPK_M) =280 : spkF2(SPK_M) = 900   ' bilabial nasal
     spkF1(SPK_N) =280 : spkF2(SPK_N) =1700   ' alveolar nasal
     spkF1(SPK_NG)=280 : spkF2(SPK_NG)=2300   ' velar nasal
@@ -211,6 +211,7 @@ Sub SPK_BuildAllWaves()
     Dim bwHf As Single, bwR1 As Single, bwR2 As Single, bwR3 As Single
     Dim bwG1 As Single, bwG2 As Single, bwG3 As Single, bwG As Single
     Dim bwPh As Single, bwS As Single, bwPk As Single
+    Dim bwRa As Single, bwGa As Single  ' anti-resonance (L lateral notch)
     Const bwQ1 = 9.0 : Const bwQ2 = 12.0 : Const bwQ3 = 10.0 : Const bwNH = 32
 
     For bwSt = 0 To 2
@@ -245,6 +246,12 @@ Sub SPK_BuildAllWaves()
                         bwG3 = 0.0
                     End If
                     bwG = (bwG1 + bwG2 + bwG3 * 0.5) / bwK
+                    ' L: subtract anti-resonance notch ~1800Hz for lateral quality
+                    If bwPhone = SPK_L Then
+                        bwRa = bwHf / 1800.0
+                        bwGa = 1.0 / Sqr(1.0 + 10.0*10.0*(bwRa - 1.0/bwRa)*(bwRa - 1.0/bwRa))
+                        bwG = bwG - bwGa * 0.35 : If bwG < 0.0 Then bwG = 0.0
+                    End If
                     bwS = bwS + Sin(bwK * bwPh) * bwG
                 Next bwK
                 spkWaveLib(bwPhone, bwSt, bwI) = bwS
@@ -286,6 +293,9 @@ Sub SPK_BuildWave(phoneID As Integer, stress As Integer)
         Case SPK_SH, SPK_ZH, SPK_CH, SPK_JH : spkHpCoeff = 0.774
         Case SPK_F, SPK_V, SPK_TH, SPK_DH   : spkHpCoeff = 0.843
         Case SPK_HH                    : spkHpCoeff = 0.958
+        Case SPK_P                     : spkHpCoeff = 0.870  ' bilabial burst fc~800Hz
+        Case SPK_T                     : spkHpCoeff = 0.607  ' alveolar burst fc~3500Hz (hissy)
+        Case SPK_K                     : spkHpCoeff = 0.720  ' velar burst fc~2000Hz
         Case Else                      : spkHpCoeff = 0.900
     End Select
     spkHpX1 = 0.0 : spkHpY1 = 0.0
@@ -577,9 +587,20 @@ Sub SPK_Advance()
             spkHpX1 = nx : spkHpY1 = hy
             s = hy * 0.20
         Case SPK_P, SPK_T, SPK_K
+            ' Closure (0-55%) → silence; release (55-100%) → aspirated HP-filtered noise.
+            ' Burst HP coeff set per place of articulation in SPK_BuildWave:
+            '   P=bilabial(low cutoff), T=alveolar(high/hissy), K=velar(mid).
+            ' Filter starts from cold state (reset in SPK_BuildWave) so the onset
+            ' has a natural transient click at the moment of release.
             t = spkSamplePos / dur
-            If t < 0.65 Then s = 0.0 _
-            Else s = (Rnd * 2.0 - 1.0) * 0.26
+            If t < 0.55 Then
+                s = 0.0
+            Else
+                nx = Rnd * 2.0 - 1.0
+                hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
+                spkHpX1 = nx : spkHpY1 = hy
+                s = hy * 0.30
+            End If
         Case SPK_CH, SPK_JH
             t = spkSamplePos / dur
             If t < 0.40 Then s = 0.0 _
