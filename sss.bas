@@ -26,6 +26,7 @@ CONST GS_PLANET    = 3
 CONST GS_CINEMATIC = 4
 CONST GS_INTRO     = 5
 CONST GS_CRAWL     = 6
+CONST GS_OPTIONS   = 7
 CONST MAX_ENEMIES   = 35
 CONST MAX_BULLETS   = 30
 CONST MAX_ASTEROIDS = 15
@@ -197,6 +198,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'wave.bas'
 '$INCLUDE:'stage.bas'
 '$INCLUDE:'game.bas'
+'$INCLUDE:'settings.bas'
 
 ' --- screen ---
 scrW = 320 : scrH = 240
@@ -323,6 +325,7 @@ fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 
 SND_Init
 SPK_Init
+SETTINGS_Load
 
 ' ============================================================
 ' MAIN LOOP
@@ -333,7 +336,7 @@ DO
     E3D_InputUpdate held()
 
     ' Detect state transitions for speech triggers
-    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE THEN
+    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
         SPK_Say "SUPER SPACE GUY SHOOTER"
     END IF
     prevGameState = gameState
@@ -1021,10 +1024,11 @@ DO
             FONT_PrintCentered fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 220, scrW
         END IF
         IF titleEscConfirm THEN
-            LINE (scrW/2 - 56, scrH/2 - 14)-(scrW/2 + 56, scrH/2 + 14), _RGBA(0, 0, 10, 215), BF
-            LINE (scrW/2 - 56, scrH/2 - 14)-(scrW/2 + 56, scrH/2 + 14), _RGB(90, 90, 130), B
-            COLOR _RGB(255, 210, 50)
-            _PRINTSTRING (scrW/2 - 48, scrH/2 - 8), "Quit? Y / Esc"
+            LINE (scrW/2 - 60, scrH/2 - 22)-(scrW/2 + 60, scrH/2 + 22), _RGBA(0, 0, 10, 215), BF
+            LINE (scrW/2 - 60, scrH/2 - 22)-(scrW/2 + 60, scrH/2 + 22), _RGB(90, 90, 130), B
+            FONT_Print fontPalette(9),  backBuffer, "S  Settings", scrW/2 - 44, scrH/2 - 18
+            FONT_Print fontPalette(14), backBuffer, "Y  Quit",     scrW/2 - 44, scrH/2 - 4
+            FONT_Print fontPalette(8),  backBuffer, "Esc Cancel",  scrW/2 - 44, scrH/2 + 10
         END IF
         _DEST 0
         _PUTIMAGE , backBuffer, 0
@@ -1032,6 +1036,10 @@ DO
         IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN titleEscConfirm = 1 - titleEscConfirm
         escWas = held(E3D_KEY_ESCAPE)
         IF titleEscConfirm THEN
+            IF _KEYDOWN(83) OR _KEYDOWN(115) THEN  ' S — settings
+                gameState = GS_OPTIONS : titleEscConfirm = 0
+                optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1
+            END IF
             IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
             IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
             SND_TitleFill
@@ -1159,6 +1167,14 @@ DO
         END IF
         _DEST 0
         _PUTIMAGE , backBuffer, 0
+        SND_TitleFill
+
+        ' ============================================================
+        ' SETTINGS / VOLUME CONFIG
+        ' ============================================================
+    CASE GS_OPTIONS
+        OPTS_Update
+        SND_TitleFill
 
     END SELECT
 
