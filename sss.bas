@@ -176,8 +176,8 @@ DIM SHARED cinematicFade AS INTEGER
 DIM SHARED cinPhase AS SINGLE
 DIM SHARED gameState AS INTEGER
 DIM SHARED prevGameState AS INTEGER : prevGameState = -1
-DIM SHARED volMusic  AS SINGLE : volMusic  = 1.0
-DIM SHARED volSfx    AS SINGLE : volSfx    = 1.0
+DIM SHARED volMusic  AS SINGLE : volMusic  = 0.1
+DIM SHARED volSfx    AS SINGLE : volSfx    = 0.65
 DIM SHARED volSpeech AS SINGLE : volSpeech = 1.0
 DIM SHARED optSel    AS INTEGER
 DIM SHARED optUpWas  AS INTEGER
