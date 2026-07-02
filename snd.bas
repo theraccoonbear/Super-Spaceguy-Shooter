@@ -44,11 +44,13 @@ Dim Shared sndBoom(0 To SND_BOOM_LEN - 1)   As Single
 Dim Shared sndHit(0 To SND_HIT_LEN - 1)     As Single
 Dim Shared sndPup(0 To SND_PUP_LEN - 1)     As Single
 Dim Shared sndWhoosh(0 To SND_WHOOSH_LEN - 1) As Single
-Dim Shared sndShootPending As Integer
-Dim Shared boomPending     As Integer
-Dim Shared sndHitPending   As Integer
-Dim Shared sndPupPending   As Integer
-Dim Shared whooshPending   As Integer
+' Playhead positions for each effect (-1 = not playing).
+' Set to 0 to (re)start; advanced sample-by-sample in SND_GameFill.
+Dim Shared sndShootPos  As Integer : sndShootPos  = -1
+Dim Shared sndBoomPos   As Integer : sndBoomPos   = -1
+Dim Shared sndHitPos    As Integer : sndHitPos    = -1
+Dim Shared sndPupPos    As Integer : sndPupPos    = -1
+Dim Shared sndWhooshPos As Integer : sndWhooshPos = -1
 
 Sub SND_Init()
     Dim sndK As Integer, sndF As Single, sndFade As Single
@@ -153,6 +155,7 @@ Sub SND_GameFill(isManeuver As Integer)
     End If
     sndFillCount = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
     If sndFillCount > 0 Then
+        Dim sndEfx As Single
         For sndK = 0 To sndFillCount - 1
             sndEnginePhase = sndEnginePhase + 6.2832 * sndEngineFreq / SAMPLE_RATE
             If sndEnginePhase > 6.2832 Then sndEnginePhase = sndEnginePhase - 6.2832
@@ -186,34 +189,41 @@ Sub SND_GameFill(isManeuver As Integer)
                 musicSample = musicSample + (Sin(bgmLeadPhase) + Sin(bgmLeadPhase * 1.004) * 0.65) * 0.038
             End If
 
-            _SNDRAW (Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musicSample
+            ' Mix all active SFX into a single sample alongside BGM+engine.
+            ' Each effect has a playhead (xxxPos); triggering sets it to 0,
+            ' re-triggering restarts the sound rather than queuing another copy.
+            sndEfx = 0
+            If sndShootPos >= 0 Then
+                sndEfx = sndEfx + sndShoot(sndShootPos)
+                sndShootPos = sndShootPos + 1
+                If sndShootPos >= SND_SHOOT_LEN Then sndShootPos = -1
+            End If
+            If sndBoomPos >= 0 Then
+                sndEfx = sndEfx + sndBoom(sndBoomPos)
+                sndBoomPos = sndBoomPos + 1
+                If sndBoomPos >= SND_BOOM_LEN Then sndBoomPos = -1
+            End If
+            If sndHitPos >= 0 Then
+                sndEfx = sndEfx + sndHit(sndHitPos)
+                sndHitPos = sndHitPos + 1
+                If sndHitPos >= SND_HIT_LEN Then sndHitPos = -1
+            End If
+            If sndPupPos >= 0 Then
+                sndEfx = sndEfx + sndPup(sndPupPos)
+                sndPupPos = sndPupPos + 1
+                If sndPupPos >= SND_PUP_LEN Then sndPupPos = -1
+            End If
+            If sndWhooshPos >= 0 Then
+                sndEfx = sndEfx + sndWhoosh(sndWhooshPos)
+                sndWhooshPos = sndWhooshPos + 1
+                If sndWhooshPos >= SND_WHOOSH_LEN Then sndWhooshPos = -1
+            End If
+
+            _SNDRAW (Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musicSample + sndEfx
         Next sndK
     End If
 End Sub
 
-Sub SND_FlushEffects()
-    Dim sndK As Integer
-    If sndShootPending Then
-        For sndK = 0 To SND_SHOOT_LEN - 1 : _SNDRAW sndShoot(sndK) : Next sndK
-        sndShootPending = 0
-    End If
-    If boomPending Then
-        For sndK = 0 To SND_BOOM_LEN - 1 : _SNDRAW sndBoom(sndK) : Next sndK
-        boomPending = 0
-    End If
-    If sndHitPending Then
-        For sndK = 0 To SND_HIT_LEN - 1 : _SNDRAW sndHit(sndK) : Next sndK
-        sndHitPending = 0
-    End If
-    If sndPupPending Then
-        For sndK = 0 To SND_PUP_LEN - 1 : _SNDRAW sndPup(sndK) : Next sndK
-        sndPupPending = 0
-    End If
-    If whooshPending Then
-        For sndK = 0 To SND_WHOOSH_LEN - 1 : _SNDRAW sndWhoosh(sndK) : Next sndK
-        whooshPending = 0
-    End If
-End Sub
 
 Sub SND_TitleFill()
     Dim sndK As Integer, sndFillCount As Integer
@@ -269,8 +279,8 @@ Sub SND_ResetGameBGM()
     bgmBassFreq  = bgmNormalBass(0) : bgmLeadFreq = bgmNormalLead(0)
 End Sub
 
-Sub SND_Shoot() : sndShootPending = -1 : End Sub
-Sub SND_Boom()  : boomPending     = -1 : End Sub
-Sub SND_Hit()   : sndHitPending   = -1 : End Sub
-Sub SND_Pup()   : sndPupPending   = -1 : End Sub
-Sub SND_Whoosh(): whooshPending   = -1 : End Sub
+Sub SND_Shoot() : sndShootPos  = 0 : End Sub
+Sub SND_Boom()  : sndBoomPos   = 0 : End Sub
+Sub SND_Hit()   : sndHitPos    = 0 : End Sub
+Sub SND_Pup()   : sndPupPos    = 0 : End Sub
+Sub SND_Whoosh(): sndWhooshPos = 0 : End Sub
