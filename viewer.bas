@@ -1,4 +1,5 @@
 ' viewer.bas — interactive model viewer for models.e3d
+' Usage: viewer [file.obj]   (OBJ loaded as extra mesh; auto-reads .mtl)
 ' Left/Right: rotate model   Up/Down: tilt camera
 ' PgUp/PgDn: cycle meshes   R: reset rotation
 ' L: toggle light mode       ESC/Q: quit
@@ -13,12 +14,14 @@ $EMBED:'code/3d/assets/models.e3d':'MODELS'
 '$INCLUDE:'mesh.bas'
 '$INCLUDE:'object.bas'
 '$INCLUDE:'scene.bas'
+'$INCLUDE:'obj.bas'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
 CONST MESH_COUNT = 13
+CONST MESH_MAX   = 32
 
-DIM meshNames(1 TO MESH_COUNT) AS STRING
+DIM meshNames(1 TO MESH_MAX) AS STRING
 meshNames(1)  = "PLAYER"
 meshNames(2)  = "ENEMY"
 meshNames(3)  = "ASTEROID"
@@ -33,8 +36,8 @@ meshNames(11) = "THRUSTER"
 meshNames(12) = "EBULLET"
 meshNames(13) = "BOSS"
 
-DIM meshLib(1 TO MESH_COUNT) AS E3D_Mesh
-DIM boxLib(1 TO MESH_COUNT)  AS E3D_AABB
+DIM meshLib(1 TO MESH_MAX) AS E3D_Mesh
+DIM boxLib(1 TO MESH_MAX)  AS E3D_AABB
 
 ' Screen must exist before E3D_LoadMesh so _RGB inside the loader
 ' returns proper 32-bit colors instead of text-mode palette indices.
@@ -51,6 +54,57 @@ FOR mi = 1 TO MESH_COUNT
     E3D_BakeMeshNormals meshLib(mi)
 NEXT mi
 
+DIM totalMeshes AS INTEGER : totalMeshes = MESH_COUNT
+DIM objStatus   AS STRING
+DIM axisRemap   AS INTEGER : axisRemap = 0   ' 0=none 1=Blender(-Z) 2=(+Z)
+
+' --- load OBJ from command-line path if given ---
+DIM cmdPath AS STRING : cmdPath = LTRIM$(RTRIM$(COMMAND$))
+' Resolve relative paths against the launch directory (_STARTDIR$),
+' since QB64-PE sets CWD to the executable's directory on startup.
+IF LEN(cmdPath) > 0 THEN
+    IF LEFT$(cmdPath, 1) <> "/" AND LEFT$(cmdPath, 1) <> "\" THEN
+        cmdPath = _STARTDIR$ + "/" + cmdPath
+    END IF
+END IF
+IF LEN(cmdPath) > 0 THEN
+    IF _FILEEXISTS(cmdPath) THEN
+        DIM objF  AS INTEGER : objF  = FREEFILE
+        DIM objRawDat AS STRING            ' kept for live-reload on remap toggle
+        DIM objDat    AS STRING
+        DIM mtlDat    AS STRING
+        OPEN cmdPath FOR BINARY AS #objF
+        objRawDat = SPACE$(LOF(objF))
+        GET #objF, , objRawDat
+        CLOSE #objF
+        objDat = objRawDat                 ' first load — loader consumes this copy
+        DIM mtlPath AS STRING : mtlPath = E3D_OBJMtlPath$(cmdPath, objRawDat)
+        IF LEN(mtlPath) > 0 THEN
+            IF _FILEEXISTS(mtlPath) THEN
+                DIM mtlF AS INTEGER : mtlF = FREEFILE
+                OPEN mtlPath FOR BINARY AS #mtlF
+                mtlDat = SPACE$(LOF(mtlF))
+                GET #mtlF, , mtlDat
+                CLOSE #mtlF
+            END IF
+        END IF
+        totalMeshes = MESH_COUNT + 1
+        ' Use just the filename (strip directory)
+        DIM slashAt AS INTEGER, sli AS INTEGER
+        FOR sli = LEN(cmdPath) TO 1 STEP -1
+            IF MID$(cmdPath, sli, 1) = "/" OR MID$(cmdPath, sli, 1) = "\" THEN
+                slashAt = sli : EXIT FOR
+            END IF
+        NEXT sli
+        meshNames(totalMeshes) = MID$(cmdPath, slashAt + 1)
+        E3D_LoadOBJ objDat, mtlDat, meshLib(totalMeshes), boxLib(totalMeshes), axisRemap, 1.0
+        E3D_BakeMeshNormals meshLib(totalMeshes)
+        objStatus = "OBJ: " + meshNames(totalMeshes) + " [" + LTRIM$(STR$(meshLib(totalMeshes).vCount)) + "v " + LTRIM$(STR$(meshLib(totalMeshes).fCount)) + "f]"
+    ELSE
+        objStatus = "NOT FOUND: " + cmdPath + "  (cwd=" + CURDIR$ + ")"
+    END IF
+END IF
+
 DIM cam      AS E3D_Camera
 DIM viewMat  AS E3D_Matrix4
 DIM projMat  AS E3D_Matrix4
@@ -62,6 +116,7 @@ DIM lightDir AS E3D_Coord
 DIM diagLight AS E3D_Coord : diagLight.x = 0.577 : diagLight.y = 0.577 : diagLight.z = -0.577
 
 DIM currentMesh AS INTEGER : currentMesh = 1
+IF totalMeshes > MESH_COUNT THEN currentMesh = totalMeshes
 DIM camPitch    AS SINGLE  : camPitch    = 0.4
 DIM camAngle    AS SINGLE  : camAngle    = 0.6
 DIM camDist     AS SINGLE  : camDist     = 6.0
@@ -72,6 +127,7 @@ DIM tt          AS SINGLE
 ' Edge-trigger state
 DIM pgupWas  AS INTEGER, pgdnWas  AS INTEGER
 DIM resetWas AS INTEGER, litWas   AS INTEGER
+DIM xWas     AS INTEGER
 
 ' ============================================================
 ' MAIN LOOP
@@ -83,7 +139,7 @@ DO
     IF _KEYDOWN(18688) THEN          ' PgUp
     IF NOT pgupWas THEN
         currentMesh = currentMesh - 1
-        IF currentMesh < 1 THEN currentMesh = MESH_COUNT
+        IF currentMesh < 1 THEN currentMesh = totalMeshes
         rot.x = 0 : rot.y = 0 : rot.z = 0
     END IF
     pgupWas = -1
@@ -93,7 +149,7 @@ END IF
 IF _KEYDOWN(20736) THEN          ' PgDn
 IF NOT pgdnWas THEN
     currentMesh = currentMesh + 1
-    IF currentMesh > MESH_COUNT THEN currentMesh = 1
+    IF currentMesh > totalMeshes THEN currentMesh = 1
     rot.x = 0 : rot.y = 0 : rot.z = 0
 END IF
 pgdnWas = -1
@@ -125,6 +181,22 @@ IF _KEYDOWN(76) OR _KEYDOWN(108) THEN
     litWas = -1
 ELSE
     litWas = 0
+END IF
+
+' --- cycle axis remap: X (OBJ only) ---
+IF LEN(objRawDat) > 0 THEN
+    IF _KEYDOWN(88) OR _KEYDOWN(120) THEN
+        IF NOT xWas THEN
+            axisRemap = (axisRemap + 1) MOD 3
+            DIM reloadDat AS STRING : reloadDat = objRawDat
+            E3D_LoadOBJ reloadDat, mtlDat, meshLib(totalMeshes), boxLib(totalMeshes), axisRemap, 1.0
+            E3D_BakeMeshNormals meshLib(totalMeshes)
+            rot.x = 0 : rot.y = 0 : rot.z = 0
+        END IF
+        xWas = -1
+    ELSE
+        xWas = 0
+    END IF
 END IF
 
 ' --- auto rotate ---
@@ -200,7 +272,7 @@ _PUTIMAGE , backBuffer, 0
 ' top bar: mesh name and index
 LINE (0, 0)-(SCR_W - 1, 18), _RGBA(0, 0, 0, 210), BF
 COLOR _RGB(255, 220, 80)
-_PRINTSTRING (4, 2), "[" + LTRIM$(STR$(currentMesh)) + "/" + LTRIM$(STR$(MESH_COUNT)) + "]  " + meshNames(currentMesh)
+_PRINTSTRING (4, 2), "[" + LTRIM$(STR$(currentMesh)) + "/" + LTRIM$(STR$(totalMeshes)) + "]  " + meshNames(currentMesh)
 
 ' bottom bar: stats + controls
 LINE (0, SCR_H - 36)-(SCR_W - 1, SCR_H - 1), _RGBA(0, 0, 0, 210), BF
@@ -211,11 +283,22 @@ _PRINTSTRING (4, SCR_H - 34), _
 "  AABB " + LEFT$(STR$(boxLib(currentMesh).hx + 100), 5) + _
 " x" + LEFT$(STR$(boxLib(currentMesh).hy + 100), 5) + _
 " x" + LEFT$(STR$(boxLib(currentMesh).hz + 100), 5)
-DIM litLabel AS STRING
+DIM litLabel  AS STRING
+DIM remapLabel AS STRING
 IF litMode THEN litLabel = "dramatic" ELSE litLabel = "headlamp"
+SELECT CASE axisRemap
+    CASE 1 : remapLabel = "-Z→X"
+    CASE 2 : remapLabel = "+Z→X"
+    CASE ELSE : remapLabel = "none"
+END SELECT
 COLOR _RGB(130, 140, 160)
-_PRINTSTRING (4, SCR_H - 18), _
-"[PgUp/Dn mesh]  [</> rotate]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [ESC/Q]"
+IF LEN(objRawDat) > 0 THEN
+    _PRINTSTRING (4, SCR_H - 18), _
+    "[PgUp/Dn]  [</> rot]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [X remap:" + remapLabel + "]  [ESC/Q]"
+ELSE
+    _PRINTSTRING (4, SCR_H - 18), _
+    "[PgUp/Dn mesh]  [</> rotate]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [ESC/Q]"
+END IF
 
 _LIMIT 60
 _DISPLAY

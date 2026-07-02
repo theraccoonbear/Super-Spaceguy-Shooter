@@ -6,7 +6,7 @@ End Type
 
 Type E3D_Polygon
     count As Integer
-    coords(1 To 100) As E3D_Coord
+    coords(1 To 8) As E3D_Coord
 End Type
 
 Type E3D_Matrix4
@@ -32,9 +32,9 @@ Type E3D_Face
 End Type
 
 Type E3D_Mesh
-    verts(1 To 64) As E3D_Coord
+    verts(1 To 8192) As E3D_Coord
     vCount As Integer
-    faces(1 To 32) As E3D_Face
+    faces(1 To 8192) As E3D_Face
     fCount As Integer
 End Type
 

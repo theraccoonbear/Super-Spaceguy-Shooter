@@ -181,6 +181,7 @@ DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 
 '$INCLUDE:'engine3d.bi'
+'$INCLUDE:'obj.bas'
 DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'effects.bas'
 '$INCLUDE:'snd.bas'
@@ -830,7 +831,7 @@ DO
         ' thruster glow at engine nozzle — brightness scales with thrusterScale
         thrusterLight.x = -(0.28 + thrusterScale * 0.85)
         thrusterLight.y = 0.0 : thrusterLight.z = 0.0
-        pPos.x = player.px - 0.65 : pPos.y = player.py - 0.08 : pPos.z = player.pz
+        pPos.x = player.px - 0.92 : pPos.y = player.py : pPos.z = player.pz
         E3D_BuildObjectMat pPos, pRot, thrusterScale, objMat
         IF invTimer = 0 OR (invTimer MOD 6) < 3 THEN
             E3D_SceneAddMeshLit meshLib(MESH_THRUSTER), objMat, cam.POS, tt, thrusterLight
