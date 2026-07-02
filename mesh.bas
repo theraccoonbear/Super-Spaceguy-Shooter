@@ -39,9 +39,9 @@ End Sub
 ' Color cycles through the rainbow; each face has a 60-degree hue offset
 ' so all 6 faces of a cube are always distinct colours simultaneously.
 Sub E3D_DrawMesh (mesh As E3D_Mesh, modelMat As E3D_Matrix4, vpMat As E3D_Matrix4, screenW As Single, screenH As Single, camPos As E3D_Coord, tt As Single)
-    Dim worldVerts(1 To 64) As E3D_Coord
-    Dim visIdx(1 To 32) As Integer
-    Dim visDepth(1 To 32) As Single
+    Dim E3D_worldVerts(1 To 8192) As E3D_Coord
+    Dim visIdx(1 To 8192) As Integer
+    Dim visDepth(1 To 8192) As Single
     Dim i As Integer, fi As Integer, vi As Integer
     Dim visCount As Integer
     Dim fv1 As Integer, fv2 As Integer, fv3 As Integer, fvn As Integer, fvi As Integer
@@ -55,7 +55,7 @@ Sub E3D_DrawMesh (mesh As E3D_Mesh, modelMat As E3D_Matrix4, vpMat As E3D_Matrix
     Dim hue As Single, fc As Long
 
     For i = 1 To mesh.vCount
-        E3D_MatTransformCoord mesh.verts(i), modelMat, worldVerts(i)
+        E3D_MatTransformCoord mesh.verts(i), modelMat, E3D_worldVerts(i)
     Next i
 
     visCount = 0
@@ -63,24 +63,24 @@ Sub E3D_DrawMesh (mesh As E3D_Mesh, modelMat As E3D_Matrix4, vpMat As E3D_Matrix
         fv1 = mesh.faces(fi).vIdx(1)
         fv2 = mesh.faces(fi).vIdx(2)
         fv3 = mesh.faces(fi).vIdx(3)
-        ex1 = worldVerts(fv2).x - worldVerts(fv1).x
-        ey1 = worldVerts(fv2).y - worldVerts(fv1).y
-        ez1 = worldVerts(fv2).z - worldVerts(fv1).z
-        ex2 = worldVerts(fv3).x - worldVerts(fv1).x
-        ey2 = worldVerts(fv3).y - worldVerts(fv1).y
-        ez2 = worldVerts(fv3).z - worldVerts(fv1).z
+        ex1 = E3D_worldVerts(fv2).x - E3D_worldVerts(fv1).x
+        ey1 = E3D_worldVerts(fv2).y - E3D_worldVerts(fv1).y
+        ez1 = E3D_worldVerts(fv2).z - E3D_worldVerts(fv1).z
+        ex2 = E3D_worldVerts(fv3).x - E3D_worldVerts(fv1).x
+        ey2 = E3D_worldVerts(fv3).y - E3D_worldVerts(fv1).y
+        ez2 = E3D_worldVerts(fv3).z - E3D_worldVerts(fv1).z
         fnx = ey1 * ez2 - ez1 * ey2
         fny = ez1 * ex2 - ex1 * ez2
         fnz = ex1 * ey2 - ey1 * ex2
-        vvx = camPos.x - worldVerts(fv1).x
-        vvy = camPos.y - worldVerts(fv1).y
-        vvz = camPos.z - worldVerts(fv1).z
+        vvx = camPos.x - E3D_worldVerts(fv1).x
+        vvy = camPos.y - E3D_worldVerts(fv1).y
+        vvz = camPos.z - E3D_worldVerts(fv1).z
         If fnx * vvx + fny * vvy + fnz * vvz > 0 Then
             fvn = mesh.faces(fi).vCount
             depthSum = 0
             For vi = 1 To fvn
                 fvi = mesh.faces(fi).vIdx(vi)
-                depthSum = depthSum + worldVerts(fvi).z
+                depthSum = depthSum + E3D_worldVerts(fvi).z
             Next vi
             visCount = visCount + 1
             visIdx(visCount) = fi
@@ -105,7 +105,7 @@ Sub E3D_DrawMesh (mesh As E3D_Mesh, modelMat As E3D_Matrix4, vpMat As E3D_Matrix
         E3D_MakePolygon facePoly
         For vi = 1 To fvn
             fvi = mesh.faces(fi).vIdx(vi)
-            E3D_AddCoord facePoly, worldVerts(fvi)
+            E3D_AddCoord facePoly, E3D_worldVerts(fvi)
         Next vi
         E3D_ProjectPoly facePoly, vpMat, screenW, screenH, sFacePoly
 
@@ -124,7 +124,7 @@ End Sub
 ' alongside other scene objects in a single unified pass.
 ' Original unlit version — hue-cycles face colors. Used by fun.bas.
 Sub E3D_GetMeshFaces (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3D_Coord, tt As Single, facePolys() As E3D_Polygon, faceClrs() As Long, faceDepths() As Single, faceCount As Integer)
-    Dim worldVerts(1 To 64) As E3D_Coord
+    Dim E3D_worldVerts(1 To 8192) As E3D_Coord
     Dim i As Integer, fi As Integer, vi As Integer
     Dim fv1 As Integer, fv2 As Integer, fv3 As Integer, fvn As Integer, fvi As Integer
     Dim ex1 As Single, ey1 As Single, ez1 As Single
@@ -136,7 +136,7 @@ Sub E3D_GetMeshFaces (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3D_C
     Dim hue As Single
 
     For i = 1 To mesh.vCount
-        E3D_MatTransformCoord mesh.verts(i), modelMat, worldVerts(i)
+        E3D_MatTransformCoord mesh.verts(i), modelMat, E3D_worldVerts(i)
     Next i
 
     faceCount = 0
@@ -144,26 +144,26 @@ Sub E3D_GetMeshFaces (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3D_C
         fv1 = mesh.faces(fi).vIdx(1)
         fv2 = mesh.faces(fi).vIdx(2)
         fv3 = mesh.faces(fi).vIdx(3)
-        ex1 = worldVerts(fv2).x - worldVerts(fv1).x
-        ey1 = worldVerts(fv2).y - worldVerts(fv1).y
-        ez1 = worldVerts(fv2).z - worldVerts(fv1).z
-        ex2 = worldVerts(fv3).x - worldVerts(fv1).x
-        ey2 = worldVerts(fv3).y - worldVerts(fv1).y
-        ez2 = worldVerts(fv3).z - worldVerts(fv1).z
+        ex1 = E3D_worldVerts(fv2).x - E3D_worldVerts(fv1).x
+        ey1 = E3D_worldVerts(fv2).y - E3D_worldVerts(fv1).y
+        ez1 = E3D_worldVerts(fv2).z - E3D_worldVerts(fv1).z
+        ex2 = E3D_worldVerts(fv3).x - E3D_worldVerts(fv1).x
+        ey2 = E3D_worldVerts(fv3).y - E3D_worldVerts(fv1).y
+        ez2 = E3D_worldVerts(fv3).z - E3D_worldVerts(fv1).z
         fnx = ey1 * ez2 - ez1 * ey2
         fny = ez1 * ex2 - ex1 * ez2
         fnz = ex1 * ey2 - ey1 * ex2
-        vvx = camPos.x - worldVerts(fv1).x
-        vvy = camPos.y - worldVerts(fv1).y
-        vvz = camPos.z - worldVerts(fv1).z
+        vvx = camPos.x - E3D_worldVerts(fv1).x
+        vvy = camPos.y - E3D_worldVerts(fv1).y
+        vvz = camPos.z - E3D_worldVerts(fv1).z
         If fnx * vvx + fny * vvy + fnz * vvz > 0 Then
             fvn = mesh.faces(fi).vCount
             depthSum = 0
             E3D_MakePolygon facePoly
             For vi = 1 To fvn
                 fvi = mesh.faces(fi).vIdx(vi)
-                E3D_AddCoord facePoly, worldVerts(fvi)
-                depthSum = depthSum + worldVerts(fvi).z
+                E3D_AddCoord facePoly, E3D_worldVerts(fvi)
+                depthSum = depthSum + E3D_worldVerts(fvi).z
             Next vi
             faceCount = faceCount + 1
             facePolys(faceCount) = facePoly
@@ -297,7 +297,7 @@ End Sub
 ' Lit version — flat shading from a directional light. Used by sss.bas.
 ' Face baseClr drives the color; if 0, falls back to hue cycle.
 Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3D_Coord, tt As Single, lightDir As E3D_Coord, facePolys() As E3D_Polygon, faceClrs() As Long, faceDepths() As Single, faceCount As Integer)
-    Dim worldVerts(1 To 64) As E3D_Coord
+    Dim E3D_worldVerts(1 To 8192) As E3D_Coord
     Dim i As Integer, fi As Integer, vi As Integer
     Dim fv1 As Integer, fvn As Integer, fvi As Integer
     Dim fnx As Single, fny As Single, fnz As Single
@@ -308,7 +308,7 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
     Dim baseR As Integer, baseG As Integer, baseB As Integer
 
     For i = 1 To mesh.vCount
-        E3D_MatTransformCoord mesh.verts(i), modelMat, worldVerts(i)
+        E3D_MatTransformCoord mesh.verts(i), modelMat, E3D_worldVerts(i)
     Next i
 
     faceCount = 0
@@ -318,17 +318,17 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
         fny = mesh.faces(fi).nx * modelMat.m(1,0) + mesh.faces(fi).ny * modelMat.m(1,1) + mesh.faces(fi).nz * modelMat.m(1,2)
         fnz = mesh.faces(fi).nx * modelMat.m(2,0) + mesh.faces(fi).ny * modelMat.m(2,1) + mesh.faces(fi).nz * modelMat.m(2,2)
         fv1 = mesh.faces(fi).vIdx(1)
-        vvx = camPos.x - worldVerts(fv1).x
-        vvy = camPos.y - worldVerts(fv1).y
-        vvz = camPos.z - worldVerts(fv1).z
+        vvx = camPos.x - E3D_worldVerts(fv1).x
+        vvy = camPos.y - E3D_worldVerts(fv1).y
+        vvz = camPos.z - E3D_worldVerts(fv1).z
         If fnx * vvx + fny * vvy + fnz * vvz > 0 Then
             fvn = mesh.faces(fi).vCount
             depthSum = 0
             E3D_MakePolygon facePoly
             For vi = 1 To fvn
                 fvi = mesh.faces(fi).vIdx(vi)
-                E3D_AddCoord facePoly, worldVerts(fvi)
-                depthSum = depthSum + worldVerts(fvi).x
+                E3D_AddCoord facePoly, E3D_worldVerts(fvi)
+                depthSum = depthSum + E3D_worldVerts(fvi).x
             Next vi
             faceCount = faceCount + 1
             facePolys(faceCount) = facePoly
