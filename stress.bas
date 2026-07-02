@@ -1,6 +1,7 @@
 ' stress.bas — E3D engine stress test
 ' Spawns faceted spheres (32 faces each) to measure polygon throughput.
-' Controls: = add sphere   - remove sphere   arrows orbit camera   Q quit
+' Each sphere has a unique randomized color palette.
+' Controls: = add sphere   - remove sphere   arrows orbit camera   ESC/Q quit
 
 '$INCLUDE:'types.bi'
 '$INCLUDE:'poly.bas'
@@ -12,7 +13,7 @@
 
 Const SCR_W    = 320
 Const SCR_H    = 240
-Const BALL_MAX = 28   ' 28 × ~16 visible faces ≈ 448 polys — right at E3D_SCENE_MAX
+Const BALL_MAX = 300  ' 300 × ~16 visible faces pushes well past 4000
 
 Dim backBuffer As Long
 Dim cam        As E3D_Camera
@@ -20,7 +21,7 @@ Dim viewMat    As E3D_Matrix4
 Dim projMat    As E3D_Matrix4
 Dim vpMat      As E3D_Matrix4
 Dim objMat     As E3D_Matrix4
-Dim sphere     As E3D_Mesh
+Dim spheres(1 To BALL_MAX) As E3D_Mesh
 Dim ballPos(1 To BALL_MAX)  As E3D_Coord
 Dim ballRot(1 To BALL_MAX)  As E3D_Coord
 Dim ballDRot(1 To BALL_MAX) As E3D_Coord
@@ -44,15 +45,17 @@ backBuffer = _NewImage(SCR_W, SCR_H, 32)
 
 lightDir.x = 0.577 : lightDir.y = 0.577 : lightDir.z = -0.577
 
-' --- generate sphere mesh: 4 stacks × 8 slices = 32 faces, 26 verts ---
-MakeSphere sphere, 1.8
-
-' --- scatter ball positions and spin rates ---
+' --- generate one mesh per ball with a unique color seed ---
 Randomize Timer
 For i = 1 To BALL_MAX
-    ballPos(i).x  = (Rnd * 32) - 16
-    ballPos(i).y  = (Rnd * 20) - 10
-    ballPos(i).z  = (Rnd * 20) - 10
+    MakeSphere spheres(i), 1.8, Rnd * 6.283
+Next i
+
+' --- scatter positions and spin rates ---
+For i = 1 To BALL_MAX
+    ballPos(i).x  = (Rnd * 60) - 30
+    ballPos(i).y  = (Rnd * 40) - 20
+    ballPos(i).z  = (Rnd * 40) - 20
     ballDRot(i).x = (Rnd - 0.5) * 0.05
     ballDRot(i).y = (Rnd - 0.5) * 0.06
     ballDRot(i).z = (Rnd - 0.5) * 0.04
@@ -70,13 +73,13 @@ Do
     tt = tt + 0.016
 
     ' --- camera orbit ---
-    If _KeyDown(19712) Then camAngle = camAngle + 0.03   ' right
-    If _KeyDown(19200) Then camAngle = camAngle - 0.03   ' left
-    If _KeyDown(18432) Then camH = camH + 0.25           ' up
-    If _KeyDown(20480) Then camH = camH - 0.25           ' down
+    If _KeyDown(19712) Then camAngle = camAngle + 0.03
+    If _KeyDown(19200) Then camAngle = camAngle - 0.03
+    If _KeyDown(18432) Then camH = camH + 0.25
+    If _KeyDown(20480) Then camH = camH - 0.25
 
-    ' --- add / remove (edge-triggered) ---
-    If _KeyDown(61) Then       ' = key
+    ' --- add / remove (edge-triggered; And split to avoid non-short-circuit crash) ---
+    If _KeyDown(61) Then
         If Not addWas Then
             If ballCount < BALL_MAX Then ballCount = ballCount + 1
         End If
@@ -84,7 +87,7 @@ Do
     Else
         addWas = 0
     End If
-    If _KeyDown(45) Then       ' - key
+    If _KeyDown(45) Then
         If Not remWas Then
             If ballCount > 1 Then ballCount = ballCount - 1
         End If
@@ -93,19 +96,19 @@ Do
         remWas = 0
     End If
 
-    ' --- spin each ball ---
+    ' --- spin ---
     For i = 1 To ballCount
         ballRot(i).x = ballRot(i).x + ballDRot(i).x
         ballRot(i).y = ballRot(i).y + ballDRot(i).y
         ballRot(i).z = ballRot(i).z + ballDRot(i).z
     Next i
 
-    ' --- build VP matrix ---
+    ' --- camera ---
     Dim camX As Single, camZ As Single
-    camX = 28 * Cos(camAngle)
-    camZ = 28 * Sin(camAngle)
+    camX = 45 * Cos(camAngle)
+    camZ = 45 * Sin(camAngle)
     E3D_MakeCamera cam, camX, camH, camZ, 0, 0, 0, 72
-    cam.nearZ = 0.5 : cam.farZ = 120
+    cam.nearZ = 0.5 : cam.farZ = 180
     E3D_MatLookAt cam, viewMat
     E3D_MatPerspective cam, SCR_W / SCR_H, projMat
     E3D_MatMul projMat, viewMat, vpMat
@@ -117,7 +120,7 @@ Do
     E3D_SceneBegin
     For i = 1 To ballCount
         E3D_BuildObjectMat ballPos(i), ballRot(i), 1.0, objMat
-        E3D_SceneAddMeshLit sphere, objMat, cam.pos, tt, lightDir
+        E3D_SceneAddMeshLit spheres(i), objMat, cam.pos, tt, lightDir
     Next i
     E3D_SceneFlush vpMat, SCR_W, SCR_H
 
@@ -125,9 +128,9 @@ Do
     frameMs = (Timer - t0) * 1000
     If frameMs > 0.01 Then fps = CInt(1000 / frameMs) Else fps = 999
 
-    If E3D_scnCount > 350 Then
+    If E3D_scnCount > 3000 Then
         polyClr = _RGB(255, 80, 60)
-    ElseIf E3D_scnCount > 200 Then
+    ElseIf E3D_scnCount > 1500 Then
         polyClr = _RGB(255, 210, 50)
     Else
         polyClr = _RGB(80, 210, 80)
@@ -142,38 +145,41 @@ Do
 
     _Dest 0
     _PutImage , backBuffer, 0
-    Line (0, 0)-(145, 45), _RGBA(0, 0, 0, 200), BF
-    Color polyClr : _PrintString (2, 2),  "POLY  " + LTrim$(Str$(E3D_scnCount)) + " / 450"
+    Line (0, 0)-(SCR_W - 1, 56), _RGBA(0, 0, 0, 200), BF
+    Color polyClr : _PrintString (2, 2),  "POLY  " + LTrim$(Str$(E3D_scnCount)) + " / " + LTrim$(Str$(E3D_SCENE_MAX))
     Color fpsClr  : _PrintString (2, 13), "FPS   " + LTrim$(Str$(fps))
     Color _RGB(140, 140, 160) : _PrintString (2, 24), "ms    " + Left$(Str$(frameMs + 1000), 6)
-    Color _RGB(200, 200, 220) : _PrintString (2, 35), "BALLS " + LTrim$(Str$(ballCount)) + "  [=] add  [-] rem"
+    Color _RGB(200, 200, 220) : _PrintString (2, 35), "BALLS " + LTrim$(Str$(ballCount)) + " / " + LTrim$(Str$(BALL_MAX))
+    Color _RGB(160, 160, 130) : _PrintString (2, 46), "[=] add  [-] rem  [ESC/Q] quit"
 
     _Limit 60
     _Display
 
-Loop Until _KeyDown(113) Or _KeyDown(81)   ' q / Q
+Loop Until _KeyDown(27) Or _KeyDown(113) Or _KeyDown(81)   ' ESC, q, Q
 
 End
 
 ' ============================================================
-' MakeSphere — 4 stacks × 8 slices: 26 verts, 32 faces
+' MakeSphere — 4 stacks × 8 slices = 32 faces, 26 verts
+' hueShift rotates the color palette so each instance looks distinct.
 ' ============================================================
-Sub MakeSphere (mesh As E3D_Mesh, radius As Single)
-    Const ST = 4   ' stacks
-    Const SL = 8   ' slices
+Sub MakeSphere (mesh As E3D_Mesh, radius As Single, hueShift As Single)
+    Const ST = 4
+    Const SL = 8
 
     Dim lat As Integer, lon As Integer
     Dim theta As Single, phi As Single
     Dim r As Integer, g As Integer, b As Integer
     Dim v1 As Integer, v2 As Integer, v3 As Integer, v4 As Integer
     Dim r0 As Integer, r1 As Integer, rb As Integer, pole As Integer
+    Dim h As Single
 
     E3D_MakeMesh mesh
 
     ' top pole
     E3D_AddMeshVert mesh, 0, radius, 0
 
-    ' latitude rings 1 .. ST-1
+    ' latitude rings
     For lat = 1 To ST - 1
         theta = _PI * lat / ST
         For lon = 0 To SL - 1
@@ -188,18 +194,19 @@ Sub MakeSphere (mesh As E3D_Mesh, radius As Single)
     ' bottom pole
     E3D_AddMeshVert mesh, 0, -radius, 0
 
-    ' top cap — triangles from pole (v1) into ring 1 (v2..v9)
+    ' top cap triangles
     For lon = 0 To SL - 1
         v1 = 1
         v2 = 2 + lon
         v3 = 2 + (lon + 1) Mod SL
-        r = 180 + 60 * Sin(lon * _PI / 4)
-        g = 100 + 60 * Sin(lon * _PI / 4 + 2.094)
-        b = 140 + 80 * Sin(lon * _PI / 4 + 4.189)
+        h = hueShift + lon * _PI / 4
+        r = 128 + 100 * Sin(h)
+        g = 128 + 100 * Sin(h + 2.094)
+        b = 128 + 100 * Sin(h + 4.189)
         E3D_AddTriFace mesh, v1, v2, v3, _RGB(r, g, b)
     Next lon
 
-    ' mid bands — quads between adjacent rings
+    ' mid band quads
     For lat = 0 To ST - 3
         r0 = 2 + lat * SL
         r1 = 2 + (lat + 1) * SL
@@ -208,23 +215,25 @@ Sub MakeSphere (mesh As E3D_Mesh, radius As Single)
             v2 = r0 + (lon + 1) Mod SL
             v3 = r1 + (lon + 1) Mod SL
             v4 = r1 + lon
-            r = 140 + 80 * Abs(Sin(lat * 1.6 + lon * 0.8))
-            g = 120 + 80 * Abs(Sin(lat * 1.6 + lon * 0.8 + 2.094))
-            b = 160 + 70 * Abs(Sin(lat * 1.6 + lon * 0.8 + 4.189))
+            h = hueShift + lat * 1.1 + lon * 0.8
+            r = 128 + 100 * Sin(h)
+            g = 128 + 100 * Sin(h + 2.094)
+            b = 128 + 100 * Sin(h + 4.189)
             E3D_AddQuadFace mesh, v1, v2, v3, v4, _RGB(r, g, b)
         Next lon
     Next lat
 
-    ' bottom cap — triangles from last ring into bottom pole
+    ' bottom cap triangles
     pole = mesh.vCount
     rb   = 2 + (ST - 2) * SL
     For lon = 0 To SL - 1
         v1 = pole
         v2 = rb + (lon + 1) Mod SL
         v3 = rb + lon
-        r = 120 + 80 * Abs(Sin(lon * 0.9))
-        g = 150 + 70 * Abs(Sin(lon * 0.9 + 2.094))
-        b = 180 + 60 * Abs(Sin(lon * 0.9 + 4.189))
+        h = hueShift + lon * 0.9 + 1.5
+        r = 128 + 100 * Sin(h)
+        g = 128 + 100 * Sin(h + 2.094)
+        b = 128 + 100 * Sin(h + 4.189)
         E3D_AddTriFace mesh, v1, v2, v3, _RGB(r, g, b)
     Next lon
 
