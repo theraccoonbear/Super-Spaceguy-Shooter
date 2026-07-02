@@ -1104,8 +1104,8 @@ DO
         tt = tt + 0.025
         crawlTimer = crawlTimer + 1
         crawlScroll = crawlScroll - CRAWL_SPEED
-        ' Fire speech when first line is 1/4 up from the bottom
-        IF crawlSpeechDone = 0 AND crawlScroll <= scrH * 3 / 4 THEN
+        ' Fire speech when first line first enters the bottom of the screen
+        IF crawlSpeechDone = 0 AND crawlScroll < scrH THEN
             SPK_Say crawlSpeechText$
             crawlSpeechDone = 1
         END IF

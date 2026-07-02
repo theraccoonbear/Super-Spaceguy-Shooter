@@ -58,6 +58,7 @@ Dim Shared spkWavePhase As Single  ' position in wavetable [0, SPK_WAVE_LEN)
 Dim Shared spkWaveStep  As Single  ' samples advanced per audio sample
 ' F3 formant, previous-phoneme tracking, fricative HP filter
 Dim Shared spkF3(0 To 39) As Single
+Dim Shared spkDiEnd(0 To 39) As Integer  ' diphthong glide target (-1 = monophthong)
 Dim Shared spkPrevPhoneID As Integer
 Dim Shared spkHpCoeff As Single
 Dim Shared spkHpX1    As Single
@@ -180,6 +181,15 @@ Sub SPK_Init()
     spkF3(SPK_DH)=2700 : spkF3(SPK_V) =2200 : spkF3(SPK_Z) =2700
     spkF3(SPK_ZH)=2600 : spkF3(SPK_B) =2200 : spkF3(SPK_D) =2700
     spkF3(SPK_G) =2600
+
+    ' Diphthong glide targets: blend from onset wavetable to target vowel over phoneme duration
+    Dim spkDiI As Integer
+    For spkDiI = 0 To 39 : spkDiEnd(spkDiI) = -1 : Next spkDiI
+    spkDiEnd(SPK_AY) = SPK_IY   ' /aɪ/ bite, like, right → AA onset → IY
+    spkDiEnd(SPK_EY) = SPK_IY   ' /eɪ/ say, face, space → EH onset → IY
+    spkDiEnd(SPK_OW) = SPK_UW   ' /oʊ/ go, know, those  → AO onset → UW
+    spkDiEnd(SPK_AW) = SPK_UH   ' /aʊ/ out, down, power → AA onset → UH
+    spkDiEnd(SPK_OY) = SPK_IY   ' /ɔɪ/ boy, point, void → AO onset → IY
 
     spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
     spkWavePhase = 0.0 : spkWaveStep = 0.0
@@ -493,6 +503,7 @@ Sub SPK_Advance()
     Dim wIdx As Integer, wNext As Integer, wFrac As Single
     Dim newBuzz As Single, prevBuzz As Single, blendT As Single, buzz As Single
     Dim nx As Single, hy As Single
+    Dim diphT As Single, diphA As Single, diphB As Single
 
     If spkPhoneIdx >= spkPhoneCount Then
         spkSampleOut = 0.0
@@ -519,7 +530,15 @@ Sub SPK_Advance()
     wIdx  = Int(spkWavePhase)
     wFrac = spkWavePhase - wIdx
     wNext = (wIdx + 1) And (SPK_WAVE_LEN - 1)
-    newBuzz = spkWave(wIdx) + wFrac * (spkWave(wNext) - spkWave(wIdx))
+    If spkDiEnd(phoneID) >= 0 Then
+        ' Diphthong: glide from onset wavetable to target vowel wavetable
+        diphT = spkSamplePos / dur : If diphT > 1.0 Then diphT = 1.0
+        diphA = spkWaveLib(phoneID, stress, wIdx) + wFrac * (spkWaveLib(phoneID, stress, wNext) - spkWaveLib(phoneID, stress, wIdx))
+        diphB = spkWaveLib(spkDiEnd(phoneID), stress, wIdx) + wFrac * (spkWaveLib(spkDiEnd(phoneID), stress, wNext) - spkWaveLib(spkDiEnd(phoneID), stress, wIdx))
+        newBuzz = diphA + diphT * (diphB - diphA)
+    Else
+        newBuzz = spkWave(wIdx) + wFrac * (spkWave(wNext) - spkWave(wIdx))
+    End If
 
     ' Coarticulation: crossfade from previous phoneme's wavetable during fade-in
     ' Only when previous phoneme was voiced (spkF1>0); unvoiced->voiced gets clean onset
