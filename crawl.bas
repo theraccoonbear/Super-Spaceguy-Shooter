@@ -169,13 +169,22 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
     NEXT cpCI
     crawlScroll = cpStartY + CRAWL_LINE_H * 2
 
-    ' Build plain-text speech string from finished line array
+    ' Build plain-text speech string from finished line array.
+    ' Blank lines between paragraphs insert a PARSPAUSE token so SPK_Say
+    ' adds a ~300ms pause at paragraph breaks.
     Dim cpSI As Integer, cpSLine As String
-    crawlSpeechText$ = ""
+    Dim cpHadText As Integer, cpParaBreak As Integer
+    crawlSpeechText$ = "" : cpHadText = 0 : cpParaBreak = 0
     For cpSI = 0 To crawlLineCount - 1
         cpSLine = LTrim$(RTrim$(CRAWL_StripColor$(crawlLines$(cpSI))))
         If Len(cpSLine) > 0 Then
+            If cpParaBreak And cpHadText Then
+                crawlSpeechText$ = crawlSpeechText$ + "PARSPAUSE "
+            End If
             crawlSpeechText$ = crawlSpeechText$ + cpSLine + " "
+            cpHadText = -1 : cpParaBreak = 0
+        Else
+            If cpHadText Then cpParaBreak = -1
         End If
     Next cpSI
     crawlSpeechDone = 0

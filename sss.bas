@@ -1104,9 +1104,12 @@ DO
         tt = tt + 0.025
         crawlTimer = crawlTimer + 1
         crawlScroll = crawlScroll - CRAWL_SPEED
-        ' Fire speech when first line first enters the bottom of the screen
+        ' Fire speech when first line first enters the bottom of the screen.
+        ' SPK_SyncToScroll scales phoneme durations so speech ends when the
+        ' last line exits the top — keeps narration locked to the crawl.
         IF crawlSpeechDone = 0 AND crawlScroll < scrH THEN
             SPK_Say crawlSpeechText$
+            SPK_SyncToScroll crawlScroll + (crawlLineCount - 1) * CRAWL_LINE_H, CRAWL_SPEED
             crawlSpeechDone = 1
         END IF
 

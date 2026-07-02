@@ -59,6 +59,7 @@ Dim Shared spkWaveStep  As Single  ' samples advanced per audio sample
 ' F3 formant, previous-phoneme tracking, fricative HP filter
 Dim Shared spkF3(0 To 39) As Single
 Dim Shared spkDiEnd(0 To 39) As Integer  ' diphthong glide target (-1 = monophthong)
+Dim Shared spkRateScale As Single        ' speech rate multiplier (1.0 = natural; set by SPK_SyncToScroll)
 Dim Shared spkPrevPhoneID As Integer
 Dim Shared spkHpCoeff As Single
 Dim Shared spkHpX1    As Single
@@ -191,6 +192,7 @@ Sub SPK_Init()
     spkDiEnd(SPK_AW) = SPK_UH   ' /aʊ/ out, down, power → AA onset → UH
     spkDiEnd(SPK_OY) = SPK_IY   ' /ɔɪ/ boy, point, void → AO onset → IY
 
+    spkRateScale = 1.0
     spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
     spkWavePhase = 0.0 : spkWaveStep = 0.0
     spkPrevPhoneID = SPK_SIL
@@ -414,8 +416,9 @@ Sub SPK_Say(text As String)
     Dim wrd As String, rest As String, p As Integer, uc As String
     Dim idx As Integer, pi As Integer
     Dim spkPpI As Integer, spkPpOut As String
-    Dim spkPI2 As Integer, spkPI3 As Integer
+    Dim spkPI2 As Integer, spkPI3 As Integer, spkPI4 As Integer
 
+    spkRateScale = 1.0  ' reset; SPK_SyncToScroll may override after this returns
     spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
     spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
 
@@ -476,6 +479,14 @@ Sub SPK_Say(text As String)
             Next spkPI3
             GoTo nextWord
         End If
+        If wrd = "PARSPAUSE" Then
+            For spkPI4 = 1 To 6  ' ~300ms extra pause at paragraph break
+                If spkPhoneCount < SPK_PHONE_MAX Then
+                    spkPhones(spkPhoneCount) = SPK_SIL : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                End If
+            Next spkPI4
+            GoTo nextWord
+        End If
 
         SPK_DictFind wrd, idx
         If idx >= 0 Then
@@ -502,6 +513,34 @@ Sub SPK_Say(text As String)
 End Sub
 
 ' ============================================================
+' Adjust speech rate so the queued utterance ends when the last crawl
+' line exits the top of the screen.  Call immediately after SPK_Say.
+'   scrollPx   : pixels remaining until last line reaches y=0
+'   pxPerFrame : scroll speed (CRAWL_SPEED)
+' Rate is clamped 0.6x-1.8x to avoid distorting phoneme quality.
+' ============================================================
+Sub SPK_SyncToScroll(scrollPx As Single, pxPerFrame As Single)
+    Dim syncI As Integer
+    Dim syncTotal As Long, syncScrollSamples As Long
+
+    If spkPhoneCount = 0 Or pxPerFrame <= 0 Then Exit Sub
+
+    syncTotal = 0
+    For syncI = 0 To spkPhoneCount - 1
+        syncTotal = syncTotal + spkDur(spkPhones(syncI), spkStress(syncI))
+    Next syncI
+
+    ' scrollPx / pxPerFrame = frames; × SAMPLE_RATE/60 = samples at 60fps
+    syncScrollSamples = CLng(scrollPx / pxPerFrame * SAMPLE_RATE / 60.0)
+
+    If syncTotal > 0 And syncScrollSamples > 0 Then
+        spkRateScale = syncScrollSamples / syncTotal
+        If spkRateScale < 0.60 Then spkRateScale = 0.60
+        If spkRateScale > 1.80 Then spkRateScale = 1.80
+    End If
+End Sub
+
+' ============================================================
 ' Returns 1 if speech is still playing, 0 if silent.
 ' ============================================================
 ' Compute next speech sample into spkSampleOut.  Call once per audio sample.
@@ -522,7 +561,8 @@ Sub SPK_Advance()
 
     phoneID = spkPhones(spkPhoneIdx)
     stress  = spkStress(spkPhoneIdx)
-    dur     = spkDur(phoneID, stress)
+    dur     = Int(spkDur(phoneID, stress) * spkRateScale)
+    If dur < 2 Then dur = 2
 
     If spkSamplePos = 0 Then SPK_BuildWave phoneID, stress
 
