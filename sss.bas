@@ -987,7 +987,6 @@ DO
         FX_Shake backBuffer, scrW, scrH
 
         SND_GameFill isManeuver
-        SND_FlushEffects
 
         ' ============================================================
         ' TITLE SCREEN
