@@ -18,9 +18,6 @@ Sub GAME_NewGame
     boss.active = 0 : bossHP = 0 : bossWarnTimer = 0 : bossMoveTimer = 0 : bossState = 0
     planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0 : planetCurrent = PLANET_COUNT : planetNameIdx = PLANET_COUNT
     cinematicCamX = 0 : shipCinVX = 0 : cinematicFade = 0
-    bgmBossMode = 0
-    bgmBassNote = 0 : bgmLeadNote = 0 : bgmBassCount = bgmNoteDur * 4 : bgmLeadCount = bgmNoteDur * 2
-    bgmBassFreq = bgmNormalBass(0) : bgmLeadFreq = bgmNormalLead(0)
     player.px = 0 : player.py = 0 : player.pz = 0
     player.rx = 0 : player.ry = 0 : player.rz = 0
     For grI = 1 To MAX_ENEMIES   : enemies(grI).active = 0   : enemyFireTimer(grI) = 0 : Next grI
@@ -29,11 +26,15 @@ Sub GAME_NewGame
     For grI = 1 To MAX_POWERUPS  : powerups(grI).active = 0  : Next grI
     For grI = 1 To MAX_EBULLETS  : ebullets(grI).active = 0  : Next grI
     FX_Clear
-    ' reinitialize starfield — cinematic decelerated all star velocities to near zero
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-    ' clear backBuffer so no ghost frame bleeds through on first render
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    SEQ_Init
-    SEQ_Advance
+    ' If we're at the title waypoint, advance into the stages.
+    ' Otherwise (ESC mid-game) restart the full sequence from the top.
+    If seqIdx >= 0 And seqIdx < seqCount And seqKind(seqIdx) = SEQ_TITLE Then
+        SEQ_Advance
+    Else
+        SEQ_Init
+        SEQ_Advance
+    End If
 End Sub
