@@ -215,6 +215,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'stage.bas'
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
+'$INCLUDE:'ui.bas'
 
 ' --- version arg: write to terminal stdout, not the QB84 text screen ---
 Dim ssCmdLine As String : ssCmdLine = COMMAND$
@@ -403,10 +404,9 @@ DO
                 END IF
                 IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
                 _DEST backBuffer
-                LINE (scrW/2 - 64, scrH/2 - 14)-(scrW/2 + 64, scrH/2 + 14), _RGBA(0, 0, 10, 215), BF
-                LINE (scrW/2 - 64, scrH/2 - 14)-(scrW/2 + 64, scrH/2 + 14), _RGB(90, 90, 130), B
-                COLOR _RGB(255, 210, 50)
-                _PRINTSTRING (scrW/2 - 56, scrH/2 - 8), "Title? Y / Esc"
+                UI_DrawPanel scrW\2 - 76, scrH\2 - 28, scrW\2 + 76, scrH\2 + 28, "ABORT MISSION"
+                FONT_PrintCentered fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 9, scrW
+                FONT_PrintCentered fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 5, scrW
                 _DEST 0
                 _PUTIMAGE , backBuffer, 0
                 EXIT SELECT
@@ -1065,11 +1065,10 @@ DO
         END IF
         FONT_Print fontPalette(8), backBuffer, "v" + VERSION$, scrW - Len("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H
         IF titleEscConfirm THEN
-            LINE (scrW/2 - 60, scrH/2 - 22)-(scrW/2 + 60, scrH/2 + 22), _RGBA(0, 0, 10, 215), BF
-            LINE (scrW/2 - 60, scrH/2 - 22)-(scrW/2 + 60, scrH/2 + 22), _RGB(90, 90, 130), B
-            FONT_Print fontPalette(9),  backBuffer, "S  Settings", scrW/2 - 44, scrH/2 - 18
-            FONT_Print fontPalette(14), backBuffer, "Y  Quit",     scrW/2 - 44, scrH/2 - 4
-            FONT_Print fontPalette(8),  backBuffer, "Esc Cancel",  scrW/2 - 44, scrH/2 + 10
+            UI_DrawPanel scrW\2 - 76, scrH\2 - 34, scrW\2 + 76, scrH\2 + 34, "COMMAND CONSOLE"
+            FONT_PrintCentered fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 - 18, scrW
+            FONT_PrintCentered fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 -  4, scrW
+            FONT_PrintCentered fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 10, scrW
         END IF
         _DEST 0
         _PUTIMAGE , backBuffer, 0
