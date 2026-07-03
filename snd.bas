@@ -6,6 +6,10 @@ Const SND_BOOM_LEN        = 11025
 Const SND_HIT_LEN         = 8820
 Const SND_PUP_LEN         = 4410
 Const SND_WHOOSH_LEN      = 6615
+Const SND_KICK_LEN        = 11025  ' 250ms kick drum
+Const SND_SNARE_LEN       = 4410   ' 100ms snare
+Const SND_HIHAT_LEN       = 2205   ' 50ms hi-hat
+Const BGM_PAD_TARGET      = 0.025  ' chord pad amplitude per voice (E minor triad)
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -51,8 +55,28 @@ Dim Shared sndHitPos    As Integer : sndHitPos    = -1
 Dim Shared sndPupPos    As Integer : sndPupPos    = -1
 Dim Shared sndWhooshPos As Integer : sndWhooshPos = -1
 
+' percussion wavetables and playheads
+Dim Shared sndKick(0 To SND_KICK_LEN - 1)   As Single
+Dim Shared sndSnare(0 To SND_SNARE_LEN - 1) As Single
+Dim Shared sndHihat(0 To SND_HIHAT_LEN - 1) As Single
+Dim Shared sndKickPos  As Integer : sndKickPos  = -1
+Dim Shared sndSnarePos As Integer : sndSnarePos = -1
+Dim Shared sndHihatPos As Integer : sndHihatPos = -1
+
+' drum sequencer state (16-step, one 16th note per step)
+Dim Shared bgmDrumStep  As Integer
+Dim Shared bgmDrumCount As Integer
+
+' chord pad oscillator state (E minor triad: E4/G4/B4)
+Dim Shared bgmPadPhase1 As Single
+Dim Shared bgmPadPhase2 As Single
+Dim Shared bgmPadPhase3 As Single
+Dim Shared bgmPadAmp    As Single
+
 Sub SND_Init()
     Dim sndK As Integer, sndF As Single, sndFade As Single
+    Dim sndGenPh As Single, sndGenT As Single
+    Dim sndGenNz As Single, sndGenHP As Single, sndGenPX As Single
 
     sndEngineFreq = 80.0 : sndEngineAmp = 0.07
 
@@ -89,6 +113,7 @@ Sub SND_Init()
 
     bgmBassFreq = bgmNormalBass(0) : bgmBassCount = bgmNoteDur * 4
     bgmLeadFreq = bgmNormalLead(0) : bgmLeadCount = bgmNoteDur * 2
+    bgmDrumStep = 15 : bgmDrumCount = 1  ' fires step 0 (kick) on first audio sample
 
     ' title BGM — Mars (Holst, PD), 5/4 time @ 112 BPM
     titleBgmNoteDur  = SAMPLE_RATE * 60 / TITLE_BPM / 4
@@ -141,10 +166,47 @@ Sub SND_Init()
         sndFade = (1.0 - sndK / SND_WHOOSH_LEN) ^ 0.5
         sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35 + (Rnd * 2.0 - 1.0) * 0.25) * sndFade * 0.32
     Next sndK
+
+    ' kick drum: exponential frequency sweep 160->45 Hz over 250ms
+    sndGenPh = 0
+    For sndK = 0 To SND_KICK_LEN - 1
+        sndGenT = sndK / SND_KICK_LEN
+        sndF    = 160.0 * Exp(-sndGenT * 14.0) + 45.0
+        sndFade = Exp(-sndGenT * 6.0)
+        sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+        If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+        sndKick(sndK) = Sin(sndGenPh) * sndFade * 0.30
+    Next sndK
+
+    ' snare: filtered noise + 180 Hz body, 100ms
+    sndGenHP = 0 : sndGenPX = 0 : sndGenPh = 0
+    For sndK = 0 To SND_SNARE_LEN - 1
+        sndGenT   = sndK / SND_SNARE_LEN
+        sndFade   = (1.0 - sndGenT) ^ 2
+        sndGenNz  = Rnd * 2.0 - 1.0
+        sndGenHP  = sndGenNz - sndGenPX + 0.65 * sndGenHP  ' first-order HP, midrange noise
+        sndGenPX  = sndGenNz
+        sndGenPh  = sndGenPh + 6.2832 * 180.0 / SAMPLE_RATE
+        If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+        sndSnare(sndK) = (sndGenHP * 0.60 + Sin(sndGenPh) * 0.40) * sndFade * 0.18
+    Next sndK
+
+    ' hi-hat: bright high-passed noise, 50ms
+    sndGenHP = 0 : sndGenPX = 0
+    For sndK = 0 To SND_HIHAT_LEN - 1
+        sndGenT  = sndK / SND_HIHAT_LEN
+        sndFade  = (1.0 - sndGenT) ^ 3
+        sndGenNz = Rnd * 2.0 - 1.0
+        sndGenHP = sndGenNz - sndGenPX + 0.85 * sndGenHP  ' first-order HP, bright
+        sndGenPX = sndGenNz
+        sndHihat(sndK) = sndGenHP * sndFade * 0.055
+    Next sndK
 End Sub
 
 Sub SND_GameFill(isManeuver As Integer)
     Dim sndK As Integer, sndFillCount As Integer
+    Dim bgmPadTarget As Single
+    If bgmBossMode Then bgmPadTarget = 0.0 Else bgmPadTarget = BGM_PAD_TARGET
     If isManeuver Then
         sndEngineFreq = sndEngineFreq + (150.0 - sndEngineFreq) * 0.07
         sndEngineAmp  = sndEngineAmp  + (0.20  - sndEngineAmp)  * 0.07
@@ -186,6 +248,50 @@ Sub SND_GameFill(isManeuver As Integer)
                 bgmLeadPhase = bgmLeadPhase + 6.2832 * bgmLeadFreq / SAMPLE_RATE
                 If bgmLeadPhase > 6.2832 Then bgmLeadPhase = bgmLeadPhase - 6.2832
                 musicSample = musicSample + (Sin(bgmLeadPhase) + Sin(bgmLeadPhase * 1.004) * 0.65) * 0.038
+            End If
+
+            ' chord pad: E minor triad (E4=329.6 G4=392.0 B4=493.9), slow attack
+            bgmPadAmp = bgmPadAmp + (bgmPadTarget - bgmPadAmp) * 0.00005
+            bgmPadPhase1 = bgmPadPhase1 + 6.2832 * 329.6 / SAMPLE_RATE
+            bgmPadPhase2 = bgmPadPhase2 + 6.2832 * 392.0 / SAMPLE_RATE
+            bgmPadPhase3 = bgmPadPhase3 + 6.2832 * 493.9 / SAMPLE_RATE
+            If bgmPadPhase1 > 6.2832 Then bgmPadPhase1 = bgmPadPhase1 - 6.2832
+            If bgmPadPhase2 > 6.2832 Then bgmPadPhase2 = bgmPadPhase2 - 6.2832
+            If bgmPadPhase3 > 6.2832 Then bgmPadPhase3 = bgmPadPhase3 - 6.2832
+            musicSample = musicSample + (Sin(bgmPadPhase1) + Sin(bgmPadPhase2) + Sin(bgmPadPhase3)) * bgmPadAmp
+
+            ' 16-step drum sequencer; one step = one 16th note = bgmNoteDur samples
+            bgmDrumCount = bgmDrumCount - 1
+            If bgmDrumCount <= 0 Then
+                bgmDrumStep  = (bgmDrumStep + 1) Mod 16
+                bgmDrumCount = bgmNoteDur
+                If bgmBossMode Then
+                    ' syncopated kick + 16th-note hi-hat for boss intensity
+                    If bgmDrumStep = 0 Or bgmDrumStep = 3 Or bgmDrumStep = 8 Or bgmDrumStep = 11 Then sndKickPos  = 0
+                    If bgmDrumStep = 4 Or bgmDrumStep = 12 Then sndSnarePos = 0
+                    sndHihatPos = 0
+                Else
+                    ' standard 4/4: kick on 1+3, snare on 2+4, 8th-note hi-hat
+                    If bgmDrumStep = 0 Or bgmDrumStep = 8 Then sndKickPos  = 0
+                    If bgmDrumStep = 4 Or bgmDrumStep = 12 Then sndSnarePos = 0
+                    If (bgmDrumStep And 1) = 0 Then sndHihatPos = 0
+                End If
+            End If
+            ' advance drum playheads into music bus
+            If sndKickPos >= 0 Then
+                musicSample = musicSample + sndKick(sndKickPos)
+                sndKickPos = sndKickPos + 1
+                If sndKickPos >= SND_KICK_LEN Then sndKickPos = -1
+            End If
+            If sndSnarePos >= 0 Then
+                musicSample = musicSample + sndSnare(sndSnarePos)
+                sndSnarePos = sndSnarePos + 1
+                If sndSnarePos >= SND_SNARE_LEN Then sndSnarePos = -1
+            End If
+            If sndHihatPos >= 0 Then
+                musicSample = musicSample + sndHihat(sndHihatPos)
+                sndHihatPos = sndHihatPos + 1
+                If sndHihatPos >= SND_HIHAT_LEN Then sndHihatPos = -1
             End If
 
             ' Mix all active SFX into a single sample alongside BGM+engine.
@@ -274,6 +380,7 @@ Sub SND_SetBossMode(onOff As Integer)
     bgmBossMode  = onOff
     bgmBassNote  = 0 : bgmLeadNote  = 0
     bgmBassCount = 0 : bgmLeadCount = 0
+    bgmDrumStep = 15 : bgmDrumCount = 1
     If onOff Then
         bgmBassFreq = bgmBossBass(0) : bgmLeadFreq = bgmBossLead(0)
     Else
@@ -286,6 +393,8 @@ Sub SND_ResetGameBGM()
     bgmBassNote  = 0 : bgmLeadNote  = 0
     bgmBassCount = 0 : bgmLeadCount = 0
     bgmBassFreq  = bgmNormalBass(0) : bgmLeadFreq = bgmNormalLead(0)
+    bgmDrumStep = 15 : bgmDrumCount = 1
+    bgmPadAmp   = 0  ' restart pad fade-in
 End Sub
 
 Sub SND_Shoot() : sndShootPos  = 0 : End Sub
