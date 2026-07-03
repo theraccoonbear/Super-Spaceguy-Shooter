@@ -18,19 +18,31 @@ jobs:
             artifact-name: sss-linux
             artifact-path: builds/sss
             release-asset-name: sss-linux
+            sidecar-binary: sss-net
+            sidecar-release-name: sss-net-linux
           - os: macos-latest
             artifact-name: sss-macos
             artifact-path: builds/sss
             release-asset-name: sss-macos
+            sidecar-binary: sss-net
+            sidecar-release-name: sss-net-macos
           - os: windows-latest
             artifact-name: sss-windows
             artifact-path: builds/sss.exe
             release-asset-name: sss-windows.exe
+            sidecar-binary: sss-net.exe
+            sidecar-release-name: sss-net-windows.exe
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: sidecar/go.mod
 
       - name: Resolve QB64-PE release version
         id: qb64pe_release
@@ -87,31 +99,42 @@ jobs:
         shell: bash
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
+      - name: Build sidecar
+        shell: bash
+        run: |
+          cd sidecar
+          go build -ldflags="-s -w" -o ../builds/${{ matrix.sidecar-binary }} .
+
       - name: Dump compile log on failure
         if: failure()
         shell: bash
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
 
-      - name: Upload build artifact
+      - name: Upload build artifacts
         if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.artifact-path }}
+          path: |
+            ${{ matrix.artifact-path }}
+            builds/${{ matrix.sidecar-binary }}
 
-      # On a version tag, copy the binary to a named file so the release job
-      # can download all three platform binaries and attach them in one shot.
-      - name: Stage release asset
+      # On a version tag, stage both binaries for the release job.
+      - name: Stage release assets
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
-        run: cp ${{ matrix.artifact-path }} ${{ matrix.release-asset-name }}
+        run: |
+          cp ${{ matrix.artifact-path }}       ${{ matrix.release-asset-name }}
+          cp builds/${{ matrix.sidecar-binary }} ${{ matrix.sidecar-release-name }}
 
-      - name: Upload release asset
+      - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.artifact-name }}
-          path: ${{ matrix.release-asset-name }}
+          path: |
+            ${{ matrix.release-asset-name }}
+            ${{ matrix.sidecar-release-name }}
 
   release:
     needs: build
