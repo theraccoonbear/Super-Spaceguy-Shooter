@@ -1,0 +1,114 @@
+# ================================================================
+# music.mus — Super Spaceguy Shooter music data
+#
+# INST  name   vol    h2     h3     gate   [attack]  [DET]
+# SEQ   name   note dur  note dur ...
+# PAD   name   vol  attack  note note note ...
+# DRUM  name   step step ...  (K=kick S=snare H=hi-hat .=rest)
+# CUE   name   bpm
+# VOICE inst   seq
+# CHORD pad-name
+# DRUMS drum-name
+# ================================================================
+
+# ================================================================
+# CRAWL  (intro/epilogue narrative scroll, half-tempo Mars bass)
+# ================================================================
+INST cbass    0.07   0.50  0.25  0.50
+
+SEQ crawl_bass  G2 8  G2 8  G2 8  D3 8  G2 8  C3 8  C3 8  C3 8  G2 8  Ab2 8  F2 8  F2 8  F2 8  C3 8  D3 8  Bb2 8  Bb2 8  C3 8  D3 8  Eb3 8
+
+PAD gm_pad     0.020  0.00003   G3  Bb3  D4
+
+CUE crawl  56
+VOICE cbass  crawl_bass
+CHORD gm_pad
+
+# ================================================================
+# EMPEROR  (antagonist reveal, slow Dm arpeggio + sub drone)
+# ================================================================
+INST arpin    0.06   0.50  0     0.60
+
+SEQ emp_bass    D2 4  F2 4  A2 4  C3 4
+
+PAD dm_pad     0.018  0.00002   D2  F2  A2
+PAD dm_drone   0.030  0.00002   D1
+
+CUE emperor  40
+VOICE arpin  emp_bass
+CHORD dm_pad
+CHORD dm_drone
+
+# ================================================================
+# TITLE / OPTIONS  (Mars theme, 5/4 martial)
+# ================================================================
+INST tbass    0.07   0.50  0.25  0.75
+INST tlead    0.055  0.30  0.15  0.25
+
+SEQ mars_bass   G2 4  G2 4  G2 4  D3 4  G2 4  C3 4  C3 4  C3 4  G2 4  Ab2 4  F2 4  F2 4  F2 4  C3 4  D3 4  Bb2 4  Bb2 4  C3 4  D3 4  Eb3 4
+SEQ mars_lead   G4 4  G4 4  G4 4  D5 4  Eb5 4  C5 4  C5 4  C5 4  G4 4  Ab4 4  F4 4  F4 4  F4 4  C5 4  D5 4  Bb4 4  Bb4 4  C5 4  D5 4  Eb5 4
+
+DRUM title      KH . . . H . . . SH . . . KH . . . H . . .
+
+CUE title  112
+VOICE tbass  mars_bass
+VOICE tlead  mars_lead
+DRUMS title
+
+# ================================================================
+# GAME  (E minor chase theme, 140 BPM)
+# ================================================================
+INST bass     0.055  0.50  0.25  1.00
+INST lead     0.038  0.65  0.004 1.00  0  DET
+
+SEQ game_bass   E2 4  B1 4  G2 4  D2 4  E2 4  A2 4  D2 4  B1 4
+SEQ game_lead   E4 2  G4 2  B4 2  E5 2  D4 2  G4 2  A4 2  D5 2  G4 2  B4 2  D5 2  G5 2  E4 2  B4 2  E5 2  B4 2
+
+PAD em_pad     0.025  0.00005   E4  G4  B4
+
+DRUM game_norm  KH . H . SH . H . KH . H . SH . H .
+
+CUE game  140
+VOICE bass  game_bass
+VOICE lead  game_lead
+CHORD em_pad
+DRUMS game_norm
+
+# ================================================================
+# BOSS  (same BPM, harder pattern, reuses bass/lead insts)
+# ================================================================
+SEQ boss_bass   E2 4  R 4   E2 4  Eb2 4  G2 4  R 4  F2 4  E2 4
+SEQ boss_lead   E5 2  R 2   F5 2  R 2   E5 2  D5 2  Db5 2  B4 2  E5 2  R 2  G5 2  R 2  F5 2  E5 2  Eb5 2  R 2
+
+DRUM game_boss  KH H H KH SH H H H KH H H KH SH H H H
+
+CUE boss  140
+VOICE bass  boss_bass
+VOICE lead  boss_lead
+DRUMS game_boss
+
+# ================================================================
+# PLANET  (triumphant arrival, G major)
+# ================================================================
+INST plnbass  0.07   0.50  0.25  0.50
+
+SEQ pln_bass    G2 4
+
+PAD gmaj_pad   0.022  0.00004   G3  B3  D4
+
+CUE planet  120
+VOICE plnbass  pln_bass
+CHORD gmaj_pad
+
+# ================================================================
+# GAME OVER  (descending Am, slow)
+# ================================================================
+INST gobass   0.07   0.50  0.25  0.75
+
+SEQ go_bass     A2 8  G2 8  F2 8  E2 8
+
+PAD am_pad     0.015  0.00003   A2  C3  E3
+
+CUE gameover  60
+VOICE gobass  go_bass
+CHORD am_pad
