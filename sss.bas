@@ -214,10 +214,17 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
 
-' --- version arg ---
+' --- version arg: write to terminal stdout, not the QB84 text screen ---
 Dim ssCmdLine As String : ssCmdLine = COMMAND$
 If InStr(ssCmdLine, "--version") > 0 Or ssCmdLine = "-v" Or Left$(ssCmdLine, 3) = "-v " Then
-    Print "Super Spaceguy Shooter " + VERSION$
+    Dim ssVFH As Integer : ssVFH = FreeFile
+    If InStr(_OS$, "WIN") Then
+        Open "CON:" For Output As #ssVFH     ' Windows console stdout
+    Else
+        Open "/dev/stdout" For Output As #ssVFH  ' Linux / macOS
+    End If
+    Print #ssVFH, "Super Spaceguy Shooter " + VERSION$
+    Close #ssVFH
     System
 End If
 
@@ -758,6 +765,7 @@ DO
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
+                                SND_ResetPlanetBGM
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
                                 score = score + 2000
@@ -816,6 +824,7 @@ DO
                 IF score > highScore THEN highScore = score
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
+                SND_ResetGameOverBGM
                 SPK_Say "GAME OVER"
                 gameOver = 0
             END IF
@@ -1024,7 +1033,11 @@ DO
 
         FX_Shake backBuffer, scrW, scrH
 
-        SND_GameFill isManeuver
+        If gameState = GS_PLAYING Then
+            SND_GameFill isManeuver
+        Else
+            SND_PlanetFill
+        End If
 
         ' ============================================================
         ' TITLE SCREEN
@@ -1103,7 +1116,7 @@ CASE GS_INTRO
     IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
         introTimer = 0 : SEQ_Advance
     END IF
-    SND_TitleFill
+    SND_EmperorFill
 
     ' ============================================================
     ' TEXT CRAWL — stage narrative scroll
@@ -1267,7 +1280,7 @@ CASE GS_GAMEOVER
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    SND_TitleFill
+    SND_GameOverFill
 
     ' ============================================================
     ' SETTINGS / VOLUME CONFIG

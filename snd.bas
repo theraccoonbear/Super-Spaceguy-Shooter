@@ -11,6 +11,13 @@ Const SND_SNARE_LEN       = 4410   ' 100ms snare
 Const SND_HIHAT_LEN       = 2205   ' 50ms hi-hat
 Const BGM_PAD_TARGET      = 0.025  ' chord pad amplitude per voice (E minor triad)
 Const SND_CRAWL_PAD_TARGET = 0.020 ' chord pad amplitude per voice (G minor cinematic pad)
+Const SND_GO_NOTE_DUR      = 88200 ' 2 sec/note for game over bass descent
+Const SND_GO_PAD_TARGET    = 0.015 ' Am pad amplitude per voice
+Const SND_PLN_PAD_TARGET   = 0.022 ' G major pad amplitude per voice (planet arrival)
+Const SND_PLN_BASS_DUR     = 22050 ' 80 BPM quarter note = 0.5 sec
+Const SND_EMP_NOTE_DUR     = 66150 ' 40 BPM (1.5 sec/note) for emperor arpeggio
+Const SND_EMP_PAD_TARGET   = 0.018 ' Dm pad amplitude per voice
+Const SND_EMP_DRONE_TARGET = 0.030 ' D1 sub-drone amplitude
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -87,6 +94,36 @@ Dim Shared sndCrawlPadPhase1 As Single
 Dim Shared sndCrawlPadPhase2 As Single
 Dim Shared sndCrawlPadPhase3 As Single
 Dim Shared sndCrawlPadAmp    As Single
+
+' game over BGM: descending Am bass + Am pad
+Dim Shared sndGoNote    As Integer
+Dim Shared sndGoCount   As Integer
+Dim Shared sndGoPhase   As Single
+Dim Shared sndGoFreq    As Single
+Dim Shared sndGoPadPh1  As Single
+Dim Shared sndGoPadPh2  As Single
+Dim Shared sndGoPadPh3  As Single
+Dim Shared sndGoPadAmp  As Single
+
+' planet arrival BGM: G major pad + G2 bass pedal
+Dim Shared sndPlnPadPh1    As Single
+Dim Shared sndPlnPadPh2    As Single
+Dim Shared sndPlnPadPh3    As Single
+Dim Shared sndPlnPadAmp    As Single
+Dim Shared sndPlnBassPhase As Single
+Dim Shared sndPlnBassCount As Integer
+
+' emperor intro BGM: Dm arpeggio + Dm pad + D1 sub-drone
+Dim Shared sndEmpBassNote  As Integer
+Dim Shared sndEmpBassCount As Integer
+Dim Shared sndEmpBassPhase As Single
+Dim Shared sndEmpBassFreq  As Single
+Dim Shared sndEmpPadPh1    As Single
+Dim Shared sndEmpPadPh2    As Single
+Dim Shared sndEmpPadPh3    As Single
+Dim Shared sndEmpPadAmp    As Single
+Dim Shared sndEmpDronePh   As Single
+Dim Shared sndEmpDroneAmp  As Single
 
 Sub SND_Init()
     Dim sndK As Integer, sndF As Single, sndFade As Single
@@ -459,6 +496,138 @@ Sub SND_CrawlFill()
             If sndCrawlPadPhase2 > 6.2832 Then sndCrawlPadPhase2 = sndCrawlPadPhase2 - 6.2832
             If sndCrawlPadPhase3 > 6.2832 Then sndCrawlPadPhase3 = sndCrawlPadPhase3 - 6.2832
             musicSample = musicSample + (Sin(sndCrawlPadPhase1) + Sin(sndCrawlPadPhase2) + Sin(sndCrawlPadPhase3)) * sndCrawlPadAmp
+            SPK_Advance
+            _SNDRAW musicSample * volMusic + spkSampleOut * volSpeech
+        Next sndK
+    End If
+End Sub
+
+Sub SND_ResetGameOverBGM()
+    sndGoNote = 0 : sndGoCount = SND_GO_NOTE_DUR
+    sndGoPhase = 0 : sndGoFreq = 110.0
+    sndGoPadAmp = 0
+End Sub
+
+Sub SND_GameOverFill()
+    Dim sndK As Integer, sndFillCount As Integer
+    sndFillCount = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
+    If sndFillCount > 0 Then
+        For sndK = 0 To sndFillCount - 1
+            ' descending Am bass: A2(110)→G2(98)→F2(87.3)→E2(82.4), 2 sec/note
+            sndGoCount = sndGoCount - 1
+            If sndGoCount <= 0 Then
+                sndGoNote  = (sndGoNote + 1) Mod 4
+                sndGoCount = SND_GO_NOTE_DUR
+                sndGoPhase = 0
+                Select Case sndGoNote
+                    Case 0 : sndGoFreq = 110.0
+                    Case 1 : sndGoFreq = 98.0
+                    Case 2 : sndGoFreq = 87.3
+                    Case 3 : sndGoFreq = 82.4
+                End Select
+            End If
+            If sndGoCount > SND_GO_NOTE_DUR \ 4 Then
+                sndGoPhase = sndGoPhase + 6.2832 * sndGoFreq / SAMPLE_RATE
+                If sndGoPhase > 6.2832 Then sndGoPhase = sndGoPhase - 6.2832
+                musicSample = (Sin(sndGoPhase) + Sin(sndGoPhase * 2) * 0.5 + Sin(sndGoPhase * 3) * 0.25) * 0.07
+            Else
+                musicSample = 0
+            End If
+            ' Am pad: A2(110)/C3(130.8)/E3(164.8)
+            sndGoPadAmp = sndGoPadAmp + (SND_GO_PAD_TARGET - sndGoPadAmp) * 0.00003
+            sndGoPadPh1 = sndGoPadPh1 + 6.2832 * 110.0 / SAMPLE_RATE
+            sndGoPadPh2 = sndGoPadPh2 + 6.2832 * 130.8 / SAMPLE_RATE
+            sndGoPadPh3 = sndGoPadPh3 + 6.2832 * 164.8 / SAMPLE_RATE
+            If sndGoPadPh1 > 6.2832 Then sndGoPadPh1 = sndGoPadPh1 - 6.2832
+            If sndGoPadPh2 > 6.2832 Then sndGoPadPh2 = sndGoPadPh2 - 6.2832
+            If sndGoPadPh3 > 6.2832 Then sndGoPadPh3 = sndGoPadPh3 - 6.2832
+            musicSample = musicSample + (Sin(sndGoPadPh1) + Sin(sndGoPadPh2) + Sin(sndGoPadPh3)) * sndGoPadAmp
+            SPK_Advance
+            _SNDRAW musicSample * volMusic + spkSampleOut * volSpeech
+        Next sndK
+    End If
+End Sub
+
+Sub SND_ResetPlanetBGM()
+    sndPlnPadAmp = 0
+    sndPlnBassPhase = 0 : sndPlnBassCount = SND_PLN_BASS_DUR
+End Sub
+
+Sub SND_PlanetFill()
+    Dim sndK As Integer, sndFillCount As Integer
+    sndFillCount = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
+    If sndFillCount > 0 Then
+        For sndK = 0 To sndFillCount - 1
+            ' G2(98 Hz) bass pedal, 80 BPM quarter notes, 50% gate
+            sndPlnBassCount = sndPlnBassCount - 1
+            If sndPlnBassCount <= 0 Then sndPlnBassCount = SND_PLN_BASS_DUR
+            If sndPlnBassCount > SND_PLN_BASS_DUR \ 2 Then
+                sndPlnBassPhase = sndPlnBassPhase + 6.2832 * 98.0 / SAMPLE_RATE
+                If sndPlnBassPhase > 6.2832 Then sndPlnBassPhase = sndPlnBassPhase - 6.2832
+                musicSample = (Sin(sndPlnBassPhase) + Sin(sndPlnBassPhase * 2) * 0.5 + Sin(sndPlnBassPhase * 3) * 0.25) * 0.07
+            Else
+                musicSample = 0
+            End If
+            ' G major pad: G3(196)/B3(246.9)/D4(293.7) — triumphant arrival
+            sndPlnPadAmp = sndPlnPadAmp + (SND_PLN_PAD_TARGET - sndPlnPadAmp) * 0.00004
+            sndPlnPadPh1 = sndPlnPadPh1 + 6.2832 * 196.0 / SAMPLE_RATE
+            sndPlnPadPh2 = sndPlnPadPh2 + 6.2832 * 246.9 / SAMPLE_RATE
+            sndPlnPadPh3 = sndPlnPadPh3 + 6.2832 * 293.7 / SAMPLE_RATE
+            If sndPlnPadPh1 > 6.2832 Then sndPlnPadPh1 = sndPlnPadPh1 - 6.2832
+            If sndPlnPadPh2 > 6.2832 Then sndPlnPadPh2 = sndPlnPadPh2 - 6.2832
+            If sndPlnPadPh3 > 6.2832 Then sndPlnPadPh3 = sndPlnPadPh3 - 6.2832
+            musicSample = musicSample + (Sin(sndPlnPadPh1) + Sin(sndPlnPadPh2) + Sin(sndPlnPadPh3)) * sndPlnPadAmp
+            SPK_Advance
+            _SNDRAW musicSample * volMusic + spkSampleOut * volSpeech
+        Next sndK
+    End If
+End Sub
+
+Sub SND_ResetEmperorBGM()
+    sndEmpPadAmp = 0 : sndEmpDroneAmp = 0
+    sndEmpBassNote = 0 : sndEmpBassCount = SND_EMP_NOTE_DUR
+    sndEmpBassPhase = 0 : sndEmpBassFreq = 73.4
+End Sub
+
+Sub SND_EmperorFill()
+    Dim sndK As Integer, sndFillCount As Integer
+    sndFillCount = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
+    If sndFillCount > 0 Then
+        For sndK = 0 To sndFillCount - 1
+            ' Dm arpeggio: D2(73.4)→F2(87.3)→A2(110)→C3(130.8), 40 BPM, 60% gate
+            sndEmpBassCount = sndEmpBassCount - 1
+            If sndEmpBassCount <= 0 Then
+                sndEmpBassNote  = (sndEmpBassNote + 1) Mod 4
+                sndEmpBassCount = SND_EMP_NOTE_DUR
+                sndEmpBassPhase = 0
+                Select Case sndEmpBassNote
+                    Case 0 : sndEmpBassFreq = 73.4
+                    Case 1 : sndEmpBassFreq = 87.3
+                    Case 2 : sndEmpBassFreq = 110.0
+                    Case 3 : sndEmpBassFreq = 130.8
+                End Select
+            End If
+            If sndEmpBassCount > SND_EMP_NOTE_DUR * 2 \ 5 Then
+                sndEmpBassPhase = sndEmpBassPhase + 6.2832 * sndEmpBassFreq / SAMPLE_RATE
+                If sndEmpBassPhase > 6.2832 Then sndEmpBassPhase = sndEmpBassPhase - 6.2832
+                musicSample = (Sin(sndEmpBassPhase) + Sin(sndEmpBassPhase * 2) * 0.5) * 0.06
+            Else
+                musicSample = 0
+            End If
+            ' D1 sub-drone (36.7 Hz)
+            sndEmpDroneAmp = sndEmpDroneAmp + (SND_EMP_DRONE_TARGET - sndEmpDroneAmp) * 0.00002
+            sndEmpDronePh  = sndEmpDronePh  + 6.2832 * 36.7 / SAMPLE_RATE
+            If sndEmpDronePh > 6.2832 Then sndEmpDronePh = sndEmpDronePh - 6.2832
+            musicSample = musicSample + Sin(sndEmpDronePh) * sndEmpDroneAmp
+            ' Dm pad: D2(73.4)/F2(87.3)/A2(110)
+            sndEmpPadAmp = sndEmpPadAmp + (SND_EMP_PAD_TARGET - sndEmpPadAmp) * 0.00002
+            sndEmpPadPh1 = sndEmpPadPh1 + 6.2832 * 73.4  / SAMPLE_RATE
+            sndEmpPadPh2 = sndEmpPadPh2 + 6.2832 * 87.3  / SAMPLE_RATE
+            sndEmpPadPh3 = sndEmpPadPh3 + 6.2832 * 110.0 / SAMPLE_RATE
+            If sndEmpPadPh1 > 6.2832 Then sndEmpPadPh1 = sndEmpPadPh1 - 6.2832
+            If sndEmpPadPh2 > 6.2832 Then sndEmpPadPh2 = sndEmpPadPh2 - 6.2832
+            If sndEmpPadPh3 > 6.2832 Then sndEmpPadPh3 = sndEmpPadPh3 - 6.2832
+            musicSample = musicSample + (Sin(sndEmpPadPh1) + Sin(sndEmpPadPh2) + Sin(sndEmpPadPh3)) * sndEmpPadAmp
             SPK_Advance
             _SNDRAW musicSample * volMusic + spkSampleOut * volSpeech
         Next sndK
