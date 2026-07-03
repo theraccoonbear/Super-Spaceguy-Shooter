@@ -1,0 +1,31 @@
+# Super Spaceguy Shooter — Dev Practices
+
+## Branch discipline
+- Stay on task. If you discover a bug while working on a feature branch, log it as a GitHub issue and move on. Do NOT fix it on an unrelated branch.
+- Exception: if the bug was introduced by your current branch's changes, fix it here.
+- Branch naming follows CI conventions: `feat/`, `fix/`, `bug/`
+
+## Build requirement
+- Always do a test build after any code change. Fix all errors before reporting back.
+- Build command: from the QB64-PE install directory, run `./qb64pe -x code/3d/sss.bas -o code/3d/builds/sss`
+
+## QB64-PE gotchas
+- `Dim x As String` inside `$INCLUDE` files is ignored at module scope — use `$` suffix (`x$`) instead
+- `_COMMAND$(n)` subscript form is not supported in QB64-PE v4.5.0 — use `COMMAND$` (full string)
+- All `Dim` inside Subs are module-scope in QB64-PE; variable names must be unique across all Subs in a compilation unit
+- Short names like `pos`, `val` are built-in keywords — prefix vars with context (e.g. `objPos`, `sndVal`)
+
+## Scope of work
+- Fix only what was asked. Don't refactor, clean up, or fix adjacent things unless asked.
+- No comments unless the WHY is non-obvious.
+- No new files unless the task requires them.
+
+## Tackling a task
+- Regardless of how enthusiastic the user is to get started, make a plan that is shared first.
+- For bugs, features, or any discrete coding task, there should be:
+    - "Feature/Bug/Etc" type branches created for the work
+    - Before code is written, a plan is formulated
+    - The plan includes LOE expressed in Agile "story points", understanding that GenAI LOE is not human, but still, give relative scale.
+    - The plan expresses any concerns or pushback if the user is going against best practices or otherwise potentially painting themself in a corner
+- Once a plan is approved by the user, you can proceed
+- Other bugs or feature ideas that arise during coding should get a GitHub issue created for them
