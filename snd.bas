@@ -10,6 +10,7 @@ Const SND_KICK_LEN        = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN       = 4410   ' 100ms snare
 Const SND_HIHAT_LEN       = 2205   ' 50ms hi-hat
 Const BGM_PAD_TARGET      = 0.025  ' chord pad amplitude per voice (E minor triad)
+Const SND_CRAWL_PAD_TARGET = 0.020 ' chord pad amplitude per voice (G minor cinematic pad)
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -72,6 +73,20 @@ Dim Shared bgmPadPhase1 As Single
 Dim Shared bgmPadPhase2 As Single
 Dim Shared bgmPadPhase3 As Single
 Dim Shared bgmPadAmp    As Single
+
+' title screen drum sequencer (20-step, 5/4 martial pattern)
+Dim Shared titleBgmDrumStep  As Integer
+Dim Shared titleBgmDrumCount As Integer
+
+' crawl BGM: half-tempo Mars bass + G minor pad
+Dim Shared sndCrawlBassNote  As Integer
+Dim Shared sndCrawlBassCount As Integer
+Dim Shared sndCrawlBassPhase As Single
+Dim Shared sndCrawlBassFreq  As Single
+Dim Shared sndCrawlPadPhase1 As Single
+Dim Shared sndCrawlPadPhase2 As Single
+Dim Shared sndCrawlPadPhase3 As Single
+Dim Shared sndCrawlPadAmp    As Single
 
 Sub SND_Init()
     Dim sndK As Integer, sndF As Single, sndFade As Single
@@ -140,6 +155,10 @@ Sub SND_Init()
 
     titleBgmBassFreq = titleBgmBass(0) : titleBgmBassCount = titleBgmNoteDur * 4
     titleBgmLeadFreq = titleBgmLead(0) : titleBgmLeadCount = titleBgmNoteDur * 4
+    titleBgmDrumStep = 19 : titleBgmDrumCount = 1  ' fires step 0 (kick) on first audio sample
+
+    ' crawl BGM uses titleBgmBass at half tempo
+    sndCrawlBassFreq  = titleBgmBass(0) : sndCrawlBassCount = titleBgmNoteDur * 8
 
     ' pre-compute sound effects
     For sndK = 0 To SND_SHOOT_LEN - 1
@@ -363,6 +382,32 @@ Sub SND_TitleFill()
                 If titleBgmLeadPhase > 6.2832 Then titleBgmLeadPhase = titleBgmLeadPhase - 6.2832
                 musicSample = musicSample + (Sin(titleBgmLeadPhase) + Sin(titleBgmLeadPhase * 2) * 0.3 + Sin(titleBgmLeadPhase * 3) * 0.15) * 0.055
             End If
+            ' title percussion: martial 5/4 pattern (20 steps = one bar)
+            ' beats at steps 0,4,8,12,16; kick on 1+4, snare on 3, quarter-note hi-hat
+            titleBgmDrumCount = titleBgmDrumCount - 1
+            If titleBgmDrumCount <= 0 Then
+                titleBgmDrumStep  = (titleBgmDrumStep + 1) Mod 20
+                titleBgmDrumCount = titleBgmNoteDur
+                If titleBgmDrumStep = 0 Or titleBgmDrumStep = 12 Then sndKickPos  = 0
+                If titleBgmDrumStep = 8 Then sndSnarePos = 0
+                If titleBgmDrumStep = 0 Or titleBgmDrumStep = 4 Or titleBgmDrumStep = 8 _
+                Or titleBgmDrumStep = 12 Or titleBgmDrumStep = 16 Then sndHihatPos = 0
+            End If
+            If sndKickPos >= 0 Then
+                musicSample = musicSample + sndKick(sndKickPos)
+                sndKickPos = sndKickPos + 1
+                If sndKickPos >= SND_KICK_LEN Then sndKickPos = -1
+            End If
+            If sndSnarePos >= 0 Then
+                musicSample = musicSample + sndSnare(sndSnarePos)
+                sndSnarePos = sndSnarePos + 1
+                If sndSnarePos >= SND_SNARE_LEN Then sndSnarePos = -1
+            End If
+            If sndHihatPos >= 0 Then
+                musicSample = musicSample + sndHihat(sndHihatPos)
+                sndHihatPos = sndHihatPos + 1
+                If sndHihatPos >= SND_HIHAT_LEN Then sndHihatPos = -1
+            End If
             ' SFX preview for settings screen (pup sound triggered by OPTS_Update)
             sndTitleEfx = 0.0
             If sndPupPos >= 0 Then
@@ -372,6 +417,50 @@ Sub SND_TitleFill()
             End If
             SPK_Advance
             _SNDRAW musicSample * volMusic + sndTitleEfx * volSfx + spkSampleOut * volSpeech
+        Next sndK
+    End If
+End Sub
+
+Sub SND_ResetCrawlBGM()
+    sndCrawlBassNote  = 0
+    sndCrawlBassCount = titleBgmNoteDur * 8
+    sndCrawlBassPhase = 0
+    sndCrawlBassFreq  = titleBgmBass(0)
+    sndCrawlPadAmp    = 0
+End Sub
+
+Sub SND_CrawlFill()
+    Dim sndK As Integer, sndFillCount As Integer
+    sndFillCount = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
+    If sndFillCount > 0 Then
+        For sndK = 0 To sndFillCount - 1
+            ' Mars bass at half tempo (double note duration = 56 BPM effective)
+            sndCrawlBassCount = sndCrawlBassCount - 1
+            If sndCrawlBassCount <= 0 Then
+                sndCrawlBassNote  = (sndCrawlBassNote + 1) Mod 20
+                sndCrawlBassCount = titleBgmNoteDur * 8
+                sndCrawlBassPhase = 0
+                sndCrawlBassFreq  = titleBgmBass(sndCrawlBassNote)
+            End If
+            ' sustain for half the note (vs staccato quarter in title fill)
+            If sndCrawlBassCount > titleBgmNoteDur * 4 Then
+                sndCrawlBassPhase = sndCrawlBassPhase + 6.2832 * sndCrawlBassFreq / SAMPLE_RATE
+                If sndCrawlBassPhase > 6.2832 Then sndCrawlBassPhase = sndCrawlBassPhase - 6.2832
+                musicSample = (Sin(sndCrawlBassPhase) + Sin(sndCrawlBassPhase * 2) * 0.5 + Sin(sndCrawlBassPhase * 3) * 0.25) * 0.07
+            Else
+                musicSample = 0
+            End If
+            ' G minor sustain pad (G3/Bb3/D4) — cinematic, no melody
+            sndCrawlPadAmp = sndCrawlPadAmp + (SND_CRAWL_PAD_TARGET - sndCrawlPadAmp) * 0.00003
+            sndCrawlPadPhase1 = sndCrawlPadPhase1 + 6.2832 * 196.0 / SAMPLE_RATE  ' G3
+            sndCrawlPadPhase2 = sndCrawlPadPhase2 + 6.2832 * 233.1 / SAMPLE_RATE  ' Bb3
+            sndCrawlPadPhase3 = sndCrawlPadPhase3 + 6.2832 * 293.7 / SAMPLE_RATE  ' D4
+            If sndCrawlPadPhase1 > 6.2832 Then sndCrawlPadPhase1 = sndCrawlPadPhase1 - 6.2832
+            If sndCrawlPadPhase2 > 6.2832 Then sndCrawlPadPhase2 = sndCrawlPadPhase2 - 6.2832
+            If sndCrawlPadPhase3 > 6.2832 Then sndCrawlPadPhase3 = sndCrawlPadPhase3 - 6.2832
+            musicSample = musicSample + (Sin(sndCrawlPadPhase1) + Sin(sndCrawlPadPhase2) + Sin(sndCrawlPadPhase3)) * sndCrawlPadAmp
+            SPK_Advance
+            _SNDRAW musicSample * volMusic + spkSampleOut * volSpeech
         Next sndK
     End If
 End Sub
