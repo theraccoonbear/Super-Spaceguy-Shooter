@@ -64,6 +64,7 @@ Sub SEQ_Advance()
         Case SEQ_EMPEROR
             introTimer = 0
             gameState = GS_INTRO
+            SND_ResetEmperorBGM
         Case SEQ_PLAY
             StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
             gameState = GS_PLAYING
