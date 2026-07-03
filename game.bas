@@ -34,8 +34,6 @@ Sub GAME_NewGame
     ' clear backBuffer so no ghost frame bleeds through on first render
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    introTimer = 0
-    CRAWL_Prep "intro", scrH
-    crawlNextState = GS_INTRO
-    gameState = GS_CRAWL
+    SEQ_Init
+    SEQ_Advance
 End Sub

@@ -179,6 +179,7 @@ DIM SHARED prevGameState AS INTEGER : prevGameState = -1
 DIM SHARED volMusic  AS SINGLE : volMusic  = 0.1
 DIM SHARED volSfx    AS SINGLE : volSfx    = 0.65
 DIM SHARED volSpeech AS SINGLE : volSpeech = 1.0
+DIM SHARED settingNarration AS INTEGER : settingNarration = 1  ' 1=full crawl narration, 0=title/event speech only
 DIM SHARED optSel    AS INTEGER
 DIM SHARED optUpWas  AS INTEGER
 DIM SHARED optDnWas  AS INTEGER
@@ -205,6 +206,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'font.bas'
 '$INCLUDE:'gametext.bas'
 '$INCLUDE:'crawl.bas'
+'$INCLUDE:'sequence.bas'
 '$INCLUDE:'hud.bas'
 '$INCLUDE:'wave.bas'
 '$INCLUDE:'stage.bas'
@@ -1090,7 +1092,7 @@ DO
         IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0
         escWas = held(E3D_KEY_ESCAPE)
         IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
-            CRAWL_Prep "stage1", scrH : crawlNextState = GS_PLAYING : gameState = GS_CRAWL : introTimer = 0
+            introTimer = 0 : SEQ_Advance
         END IF
         SND_TitleFill
 
@@ -1098,20 +1100,26 @@ DO
         ' TEXT CRAWL — stage narrative scroll
         ' ============================================================
     CASE GS_CRAWL
-        IF crawlLineCount = 0 THEN gameState = crawlNextState : EXIT SELECT
+        IF crawlLineCount = 0 THEN SEQ_Advance : EXIT SELECT
         ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
         IF crawlTimer = 0 THEN StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
         tt = tt + 0.025
         crawlTimer = crawlTimer + 1
         crawlScroll = crawlScroll - CRAWL_SPEED
-        ' Fire speech when first line first enters the bottom of the screen.
-        ' SPK_SyncToScroll scales phoneme durations so speech ends when the
-        ' last line exits the top — keeps narration locked to the crawl.
-        IF crawlSpeechDone = 0 AND crawlScroll < scrH THEN
-            SPK_Say crawlSpeechText$
-            SPK_SyncToScroll crawlScroll + (crawlLineCount - 1) * CRAWL_LINE_H, CRAWL_SPEED
-            crawlSpeechDone = 1
-        END IF
+        ' Fire each paragraph's speech when its first line scrolls near the bottom.
+        ' All paragraphs use the same crawlRateScale (computed in CRAWL_Prep) so the
+        ' entire narration fills the crawl window at a consistent pace.
+        If settingNarration Then
+            Do While crawlParaIdx < crawlParaCount
+                If crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H Then Exit Do
+                If crawlParaIdx > 0 And SPK_IsPlaying% Then Exit Do
+                SPK_Say crawlParaText$(crawlParaIdx)
+                spkRateScale = crawlRateScale
+                crawlParaIdx = crawlParaIdx + 1
+            Loop
+        Else
+            crawlParaIdx = crawlParaCount  ' narration off: mark all paragraphs done
+        End If
 
         cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
         cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
@@ -1123,11 +1131,60 @@ DO
         LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
         E3D_StarfieldDraw vpMat, scrW, scrH
 
+        ' Fetch current spoken word once; used in both the line loop and bottom indicator
+        Dim crawlSpkW As String
+        Dim crawlHiVis As String, crawlHiViU As String, crawlHiPos As Integer, crawlHiX As Integer
+        Dim crawlSpkOcc As Integer, crawlHiPara As Integer
+        Dim crawlScanI As Integer, crawlScanV As String, crawlScanP As Integer
+        Dim crawlPriorOcc As Integer, crawlLineOcc As Integer, crawlHiLB As Integer, crawlHiRB As Integer
+        crawlSpkW = SPK_CurWord$
+        crawlSpkOcc = SPK_CurWordOcc%
+        crawlHiPara = crawlParaIdx - 1 : If crawlHiPara < 0 Then crawlHiPara = 0
+
         FOR crawlIdx = 0 TO crawlLineCount - 1
             crawlLY = INT(crawlScroll + crawlIdx * CRAWL_LINE_H)
             IF crawlLY > -CRAWL_LINE_H AND crawlLY < scrH THEN
                 IF LEN(crawlLines$(crawlIdx)) > 0 THEN
                     FONT_PrintCenteredRich fontPalette(), backBuffer, crawlLines$(crawlIdx), crawlLY, scrW
+                    ' Inline highlight: redraw the exact spoken word occurrence in cyan.
+                    ' Restricted to the active paragraph's lines; uses whole-word matching
+                    ' and occurrence index so only one instance lights up at a time.
+                    If Len(crawlSpkW) > 0 And crawlIdx >= crawlParaLine(crawlHiPara) And crawlIdx <= crawlParaLastLine(crawlHiPara) Then
+                        crawlHiVis = CRAWL_VisText$(crawlLines$(crawlIdx))
+                        crawlHiViU = UCase$(crawlHiVis)
+                        ' count whole-word occurrences in earlier lines of this paragraph
+                        crawlPriorOcc = 0
+                        For crawlScanI = crawlParaLine(crawlHiPara) To crawlIdx - 1
+                            crawlScanV = UCase$(CRAWL_VisText$(crawlLines$(crawlScanI)))
+                            crawlScanP = 1
+                            Do
+                                crawlScanP = InStr(crawlScanP, crawlScanV, crawlSpkW)
+                                If crawlScanP = 0 Then Exit Do
+                                crawlHiLB = 0 : If crawlScanP > 1 Then crawlHiLB = Asc(Mid$(crawlScanV, crawlScanP - 1, 1))
+                                crawlHiRB = 0 : If crawlScanP + Len(crawlSpkW) <= Len(crawlScanV) Then crawlHiRB = Asc(Mid$(crawlScanV, crawlScanP + Len(crawlSpkW), 1))
+                                If (crawlHiLB < 65 Or crawlHiLB > 90) And (crawlHiRB < 65 Or crawlHiRB > 90) Then crawlPriorOcc = crawlPriorOcc + 1
+                                crawlScanP = crawlScanP + Len(crawlSpkW)
+                            Loop
+                        Next crawlScanI
+                        ' find the target occurrence on this line
+                        crawlHiPos = 1 : crawlLineOcc = 0
+                        Do
+                            crawlHiPos = InStr(crawlHiPos, crawlHiViU, crawlSpkW)
+                            If crawlHiPos = 0 Then Exit Do
+                            crawlHiLB = 0 : If crawlHiPos > 1 Then crawlHiLB = Asc(Mid$(crawlHiViU, crawlHiPos - 1, 1))
+                            crawlHiRB = 0 : If crawlHiPos + Len(crawlSpkW) <= Len(crawlHiViU) Then crawlHiRB = Asc(Mid$(crawlHiViU, crawlHiPos + Len(crawlSpkW), 1))
+                            If (crawlHiLB < 65 Or crawlHiLB > 90) And (crawlHiRB < 65 Or crawlHiRB > 90) Then
+                                If crawlPriorOcc + crawlLineOcc = crawlSpkOcc Then
+                                    crawlHiX = (scrW - CRAWL_VisLen%(crawlLines$(crawlIdx)) * FONT_CHAR_W) \ 2
+                                    crawlHiX = crawlHiX + (crawlHiPos - 1) * FONT_CHAR_W
+                                    FONT_Print fontPalette(11), backBuffer, Mid$(crawlHiVis, crawlHiPos, Len(crawlSpkW)), crawlHiX, crawlLY
+                                    Exit Do
+                                End If
+                                crawlLineOcc = crawlLineOcc + 1
+                            End If
+                            crawlHiPos = crawlHiPos + Len(crawlSpkW)
+                        Loop
+                    End If
                 END IF
             END IF
         NEXT crawlIdx
@@ -1141,18 +1198,29 @@ DO
             LINE (0, scrH - 1 - crawlFY)-(scrW - 1, scrH - 1 - crawlFY), _RGBA(0, 0, 5, 200 - crawlFY * 6), BF
         NEXT crawlFY
 
+        ' Bottom-left word chip (` toggles both this and the inline highlight)
+        If crawlSpkOverlay And Len(crawlSpkW) > 0 Then
+            Line (0, scrH - FONT_CHAR_H - 3)-(Len(crawlSpkW) * FONT_CHAR_W + 7, scrH - 1), _RGB(0, 20, 60), BF
+            FONT_Print fontPalette(10), backBuffer, crawlSpkW, 4, scrH - FONT_CHAR_H - 1
+        End If
+
         ' auto-advance when last line has cleared the top fade band
         IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
-            IF crawlNextState = GS_PLAYING THEN StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
-            SPK_Say ""
-            gameState = crawlNextState
+            crawlParaIdx = crawlParaCount : SPK_Say ""
+            SEQ_Advance
         END IF
         ' SPACE to skip (locked 1 sec to prevent accidental carry-through from intro)
         IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
-            IF crawlNextState = GS_PLAYING THEN StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
-            SPK_Say ""
-            gameState = crawlNextState
+            crawlParaIdx = crawlParaCount : SPK_Say ""
+            SEQ_Advance
         END IF
+        ' ` toggles speech word overlay (inline highlight + bottom chip)
+        If _KeyDown(96) Then
+            If Not crawlBtWas Then crawlSpkOverlay = 1 - crawlSpkOverlay
+            crawlBtWas = -1
+        Else
+            crawlBtWas = 0
+        End If
 
         _DEST 0 : _PUTIMAGE , backBuffer, 0
         SND_TitleFill

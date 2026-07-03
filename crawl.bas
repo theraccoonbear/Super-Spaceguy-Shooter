@@ -12,6 +12,7 @@ CONST CRAWL_MAX_LINES = 64
 CONST CRAWL_CHARS     = 34     ' max chars per line (8px font, ~20px side margins)
 CONST CRAWL_LINE_H    = 22     ' line height in pixels (FONT_CHAR_H + 6)
 CONST CRAWL_SPEED     = 0.25   ' pixels per frame upward
+CONST CRAWL_TOP_FADE  = 48     ' height of top fade band in pixels
 
 DIM SHARED crawlLines$(0 TO 63)
 DIM SHARED crawlLineCount AS INTEGER
@@ -19,9 +20,21 @@ DIM SHARED crawlScroll AS SINGLE
 DIM SHARED crawlTimer AS INTEGER
 DIM SHARED crawlSpeechText$
 DIM SHARED crawlSpeechDone AS INTEGER
+
+CONST CRAWL_MAX_PARAS = 16
+DIM SHARED crawlParaCount AS INTEGER
+DIM SHARED crawlParaLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
+DIM SHARED crawlParaLastLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
+DIM SHARED crawlParaText$(0 TO CRAWL_MAX_PARAS - 1)
+DIM SHARED crawlParaIdx AS INTEGER
+DIM SHARED crawlPrevRate AS SINGLE
+DIM SHARED crawlRateScale AS SINGLE  ' uniform rate for whole crawl; computed in CRAWL_Prep
+
 DIM crawlIdx AS INTEGER
 DIM crawlLY AS INTEGER
 DIM crawlFY AS INTEGER
+DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
+DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
 
 ' Strip ~X color codes; expand single digits to English words for speech.
 Function CRAWL_StripColor$(scS As String)
@@ -55,6 +68,27 @@ Function CRAWL_StripColor$(scS As String)
         End If
     Loop
     CRAWL_StripColor$ = scR
+End Function
+
+' Returns visible text of s with ~X color codes stripped but otherwise unmodified
+' (no digit expansion, no case change). Use for pixel-position math and word lookup.
+Function CRAWL_VisText$(cvtS As String)
+    Dim cvtR As String, cvtI As Integer, cvtC As Integer, cvtH As Integer
+    cvtR = "" : cvtI = 1
+    Do While cvtI <= Len(cvtS)
+        cvtC = Asc(Mid$(cvtS, cvtI, 1))
+        If cvtC = 126 And cvtI < Len(cvtS) Then
+            cvtH = Asc(UCase$(Mid$(cvtS, cvtI + 1, 1)))
+            If (cvtH >= 48 And cvtH <= 57) Or (cvtH >= 65 And cvtH <= 70) Then
+                cvtI = cvtI + 2
+            Else
+                cvtR = cvtR + Chr$(cvtC) : cvtI = cvtI + 1
+            End If
+        Else
+            cvtR = cvtR + Chr$(cvtC) : cvtI = cvtI + 1
+        End If
+    Loop
+    CRAWL_VisText$ = cvtR
 End Function
 
 ' Returns visible character count of s, excluding ~X color codes.
@@ -126,6 +160,7 @@ End Sub
 SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
     DIM cpBlock AS STRING, cpPos AS LONG, cpNxt AS LONG, cpLn AS STRING
     DIM cpCI AS INTEGER, cpCJ AS INTEGER, cpCA AS INTEGER, cpLast AS STRING
+    DIM cpAllText AS STRING, cpAllI AS INTEGER, cpNatural AS LONG, cpNatJ AS INTEGER, cpSyncPx AS SINGLE
     crawlLineCount = 0
     crawlTimer = 0
     cpBlock = GTEXT_Get$(cpKey)
@@ -167,25 +202,53 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
             NEXT cpCJ
         END IF
     NEXT cpCI
-    crawlScroll = cpStartY + CRAWL_LINE_H * 2
+    crawlScroll = cpStartY  ' start text at screen bottom — visible immediately with bottom fade
 
-    ' Build plain-text speech string from finished line array.
-    ' Blank lines between paragraphs insert a PARSPAUSE token so SPK_Say
-    ' adds a ~300ms pause at paragraph breaks.
-    Dim cpSI As Integer, cpSLine As String
-    Dim cpHadText As Integer, cpParaBreak As Integer
-    crawlSpeechText$ = "" : cpHadText = 0 : cpParaBreak = 0
+    ' Build per-paragraph speech arrays; each paragraph fires separately when
+    ' its first line scrolls onto screen, giving natural inter-paragraph silence.
+    Dim cpSI As Integer, cpSLine As String, cpParaOpen As Integer
+    crawlParaCount = 0 : crawlParaIdx = 0 : crawlPrevRate = 1.0 : cpParaOpen = 0
     For cpSI = 0 To crawlLineCount - 1
         cpSLine = LTrim$(RTrim$(CRAWL_StripColor$(crawlLines$(cpSI))))
         If Len(cpSLine) > 0 Then
-            If cpParaBreak And cpHadText Then
-                crawlSpeechText$ = crawlSpeechText$ + "PARSPAUSE "
+            If Not cpParaOpen Then
+                If crawlParaCount < CRAWL_MAX_PARAS Then
+                    crawlParaLine(crawlParaCount) = cpSI
+                    crawlParaText$(crawlParaCount) = ""
+                    crawlParaCount = crawlParaCount + 1
+                End If
+                cpParaOpen = -1
             End If
-            crawlSpeechText$ = crawlSpeechText$ + cpSLine + " "
-            cpHadText = -1 : cpParaBreak = 0
+            If crawlParaCount > 0 Then
+                crawlParaText$(crawlParaCount - 1) = crawlParaText$(crawlParaCount - 1) + cpSLine + " "
+                crawlParaLastLine(crawlParaCount - 1) = cpSI
+            End If
         Else
-            If cpHadText Then cpParaBreak = -1
+            cpParaOpen = 0
         End If
     Next cpSI
+    ' Compute a single uniform speech rate for the whole crawl: speech fills the window
+    ' from the first paragraph's trigger point to the last line exiting the top fade band.
+    ' All paragraphs then speak at this same rate, avoiding per-paragraph pace variation.
+    crawlRateScale = 1.0
+    If settingNarration And crawlParaCount > 0 Then
+        cpAllText = ""
+        For cpAllI = 0 To crawlParaCount - 1
+            cpAllText = cpAllText + crawlParaText$(cpAllI)
+        Next cpAllI
+        SPK_Say cpAllText  ' dry-run: fills phoneme queue for counting only
+        cpNatural = 0
+        For cpNatJ = 0 To spkPhoneCount - 1
+            cpNatural = cpNatural + spkDur(spkPhones(cpNatJ), spkStress(cpNatJ))
+        Next cpNatJ
+        If cpNatural > 0 Then
+            cpSyncPx = (cpStartY - CRAWL_LINE_H - CRAWL_TOP_FADE) _
+                     + (crawlParaLastLine(crawlParaCount - 1) - crawlParaLine(0)) * CRAWL_LINE_H
+            crawlRateScale = (cpSyncPx / CRAWL_SPEED * SAMPLE_RATE / 60.0) / cpNatural
+            If crawlRateScale < 0.60 Then crawlRateScale = 0.60
+            If crawlRateScale > 1.20 Then crawlRateScale = 1.20
+        End If
+        spkPhoneCount = 0 : spkPhoneIdx = 0  ' reset dry-run queue; no audio plays yet
+    End If
     crawlSpeechDone = 0
 END SUB
