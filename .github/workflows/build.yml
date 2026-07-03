@@ -15,24 +15,28 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            name: Build Linux
             artifact-name: sss-linux
             artifact-path: builds/sss
             release-asset-name: sss-linux
             sidecar-binary: sss-net
             sidecar-release-name: sss-net-linux
           - os: macos-latest
+            name: Build macOS
             artifact-name: sss-macos
             artifact-path: builds/sss
             release-asset-name: sss-macos
             sidecar-binary: sss-net
             sidecar-release-name: sss-net-macos
           - os: windows-latest
+            name: Build Windows
             artifact-name: sss-windows
             artifact-path: builds/sss.exe
             release-asset-name: sss-windows.exe
             sidecar-binary: sss-net.exe
             sidecar-release-name: sss-net-windows.exe
 
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
 
     steps:
