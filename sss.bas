@@ -17,6 +17,7 @@ $EMBED:'code/3d/assets/models.e3d':'MODELS'
 $EMBED:'code/3d/assets/gametext.txt':'GAMETEXT'
 $EMBED:'code/3d/assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'code/3d/assets/speech_dict.txt':'SPEECHDICT'
+$EMBED:'code/3d/assets/music.mus':'MUSICDATA'
 ' --- constants needed by included files ---
 CONST SAMPLE_RATE = 44100  ' audio sample rate; used by snd.bas and speech.bas
 CONST GS_TITLE     = 0
@@ -203,6 +204,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'speech.bas'
 '$INCLUDE:'effects.bas'
 '$INCLUDE:'snd.bas'
+'$INCLUDE:'music.bas'
 '$INCLUDE:'behavior.bas'
 '$INCLUDE:'font.bas'
 '$INCLUDE:'gametext.bas'
@@ -334,6 +336,7 @@ DIM gameOverDelay AS INTEGER
 DIM pKeyWas AS INTEGER
 DIM escConfirm AS INTEGER
 DIM escWas AS INTEGER
+DIM spaceWas AS INTEGER
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
 DIM isManeuver AS INTEGER
@@ -354,6 +357,8 @@ fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 SND_Init
 SPK_Init
 SETTINGS_Load
+SEQ_Init
+SEQ_Advance
 
 ' ============================================================
 ' MAIN LOOP
@@ -380,7 +385,7 @@ DO
             IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN
                 gameState = GS_TITLE
                 planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
-                SND_ResetGameBGM
+                MUS_SetCue "title"
                 escWas = held(E3D_KEY_ESCAPE)
                 EXIT SELECT
             END IF
@@ -394,7 +399,7 @@ DO
             IF escConfirm THEN
                 IF _KEYDOWN(89) OR _KEYDOWN(121) THEN
                     escConfirm = 0 : gameState = GS_TITLE
-                    SND_ResetGameBGM
+                    MUS_SetCue "title"
                 END IF
                 IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
                 _DEST backBuffer
@@ -657,7 +662,7 @@ DO
                     bossTargetY = player.py
                     bossTargetZ = player.pz
                     bossState = 0
-                    SND_SetBossMode -1
+                    MUS_SetCue "boss"
                 END IF
             END IF
 
@@ -765,7 +770,7 @@ DO
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
-                                SND_ResetPlanetBGM
+                                MUS_SetCue "planet"
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
                                 score = score + 2000
@@ -785,7 +790,7 @@ DO
                                         pk = pk + 1
                                     END IF
                                 NEXT p
-                                SND_ResetGameBGM
+                                MUS_SetCue "game"
                             END IF
                         END IF
                     END IF
@@ -825,7 +830,7 @@ DO
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
                 StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-                SND_ResetGameOverBGM
+                MUS_SetCue "gameover"
                 SPK_Say "GAME OVER"
                 gameOver = 0
             END IF
@@ -1037,7 +1042,7 @@ DO
         If gameState = GS_PLAYING Then
             SND_GameFill isManeuver
         Else
-            SND_PlanetFill
+            MUS_Fill 0
         End If
 
         ' ============================================================
@@ -1078,11 +1083,12 @@ DO
         END IF
         IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
         IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
-        SND_TitleFill
+        MUS_Fill 0
         EXIT SELECT
     END IF
-    SND_TitleFill
-    IF held(E3D_KEY_SPACE) THEN GAME_NewGame
+    MUS_Fill 0
+    IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN GAME_NewGame
+    spaceWas = held(E3D_KEY_SPACE)
 
     ' ============================================================
     ' INTRO SCREEN — emperor reveal
@@ -1112,12 +1118,13 @@ CASE GS_INTRO
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0
+    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
     escWas = held(E3D_KEY_ESCAPE)
-    IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
+    IF held(E3D_KEY_SPACE) AND NOT spaceWas AND introTimer > 45 THEN
         introTimer = 0 : SEQ_Advance
     END IF
-    SND_EmperorFill
+    spaceWas = held(E3D_KEY_SPACE)
+    MUS_Fill 0
 
     ' ============================================================
     ' TEXT CRAWL — stage narrative scroll
@@ -1127,7 +1134,7 @@ CASE GS_CRAWL
     ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
     IF crawlTimer = 0 THEN
         StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-        SND_ResetCrawlBGM
+        MUS_SetCue "crawl"
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
@@ -1236,10 +1243,11 @@ CASE GS_CRAWL
         SEQ_Advance
     END IF
     ' SPACE to skip (locked 1 sec to prevent accidental carry-through from intro)
-    IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
+    IF held(E3D_KEY_SPACE) AND NOT spaceWas AND crawlTimer > 60 THEN
         crawlParaIdx = crawlParaCount : SPK_Say ""
         SEQ_Advance
     END IF
+    spaceWas = held(E3D_KEY_SPACE)
     ' ` toggles speech word overlay (inline highlight + bottom chip)
     IF _KEYDOWN(96) THEN
         IF NOT crawlBtWas THEN crawlSpkOverlay = 1 - crawlSpkOverlay
@@ -1249,7 +1257,7 @@ CASE GS_CRAWL
     END IF
 
     _DEST 0 : _PUTIMAGE , backBuffer, 0
-    SND_CrawlFill
+    MUS_Fill 0
 
     ' ============================================================
     ' GAME OVER SCREEN
@@ -1277,18 +1285,19 @@ CASE GS_GAMEOVER
         throbBright = INT(170 + 85 * SIN(tt * 5))
         COLOR _RGB(throbBright, throbBright, throbBright)
         _PRINTSTRING (scrW / 2 - 80, scrH / 2 + 28), "PRESS SPACE TO PLAY"
-        IF held(E3D_KEY_SPACE) THEN gameState = GS_TITLE
+        IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : MUS_SetCue "title"
     END IF
+    spaceWas = held(E3D_KEY_SPACE)
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    SND_GameOverFill
+    MUS_Fill 0
 
     ' ============================================================
     ' SETTINGS / VOLUME CONFIG
     ' ============================================================
 CASE GS_OPTIONS
     OPTS_Update
-    SND_TitleFill
+    MUS_Fill 0
 
 END SELECT
 
