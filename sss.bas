@@ -824,6 +824,7 @@ DO
                 IF score > highScore THEN highScore = score
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
+                StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
                 SND_ResetGameOverBGM
                 SPK_Say "GAME OVER"
                 gameOver = 0
