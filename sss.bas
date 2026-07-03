@@ -1102,7 +1102,10 @@ DO
     CASE GS_CRAWL
         IF crawlLineCount = 0 THEN SEQ_Advance : EXIT SELECT
         ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
-        IF crawlTimer = 0 THEN StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
+        If crawlTimer = 0 Then
+            StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
+            SND_ResetCrawlBGM
+        End If
         tt = tt + 0.025
         crawlTimer = crawlTimer + 1
         crawlScroll = crawlScroll - CRAWL_SPEED
@@ -1223,7 +1226,7 @@ DO
         End If
 
         _DEST 0 : _PUTIMAGE , backBuffer, 0
-        SND_TitleFill
+        SND_CrawlFill
 
         ' ============================================================
         ' GAME OVER SCREEN
