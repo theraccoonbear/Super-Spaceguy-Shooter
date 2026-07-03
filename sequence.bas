@@ -33,6 +33,7 @@ Sub SEQ_Init()
     seqCount = 0 : seqIdx = -1
     SEQ_Add SEQ_CRAWL,   "intro"   ' prologue
     SEQ_Add SEQ_EMPEROR, ""        ' antagonist reveal
+    SEQ_Add SEQ_TITLE,   ""        ' main menu
     SEQ_Add SEQ_CRAWL,   "stage1"  ' chapter 1
     SEQ_Add SEQ_PLAY,    ""        ' stage 1
     SEQ_Add SEQ_CRAWL,   "stage2"  ' chapter 2
@@ -54,6 +55,7 @@ Sub SEQ_Advance()
     seqIdx = seqIdx + 1
     If seqIdx >= seqCount Then
         gameState = GS_TITLE
+        MUS_SetCue "title"
         Exit Sub
     End If
     Select Case seqKind(seqIdx)
@@ -64,10 +66,13 @@ Sub SEQ_Advance()
         Case SEQ_EMPEROR
             introTimer = 0
             gameState = GS_INTRO
+            MUS_SetCue "emperor"
         Case SEQ_PLAY
             StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
             gameState = GS_PLAYING
+            MUS_SetCue "game"
         Case SEQ_TITLE
             gameState = GS_TITLE
+            MUS_SetCue "title"
     End Select
 End Sub

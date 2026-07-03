@@ -75,7 +75,6 @@ Sub STAGE_Update
             _DEST backBuffer
             Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
             SEQ_Advance
-            SND_ResetGameBGM
         End If
     End If
 End Sub
