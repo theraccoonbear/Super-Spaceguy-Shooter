@@ -12,7 +12,7 @@ $EMBED:'code/3d/assets/planet-03-clean.png':'PLANET03'
 $EMBED:'code/3d/assets/planet-04-clean.png':'PLANET04'
 $EMBED:'code/3d/assets/planet-05-clean.png':'PLANET05'
 $EMBED:'code/3d/assets/planet-06-clean.png':'PLANET06'
-$EMBED:'code/3d/assets/emperor.png':'EMPERORIMG'
+$EMBED:'code/3d/assets/grotuk.png':'EMPERORIMG'
 $EMBED:'code/3d/assets/models.e3d':'MODELS'
 $EMBED:'code/3d/assets/gametext.txt':'GAMETEXT'
 $EMBED:'code/3d/assets/gamevalues.ini':'GAMEVALUES'
@@ -196,6 +196,7 @@ DIM SHARED diffScale AS SINGLE
 DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 
+'$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
 DIM SHARED vpMat AS E3D_Matrix4
@@ -212,6 +213,13 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'stage.bas'
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
+
+' --- version arg ---
+Dim ssCmdLine As String : ssCmdLine = COMMAND$
+If InStr(ssCmdLine, "--version") > 0 Or ssCmdLine = "-v" Or Left$(ssCmdLine, 3) = "-v " Then
+    Print "Super Spaceguy Shooter " + VERSION$
+    System
+End If
 
 ' --- screen ---
 scrW = 320 : scrH = 240
@@ -276,10 +284,10 @@ E3D_LoadMesh mdl, "ENEMY_VWEDGE", meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_
 E3D_LoadMesh mdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
 E3D_LoadMesh mdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
 E3D_LoadMesh mdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
-Dim mlI As Integer
-For mlI = 1 To MESH_COUNT
+DIM mlI AS INTEGER
+FOR mlI = 1 TO MESH_COUNT
     E3D_BakeMeshNormals meshLib(mlI)
-Next mlI
+NEXT mlI
 
 ' --- init player ---
 player.active  = -1
@@ -344,7 +352,7 @@ SETTINGS_Load
 ' MAIN LOOP
 ' ============================================================
 DO
-    dbgT0 = Timer
+    dbgT0 = TIMER
     ' --- input ---
     E3D_InputUpdate held()
 
@@ -1036,6 +1044,7 @@ DO
         IF highScore > 0 THEN
             FONT_PrintCentered fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 220, scrW
         END IF
+        FONT_Print fontPalette(8), backBuffer, "v" + VERSION$, scrW - Len("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H
         IF titleEscConfirm THEN
             LINE (scrW/2 - 60, scrH/2 - 22)-(scrW/2 + 60, scrH/2 + 22), _RGBA(0, 0, 10, 215), BF
             LINE (scrW/2 - 60, scrH/2 - 22)-(scrW/2 + 60, scrH/2 + 22), _RGB(90, 90, 130), B
@@ -1050,260 +1059,260 @@ DO
         escWas = held(E3D_KEY_ESCAPE)
         IF titleEscConfirm THEN
             IF _KEYDOWN(83) OR _KEYDOWN(115) THEN  ' S — settings
-                gameState = GS_OPTIONS : titleEscConfirm = 0
-                optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1
-            END IF
-            IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
-            IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
-            SND_TitleFill
-            EXIT SELECT
+            gameState = GS_OPTIONS : titleEscConfirm = 0
+            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1
         END IF
+        IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
+        IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
         SND_TitleFill
-        IF held(E3D_KEY_SPACE) THEN GAME_NewGame
+        EXIT SELECT
+    END IF
+    SND_TitleFill
+    IF held(E3D_KEY_SPACE) THEN GAME_NewGame
 
-        ' ============================================================
-        ' INTRO SCREEN — emperor reveal
-        ' ============================================================
-    CASE GS_INTRO
-        tt = tt + 0.025
-        introTimer = introTimer + 1
-        _DEST backBuffer
-        LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-        IF emperorImg <> 0 THEN
-            _PUTIMAGE (10, 0)-(309, scrH - 1), emperorImg, backBuffer
-        END IF
-        ' empire name header bar
-        LINE (0, 0)-(scrW - 1, 22), _RGBA(0, 0, 8, 210), BF
-        FONT_PrintCentered fontPalette(14), backBuffer, empireName, 4, scrW
-        ' emperor name + prompt footer bar
-        LINE (0, scrH - 38)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 210), BF
-        FONT_PrintCentered fontPalette(14), backBuffer, emperorName, scrH - 34, scrW
-        IF introTimer > 60 THEN
-            throbBright = INT(160 + 95 * SIN(tt * 5))
-            COLOR _RGB(throbBright, throbBright, throbBright)
-            _PRINTSTRING (scrW\2 - 44, scrH - 14), "PRESS SPACE"
-        END IF
-        ' fade in from black
-        IF introTimer < 40 THEN
-            LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, 255 - introTimer * 6), BF
-        END IF
-        _DEST 0
-        _PUTIMAGE , backBuffer, 0
-        IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0
-        escWas = held(E3D_KEY_ESCAPE)
-        IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
-            introTimer = 0 : SEQ_Advance
-        END IF
-        SND_TitleFill
+    ' ============================================================
+    ' INTRO SCREEN — emperor reveal
+    ' ============================================================
+CASE GS_INTRO
+    tt = tt + 0.025
+    introTimer = introTimer + 1
+    _DEST backBuffer
+    LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
+    IF emperorImg <> 0 THEN
+        _PUTIMAGE (10, 0)-(309, scrH - 1), emperorImg, backBuffer
+    END IF
+    ' empire name header bar
+    LINE (0, 0)-(scrW - 1, 22), _RGBA(0, 0, 8, 210), BF
+    FONT_PrintCentered fontPalette(14), backBuffer, empireName, 4, scrW
+    ' emperor name + prompt footer bar
+    LINE (0, scrH - 38)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 210), BF
+    FONT_PrintCentered fontPalette(14), backBuffer, emperorName, scrH - 34, scrW
+    IF introTimer > 60 THEN
+        throbBright = INT(160 + 95 * SIN(tt * 5))
+        COLOR _RGB(throbBright, throbBright, throbBright)
+        _PRINTSTRING (scrW\2 - 44, scrH - 14), "PRESS SPACE"
+    END IF
+    ' fade in from black
+    IF introTimer < 40 THEN
+        LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, 255 - introTimer * 6), BF
+    END IF
+    _DEST 0
+    _PUTIMAGE , backBuffer, 0
+    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0
+    escWas = held(E3D_KEY_ESCAPE)
+    IF held(E3D_KEY_SPACE) AND introTimer > 45 THEN
+        introTimer = 0 : SEQ_Advance
+    END IF
+    SND_TitleFill
 
-        ' ============================================================
-        ' TEXT CRAWL — stage narrative scroll
-        ' ============================================================
-    CASE GS_CRAWL
-        IF crawlLineCount = 0 THEN SEQ_Advance : EXIT SELECT
-        ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
-        If crawlTimer = 0 Then
-            StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-            SND_ResetCrawlBGM
-        End If
-        tt = tt + 0.025
-        crawlTimer = crawlTimer + 1
-        crawlScroll = crawlScroll - CRAWL_SPEED
-        ' Fire each paragraph's speech when its first line scrolls near the bottom.
-        ' All paragraphs use the same crawlRateScale (computed in CRAWL_Prep) so the
-        ' entire narration fills the crawl window at a consistent pace.
-        If settingNarration Then
-            Do While crawlParaIdx < crawlParaCount
-                If crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H Then Exit Do
-                If crawlParaIdx > 0 And SPK_IsPlaying% Then Exit Do
-                SPK_Say crawlParaText$(crawlParaIdx)
-                spkRateScale = crawlRateScale
-                crawlParaIdx = crawlParaIdx + 1
-            Loop
-        Else
-            crawlParaIdx = crawlParaCount  ' narration off: mark all paragraphs done
-        End If
+    ' ============================================================
+    ' TEXT CRAWL — stage narrative scroll
+    ' ============================================================
+CASE GS_CRAWL
+    IF crawlLineCount = 0 THEN SEQ_Advance : EXIT SELECT
+    ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
+    IF crawlTimer = 0 THEN
+        StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
+        SND_ResetCrawlBGM
+    END IF
+    tt = tt + 0.025
+    crawlTimer = crawlTimer + 1
+    crawlScroll = crawlScroll - CRAWL_SPEED
+    ' Fire each paragraph's speech when its first line scrolls near the bottom.
+    ' All paragraphs use the same crawlRateScale (computed in CRAWL_Prep) so the
+    ' entire narration fills the crawl window at a consistent pace.
+    IF settingNarration THEN
+        DO WHILE crawlParaIdx < crawlParaCount
+            IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN EXIT DO
+            IF crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
+            SPK_Say crawlParaText$(crawlParaIdx)
+            spkRateScale = crawlRateScale
+            crawlParaIdx = crawlParaIdx + 1
+        LOOP
+    ELSE
+        crawlParaIdx = crawlParaCount  ' narration off: mark all paragraphs done
+    END IF
 
-        cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
-        cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
-        E3D_MatLookAt cam, viewMat
-        E3D_MatMul projMat, viewMat, vpMat
-        E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
+    cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
+    cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
+    E3D_MatLookAt cam, viewMat
+    E3D_MatMul projMat, viewMat, vpMat
+    E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
 
-        _DEST backBuffer
-        LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-        E3D_StarfieldDraw vpMat, scrW, scrH
+    _DEST backBuffer
+    LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
+    E3D_StarfieldDraw vpMat, scrW, scrH
 
-        ' Fetch current spoken word once; used in both the line loop and bottom indicator
-        Dim crawlSpkW As String
-        Dim crawlHiVis As String, crawlHiViU As String, crawlHiPos As Integer, crawlHiX As Integer
-        Dim crawlSpkOcc As Integer, crawlHiPara As Integer
-        Dim crawlScanI As Integer, crawlScanV As String, crawlScanP As Integer
-        Dim crawlPriorOcc As Integer, crawlLineOcc As Integer, crawlHiLB As Integer, crawlHiRB As Integer
-        crawlSpkW = SPK_CurWord$
-        crawlSpkOcc = SPK_CurWordOcc%
-        crawlHiPara = crawlParaIdx - 1 : If crawlHiPara < 0 Then crawlHiPara = 0
+    ' Fetch current spoken word once; used in both the line loop and bottom indicator
+    DIM crawlSpkW AS STRING
+    DIM crawlHiVis AS STRING, crawlHiViU AS STRING, crawlHiPos AS INTEGER, crawlHiX AS INTEGER
+    DIM crawlSpkOcc AS INTEGER, crawlHiPara AS INTEGER
+    DIM crawlScanI AS INTEGER, crawlScanV AS STRING, crawlScanP AS INTEGER
+    DIM crawlPriorOcc AS INTEGER, crawlLineOcc AS INTEGER, crawlHiLB AS INTEGER, crawlHiRB AS INTEGER
+    crawlSpkW = SPK_CurWord$
+    crawlSpkOcc = SPK_CurWordOcc%
+    crawlHiPara = crawlParaIdx - 1 : IF crawlHiPara < 0 THEN crawlHiPara = 0
 
-        FOR crawlIdx = 0 TO crawlLineCount - 1
-            crawlLY = INT(crawlScroll + crawlIdx * CRAWL_LINE_H)
-            IF crawlLY > -CRAWL_LINE_H AND crawlLY < scrH THEN
-                IF LEN(crawlLines$(crawlIdx)) > 0 THEN
-                    FONT_PrintCenteredRich fontPalette(), backBuffer, crawlLines$(crawlIdx), crawlLY, scrW
-                    ' Inline highlight: redraw the exact spoken word occurrence in cyan.
-                    ' Restricted to the active paragraph's lines; uses whole-word matching
-                    ' and occurrence index so only one instance lights up at a time.
-                    If Len(crawlSpkW) > 0 And crawlIdx >= crawlParaLine(crawlHiPara) And crawlIdx <= crawlParaLastLine(crawlHiPara) Then
-                        crawlHiVis = CRAWL_VisText$(crawlLines$(crawlIdx))
-                        crawlHiViU = UCase$(crawlHiVis)
-                        ' count whole-word occurrences in earlier lines of this paragraph
-                        crawlPriorOcc = 0
-                        For crawlScanI = crawlParaLine(crawlHiPara) To crawlIdx - 1
-                            crawlScanV = UCase$(CRAWL_VisText$(crawlLines$(crawlScanI)))
-                            crawlScanP = 1
-                            Do
-                                crawlScanP = InStr(crawlScanP, crawlScanV, crawlSpkW)
-                                If crawlScanP = 0 Then Exit Do
-                                crawlHiLB = 0 : If crawlScanP > 1 Then crawlHiLB = Asc(Mid$(crawlScanV, crawlScanP - 1, 1))
-                                crawlHiRB = 0 : If crawlScanP + Len(crawlSpkW) <= Len(crawlScanV) Then crawlHiRB = Asc(Mid$(crawlScanV, crawlScanP + Len(crawlSpkW), 1))
-                                If (crawlHiLB < 65 Or crawlHiLB > 90) And (crawlHiRB < 65 Or crawlHiRB > 90) Then crawlPriorOcc = crawlPriorOcc + 1
-                                crawlScanP = crawlScanP + Len(crawlSpkW)
-                            Loop
-                        Next crawlScanI
-                        ' find the target occurrence on this line
-                        crawlHiPos = 1 : crawlLineOcc = 0
-                        Do
-                            crawlHiPos = InStr(crawlHiPos, crawlHiViU, crawlSpkW)
-                            If crawlHiPos = 0 Then Exit Do
-                            crawlHiLB = 0 : If crawlHiPos > 1 Then crawlHiLB = Asc(Mid$(crawlHiViU, crawlHiPos - 1, 1))
-                            crawlHiRB = 0 : If crawlHiPos + Len(crawlSpkW) <= Len(crawlHiViU) Then crawlHiRB = Asc(Mid$(crawlHiViU, crawlHiPos + Len(crawlSpkW), 1))
-                            If (crawlHiLB < 65 Or crawlHiLB > 90) And (crawlHiRB < 65 Or crawlHiRB > 90) Then
-                                If crawlPriorOcc + crawlLineOcc = crawlSpkOcc Then
-                                    crawlHiX = (scrW - CRAWL_VisLen%(crawlLines$(crawlIdx)) * FONT_CHAR_W) \ 2
-                                    crawlHiX = crawlHiX + (crawlHiPos - 1) * FONT_CHAR_W
-                                    FONT_Print fontPalette(11), backBuffer, Mid$(crawlHiVis, crawlHiPos, Len(crawlSpkW)), crawlHiX, crawlLY
-                                    Exit Do
-                                End If
-                                crawlLineOcc = crawlLineOcc + 1
-                            End If
-                            crawlHiPos = crawlHiPos + Len(crawlSpkW)
-                        Loop
-                    End If
+    FOR crawlIdx = 0 TO crawlLineCount - 1
+        crawlLY = INT(crawlScroll + crawlIdx * CRAWL_LINE_H)
+        IF crawlLY > -CRAWL_LINE_H AND crawlLY < scrH THEN
+            IF LEN(crawlLines$(crawlIdx)) > 0 THEN
+                FONT_PrintCenteredRich fontPalette(), backBuffer, crawlLines$(crawlIdx), crawlLY, scrW
+                ' Inline highlight: redraw the exact spoken word occurrence in cyan.
+                ' Restricted to the active paragraph's lines; uses whole-word matching
+                ' and occurrence index so only one instance lights up at a time.
+                IF LEN(crawlSpkW) > 0 AND crawlIdx >= crawlParaLine(crawlHiPara) AND crawlIdx <= crawlParaLastLine(crawlHiPara) THEN
+                    crawlHiVis = CRAWL_VisText$(crawlLines$(crawlIdx))
+                    crawlHiViU = UCASE$(crawlHiVis)
+                    ' count whole-word occurrences in earlier lines of this paragraph
+                    crawlPriorOcc = 0
+                    FOR crawlScanI = crawlParaLine(crawlHiPara) TO crawlIdx - 1
+                        crawlScanV = UCASE$(CRAWL_VisText$(crawlLines$(crawlScanI)))
+                        crawlScanP = 1
+                        DO
+                            crawlScanP = INSTR(crawlScanP, crawlScanV, crawlSpkW)
+                            IF crawlScanP = 0 THEN EXIT DO
+                            crawlHiLB = 0 : IF crawlScanP > 1 THEN crawlHiLB = ASC(MID$(crawlScanV, crawlScanP - 1, 1))
+                            crawlHiRB = 0 : IF crawlScanP + LEN(crawlSpkW) <= LEN(crawlScanV) THEN crawlHiRB = ASC(MID$(crawlScanV, crawlScanP + LEN(crawlSpkW), 1))
+                            IF (crawlHiLB < 65 OR crawlHiLB > 90) AND (crawlHiRB < 65 OR crawlHiRB > 90) THEN crawlPriorOcc = crawlPriorOcc + 1
+                            crawlScanP = crawlScanP + LEN(crawlSpkW)
+                        LOOP
+                    NEXT crawlScanI
+                    ' find the target occurrence on this line
+                    crawlHiPos = 1 : crawlLineOcc = 0
+                    DO
+                        crawlHiPos = INSTR(crawlHiPos, crawlHiViU, crawlSpkW)
+                        IF crawlHiPos = 0 THEN EXIT DO
+                        crawlHiLB = 0 : IF crawlHiPos > 1 THEN crawlHiLB = ASC(MID$(crawlHiViU, crawlHiPos - 1, 1))
+                        crawlHiRB = 0 : IF crawlHiPos + LEN(crawlSpkW) <= LEN(crawlHiViU) THEN crawlHiRB = ASC(MID$(crawlHiViU, crawlHiPos + LEN(crawlSpkW), 1))
+                        IF (crawlHiLB < 65 OR crawlHiLB > 90) AND (crawlHiRB < 65 OR crawlHiRB > 90) THEN
+                            IF crawlPriorOcc + crawlLineOcc = crawlSpkOcc THEN
+                                crawlHiX = (scrW - CRAWL_VisLen%(crawlLines$(crawlIdx)) * FONT_CHAR_W) \ 2
+                                crawlHiX = crawlHiX + (crawlHiPos - 1) * FONT_CHAR_W
+                                FONT_Print fontPalette(11), backBuffer, MID$(crawlHiVis, crawlHiPos, LEN(crawlSpkW)), crawlHiX, crawlLY
+                                EXIT DO
+                            END IF
+                            crawlLineOcc = crawlLineOcc + 1
+                        END IF
+                        crawlHiPos = crawlHiPos + LEN(crawlSpkW)
+                    LOOP
                 END IF
             END IF
-        NEXT crawlIdx
-
-        ' fade band at top — text fades out as it approaches the vanishing point
-        FOR crawlFY = 0 TO 47
-            LINE (0, crawlFY)-(scrW - 1, crawlFY), _RGBA(0, 0, 5, 255 - crawlFY * 5), BF
-        NEXT crawlFY
-        ' fade band at bottom — new text fades in from below
-        FOR crawlFY = 0 TO 31
-            LINE (0, scrH - 1 - crawlFY)-(scrW - 1, scrH - 1 - crawlFY), _RGBA(0, 0, 5, 200 - crawlFY * 6), BF
-        NEXT crawlFY
-
-        ' Bottom-left word chip (` toggles both this and the inline highlight)
-        If crawlSpkOverlay And Len(crawlSpkW) > 0 Then
-            Line (0, scrH - FONT_CHAR_H - 3)-(Len(crawlSpkW) * FONT_CHAR_W + 7, scrH - 1), _RGB(0, 20, 60), BF
-            FONT_Print fontPalette(10), backBuffer, crawlSpkW, 4, scrH - FONT_CHAR_H - 1
-        End If
-
-        ' auto-advance when last line has cleared the top fade band
-        IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
-            crawlParaIdx = crawlParaCount : SPK_Say ""
-            SEQ_Advance
         END IF
-        ' SPACE to skip (locked 1 sec to prevent accidental carry-through from intro)
-        IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
-            crawlParaIdx = crawlParaCount : SPK_Say ""
-            SEQ_Advance
-        END IF
-        ' ` toggles speech word overlay (inline highlight + bottom chip)
-        If _KeyDown(96) Then
-            If Not crawlBtWas Then crawlSpkOverlay = 1 - crawlSpkOverlay
-            crawlBtWas = -1
-        Else
-            crawlBtWas = 0
-        End If
+    NEXT crawlIdx
 
-        _DEST 0 : _PUTIMAGE , backBuffer, 0
-        SND_CrawlFill
+    ' fade band at top — text fades out as it approaches the vanishing point
+    FOR crawlFY = 0 TO 47
+        LINE (0, crawlFY)-(scrW - 1, crawlFY), _RGBA(0, 0, 5, 255 - crawlFY * 5), BF
+    NEXT crawlFY
+    ' fade band at bottom — new text fades in from below
+    FOR crawlFY = 0 TO 31
+        LINE (0, scrH - 1 - crawlFY)-(scrW - 1, scrH - 1 - crawlFY), _RGBA(0, 0, 5, 200 - crawlFY * 6), BF
+    NEXT crawlFY
 
-        ' ============================================================
-        ' GAME OVER SCREEN
-        ' ============================================================
-    CASE GS_GAMEOVER
-        tt = tt + 0.025
-        cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
-        cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
-        E3D_MatLookAt cam, viewMat
-        E3D_MatMul projMat, viewMat, vpMat
-        E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
-        _DEST backBuffer
-        LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-        E3D_StarfieldDraw vpMat, scrW, scrH
-        gameOverDelay = gameOverDelay - 1
-        FONT_PrintCentered fontPalette(14), backBuffer, "GAME OVER", scrH \ 2 - 28, scrW
-        FONT_PrintCentered fontPalette(9), backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 8, scrW
-        IF score >= highScore THEN
-            COLOR _RGB(255, 220, 60)
-        ELSE
-            COLOR _RGB(170, 170, 170)
-        END IF
-        _PRINTSTRING (scrW / 2 - 48, scrH / 2 +  8), "BEST:   " + LTRIM$(STR$(highScore))
-        IF gameOverDelay <= 0 THEN
-            throbBright = INT(170 + 85 * SIN(tt * 5))
-            COLOR _RGB(throbBright, throbBright, throbBright)
-            _PRINTSTRING (scrW / 2 - 80, scrH / 2 + 28), "PRESS SPACE TO PLAY"
-            IF held(E3D_KEY_SPACE) THEN gameState = GS_TITLE
-        END IF
-        _DEST 0
-        _PUTIMAGE , backBuffer, 0
-        SND_TitleFill
+    ' Bottom-left word chip (` toggles both this and the inline highlight)
+    IF crawlSpkOverlay AND LEN(crawlSpkW) > 0 THEN
+        LINE (0, scrH - FONT_CHAR_H - 3)-(LEN(crawlSpkW) * FONT_CHAR_W + 7, scrH - 1), _RGB(0, 20, 60), BF
+        FONT_Print fontPalette(10), backBuffer, crawlSpkW, 4, scrH - FONT_CHAR_H - 1
+    END IF
 
-        ' ============================================================
-        ' SETTINGS / VOLUME CONFIG
-        ' ============================================================
-    CASE GS_OPTIONS
-        OPTS_Update
-        SND_TitleFill
+    ' auto-advance when last line has cleared the top fade band
+    IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
+        crawlParaIdx = crawlParaCount : SPK_Say ""
+        SEQ_Advance
+    END IF
+    ' SPACE to skip (locked 1 sec to prevent accidental carry-through from intro)
+    IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
+        crawlParaIdx = crawlParaCount : SPK_Say ""
+        SEQ_Advance
+    END IF
+    ' ` toggles speech word overlay (inline highlight + bottom chip)
+    IF _KEYDOWN(96) THEN
+        IF NOT crawlBtWas THEN crawlSpkOverlay = 1 - crawlSpkOverlay
+        crawlBtWas = -1
+    ELSE
+        crawlBtWas = 0
+    END IF
 
-    END SELECT
+    _DEST 0 : _PUTIMAGE , backBuffer, 0
+    SND_CrawlFill
 
-    ' --- debug overlay toggle: ` (backtick) ---
-    IF _KEYDOWN(96) AND NOT dbgGraveWas THEN dbgOverlay = 1 - dbgOverlay
-    dbgGraveWas = _KEYDOWN(96)
+    ' ============================================================
+    ' GAME OVER SCREEN
+    ' ============================================================
+CASE GS_GAMEOVER
+    tt = tt + 0.025
+    cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
+    cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
+    E3D_MatLookAt cam, viewMat
+    E3D_MatMul projMat, viewMat, vpMat
+    E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
+    _DEST backBuffer
+    LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
+    E3D_StarfieldDraw vpMat, scrW, scrH
+    gameOverDelay = gameOverDelay - 1
+    FONT_PrintCentered fontPalette(14), backBuffer, "GAME OVER", scrH \ 2 - 28, scrW
+    FONT_PrintCentered fontPalette(9), backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 8, scrW
+    IF score >= highScore THEN
+        COLOR _RGB(255, 220, 60)
+    ELSE
+        COLOR _RGB(170, 170, 170)
+    END IF
+    _PRINTSTRING (scrW / 2 - 48, scrH / 2 +  8), "BEST:   " + LTRIM$(STR$(highScore))
+    IF gameOverDelay <= 0 THEN
+        throbBright = INT(170 + 85 * SIN(tt * 5))
+        COLOR _RGB(throbBright, throbBright, throbBright)
+        _PRINTSTRING (scrW / 2 - 80, scrH / 2 + 28), "PRESS SPACE TO PLAY"
+        IF held(E3D_KEY_SPACE) THEN gameState = GS_TITLE
+    END IF
+    _DEST 0
+    _PUTIMAGE , backBuffer, 0
+    SND_TitleFill
 
-    dbgFrameMs = (Timer - dbgT0) * 1000
+    ' ============================================================
+    ' SETTINGS / VOLUME CONFIG
+    ' ============================================================
+CASE GS_OPTIONS
+    OPTS_Update
+    SND_TitleFill
 
-    IF dbgOverlay THEN
-        Dim dbgPolyClr As Long, dbgFpsClr As Long, dbgFps As Single
-        If E3D_scnCount > 350 Then
-            dbgPolyClr = _RGB(255, 80, 60)
-        ElseIf E3D_scnCount > 200 Then
-            dbgPolyClr = _RGB(255, 210, 50)
-        Else
-            dbgPolyClr = _RGB(80, 210, 80)
-        End If
-        If dbgFrameMs > 0.0001 Then dbgFps = 1000 / dbgFrameMs Else dbgFps = 999
-        If dbgFps < 30 Then
-            dbgFpsClr = _RGB(255, 80, 60)
-        ElseIf dbgFps < 50 Then
-            dbgFpsClr = _RGB(255, 210, 50)
-        Else
-            dbgFpsClr = _RGB(80, 210, 80)
-        End If
-        _DEST 0
-        LINE (0, 0)-(85, 34), _RGBA(0, 0, 0, 190), BF
-        COLOR dbgPolyClr
-        _PRINTSTRING (2, 2),  "POLY " + LTrim$(Str$(E3D_scnCount)) + "/450"
-        COLOR dbgFpsClr
-        _PRINTSTRING (2, 13), "FPS  " + LTrim$(Str$(CInt(dbgFps)))
-        COLOR _RGB(140, 140, 160)
-        _PRINTSTRING (2, 24), "ms   " + Left$(Str$(dbgFrameMs + 1000), 6)
-    End If
+END SELECT
 
-    _LIMIT 60
-    _DISPLAY
+' --- debug overlay toggle: ` (backtick) ---
+IF _KEYDOWN(96) AND NOT dbgGraveWas THEN dbgOverlay = 1 - dbgOverlay
+dbgGraveWas = _KEYDOWN(96)
+
+dbgFrameMs = (TIMER - dbgT0) * 1000
+
+IF dbgOverlay THEN
+    DIM dbgPolyClr AS LONG, dbgFpsClr AS LONG, dbgFps AS SINGLE
+    IF E3D_scnCount > 350 THEN
+        dbgPolyClr = _RGB(255, 80, 60)
+    ELSEIF E3D_scnCount > 200 THEN
+        dbgPolyClr = _RGB(255, 210, 50)
+    ELSE
+        dbgPolyClr = _RGB(80, 210, 80)
+    END IF
+    IF dbgFrameMs > 0.0001 THEN dbgFps = 1000 / dbgFrameMs ELSE dbgFps = 999
+    IF dbgFps < 30 THEN
+        dbgFpsClr = _RGB(255, 80, 60)
+    ELSEIF dbgFps < 50 THEN
+        dbgFpsClr = _RGB(255, 210, 50)
+    ELSE
+        dbgFpsClr = _RGB(80, 210, 80)
+    END IF
+    _DEST 0
+    LINE (0, 0)-(85, 34), _RGBA(0, 0, 0, 190), BF
+    COLOR dbgPolyClr
+    _PRINTSTRING (2, 2),  "POLY " + LTRIM$(STR$(E3D_scnCount)) + "/450"
+    COLOR dbgFpsClr
+    _PRINTSTRING (2, 13), "FPS  " + LTRIM$(STR$(CINT(dbgFps)))
+    COLOR _RGB(140, 140, 160)
+    _PRINTSTRING (2, 24), "ms   " + LEFT$(STR$(dbgFrameMs + 1000), 6)
+END IF
+
+_LIMIT 60
+_DISPLAY
 LOOP
 
 SUB StarfieldReset(srX AS SINGLE, srY AS SINGLE, srZ AS SINGLE)
