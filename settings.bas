@@ -116,7 +116,7 @@ Sub OPTS_Update ()
     Next oSy
 
     ' main content panel
-    UI_DrawPanel 16, 8, scrW - 17, scrH - 22, "SETTINGS"
+    UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
 
     Dim oLabels(0 To 3) As String
     oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION"
@@ -126,33 +126,32 @@ Sub OPTS_Update ()
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
-            LINE (30, oY - 3)-(scrW - 31, oY + 13), _RGBA(0, 40, 100, 180), BF
-            LINE (30, oY - 3)-(scrW - 31, oY + 13), _RGB(0, 100, 180), B
+            LINE (30, oY - 3)-(scrW - 31, oY + 17), _RGBA(0, 40, 100, 180), BF
+            LINE (30, oY - 3)-(scrW - 31, oY + 17), _RGB(0, 100, 180), B
             ' corner accents on selection
             Dim oCC As Long : oCC = _RGB(0, 210, 255)
             LINE (30, oY - 3)-(34, oY - 3), oCC : LINE (30, oY - 3)-(30, oY + 1), oCC
             LINE (scrW - 31, oY - 3)-(scrW - 35, oY - 3), oCC : LINE (scrW - 31, oY - 3)-(scrW - 31, oY + 1), oCC
-            LINE (30, oY + 13)-(34, oY + 13), oCC : LINE (30, oY + 13)-(30, oY + 9), oCC
-            LINE (scrW - 31, oY + 13)-(scrW - 35, oY + 13), oCC : LINE (scrW - 31, oY + 13)-(scrW - 31, oY + 9), oCC
+            LINE (30, oY + 17)-(34, oY + 17), oCC : LINE (30, oY + 17)-(30, oY + 13), oCC
+            LINE (scrW - 31, oY + 17)-(scrW - 35, oY + 17), oCC : LINE (scrW - 31, oY + 17)-(scrW - 31, oY + 13), oCC
             FONT_Print fontPalette(14), backBuffer, oLabels(oI), 38, oY
         Else
             FONT_Print fontPalette(9), backBuffer, oLabels(oI), 38, oY
         End If
 
-        ' bar trough
-        LINE (OPT_BAR_X, oY)-(OPT_BAR_X + OPT_BAR_W, oY + 8), _RGB(4, 8, 28), BF
-        LINE (OPT_BAR_X, oY)-(OPT_BAR_X + OPT_BAR_W, oY + 8), _RGB(0, 55, 110), B
+        ' bar trough — centered in 16px label glyph (oY+4 to oY+12)
+        LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(4, 8, 28), BF
+        LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(0, 55, 110), B
         ' bar fill
         oFill = Int(OPT_BAR_W * oVols(oI) + 0.5)
         If oFill > 0 Then
-            LINE (OPT_BAR_X + 1, oY + 1)-(OPT_BAR_X + oFill, oY + 7), _RGB(0, 130, 210), BF
-            ' highlight stripe on fill
-            LINE (OPT_BAR_X + 1, oY + 1)-(OPT_BAR_X + oFill, oY + 3), _RGBA(100, 200, 255, 80), BF
+            LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 11), _RGB(0, 130, 210), BF
+            LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 7),  _RGBA(100, 200, 255, 80), BF
         End If
         ' tick marks at 25% intervals
         Dim oT As Integer
         For oT = 1 To 3
-            LINE (OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 1)-(OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 7), _RGBA(0, 0, 0, 100), , 0
+            LINE (OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 5)-(OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 11), _RGBA(0, 0, 0, 100), , 0
         Next oT
 
         ' percentage / state label
@@ -162,7 +161,7 @@ Sub OPTS_Update ()
         Else
             oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
         End If
-        FONT_Print fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY
+        FONT_Print fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY + 4
     Next oI
 
     FONT_PrintCentered fontPalette(8), backBuffer, "< > adjust   up/dn select   ESC save", scrH - 14, scrW
