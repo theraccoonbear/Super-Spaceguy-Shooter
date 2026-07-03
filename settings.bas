@@ -4,9 +4,10 @@ Sub SETTINGS_Save ()
     Dim sfH As Integer
     sfH = FreeFile
     Open _STARTDIR$ + "/sss_settings.ini" For Output As #sfH
-    Print #sfH, "music="  + LTrim$(Str$(volMusic))
-    Print #sfH, "sfx="    + LTrim$(Str$(volSfx))
-    Print #sfH, "speech=" + LTrim$(Str$(volSpeech))
+    Print #sfH, "music="     + LTrim$(Str$(volMusic))
+    Print #sfH, "sfx="       + LTrim$(Str$(volSfx))
+    Print #sfH, "speech="    + LTrim$(Str$(volSpeech))
+    Print #sfH, "narration=" + LTrim$(Str$(settingNarration))
     Close #sfH
 End Sub
 
@@ -24,9 +25,10 @@ Sub SETTINGS_Load ()
             If sfVal < 0 Then sfVal = 0
             If sfVal > 1 Then sfVal = 1
             Select Case sfKey
-                Case "music"  : volMusic  = sfVal
-                Case "sfx"    : volSfx    = sfVal
-                Case "speech" : volSpeech = sfVal
+                Case "music"     : volMusic          = sfVal
+                Case "sfx"       : volSfx            = sfVal
+                Case "speech"    : volSpeech          = sfVal
+                Case "narration" : settingNarration   = Int(sfVal + 0.5)
             End Select
         End If
     Loop
@@ -36,10 +38,10 @@ End Sub
 Sub OPTS_Update ()
     Dim oI As Integer, oY As Integer, oFill As Integer
     Dim oUp As Integer, oDn As Integer, oLf As Integer, oRt As Integer, oEsc As Integer
-    Dim oVols(0 To 2) As Single
+    Dim oVols(0 To 3) As Single
     Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
 
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech
+    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration
 
     ' ---- input ----
     oUp  = _KEYDOWN(18432)   ' up arrow
@@ -50,11 +52,11 @@ Sub OPTS_Update ()
 
     ' navigate: edge-detect on up/down
     If oUp And Not optUpWas Then
-        optSel = (optSel + 2) Mod 3
+        optSel = (optSel + 3) Mod 4
         optLfRpt = 0 : optRtRpt = 0
     End If
     If oDn And Not optDnWas Then
-        optSel = (optSel + 1) Mod 3
+        optSel = (optSel + 1) Mod 4
         optLfRpt = 0 : optRtRpt = 0
     End If
 
@@ -62,12 +64,13 @@ Sub OPTS_Update ()
     If oLf Then
         If Not optLfWas Or optLfRpt > 6 Then
             Select Case optSel
-                Case 0 : volMusic  = volMusic  - 0.1 : If volMusic  < 0 Then volMusic  = 0
-                Case 1 : volSfx    = volSfx    - 0.1 : If volSfx    < 0 Then volSfx    = 0
-                Case 2 : volSpeech = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
+                Case 0 : volMusic         = volMusic  - 0.1 : If volMusic  < 0 Then volMusic  = 0
+                Case 1 : volSfx           = volSfx    - 0.1 : If volSfx    < 0 Then volSfx    = 0
+                Case 2 : volSpeech        = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
+                Case 3 : settingNarration = 0
             End Select
-            If optSel = 1 Then SND_Pup                             ' hear SFX level on every step
-            If optSel = 2 And Not optLfWas Then SPK_Say "POOP"  ' hear speech on first press only
+            If optSel = 1 Then SND_Pup
+            If optSel = 2 And Not optLfWas Then SPK_Say "POOP"
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
         End If
         optLfRpt = optLfRpt + 1
@@ -78,9 +81,10 @@ Sub OPTS_Update ()
     If oRt Then
         If Not optRtWas Or optRtRpt > 6 Then
             Select Case optSel
-                Case 0 : volMusic  = volMusic  + 0.1 : If volMusic  > 1 Then volMusic  = 1
-                Case 1 : volSfx    = volSfx    + 0.1 : If volSfx    > 1 Then volSfx    = 1
-                Case 2 : volSpeech = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
+                Case 0 : volMusic         = volMusic  + 0.1 : If volMusic  > 1 Then volMusic  = 1
+                Case 1 : volSfx           = volSfx    + 0.1 : If volSfx    > 1 Then volSfx    = 1
+                Case 2 : volSpeech        = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
+                Case 3 : settingNarration = 1
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optRtWas Then SPK_Say "POOP"
@@ -99,7 +103,7 @@ Sub OPTS_Update ()
     optUpWas = oUp : optDnWas = oDn : optLfWas = oLf : optRtWas = oRt : optEscWas = oEsc
 
     ' refresh local vol copy after adjustments
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech
+    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration
 
     ' ---- render ----
     _DEST backBuffer
@@ -107,10 +111,10 @@ Sub OPTS_Update ()
 
     FONT_PrintCentered fontPalette(14), backBuffer, "SETTINGS", 20, scrW
 
-    Dim oLabels(0 To 2) As String
-    oLabels(0) = "MUSIC"  : oLabels(1) = "SFX"  : oLabels(2) = "SPEECH"
+    Dim oLabels(0 To 3) As String
+    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION"
 
-    For oI = 0 To 2
+    For oI = 0 To 3
         oY = 58 + oI * 44
 
         ' row highlight for selected
@@ -134,9 +138,13 @@ Sub OPTS_Update ()
             LINE (OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY)-(OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 8), _RGBA(0, 0, 0, 90), , 0
         Next oT
 
-        ' percentage label
+        ' percentage / state label
         Dim oPct As String
-        oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
+        If oI = 3 Then
+            If settingNarration Then oPct = "ON" Else oPct = "OFF"
+        Else
+            oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
+        End If
         FONT_Print fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY
     Next oI
 
