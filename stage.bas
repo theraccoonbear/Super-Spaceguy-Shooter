@@ -72,17 +72,9 @@ Sub STAGE_Update
             bossWarnTimer = 0 : boss.active = 0 : bossHP = 0 : bossMoveTimer = 0 : bossState = 0
             planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0
             cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
-            StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
             _DEST backBuffer
             Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-            If planetNameIdx < PLANET_COUNT Then
-                CRAWL_Prep "stage" + LTrim$(Str$(planetNameIdx + 1)), scrH
-                crawlNextState = GS_PLAYING
-            Else
-                CRAWL_Prep "outro", scrH
-                crawlNextState = GS_TITLE
-            End If
-            gameState = GS_CRAWL
+            SEQ_Advance
             SND_ResetGameBGM
         End If
     End If

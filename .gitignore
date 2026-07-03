@@ -22,3 +22,7 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+sss_settings.ini
+sss_speech.log
+builds/

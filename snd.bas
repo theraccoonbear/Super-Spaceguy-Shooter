@@ -1,4 +1,3 @@
-Const SAMPLE_RATE         = 44100
 Const AUDIO_BUFFER_TARGET = 0.10
 Const BGM_BPM             = 140
 Const TITLE_BPM           = 112
@@ -219,14 +218,16 @@ Sub SND_GameFill(isManeuver As Integer)
                 If sndWhooshPos >= SND_WHOOSH_LEN Then sndWhooshPos = -1
             End If
 
-            _SNDRAW (Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musicSample + sndEfx
+            SPK_Advance
+            _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + sndEfx) * volSfx _
+                  + musicSample * volMusic + spkSampleOut * volSpeech
         Next sndK
     End If
 End Sub
 
 
 Sub SND_TitleFill()
-    Dim sndK As Integer, sndFillCount As Integer
+    Dim sndK As Integer, sndFillCount As Integer, sndTitleEfx As Single
     sndFillCount = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
     If sndFillCount > 0 Then
         For sndK = 0 To sndFillCount - 1
@@ -256,7 +257,15 @@ Sub SND_TitleFill()
                 If titleBgmLeadPhase > 6.2832 Then titleBgmLeadPhase = titleBgmLeadPhase - 6.2832
                 musicSample = musicSample + (Sin(titleBgmLeadPhase) + Sin(titleBgmLeadPhase * 2) * 0.3 + Sin(titleBgmLeadPhase * 3) * 0.15) * 0.055
             End If
-            _SNDRAW musicSample
+            ' SFX preview for settings screen (pup sound triggered by OPTS_Update)
+            sndTitleEfx = 0.0
+            If sndPupPos >= 0 Then
+                sndTitleEfx = sndPup(sndPupPos)
+                sndPupPos = sndPupPos + 1
+                If sndPupPos >= SND_PUP_LEN Then sndPupPos = -1
+            End If
+            SPK_Advance
+            _SNDRAW musicSample * volMusic + sndTitleEfx * volSfx + spkSampleOut * volSpeech
         Next sndK
     End If
 End Sub
