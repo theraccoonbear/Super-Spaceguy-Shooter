@@ -863,7 +863,25 @@ DO
         ' RENDER
         ' --------------------------------------------------------
         ' camera: nose-following, velocity-oriented (see player.bas)
+        ' PLAYER_CamUpdate updates camLagY/Z and camFwdY/Z; cam fields set here
+        ' because nested UDT field writes from included Subs don't update globals.
         PLAYER_CamUpdate
+        IF gameState = GS_CINEMATIC THEN
+            cam.POS.x = cinematicCamX
+        ELSE
+            cam.POS.x = player.px - CAM_OFFSET_X
+        END IF
+        cam.POS.y = camLagY + CAM_OFFSET_Y - camFwdY * CAM_FWD_SCALE
+        cam.POS.z = camLagZ               - camFwdZ * CAM_FWD_SCALE
+        IF gameState = GS_CINEMATIC THEN
+            cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
+            cam.target.y = camLagY
+            cam.target.z = camLagZ
+        ELSE
+            cam.target.x = player.px + CAM_LEAD_X
+            cam.target.y = player.py + camFwdY * CAM_LEAD_X
+            cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
+        END IF
         E3D_MatLookAt cam, viewMat
         E3D_MatMul projMat, viewMat, vpMat
 
