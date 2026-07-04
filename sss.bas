@@ -12,7 +12,7 @@ $EMBED:'code/3d/assets/planet-03-clean.png':'PLANET03'
 $EMBED:'code/3d/assets/planet-04-clean.png':'PLANET04'
 $EMBED:'code/3d/assets/planet-05-clean.png':'PLANET05'
 $EMBED:'code/3d/assets/planet-06-clean.png':'PLANET06'
-$EMBED:'code/3d/assets/grotuk.png':'EMPERORIMG'
+$EMBED:'code/3d/assets/grotuk2.png':'EMPERORIMG'
 $EMBED:'code/3d/assets/models.e3d':'MODELS'
 $EMBED:'code/3d/assets/gametext.txt':'GAMETEXT'
 $EMBED:'code/3d/assets/gamevalues.ini':'GAMEVALUES'
@@ -218,18 +218,18 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'ui.bas'
 
 ' --- version arg: write to terminal stdout, not the QB84 text screen ---
-Dim ssCmdLine As String : ssCmdLine = COMMAND$
-If InStr(ssCmdLine, "--version") > 0 Or ssCmdLine = "-v" Or Left$(ssCmdLine, 3) = "-v " Then
-    Dim ssVFH As Integer : ssVFH = FreeFile
-    If InStr(_OS$, "WIN") Then
-        Open "CON:" For Output As #ssVFH     ' Windows console stdout
-    Else
-        Open "/dev/stdout" For Output As #ssVFH  ' Linux / macOS
-    End If
-    Print #ssVFH, "Super Spaceguy Shooter " + VERSION$
-    Close #ssVFH
-    System
-End If
+DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
+IF INSTR(ssCmdLine, "--version") > 0 OR ssCmdLine = "-v" OR LEFT$(ssCmdLine, 3) = "-v " THEN
+    DIM ssVFH AS INTEGER : ssVFH = FREEFILE
+    IF INSTR(_OS$, "WIN") THEN
+        OPEN "CON:" FOR OUTPUT AS #ssVFH     ' Windows console stdout
+    ELSE
+        OPEN "/dev/stdout" FOR OUTPUT AS #ssVFH  ' Linux / macOS
+    END IF
+    PRINT #ssVFH, "Super Spaceguy Shooter " + VERSION$
+    CLOSE #ssVFH
+    SYSTEM
+END IF
 
 ' --- screen ---
 scrW = 320 : scrH = 240
@@ -400,6 +400,7 @@ DO
             IF escConfirm THEN
                 IF _KEYDOWN(89) OR _KEYDOWN(121) THEN
                     escConfirm = 0 : gameState = GS_TITLE
+                    SEQ_RewindToTitle
                     MUS_SetCue "title"
                 END IF
                 IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
@@ -1039,11 +1040,11 @@ DO
 
         FX_Shake backBuffer, scrW, scrH
 
-        If gameState = GS_PLAYING Then
+        IF gameState = GS_PLAYING THEN
             SND_GameFill isManeuver
-        Else
+        ELSE
             MUS_Fill 0
-        End If
+        END IF
 
         ' ============================================================
         ' TITLE SCREEN
@@ -1063,7 +1064,7 @@ DO
         IF highScore > 0 THEN
             FONT_PrintCentered fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 220, scrW
         END IF
-        FONT_Print fontPalette(8), backBuffer, "v" + VERSION$, scrW - Len("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H
+        FONT_Print fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H
         IF titleEscConfirm THEN
             UI_DrawPanel scrW\2 - 76, scrH\2 - 34, scrW\2 + 76, scrH\2 + 34, "COMMAND CONSOLE"
             FONT_PrintCentered fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 - 18, scrW
@@ -1284,7 +1285,7 @@ CASE GS_GAMEOVER
         throbBright = INT(170 + 85 * SIN(tt * 5))
         COLOR _RGB(throbBright, throbBright, throbBright)
         _PRINTSTRING (scrW / 2 - 80, scrH / 2 + 28), "PRESS SPACE TO PLAY"
-        IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : MUS_SetCue "title"
+        IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)
     _DEST 0
