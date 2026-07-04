@@ -62,8 +62,8 @@ CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
 CONST FUEL_DRAIN_BOOST    = 0.006   ' extra drain per frame when thrusting
 CONST BULLET_RANGE        = 110     ' cull player bullet beyond player.px + this
-CONST BULLET_TRAIL_FR     = 15      ' frames of screen-space trail (scales with screen motion)
-CONST BULLET_TRAIL_MINPX  = 6       ' minimum trail length in screen pixels
+CONST BULLET_TRAIL_FR     = 55      ' frames of screen-space trail (scales with screen motion)
+CONST BULLET_TRAIL_MINPX  = 22      ' minimum trail length in screen pixels
 
 CONST EBULLET_SPEED       = 0.16    ' regular enemy bullet speed
 CONST EBULLET_CULL        = 8       ' cull when px < player.px - this
