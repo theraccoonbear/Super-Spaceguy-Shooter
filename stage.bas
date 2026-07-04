@@ -59,6 +59,7 @@ Sub STAGE_Update
         ' fully faded — reset arena and advance to next crawl
         If cinematicFade >= 255 Then
             lives = 100 : invTimer = 180
+            laserEnergy = 100.0
             fuelLevel = 100.0 : fuelStranded = 0
             stageScore = score + BOSS_TRIGGER
             player.py = player.py * 0.25 : player.pz = player.pz * 0.25
