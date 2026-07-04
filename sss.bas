@@ -395,6 +395,7 @@ SETTINGS_Load
 SEQ_Init
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
+    IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
     SEQ_Advance
 ELSE
     SEQ_Advance
