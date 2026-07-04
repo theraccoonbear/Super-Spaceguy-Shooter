@@ -62,8 +62,7 @@ CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
 CONST FUEL_DRAIN_BOOST    = 0.006   ' extra drain per frame when thrusting
 CONST BULLET_RANGE        = 110     ' cull player bullet beyond player.px + this
-CONST BULLET_TRAIL_FR     = 55      ' frames of screen-space trail (scales with screen motion)
-CONST BULLET_TRAIL_MINPX  = 22      ' minimum trail length in screen pixels
+CONST BULLET_TRAIL_LEN    = 2.0     ' world-unit length of bolt body (rear to tip along nose)
 
 CONST EBULLET_SPEED       = 0.16    ' regular enemy bullet speed
 CONST EBULLET_CULL        = 8       ' cull when px < player.px - this
@@ -257,14 +256,14 @@ END IF
 ' validate --scene type prefix before opening the game window
 DIM ssSCnI AS INTEGER, ssSCnType AS STRING
 IF ssCmdScene <> "" THEN
-    ssSCnI = Len(ssCmdScene)
-    Do While ssSCnI > 0
-        If Mid$(ssCmdScene, ssSCnI, 1) >= "0" And Mid$(ssCmdScene, ssSCnI, 1) <= "9" Then ssSCnI = ssSCnI - 1 Else Exit Do
-    Loop
-    ssSCnType = LCase$(Left$(ssCmdScene, ssSCnI))
-    If ssSCnType <> "title" And ssSCnType <> "crawl" And ssSCnType <> "playing" And ssSCnType <> "boss" Then
+    ssSCnI = LEN(ssCmdScene)
+    DO WHILE ssSCnI > 0
+        IF MID$(ssCmdScene, ssSCnI, 1) >= "0" AND MID$(ssCmdScene, ssSCnI, 1) <= "9" THEN ssSCnI = ssSCnI - 1 ELSE EXIT DO
+    LOOP
+    ssSCnType = LCASE$(LEFT$(ssCmdScene, ssSCnI))
+    IF ssSCnType <> "title" AND ssSCnType <> "crawl" AND ssSCnType <> "playing" AND ssSCnType <> "boss" THEN
         GAME_Usage("unknown scene type '" + ssSCnType + "'")
-    End If
+    END IF
 END IF
 
 ' --- screen ---
@@ -366,7 +365,6 @@ DIM partR AS INTEGER, partG AS INTEGER, partB AS INTEGER
 DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
-DIM pjDX AS SINGLE, pjDY AS SINGLE, pjDLen AS SINGLE, pjTScale AS SINGLE
 DIM pjFade AS SINGLE
 DIM bossFireTimer AS SINGLE
 DIM bossShots AS INTEGER
@@ -503,18 +501,22 @@ DO
                         IF bullets(i).active = 0 THEN
                             bullets(i).active  = -1
                             bullets(i).meshIdx = MESH_BULLET
-                            bullets(i).px = player.px + 0.7
-                            bullets(i).py = player.py
-                            bullets(i).pz = player.pz
-                            ' fire along ship nose: rotate (1,0,0) by ry (yaw) then rz (pitch)
-                            ' nose = (cos(rz)*cos(ry), sin(rz)*cos(ry), -sin(ry)) — already unit length
+                            ' compute nose unit vector from full E3D rotation (Rx*Ry*Rz applied to forward)
                             DIM bvRx AS SINGLE, bvRy AS SINGLE, bvRz AS SINGLE
+                            DIM bvNx AS SINGLE, bvNy AS SINGLE, bvNz AS SINGLE
                             bvRx = player.rx * _PI / 180.0
                             bvRy = player.ry * _PI / 180.0
                             bvRz = player.rz * _PI / 180.0
-                            bullets(i).vx = COS(bvRz) * COS(bvRy) * BULLET_SPEED
-                            bullets(i).vy = (COS(bvRx)*SIN(bvRz)*COS(bvRy) + SIN(bvRx)*SIN(bvRy)) * BULLET_SPEED
-                            bullets(i).vz = (SIN(bvRx)*SIN(bvRz)*COS(bvRy) - COS(bvRx)*SIN(bvRy)) * BULLET_SPEED
+                            bvNx = COS(bvRz) * COS(bvRy)
+                            bvNy = COS(bvRx)*SIN(bvRz)*COS(bvRy) + SIN(bvRx)*SIN(bvRy)
+                            bvNz = SIN(bvRx)*SIN(bvRz)*COS(bvRy) - COS(bvRx)*SIN(bvRy)
+                            ' spawn bolt so its rear (trailing point) clears the ship nose by ~1wu
+                            bullets(i).px = player.px + bvNx * (BULLET_TRAIL_LEN + 1.0)
+                            bullets(i).py = player.py + bvNy * (BULLET_TRAIL_LEN + 1.0)
+                            bullets(i).pz = player.pz + bvNz * (BULLET_TRAIL_LEN + 1.0)
+                            bullets(i).vx = bvNx * BULLET_SPEED
+                            bullets(i).vy = bvNy * BULLET_SPEED
+                            bullets(i).vz = bvNz * BULLET_SPEED
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
@@ -992,14 +994,14 @@ DO
         _DEST backBuffer
         FOR j = 1 TO MAX_BULLETS
             IF bullets(j).active THEN
-                ' project current bullet position → screen (pjX, pjY)
+                ' project bolt tip (current pos)
                 pjX  = bullets(j).px * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
                 pjY  = bullets(j).px * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
                 pjW  = bullets(j).px * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-                ' project next-frame position to get screen-space travel direction
-                pjBX = bullets(j).px + bullets(j).vx
-                pjBY = bullets(j).py + bullets(j).vy
-                pjBZ = bullets(j).pz + bullets(j).vz
+                ' project bolt rear (BULLET_TRAIL_LEN world-units behind tip along velocity axis)
+                pjBX = bullets(j).px - bullets(j).vx * (BULLET_TRAIL_LEN / BULLET_SPEED)
+                pjBY = bullets(j).py - bullets(j).vy * (BULLET_TRAIL_LEN / BULLET_SPEED)
+                pjBZ = bullets(j).pz - bullets(j).vz * (BULLET_TRAIL_LEN / BULLET_SPEED)
                 pjX2 = pjBX * vpMat.m(0,0) + pjBY * vpMat.m(0,1) + pjBZ * vpMat.m(0,2) + vpMat.m(0,3)
                 pjY2 = pjBX * vpMat.m(1,0) + pjBY * vpMat.m(1,1) + pjBZ * vpMat.m(1,2) + vpMat.m(1,3)
                 pjW2 = pjBX * vpMat.m(3,0) + pjBY * vpMat.m(3,1) + pjBZ * vpMat.m(3,2) + vpMat.m(3,3)
@@ -1011,15 +1013,7 @@ DO
                     IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
                         pjFade = 1.0 - (bullets(j).px - player.px) / BULLET_RANGE
                         IF pjFade < 0 THEN pjFade = 0
-                        ' screen-space direction: current → next frame
-                        ' trail draws backward from current in that direction
-                        pjDX = pjX2 - pjX : pjDY = pjY2 - pjY
-                        pjDLen = SQR(pjDX*pjDX + pjDY*pjDY)
-                        IF pjDLen > 0.01 THEN
-                            pjTScale = BULLET_TRAIL_FR
-                            IF pjTScale * pjDLen < BULLET_TRAIL_MINPX THEN pjTScale = BULLET_TRAIL_MINPX / pjDLen
-                            LINE (INT(pjX - pjDX*pjTScale), INT(pjY - pjDY*pjTScale))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
-                        END IF
+                        LINE (INT(pjX2), INT(pjY2))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
                         PSET (INT(pjX), INT(pjY)), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
                     END IF
                 END IF
