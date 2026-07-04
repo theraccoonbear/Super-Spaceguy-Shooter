@@ -243,6 +243,8 @@ IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "
     GAME_Usage("")
 END IF
 
+DIM SHARED godMode AS INTEGER : godMode = (INSTR(ssCmdLine, "--god") > 0)
+
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
 IF ssCmdScnPos > 0 THEN
@@ -477,6 +479,9 @@ DO
                 fuelLevel = fuelLevel - FUEL_DRAIN
                 IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
                 IF fuelLevel <= 0 THEN fuelLevel = 0 : fuelStranded = -1
+            END IF
+            IF godMode THEN
+                lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
             END IF
 
             IF isManeuver THEN
@@ -1402,6 +1407,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  -v, --version          Print version and exit"
     PRINT #guFH, "  -h, --help             Show this help and exit"
     PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
+    PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
