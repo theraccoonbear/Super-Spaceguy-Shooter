@@ -498,13 +498,14 @@ DO
                             bullets(i).px = player.px + 0.7
                             bullets(i).py = player.py
                             bullets(i).pz = player.pz
-                            ' normalize (BULLET_SPEED, playerVY, playerVZ) to BULLET_SPEED total
-                            DIM bvLen AS SINGLE
-                            bvLen = SQR(BULLET_SPEED*BULLET_SPEED + playerVY*playerVY + playerVZ*playerVZ)
-                            IF bvLen < 0.001 THEN bvLen = BULLET_SPEED
-                            bullets(i).vx = BULLET_SPEED * BULLET_SPEED / bvLen
-                            bullets(i).vy = playerVY * BULLET_SPEED / bvLen
-                            bullets(i).vz = playerVZ * BULLET_SPEED / bvLen
+                            ' fire along ship nose: rotate (1,0,0) by ry (yaw) then rz (pitch)
+                            ' nose = (cos(rz)*cos(ry), sin(rz)*cos(ry), -sin(ry)) — already unit length
+                            DIM bvRy AS SINGLE, bvRz AS SINGLE
+                            bvRy = player.ry * _PI / 180.0
+                            bvRz = player.rz * _PI / 180.0
+                            bullets(i).vx = COS(bvRz) * COS(bvRy) * BULLET_SPEED
+                            bullets(i).vy = SIN(bvRz) * COS(bvRy) * BULLET_SPEED
+                            bullets(i).vz = -SIN(bvRy)             * BULLET_SPEED
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
