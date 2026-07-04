@@ -22,16 +22,16 @@ Sub HUD_Draw
 
     ' crosshair and target locks — gameplay only
     If gameState = GS_PLAYING Then
-        ' project bullet aim direction onto screen
-        Dim hdBvLen As Single
+        ' project aim point along ship nose — same ry/rz rotation as bullet fire code
+        Dim hdRy As Single, hdRz As Single
         Dim hdAimPX As Single, hdAimPY As Single, hdAimPZ As Single
         Dim hdCPjX As Single, hdCPjY As Single, hdCPjW As Single
         Dim hdCSX As Single, hdCSY As Single
-        hdBvLen = SQR(BULLET_SPEED*BULLET_SPEED + playerVY*playerVY + playerVZ*playerVZ)
-        If hdBvLen < 0.001 Then hdBvLen = BULLET_SPEED
-        hdAimPX = player.px + (BULLET_SPEED * BULLET_SPEED / hdBvLen) * 20
-        hdAimPY = player.py + (playerVY  * BULLET_SPEED / hdBvLen) * 20
-        hdAimPZ = player.pz + (playerVZ  * BULLET_SPEED / hdBvLen) * 20
+        hdRy = player.ry * _PI / 180.0
+        hdRz = player.rz * _PI / 180.0
+        hdAimPX = player.px + COS(hdRz) * COS(hdRy) * 20
+        hdAimPY = player.py + SIN(hdRz) * COS(hdRy) * 20
+        hdAimPZ = player.pz - SIN(hdRy)              * 20
         hdCPjX = hdAimPX * vpMat.m(0,0) + hdAimPY * vpMat.m(0,1) + hdAimPZ * vpMat.m(0,2) + vpMat.m(0,3)
         hdCPjY = hdAimPX * vpMat.m(1,0) + hdAimPY * vpMat.m(1,1) + hdAimPZ * vpMat.m(1,2) + vpMat.m(1,3)
         hdCPjW = hdAimPX * vpMat.m(3,0) + hdAimPY * vpMat.m(3,1) + hdAimPZ * vpMat.m(3,2) + vpMat.m(3,3)
