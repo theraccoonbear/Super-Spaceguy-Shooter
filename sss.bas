@@ -62,7 +62,8 @@ CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
 CONST FUEL_DRAIN_BOOST    = 0.006   ' extra drain per frame when thrusting
 CONST BULLET_RANGE        = 110     ' cull player bullet beyond player.px + this
-CONST BULLET_TRAIL_LEN    = 4.0     ' world-unit length of the laser bolt trail
+CONST BULLET_TRAIL_FR     = 15      ' frames of screen-space trail (scales with screen motion)
+CONST BULLET_TRAIL_MINPX  = 6       ' minimum trail length in screen pixels
 
 CONST EBULLET_SPEED       = 0.16    ' regular enemy bullet speed
 CONST EBULLET_CULL        = 8       ' cull when px < player.px - this
@@ -364,8 +365,8 @@ DIM ebClr AS LONG
 DIM partR AS INTEGER, partG AS INTEGER, partB AS INTEGER
 DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
-DIM pjTs AS SINGLE, pjTsMax AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
+DIM pjDX AS SINGLE, pjDY AS SINGLE, pjDLen AS SINGLE, pjTScale AS SINGLE
 DIM pjFade AS SINGLE
 DIM bossFireTimer AS SINGLE
 DIM bossShots AS INTEGER
@@ -990,23 +991,14 @@ DO
         _DEST backBuffer
         FOR j = 1 TO MAX_BULLETS
             IF bullets(j).active THEN
-                ' bolt: leading tip = current pos; trail extends back along velocity
-                ' clamp trail so it never reaches behind the firing origin
-                IF bullets(j).vx > 0.0001 THEN
-                    pjTsMax = (bullets(j).px - player.px) / bullets(j).vx
-                ELSE
-                    pjTsMax = 0.0
-                END IF
-                pjTs = BULLET_TRAIL_LEN / BULLET_SPEED
-                IF pjTs > pjTsMax THEN pjTs = pjTsMax
-                ' project leading tip (current position)
+                ' project current bullet position → screen (pjX, pjY)
                 pjX  = bullets(j).px * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
                 pjY  = bullets(j).px * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
                 pjW  = bullets(j).px * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-                ' project trailing tip (back along velocity)
-                pjBX = bullets(j).px - bullets(j).vx * pjTs
-                pjBY = bullets(j).py - bullets(j).vy * pjTs
-                pjBZ = bullets(j).pz - bullets(j).vz * pjTs
+                ' project next-frame position to get screen-space travel direction
+                pjBX = bullets(j).px + bullets(j).vx
+                pjBY = bullets(j).py + bullets(j).vy
+                pjBZ = bullets(j).pz + bullets(j).vz
                 pjX2 = pjBX * vpMat.m(0,0) + pjBY * vpMat.m(0,1) + pjBZ * vpMat.m(0,2) + vpMat.m(0,3)
                 pjY2 = pjBX * vpMat.m(1,0) + pjBY * vpMat.m(1,1) + pjBZ * vpMat.m(1,2) + vpMat.m(1,3)
                 pjW2 = pjBX * vpMat.m(3,0) + pjBY * vpMat.m(3,1) + pjBZ * vpMat.m(3,2) + vpMat.m(3,3)
@@ -1016,11 +1008,18 @@ DO
                     pjX2 = (pjX2 / pjW2 + 1.0) * scrW * 0.5
                     pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
                     IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
-                        ' fade to black over bullet range — visually gone well before cull
                         pjFade = 1.0 - (bullets(j).px - player.px) / BULLET_RANGE
                         IF pjFade < 0 THEN pjFade = 0
-                        LINE (pjX2, pjY2)-(pjX, pjY), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
-                        PSET (pjX, pjY), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
+                        ' screen-space direction: current → next frame
+                        ' trail draws backward from current in that direction
+                        pjDX = pjX2 - pjX : pjDY = pjY2 - pjY
+                        pjDLen = SQR(pjDX*pjDX + pjDY*pjDY)
+                        IF pjDLen > 0.01 THEN
+                            pjTScale = BULLET_TRAIL_FR
+                            IF pjTScale * pjDLen < BULLET_TRAIL_MINPX THEN pjTScale = BULLET_TRAIL_MINPX / pjDLen
+                            LINE (INT(pjX - pjDX*pjTScale), INT(pjY - pjDY*pjTScale))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
+                        END IF
+                        PSET (INT(pjX), INT(pjY)), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
                     END IF
                 END IF
             END IF
