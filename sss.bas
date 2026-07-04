@@ -1002,8 +1002,12 @@ DO
                     pjX2 = (pjX2 / pjW2 + 1.0) * scrW * 0.5
                     pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
                     IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
-                        LINE (pjX2, pjY2)-(pjX, pjY), _RGB(210, 215, 60)
-                        PSET (pjX, pjY), _RGB(240, 245, 140)
+                        ' fade to black over bullet range — visually gone well before cull
+                        DIM pjFade AS SINGLE
+                        pjFade = 1.0 - (bullets(j).px - player.px) / BULLET_RANGE
+                        IF pjFade < 0 THEN pjFade = 0
+                        LINE (pjX2, pjY2)-(pjX, pjY), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
+                        PSET (pjX, pjY), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
                     END IF
                 END IF
             END IF
