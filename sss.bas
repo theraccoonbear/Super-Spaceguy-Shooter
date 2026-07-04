@@ -50,7 +50,8 @@ DIM SHARED enemies(1 TO MAX_ENEMIES) AS GameObj
 DIM SHARED boss     AS GameObj
 
 ' --- tuning constants ---
-CONST PLAYER_SPEED        = 0.07    ' movement step per frame
+CONST PLAYER_ACCEL        = 0.18    ' velocity lerp rate (controls both accel and drag)
+CONST PLAYER_MAX_VEL      = 0.12    ' max lateral velocity per frame
 CONST ATTITUDE_LERP       = 0.14    ' ship tilt/roll settle rate
 
 CONST BULLET_SPEED        = 0.35    ' player bullet X velocity
@@ -105,7 +106,9 @@ CONST BOSS_DEATH_PARTS    = 35      ' particle count on boss death
 CONST CAM_OFFSET_X        = 6.5    ' camera behind player
 CONST CAM_OFFSET_Y        = 2.0    ' camera above player
 CONST CAM_LEAD_X          = 8      ' look-at point ahead of player
-CONST CAM_LAG_RATE        = 0.10   ' camera lag lerp rate
+CONST CAM_LAG_RATE        = 0.10   ' camera positional lag lerp rate
+CONST CAM_FWD_RATE        = 0.06   ' camera orientation lag lerp rate (slower = weightier feel)
+CONST CAM_FWD_SCALE       = 2.0    ' world units of camera tilt per unit of normalized velocity
 CONST GAME_FOV            = 72     ' field of view
 
 CONST DIM_FAR             = 55      ' distance dimming far threshold
@@ -154,6 +157,9 @@ DIM SHARED shipLives AS INTEGER : shipLives = 3
 DIM SHARED tt AS SINGLE
 DIM SHARED spawnTimer AS SINGLE
 DIM SHARED camLagY AS SINGLE, camLagZ AS SINGLE
+DIM SHARED camFwdY AS SINGLE, camFwdZ AS SINGLE
+DIM SHARED playerVY AS SINGLE, playerVZ AS SINGLE
+DIM SHARED isManeuver AS INTEGER
 DIM SHARED laserEnergy AS SINGLE : laserEnergy = 100.0
 DIM SHARED fuelLevel AS SINGLE : fuelLevel = 100.0
 DIM SHARED fuelStranded AS INTEGER
@@ -216,6 +222,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
 '$INCLUDE:'ui.bas'
+'$INCLUDE:'player.bas'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
@@ -290,13 +297,13 @@ planetNames(5) = GTEXT_Var$("planet5")
 planetNames(6) = GTEXT_Var$("planet6")
 
 ' --- input ---
-DIM held(0 TO 32767) AS INTEGER
+DIM SHARED held(0 TO 32767) AS INTEGER
 
 ' --- camera ---
-DIM cam AS E3D_Camera
+DIM SHARED cam AS E3D_Camera
 E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 
-DIM projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
+DIM SHARED projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
 E3D_MatPerspective cam, scrW / scrH, projMat
 
 ' --- light (coming from upper-left-front) ---
@@ -342,7 +349,7 @@ DIM fireTimer  AS SINGLE
 DIM hit        AS INTEGER
 DIM i AS INTEGER, j AS INTEGER
 DIM objMat AS E3D_Matrix4
-DIM tgtRx AS SINGLE, tgtRy AS SINGLE, tgtRz AS SINGLE
+' tgtRx/Ry/Rz moved into PLAYER_Update in player.bas
 DIM pPos AS E3D_Coord, pRot AS E3D_Coord
 DIM noLight AS E3D_Coord : noLight.x = 0 : noLight.y = 0 : noLight.z = -1
 DIM thrusterLight AS E3D_Coord
@@ -367,7 +374,7 @@ DIM escWas AS INTEGER
 DIM spaceWas AS INTEGER
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
-DIM isManeuver AS INTEGER
+' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
 DIM dbgOverlay AS INTEGER
 DIM dbgGraveWas AS INTEGER
 DIM dbgT0 AS DOUBLE
@@ -462,19 +469,8 @@ DO
             END IF
             STAGE_Update
 
-            ' --- player movement (Y = up/down, Z = left/right) ---
-            IF gameState = GS_PLAYING AND NOT fuelStranded THEN
-                IF held(E3D_KEY_UP)    OR held(E3D_KEY_W) THEN player.py = player.py + PLAYER_SPEED
-                IF held(E3D_KEY_DOWN)  OR held(E3D_KEY_S) THEN player.py = player.py - PLAYER_SPEED
-                IF held(E3D_KEY_LEFT)  OR held(E3D_KEY_A) THEN player.pz = player.pz - PLAYER_SPEED
-                IF held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN player.pz = player.pz + PLAYER_SPEED
-            END IF
-
-            isManeuver = 0
-            IF NOT fuelStranded THEN
-                IF held(E3D_KEY_UP) OR held(E3D_KEY_W) OR held(E3D_KEY_DOWN) OR held(E3D_KEY_S) THEN isManeuver = -1
-                IF held(E3D_KEY_LEFT) OR held(E3D_KEY_A) OR held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN isManeuver = -1
-            END IF
+            ' --- player movement, velocity physics, attitude ---
+            PLAYER_Update
 
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
@@ -490,21 +486,6 @@ DO
                 thrusterScale = thrusterScale + (0.28 - thrusterScale) * 0.06
             END IF
 
-            ' --- ship attitude: lerp toward target angles based on input ---
-            tgtRx = 0 : tgtRy = 0 : tgtRz = 0
-            IF gameState = GS_CINEMATIC THEN
-                ' pronounced right bank into atmosphere approach
-                tgtRx =  32 * cinPhase
-                tgtRy = -12 * cinPhase
-            ELSEIF NOT fuelStranded THEN
-                IF held(E3D_KEY_LEFT)  OR held(E3D_KEY_A) THEN tgtRx = -22 : tgtRy =  7
-                IF held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN tgtRx =  22 : tgtRy = -7
-                IF held(E3D_KEY_UP)    OR held(E3D_KEY_W) THEN tgtRz =  15
-                IF held(E3D_KEY_DOWN)  OR held(E3D_KEY_S) THEN tgtRz = -15
-            END IF
-            player.rx = player.rx + (tgtRx - player.rx) * ATTITUDE_LERP
-            player.ry = player.ry + (tgtRy - player.ry) * ATTITUDE_LERP
-            player.rz = player.rz + (tgtRz - player.rz) * ATTITUDE_LERP
 
             ' --- fire ---
             IF held(E3D_KEY_SPACE) AND invTimer = 0 AND gameState = GS_PLAYING THEN
@@ -516,7 +497,13 @@ DO
                             bullets(i).px = player.px + 0.7
                             bullets(i).py = player.py
                             bullets(i).pz = player.pz
-                            bullets(i).vx = BULLET_SPEED
+                            ' normalize (BULLET_SPEED, playerVY, playerVZ) to BULLET_SPEED total
+                            DIM bvLen AS SINGLE
+                            bvLen = SQR(BULLET_SPEED*BULLET_SPEED + playerVY*playerVY + playerVZ*playerVZ)
+                            IF bvLen < 0.001 THEN bvLen = BULLET_SPEED
+                            bullets(i).vx = BULLET_SPEED * BULLET_SPEED / bvLen
+                            bullets(i).vy = playerVY * BULLET_SPEED / bvLen
+                            bullets(i).vz = playerVZ * BULLET_SPEED / bvLen
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
@@ -534,6 +521,8 @@ DO
             FOR i = 1 TO MAX_BULLETS
                 IF bullets(i).active THEN
                     bullets(i).px = bullets(i).px + bullets(i).vx
+                    bullets(i).py = bullets(i).py + bullets(i).vy
+                    bullets(i).pz = bullets(i).pz + bullets(i).vz
                     IF bullets(i).px > player.px + BULLET_RANGE THEN bullets(i).active = 0
                 END IF
             NEXT i
@@ -872,25 +861,8 @@ DO
         ' --------------------------------------------------------
         ' RENDER
         ' --------------------------------------------------------
-        ' Camera lags player in Y/Z — frozen during cinematic so ship visibly crosses screen
-        IF gameState <> GS_CINEMATIC THEN
-            camLagY = camLagY + (player.py - camLagY) * CAM_LAG_RATE
-            camLagZ = camLagZ + (player.pz - camLagZ) * CAM_LAG_RATE
-        END IF
-        cam.POS.x = player.px - CAM_OFFSET_X
-        IF gameState = GS_CINEMATIC THEN cam.POS.x = cinematicCamX
-        cam.POS.y  = camLagY + CAM_OFFSET_Y
-        cam.POS.z  = camLagZ
-        IF gameState = GS_CINEMATIC THEN
-            ' lock look-at so ship drifts visibly across FOV instead of camera panning after it
-            cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
-            cam.target.y = camLagY
-            cam.target.z = camLagZ
-        ELSE
-            cam.target.x = player.px + CAM_LEAD_X
-            cam.target.y = player.py
-            cam.target.z = player.pz
-        END IF
+        ' camera: nose-following, velocity-oriented (see player.bas)
+        PLAYER_CamUpdate
         E3D_MatLookAt cam, viewMat
         E3D_MatMul projMat, viewMat, vpMat
 
