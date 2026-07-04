@@ -50,9 +50,9 @@ DIM SHARED enemies(1 TO MAX_ENEMIES) AS GameObj
 DIM SHARED boss     AS GameObj
 
 ' --- tuning constants ---
-CONST PLAYER_ACCEL        = 0.18    ' velocity lerp rate (controls both accel and drag)
+CONST PLAYER_ACCEL        = 0.14    ' velocity lerp rate (controls both accel and drag)
 CONST PLAYER_MAX_VEL      = 0.12    ' max lateral velocity per frame
-CONST ATTITUDE_LERP       = 0.14    ' ship tilt/roll settle rate
+CONST ATTITUDE_LERP       = 0.09    ' ship tilt/roll settle rate
 
 CONST BULLET_SPEED        = 0.35    ' player bullet X velocity
 CONST FIRE_COOLDOWN       = 0.18    ' seconds between shots
@@ -106,9 +106,9 @@ CONST BOSS_DEATH_PARTS    = 35      ' particle count on boss death
 CONST CAM_OFFSET_X        = 6.5    ' camera behind player
 CONST CAM_OFFSET_Y        = 2.0    ' camera above player
 CONST CAM_LEAD_X          = 8      ' look-at point ahead of player
-CONST CAM_LAG_RATE        = 0.10   ' camera positional lag lerp rate
-CONST CAM_FWD_RATE        = 0.06   ' camera orientation lag lerp rate (slower = weightier feel)
-CONST CAM_FWD_SCALE       = 2.0    ' world units of camera tilt per unit of normalized velocity
+CONST CAM_LAG_RATE        = 0.08   ' camera positional lag lerp rate
+CONST CAM_FWD_RATE        = 0.04   ' camera orientation lag lerp rate (slower = weightier feel)
+CONST CAM_FWD_SCALE       = 1.0    ' world units of camera tilt per unit of normalized velocity
 CONST GAME_FOV            = 72     ' field of view
 
 CONST DIM_FAR             = 55      ' distance dimming far threshold
