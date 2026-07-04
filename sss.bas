@@ -231,6 +231,15 @@ IF INSTR(ssCmdLine, "--version") > 0 OR ssCmdLine = "-v" OR LEFT$(ssCmdLine, 3) 
     SYSTEM
 END IF
 
+DIM ssCmdScene AS STRING
+DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
+IF ssCmdScnPos > 0 THEN
+    ssCmdScene = MID$(ssCmdLine, ssCmdScnPos + 8)
+    ssCmdScnPos = INSTR(ssCmdScene, " ")
+    IF ssCmdScnPos > 0 THEN ssCmdScene = LEFT$(ssCmdScene, ssCmdScnPos - 1)
+    ssCmdScene = LTRIM$(RTRIM$(ssCmdScene))
+END IF
+
 ' --- screen ---
 scrW = 320 : scrH = 240
 SCREEN _NEWIMAGE(scrW, scrH, 32)
@@ -359,7 +368,14 @@ SND_Init
 SPK_Init
 SETTINGS_Load
 SEQ_Init
-SEQ_Advance
+IF ssCmdScene <> "" THEN
+    IF SEQ_JumpToScene(ssCmdScene) < 0 THEN
+        PRINT "Unknown --scene: " + ssCmdScene + " (valid: title, crawl0..N, playing1..N, boss1..N)"
+    END IF
+    SEQ_Advance
+ELSE
+    SEQ_Advance
+END IF
 
 ' ============================================================
 ' MAIN LOOP
