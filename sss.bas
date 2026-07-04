@@ -43,6 +43,7 @@ TYPE GameObj
     rx AS SINGLE : ry AS SINGLE : rz AS SINGLE
     drx AS SINGLE : dry AS SINGLE : drz AS SINGLE
     scl AS SINGLE
+    life AS SINGLE
 END TYPE
 
 DIM SHARED player   AS GameObj
@@ -517,6 +518,7 @@ DO
                             bullets(i).vx = bvNx * BULLET_SPEED
                             bullets(i).vy = bvNy * BULLET_SPEED
                             bullets(i).vz = bvNz * BULLET_SPEED
+                            bullets(i).life = BULLET_RANGE / BULLET_SPEED
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
@@ -536,12 +538,8 @@ DO
                     bullets(i).px = bullets(i).px + bullets(i).vx
                     bullets(i).py = bullets(i).py + bullets(i).vy
                     bullets(i).pz = bullets(i).pz + bullets(i).vz
-                    ' during boss fight cull past the boss — prevents parked shots boss walks into
-                    IF boss.active AND bullets(i).px > boss.px + 3 THEN
-                        bullets(i).active = 0
-                    ELSEIF bullets(i).px > player.px + BULLET_RANGE THEN
-                        bullets(i).active = 0
-                    END IF
+                    bullets(i).life = bullets(i).life - 1
+                    IF bullets(i).life <= 0 THEN bullets(i).active = 0
                 END IF
             NEXT i
 
@@ -1016,8 +1014,8 @@ DO
                     pjX2 = (pjX2 / pjW2 + 1.0) * scrW * 0.5
                     pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
                     IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
-                        pjFade = 1.0 - (bullets(j).px - player.px) / BULLET_RANGE
-                        IF pjFade < 0 THEN pjFade = 0
+                        pjFade = bullets(j).life / (BULLET_RANGE / BULLET_SPEED)
+                        IF pjFade > 1.0 THEN pjFade = 1.0
                         LINE (INT(pjX2), INT(pjY2))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
                         PSET (INT(pjX), INT(pjY)), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
                     END IF
