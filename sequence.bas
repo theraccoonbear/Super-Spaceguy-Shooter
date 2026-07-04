@@ -50,6 +50,17 @@ Sub SEQ_Init()
     SEQ_Add SEQ_TITLE,   ""        ' title screen
 End Sub
 
+' Rewind seqIdx to the first SEQ_TITLE waypoint so GAME_NewGame advances into stage 1.
+Sub SEQ_RewindToTitle()
+    Dim seqrI As Integer
+    For seqrI = 0 To seqCount - 1
+        If seqKind(seqrI) = SEQ_TITLE Then
+            seqIdx = seqrI
+            Exit Sub
+        End If
+    Next seqrI
+End Sub
+
 ' Advance to the next sequence step and execute it.
 Sub SEQ_Advance()
     seqIdx = seqIdx + 1
