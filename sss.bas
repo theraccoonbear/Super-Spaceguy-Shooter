@@ -62,8 +62,7 @@ CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
 CONST FUEL_DRAIN_BOOST    = 0.006   ' extra drain per frame when thrusting
 CONST BULLET_RANGE        = 110     ' cull player bullet beyond player.px + this
-CONST BULLET_DRAW_FRONT   = 0.4     ' front tip offset for screen-space line
-CONST BULLET_DRAW_REAR    = 0.25    ' rear tip offset for screen-space line
+CONST BULLET_TRAIL_LEN    = 4.0     ' world-unit length of the laser bolt trail
 
 CONST EBULLET_SPEED       = 0.16    ' regular enemy bullet speed
 CONST EBULLET_CULL        = 8       ' cull when px < player.px - this
@@ -365,6 +364,9 @@ DIM ebClr AS LONG
 DIM partR AS INTEGER, partG AS INTEGER, partB AS INTEGER
 DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
+DIM pjTs AS SINGLE, pjTsMax AS SINGLE
+DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
+DIM pjFade AS SINGLE
 DIM bossFireTimer AS SINGLE
 DIM bossShots AS INTEGER
 DIM bossAngle AS SINGLE
@@ -988,24 +990,26 @@ DO
         _DEST backBuffer
         FOR j = 1 TO MAX_BULLETS
             IF bullets(j).active THEN
-                ' front/rear tips along actual velocity direction (not just +X)
-                DIM pjScale AS SINGLE
-                pjScale = BULLET_DRAW_FRONT / BULLET_SPEED
-                DIM pjFX AS SINGLE, pjFY AS SINGLE, pjFZ AS SINGLE
-                pjFX = bullets(j).px + bullets(j).vx * pjScale
-                pjFY = bullets(j).py + bullets(j).vy * pjScale
-                pjFZ = bullets(j).pz + bullets(j).vz * pjScale
-                pjX  = pjFX * vpMat.m(0,0) + pjFY * vpMat.m(0,1) + pjFZ * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY  = pjFX * vpMat.m(1,0) + pjFY * vpMat.m(1,1) + pjFZ * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW  = pjFX * vpMat.m(3,0) + pjFY * vpMat.m(3,1) + pjFZ * vpMat.m(3,2) + vpMat.m(3,3)
-                DIM pjRX AS SINGLE, pjRY AS SINGLE, pjRZ AS SINGLE
-                pjScale = BULLET_DRAW_REAR / BULLET_SPEED
-                pjRX = bullets(j).px - bullets(j).vx * pjScale
-                pjRY = bullets(j).py - bullets(j).vy * pjScale
-                pjRZ = bullets(j).pz - bullets(j).vz * pjScale
-                pjX2 = pjRX * vpMat.m(0,0) + pjRY * vpMat.m(0,1) + pjRZ * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY2 = pjRX * vpMat.m(1,0) + pjRY * vpMat.m(1,1) + pjRZ * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW2 = pjRX * vpMat.m(3,0) + pjRY * vpMat.m(3,1) + pjRZ * vpMat.m(3,2) + vpMat.m(3,3)
+                ' bolt: leading tip = current pos; trail extends back along velocity
+                ' clamp trail so it never reaches behind the firing origin
+                IF bullets(j).vx > 0.0001 THEN
+                    pjTsMax = (bullets(j).px - player.px) / bullets(j).vx
+                ELSE
+                    pjTsMax = 0.0
+                END IF
+                pjTs = BULLET_TRAIL_LEN / BULLET_SPEED
+                IF pjTs > pjTsMax THEN pjTs = pjTsMax
+                ' project leading tip (current position)
+                pjX  = bullets(j).px * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
+                pjY  = bullets(j).px * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
+                pjW  = bullets(j).px * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
+                ' project trailing tip (back along velocity)
+                pjBX = bullets(j).px - bullets(j).vx * pjTs
+                pjBY = bullets(j).py - bullets(j).vy * pjTs
+                pjBZ = bullets(j).pz - bullets(j).vz * pjTs
+                pjX2 = pjBX * vpMat.m(0,0) + pjBY * vpMat.m(0,1) + pjBZ * vpMat.m(0,2) + vpMat.m(0,3)
+                pjY2 = pjBX * vpMat.m(1,0) + pjBY * vpMat.m(1,1) + pjBZ * vpMat.m(1,2) + vpMat.m(1,3)
+                pjW2 = pjBX * vpMat.m(3,0) + pjBY * vpMat.m(3,1) + pjBZ * vpMat.m(3,2) + vpMat.m(3,3)
                 IF pjW > 0.0001 AND pjW2 > 0.0001 THEN
                     pjX  = (pjX  / pjW  + 1.0) * scrW * 0.5
                     pjY  = (1.0 - pjY  / pjW)  * scrH * 0.5
@@ -1013,7 +1017,6 @@ DO
                     pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
                     IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
                         ' fade to black over bullet range — visually gone well before cull
-                        DIM pjFade AS SINGLE
                         pjFade = 1.0 - (bullets(j).px - player.px) / BULLET_RANGE
                         IF pjFade < 0 THEN pjFade = 0
                         LINE (pjX2, pjY2)-(pjX, pjY), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
@@ -1368,13 +1371,19 @@ IF dbgOverlay THEN
         dbgFpsClr = _RGB(80, 210, 80)
     END IF
     _DEST 0
-    LINE (0, 0)-(85, 34), _RGBA(0, 0, 0, 190), BF
+    LINE (0, 0)-(105, 76), _RGBA(0, 0, 0, 190), BF
     COLOR dbgPolyClr
-    _PRINTSTRING (2, 2),  "POLY " + LTRIM$(STR$(E3D_scnCount)) + "/450"
+    _PRINTSTRING (2,  2),  "POLY " + LTRIM$(STR$(E3D_scnCount)) + "/450"
     COLOR dbgFpsClr
-    _PRINTSTRING (2, 13), "FPS  " + LTRIM$(STR$(CINT(dbgFps)))
+    _PRINTSTRING (2, 12), "FPS  " + LTRIM$(STR$(CINT(dbgFps)))
     COLOR _RGB(140, 140, 160)
-    _PRINTSTRING (2, 24), "ms   " + LEFT$(STR$(dbgFrameMs + 1000), 6)
+    _PRINTSTRING (2, 22), "ms   " + LEFT$(STR$(dbgFrameMs + 1000), 6)
+    COLOR _RGB(120, 200, 255)
+    _PRINTSTRING (2, 34), "RY   " + LEFT$(STR$(player.ry + 1000), 7)
+    _PRINTSTRING (2, 44), "RZ   " + LEFT$(STR$(player.rz + 1000), 7)
+    COLOR _RGB(180, 255, 180)
+    _PRINTSTRING (2, 54), "VY   " + LEFT$(STR$(playerVY + 1000), 7)
+    _PRINTSTRING (2, 64), "VZ   " + LEFT$(STR$(playerVZ + 1000), 7)
 END IF
 
 _LIMIT 60
