@@ -71,23 +71,6 @@ Sub PLAYER_CamUpdate
     camFwdY = camFwdY + (plcFwdTgtY - camFwdY) * CAM_FWD_RATE
     camFwdZ = camFwdZ + (plcFwdTgtZ - camFwdZ) * CAM_FWD_RATE
 
-    ' camera sits behind and slightly above the ship's nose direction
-    cam.POS.x = player.px - CAM_OFFSET_X
-    If gameState = GS_CINEMATIC Then cam.POS.x = cinematicCamX
-    cam.POS.y = camLagY + CAM_OFFSET_Y - camFwdY * CAM_FWD_SCALE
-    cam.POS.z = camLagZ               - camFwdZ * CAM_FWD_SCALE
-
-    ' look-at: ahead along nose direction (cinematic locks to frozen camera)
-    If gameState = GS_CINEMATIC Then
-        cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
-        cam.target.y = camLagY
-        cam.target.z = camLagZ
-    Else
-        cam.target.x = player.px + CAM_LEAD_X
-        cam.target.y = player.py + camFwdY * CAM_LEAD_X
-        cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
-    End If
-
-    ' E3D_MatLookAt / E3D_MatMul called in sss.bas after this sub — UDT-as-Sub-param
-    ' fails in included files, so the vpMat build stays in the main compilation unit.
+    ' cam.POS and cam.target are set in sss.bas after this call — nested UDT field
+    ' writes from included-file Subs don't update the global, same as UDT array gotcha.
 End Sub
