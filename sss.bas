@@ -470,7 +470,7 @@ DO
             STAGE_Update
 
             ' --- player movement, velocity physics, attitude ---
-            PLAYER_Update
+            PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
 
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
