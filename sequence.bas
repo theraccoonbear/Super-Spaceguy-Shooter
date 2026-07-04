@@ -67,7 +67,7 @@ End Sub
 ' Returns the target sequence index, or -1 if the spec is unknown/not found.
 Function SEQ_JumpToScene%(seqjSpec As String)
     Dim seqjI As Integer, seqjLast As Integer
-    Dim seqjType As String, seqjNum As Integer
+    Dim seqjType As String, seqjNum As Integer, seqjHasNum As Integer
     Dim seqjKind As Integer, seqjBoss As Integer
     Dim seqjCount As Integer, seqjHit As Integer
 
@@ -81,7 +81,8 @@ Function SEQ_JumpToScene%(seqjSpec As String)
         End If
     Loop
     seqjType = LCase$(Left$(seqjSpec, seqjLast))
-    If seqjLast < Len(seqjSpec) Then
+    seqjHasNum = (seqjLast < Len(seqjSpec))
+    If seqjHasNum Then
         seqjNum = Val(Mid$(seqjSpec, seqjLast + 1))
     Else
         seqjNum = 0
@@ -100,7 +101,8 @@ Function SEQ_JumpToScene%(seqjSpec As String)
     For seqjI = 0 To seqCount - 1
         If seqKind(seqjI) = seqjKind Then
             seqjHit = 0
-            If seqjType = "crawl" Then
+            ' crawl and bare type names (no digit) are 0-indexed; playing/boss with digit are 1-indexed
+            If seqjType = "crawl" Or Not seqjHasNum Then
                 If seqjCount = seqjNum Then seqjHit = -1
             Else
                 If seqjCount = seqjNum - 1 Then seqjHit = -1
