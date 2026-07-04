@@ -160,6 +160,7 @@ DIM SHARED fuelStranded AS INTEGER
 DIM SHARED scorePopTimer AS INTEGER, scorePopY AS SINGLE, scorePopVal AS LONG
 DIM SHARED spawnFlashTimer AS INTEGER
 DIM SHARED hdLockFlashTimer AS INTEGER
+DIM SHARED playerVY AS SINGLE, playerVZ AS SINGLE
 DIM SHARED spawnFlashPX AS SINGLE, spawnFlashPY AS SINGLE, spawnFlashPZ AS SINGLE
 DIM SHARED bossHP AS INTEGER
 DIM SHARED bossPhase AS INTEGER
@@ -432,12 +433,16 @@ DO
             STAGE_Update
 
             ' --- player movement (Y = up/down, Z = left/right) ---
+            Dim plTgtVY AS SINGLE, plTgtVZ AS SINGLE
+            plTgtVY = 0 : plTgtVZ = 0
             IF gameState = GS_PLAYING AND NOT fuelStranded THEN
-                IF held(E3D_KEY_UP)    OR held(E3D_KEY_W) THEN player.py = player.py + PLAYER_SPEED
-                IF held(E3D_KEY_DOWN)  OR held(E3D_KEY_S) THEN player.py = player.py - PLAYER_SPEED
-                IF held(E3D_KEY_LEFT)  OR held(E3D_KEY_A) THEN player.pz = player.pz - PLAYER_SPEED
-                IF held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN player.pz = player.pz + PLAYER_SPEED
+                IF held(E3D_KEY_UP)    OR held(E3D_KEY_W) THEN player.py = player.py + PLAYER_SPEED : plTgtVY =  PLAYER_SPEED
+                IF held(E3D_KEY_DOWN)  OR held(E3D_KEY_S) THEN player.py = player.py - PLAYER_SPEED : plTgtVY = -PLAYER_SPEED
+                IF held(E3D_KEY_LEFT)  OR held(E3D_KEY_A) THEN player.pz = player.pz - PLAYER_SPEED : plTgtVZ = -PLAYER_SPEED
+                IF held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN player.pz = player.pz + PLAYER_SPEED : plTgtVZ =  PLAYER_SPEED
             END IF
+            playerVY = playerVY + (plTgtVY - playerVY) * ATTITUDE_LERP
+            playerVZ = playerVZ + (plTgtVZ - playerVZ) * ATTITUDE_LERP
 
             isManeuver = 0
             IF NOT fuelStranded THEN
@@ -486,6 +491,8 @@ DO
                             bullets(i).py = player.py
                             bullets(i).pz = player.pz
                             bullets(i).vx = BULLET_SPEED
+                            bullets(i).vy = playerVY
+                            bullets(i).vz = playerVZ
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
@@ -503,6 +510,8 @@ DO
             FOR i = 1 TO MAX_BULLETS
                 IF bullets(i).active THEN
                     bullets(i).px = bullets(i).px + bullets(i).vx
+                    bullets(i).py = bullets(i).py + bullets(i).vy
+                    bullets(i).pz = bullets(i).pz + bullets(i).vz
                     IF bullets(i).px > player.px + BULLET_RANGE THEN bullets(i).active = 0
                 END IF
             NEXT i
