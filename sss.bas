@@ -536,7 +536,12 @@ DO
                     bullets(i).px = bullets(i).px + bullets(i).vx
                     bullets(i).py = bullets(i).py + bullets(i).vy
                     bullets(i).pz = bullets(i).pz + bullets(i).vz
-                    IF bullets(i).px > player.px + BULLET_RANGE THEN bullets(i).active = 0
+                    ' during boss fight cull past the boss — prevents parked shots boss walks into
+                    IF boss.active AND bullets(i).px > boss.px + 3 THEN
+                        bullets(i).active = 0
+                    ELSEIF bullets(i).px > player.px + BULLET_RANGE THEN
+                        bullets(i).active = 0
+                    END IF
                 END IF
             NEXT i
 
