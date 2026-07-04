@@ -217,18 +217,45 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'settings.bas'
 '$INCLUDE:'ui.bas'
 
-' --- version arg: write to terminal stdout, not the QB84 text screen ---
+' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
+
 IF INSTR(ssCmdLine, "--version") > 0 OR ssCmdLine = "-v" OR LEFT$(ssCmdLine, 3) = "-v " THEN
     DIM ssVFH AS INTEGER : ssVFH = FREEFILE
     IF INSTR(_OS$, "WIN") THEN
-        OPEN "CON:" FOR OUTPUT AS #ssVFH     ' Windows console stdout
+        OPEN "CON:" FOR OUTPUT AS #ssVFH
     ELSE
-        OPEN "/dev/stdout" FOR OUTPUT AS #ssVFH  ' Linux / macOS
+        OPEN "/dev/stdout" FOR OUTPUT AS #ssVFH
     END IF
     PRINT #ssVFH, "Super Spaceguy Shooter " + VERSION$
     CLOSE #ssVFH
     SYSTEM
+END IF
+
+IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "-h " THEN
+    GAME_Usage("")
+END IF
+
+DIM ssCmdScene AS STRING
+DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
+IF ssCmdScnPos > 0 THEN
+    ssCmdScene = MID$(ssCmdLine, ssCmdScnPos + 8)
+    ssCmdScnPos = INSTR(ssCmdScene, " ")
+    IF ssCmdScnPos > 0 THEN ssCmdScene = LEFT$(ssCmdScene, ssCmdScnPos - 1)
+    ssCmdScene = LTRIM$(RTRIM$(ssCmdScene))
+END IF
+
+' validate --scene type prefix before opening the game window
+DIM ssSCnI AS INTEGER, ssSCnType AS STRING
+IF ssCmdScene <> "" THEN
+    ssSCnI = Len(ssCmdScene)
+    Do While ssSCnI > 0
+        If Mid$(ssCmdScene, ssSCnI, 1) >= "0" And Mid$(ssCmdScene, ssSCnI, 1) <= "9" Then ssSCnI = ssSCnI - 1 Else Exit Do
+    Loop
+    ssSCnType = LCase$(Left$(ssCmdScene, ssSCnI))
+    If ssSCnType <> "title" And ssSCnType <> "crawl" And ssSCnType <> "playing" And ssSCnType <> "boss" Then
+        GAME_Usage("unknown scene type '" + ssSCnType + "'")
+    End If
 END IF
 
 ' --- screen ---
@@ -359,7 +386,12 @@ SND_Init
 SPK_Init
 SETTINGS_Load
 SEQ_Init
-SEQ_Advance
+IF ssCmdScene <> "" THEN
+    IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
+    SEQ_Advance
+ELSE
+    SEQ_Advance
+END IF
 
 ' ============================================================
 ' MAIN LOOP
@@ -1357,4 +1389,34 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
             lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
         END IF
     END IF
+END SUB
+
+SUB GAME_Usage(guErr AS STRING)
+    DIM guFH AS INTEGER : guFH = FREEFILE
+    IF INSTR(_OS$, "WIN") THEN
+        OPEN "CON:" FOR OUTPUT AS #guFH
+    ELSE
+        OPEN "/dev/stdout" FOR OUTPUT AS #guFH
+    END IF
+    IF guErr <> "" THEN
+        PRINT #guFH, "Error: " + guErr
+        PRINT #guFH, ""
+    END IF
+    PRINT #guFH, "Super Spaceguy Shooter " + VERSION$
+    PRINT #guFH, ""
+    PRINT #guFH, "Usage: sss [options]"
+    PRINT #guFH, ""
+    PRINT #guFH, "Options:"
+    PRINT #guFH, "  -v, --version          Print version and exit"
+    PRINT #guFH, "  -h, --help             Show this help and exit"
+    PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
+    PRINT #guFH, ""
+    PRINT #guFH, "Scene names:"
+    PRINT #guFH, "  title                  Title screen (default)"
+    PRINT #guFH, "  crawl0                 Intro crawl"
+    PRINT #guFH, "  crawl1..6              Chapter crawls"
+    PRINT #guFH, "  playing1..6            Gameplay stages"
+    PRINT #guFH, "  boss1..6               Stage with boss pre-triggered on frame 1"
+    CLOSE #guFH
+    SYSTEM
 END SUB
