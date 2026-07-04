@@ -233,7 +233,7 @@ IF INSTR(ssCmdLine, "--version") > 0 OR ssCmdLine = "-v" OR LEFT$(ssCmdLine, 3) 
 END IF
 
 IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "-h " THEN
-    GAME_Usage
+    GAME_Usage("")
 END IF
 
 DIM ssCmdScene AS STRING
@@ -254,7 +254,7 @@ IF ssCmdScene <> "" THEN
     Loop
     ssSCnType = LCase$(Left$(ssCmdScene, ssSCnI))
     If ssSCnType <> "title" And ssSCnType <> "crawl" And ssSCnType <> "playing" And ssSCnType <> "boss" Then
-        GAME_Usage
+        GAME_Usage("unknown scene type '" + ssSCnType + "'")
     End If
 END IF
 
@@ -387,7 +387,7 @@ SPK_Init
 SETTINGS_Load
 SEQ_Init
 IF ssCmdScene <> "" THEN
-    IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage
+    IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
     SEQ_Advance
 ELSE
     SEQ_Advance
@@ -1391,12 +1391,16 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
     END IF
 END SUB
 
-SUB GAME_Usage()
+SUB GAME_Usage(guErr AS STRING)
     DIM guFH AS INTEGER : guFH = FREEFILE
     IF INSTR(_OS$, "WIN") THEN
         OPEN "CON:" FOR OUTPUT AS #guFH
     ELSE
         OPEN "/dev/stdout" FOR OUTPUT AS #guFH
+    END IF
+    IF guErr <> "" THEN
+        PRINT #guFH, "Error: " + guErr
+        PRINT #guFH, ""
     END IF
     PRINT #guFH, "Super Spaceguy Shooter " + VERSION$
     PRINT #guFH, ""
