@@ -111,6 +111,14 @@ Using `Shared varname` inside a Sub causes QB64PE to emit a C++ global declarati
 
 ---
 
+## Function return type must use suffix, not `As Type`
+
+`Function Foo(x As String) As Integer` is invalid in QB64-PE — the return type must be declared via name suffix: `Function Foo%(x As String)` for Integer, `Function Foo$(...)` for String, `Function Foo!(...)` for Single. The `As Type` form on a Function signature causes "Expected )" at the declaration line.
+
+**How to apply:** Always use suffix notation on Function names for return type. `As Type` in the parameter list is fine; `As Type` on the Function name itself is not.
+
+---
+
 ## `$EMBED` and `_LoadImage` paths resolve from the compiler's CWD, not the source file
 
 Both `$EMBED:'path'` and `_LoadImage("path")` resolve relative to the **working directory where the compiler is invoked**, not the directory of the `.bas` file being compiled. So when building with `buildqb.sh code/3d/sss.bas` from the qb64pe root, asset paths must include the full prefix: `code/3d/assets/file.png`, not just `assets/file.png`.

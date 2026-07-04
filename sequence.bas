@@ -61,6 +61,65 @@ Sub SEQ_RewindToTitle()
     Next seqrI
 End Sub
 
+' Parse a scene spec string (e.g. "playing1", "crawl0", "boss2", "title") and set
+' seqIdx so the next SEQ_Advance call lands on that scene.  For "bossN", also sets
+' score = stageScore so the boss triggers on the first gameplay frame.
+' Returns the target sequence index, or -1 if the spec is unknown/not found.
+Function SEQ_JumpToScene%(seqjSpec As String)
+    Dim seqjI As Integer, seqjLast As Integer
+    Dim seqjType As String, seqjNum As Integer, seqjHasNum As Integer
+    Dim seqjKind As Integer, seqjBoss As Integer
+    Dim seqjCount As Integer, seqjHit As Integer
+
+    ' split trailing digit(s) from type name
+    seqjLast = Len(seqjSpec)
+    Do While seqjLast > 0
+        If Mid$(seqjSpec, seqjLast, 1) >= "0" And Mid$(seqjSpec, seqjLast, 1) <= "9" Then
+            seqjLast = seqjLast - 1
+        Else
+            Exit Do
+        End If
+    Loop
+    seqjType = LCase$(Left$(seqjSpec, seqjLast))
+    seqjHasNum = (seqjLast < Len(seqjSpec))
+    If seqjHasNum Then
+        seqjNum = Val(Mid$(seqjSpec, seqjLast + 1))
+    Else
+        seqjNum = 0
+    End If
+
+    seqjBoss = 0
+    Select Case seqjType
+        Case "title"   : seqjKind = SEQ_TITLE
+        Case "crawl"   : seqjKind = SEQ_CRAWL    ' 0-indexed: crawl0=intro, crawl1=stage1
+        Case "playing" : seqjKind = SEQ_PLAY      ' 1-indexed: playing1=stage 1
+        Case "boss"    : seqjKind = SEQ_PLAY : seqjBoss = -1
+        Case Else      : SEQ_JumpToScene% = -1 : Exit Function
+    End Select
+
+    seqjCount = 0
+    For seqjI = 0 To seqCount - 1
+        If seqKind(seqjI) = seqjKind Then
+            seqjHit = 0
+            ' crawl and bare type names (no digit) are 0-indexed; playing/boss with digit are 1-indexed
+            If seqjType = "crawl" Or Not seqjHasNum Then
+                If seqjCount = seqjNum Then seqjHit = -1
+            Else
+                If seqjCount = seqjNum - 1 Then seqjHit = -1
+            End If
+            If seqjHit Then
+                seqIdx = seqjI - 1
+                If seqjBoss Then score = stageScore
+                SEQ_JumpToScene% = seqjI
+                Exit Function
+            End If
+            seqjCount = seqjCount + 1
+        End If
+    Next seqjI
+
+    SEQ_JumpToScene% = -1
+End Function
+
 ' Advance to the next sequence step and execute it.
 Sub SEQ_Advance()
     seqIdx = seqIdx + 1
