@@ -9,7 +9,7 @@
 '
 ' Local variable prefix: plr* (physics)  plc* (camera)
 
-Sub PLAYER_Update
+Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrRight As Integer)
     Dim plrTgtVY As Single, plrTgtVZ As Single
     Dim plrTgtRx As Single, plrTgtRy As Single, plrTgtRz As Single
     Dim plrNorm As Single
@@ -17,10 +17,10 @@ Sub PLAYER_Update
     ' input -> target velocity
     plrTgtVY = 0 : plrTgtVZ = 0
     If gameState = GS_PLAYING And Not fuelStranded Then
-        If held(E3D_KEY_UP)    Or held(E3D_KEY_W) Then plrTgtVY =  PLAYER_MAX_VEL
-        If held(E3D_KEY_DOWN)  Or held(E3D_KEY_S) Then plrTgtVY = -PLAYER_MAX_VEL
-        If held(E3D_KEY_LEFT)  Or held(E3D_KEY_A) Then plrTgtVZ = -PLAYER_MAX_VEL
-        If held(E3D_KEY_RIGHT) Or held(E3D_KEY_D) Then plrTgtVZ =  PLAYER_MAX_VEL
+        If plrUp    Then plrTgtVY =  PLAYER_MAX_VEL
+        If plrDown  Then plrTgtVY = -PLAYER_MAX_VEL
+        If plrLeft  Then plrTgtVZ = -PLAYER_MAX_VEL
+        If plrRight Then plrTgtVZ =  PLAYER_MAX_VEL
     End If
 
     ' lerp velocity toward target (PLAYER_ACCEL drives both accel and drag)
