@@ -22,10 +22,35 @@ Sub HUD_Draw
 
     ' crosshair and target locks — gameplay only
     If gameState = GS_PLAYING Then
-        LINE (scrW/2 - 7, scrH/2)-(scrW/2 - 3, scrH/2), _RGB(100, 255, 100)
-        LINE (scrW/2 + 3, scrH/2)-(scrW/2 + 7, scrH/2), _RGB(100, 255, 100)
-        LINE (scrW/2, scrH/2 - 5)-(scrW/2, scrH/2 - 2), _RGB(100, 255, 100)
-        LINE (scrW/2, scrH/2 + 2)-(scrW/2, scrH/2 + 5), _RGB(100, 255, 100)
+        ' trajectory cone: project 4 points along bullet path at increasing X depth
+        Dim hdDist(0 To 3) As Single : hdDist(0) = 10 : hdDist(1) = 25 : hdDist(2) = 50 : hdDist(3) = 90
+        Dim hdDotPX As Single, hdDotSX As Single, hdDotSY As Single, hdDotArm As Integer
+        Dim hdDotClr As Long
+        For hdI = 0 To 3
+            hdDotPX = player.px + hdDist(hdI)
+            hdPjX = hdDotPX * vpMat.m(0,0) + player.py * vpMat.m(0,1) + player.pz * vpMat.m(0,2) + vpMat.m(0,3)
+            hdPjY = hdDotPX * vpMat.m(1,0) + player.py * vpMat.m(1,1) + player.pz * vpMat.m(1,2) + vpMat.m(1,3)
+            hdPjW = hdDotPX * vpMat.m(3,0) + player.py * vpMat.m(3,1) + player.pz * vpMat.m(3,2) + vpMat.m(3,3)
+            If hdPjW > 0.001 Then
+                hdDotSX = (hdPjX / hdPjW + 1.0) * (scrW * 0.5)
+                hdDotSY = (1.0 - hdPjY / hdPjW) * (scrH * 0.5)
+                hdDotArm = 3 - hdI
+                Select Case hdI
+                    Case 0 : hdDotClr = _RGB(90, 230, 90)
+                    Case 1 : hdDotClr = _RGB(70, 190, 70)
+                    Case 2 : hdDotClr = _RGB(55, 155, 55)
+                    Case 3 : hdDotClr = _RGB(40, 115, 40)
+                End Select
+                If hdDotArm > 0 Then
+                    LINE (hdDotSX - hdDotArm, hdDotSY)-(hdDotSX + hdDotArm, hdDotSY), hdDotClr
+                    LINE (hdDotSX, hdDotSY - hdDotArm)-(hdDotSX, hdDotSY + hdDotArm), hdDotClr
+                Else
+                    PSET (hdDotSX, hdDotSY), hdDotClr
+                End If
+            End If
+        Next hdI
+
+        If hdLockFlashTimer > 0 Then hdLockFlashTimer = hdLockFlashTimer - 1
 
         hdTR = 10
         For hdI = 1 To MAX_ENEMIES
@@ -38,7 +63,7 @@ Sub HUD_Draw
                         hdTSX = (hdPjX / hdPjW + 1.0) * (scrW * 0.5)
                         hdTSY = (1.0 - hdPjY / hdPjW) * (scrH * 0.5)
                         If hdTSX >= hdTR And hdTSX < scrW - hdTR And hdTSY >= hdTR And hdTSY < scrH - hdTR Then
-                            COLOR _RGB(255, 165, 40)
+                            If hdLockFlashTimer > 0 Then COLOR _RGB(255, 255, 200) Else COLOR _RGB(255, 165, 40)
                             LINE (hdTSX - hdTR, hdTSY - hdTR)-(hdTSX - hdTR\2, hdTSY - hdTR)
                             LINE (hdTSX - hdTR, hdTSY - hdTR)-(hdTSX - hdTR, hdTSY - hdTR\2)
                             LINE (hdTSX + hdTR\2, hdTSY - hdTR)-(hdTSX + hdTR, hdTSY - hdTR)
@@ -64,7 +89,7 @@ Sub HUD_Draw
                     hdTSY = (1.0 - hdPjY / hdPjW) * (scrH * 0.5)
                     hdTR = 18
                     If hdTSX >= hdTR And hdTSX < scrW - hdTR And hdTSY >= hdTR And hdTSY < scrH - hdTR Then
-                        COLOR _RGB(255, 60, 60)
+                        If hdLockFlashTimer > 0 Then COLOR _RGB(255, 220, 220) Else COLOR _RGB(255, 60, 60)
                         LINE (hdTSX - hdTR, hdTSY - hdTR)-(hdTSX - hdTR\2, hdTSY - hdTR)
                         LINE (hdTSX - hdTR, hdTSY - hdTR)-(hdTSX - hdTR, hdTSY - hdTR\2)
                         LINE (hdTSX + hdTR\2, hdTSY - hdTR)-(hdTSX + hdTR, hdTSY - hdTR)

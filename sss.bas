@@ -159,6 +159,7 @@ DIM SHARED fuelLevel AS SINGLE : fuelLevel = 100.0
 DIM SHARED fuelStranded AS INTEGER
 DIM SHARED scorePopTimer AS INTEGER, scorePopY AS SINGLE, scorePopVal AS LONG
 DIM SHARED spawnFlashTimer AS INTEGER
+DIM SHARED hdLockFlashTimer AS INTEGER
 DIM SHARED spawnFlashPX AS SINGLE, spawnFlashPY AS SINGLE, spawnFlashPZ AS SINGLE
 DIM SHARED bossHP AS INTEGER
 DIM SHARED bossPhase AS INTEGER
@@ -558,7 +559,7 @@ DO
                                 bullets(j).active = 0
                                 score = score + SCORE_ENEMY
                                 SND_Boom
-                                scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
+                                scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY : hdLockFlashTimer = 8
                                 SELECT CASE enemies(i).meshIdx
                                 CASE MESH_ENEMY        : partR = 255 : partG =  80 : partB =  60
                                 CASE MESH_ENEMY_ARROW  : partR = 255 : partG = 140 : partB =   0
@@ -605,7 +606,7 @@ DO
                                 bullets(j).active = 0
                                 score = score + SCORE_ASTEROID
                                 SND_Boom
-                                scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ASTEROID
+                                scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ASTEROID : hdLockFlashTimer = 8
                                 FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
                             END IF
                         END IF
@@ -775,7 +776,7 @@ DO
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
                                 score = score + 2000
-                                scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
+                                scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000 : hdLockFlashTimer = 12
                                 pk = 0
                                 FOR p = 1 TO FX_MAX_PARTICLES
                                     IF fxPartActive(p) = 0 AND pk < BOSS_DEATH_PARTS THEN
