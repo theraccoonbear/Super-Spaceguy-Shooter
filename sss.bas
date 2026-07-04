@@ -508,12 +508,13 @@ DO
                             bullets(i).pz = player.pz
                             ' fire along ship nose: rotate (1,0,0) by ry (yaw) then rz (pitch)
                             ' nose = (cos(rz)*cos(ry), sin(rz)*cos(ry), -sin(ry)) — already unit length
-                            DIM bvRy AS SINGLE, bvRz AS SINGLE
+                            DIM bvRx AS SINGLE, bvRy AS SINGLE, bvRz AS SINGLE
+                            bvRx = player.rx * _PI / 180.0
                             bvRy = player.ry * _PI / 180.0
                             bvRz = player.rz * _PI / 180.0
                             bullets(i).vx = COS(bvRz) * COS(bvRy) * BULLET_SPEED
-                            bullets(i).vy = SIN(bvRz) * COS(bvRy) * BULLET_SPEED
-                            bullets(i).vz = -SIN(bvRy)             * BULLET_SPEED
+                            bullets(i).vy = (COS(bvRx)*SIN(bvRz)*COS(bvRy) + SIN(bvRx)*SIN(bvRy)) * BULLET_SPEED
+                            bullets(i).vz = (SIN(bvRx)*SIN(bvRz)*COS(bvRy) - COS(bvRx)*SIN(bvRy)) * BULLET_SPEED
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
