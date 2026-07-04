@@ -96,7 +96,7 @@ CONST SHIELD_RESTORE      = 30      ' shield added by powerup
 
 CONST BOSS_SCALE          = 3.5     ' boss mesh scale
 CONST BOSS_SPAWN_DIST     = 55      ' boss spawns this far ahead of player
-CONST BOSS_COMBAT_DIST    = 22      ' boss holds at this X distance
+CONST BOSS_COMBAT_DIST    = 45      ' boss holds at this X distance
 CONST BOSS_WARN_FRAMES    = 120     ' warning frames before boss spawns
 CONST BOSS_FIRE1          = 2.2     ' phase 1 fire interval
 CONST BOSS_FIRE2          = 1.5     ' phase 2 fire interval
@@ -988,14 +988,24 @@ DO
         _DEST backBuffer
         FOR j = 1 TO MAX_BULLETS
             IF bullets(j).active THEN
-                ' front tip (ahead of bullet center — closer to vanishing pt)
-                pjX  = (bullets(j).px + BULLET_DRAW_FRONT) * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY  = (bullets(j).px + BULLET_DRAW_FRONT) * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW  = (bullets(j).px + BULLET_DRAW_FRONT) * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-                ' rear tip (trailing edge — closer to player)
-                pjX2 = (bullets(j).px - BULLET_DRAW_REAR) * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY2 = (bullets(j).px - BULLET_DRAW_REAR) * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW2 = (bullets(j).px - BULLET_DRAW_REAR) * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
+                ' front/rear tips along actual velocity direction (not just +X)
+                DIM pjScale AS SINGLE
+                pjScale = BULLET_DRAW_FRONT / BULLET_SPEED
+                DIM pjFX AS SINGLE, pjFY AS SINGLE, pjFZ AS SINGLE
+                pjFX = bullets(j).px + bullets(j).vx * pjScale
+                pjFY = bullets(j).py + bullets(j).vy * pjScale
+                pjFZ = bullets(j).pz + bullets(j).vz * pjScale
+                pjX  = pjFX * vpMat.m(0,0) + pjFY * vpMat.m(0,1) + pjFZ * vpMat.m(0,2) + vpMat.m(0,3)
+                pjY  = pjFX * vpMat.m(1,0) + pjFY * vpMat.m(1,1) + pjFZ * vpMat.m(1,2) + vpMat.m(1,3)
+                pjW  = pjFX * vpMat.m(3,0) + pjFY * vpMat.m(3,1) + pjFZ * vpMat.m(3,2) + vpMat.m(3,3)
+                DIM pjRX AS SINGLE, pjRY AS SINGLE, pjRZ AS SINGLE
+                pjScale = BULLET_DRAW_REAR / BULLET_SPEED
+                pjRX = bullets(j).px - bullets(j).vx * pjScale
+                pjRY = bullets(j).py - bullets(j).vy * pjScale
+                pjRZ = bullets(j).pz - bullets(j).vz * pjScale
+                pjX2 = pjRX * vpMat.m(0,0) + pjRY * vpMat.m(0,1) + pjRZ * vpMat.m(0,2) + vpMat.m(0,3)
+                pjY2 = pjRX * vpMat.m(1,0) + pjRY * vpMat.m(1,1) + pjRZ * vpMat.m(1,2) + vpMat.m(1,3)
+                pjW2 = pjRX * vpMat.m(3,0) + pjRY * vpMat.m(3,1) + pjRZ * vpMat.m(3,2) + vpMat.m(3,3)
                 IF pjW > 0.0001 AND pjW2 > 0.0001 THEN
                     pjX  = (pjX  / pjW  + 1.0) * scrW * 0.5
                     pjY  = (1.0 - pjY  / pjW)  * scrH * 0.5
