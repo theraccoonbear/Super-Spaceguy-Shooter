@@ -32,16 +32,16 @@ Sub BOSS_UpdateMovement()
 End Sub
 
 Sub BOSS_SetEvasion(phase As Integer)
-    ' flip to opposite quadrant — guarantees a visible cross-screen dart
-    If boss.py >= 0 Then
-        bossTargetY = -4 - Rnd * 8
+    ' dart relative to player — keeps boss inside firing cone (15deg pitch / 7deg yaw at BOSS_COMBAT_DIST=45)
+    If boss.py >= player.py Then
+        bossTargetY = player.py - (3 + Rnd * 5)
     Else
-        bossTargetY =  4 + Rnd * 8
+        bossTargetY = player.py + (3 + Rnd * 5)
     End If
-    If boss.pz >= 0 Then
-        bossTargetZ = -5 - Rnd * 9
+    If boss.pz >= player.pz Then
+        bossTargetZ = player.pz - (2 + Rnd * 3)
     Else
-        bossTargetZ =  5 + Rnd * 9
+        bossTargetZ = player.pz + (2 + Rnd * 3)
     End If
     Select Case phase
         Case 1 : bossMoveTimer = 70
