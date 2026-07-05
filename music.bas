@@ -406,6 +406,26 @@ Sub MUS_Fill(musFdoSfx As Integer)
             sndPupPos = sndPupPos + 1
             If sndPupPos >= SND_PUP_LEN Then sndPupPos = -1
         End If
+        If sndBlipTimer > 0 Then
+            Dim blpPos As Long, blpEnv As Single
+            blpPos = sndBlipLen - sndBlipTimer
+            If blpPos < sndBlipLen * 0.1 Then
+                blpEnv = blpPos / (sndBlipLen * 0.1)
+            ElseIf blpPos > sndBlipLen * 0.55 Then
+                blpEnv = 1.0 - (blpPos - sndBlipLen * 0.55) / (sndBlipLen * 0.45)
+            Else
+                blpEnv = 1.0
+            End If
+            If blpEnv < 0 Then blpEnv = 0
+            If blpPos < sndBlipPlosLen Then
+                musFefx = musFefx + (Rnd * 2.0 - 1.0) * blpEnv * 0.22
+            Else
+                sndBlipPhase = sndBlipPhase + 6.2832 * sndBlipFreq / SAMPLE_RATE
+                If sndBlipPhase > 6.2832 Then sndBlipPhase = sndBlipPhase - 6.2832
+                musFefx = musFefx + (Sin(sndBlipPhase) + Sin(sndBlipPhase * 2.0) * 0.35) * blpEnv * 0.26
+            End If
+            sndBlipTimer = sndBlipTimer - 1
+        End If
 
         If musFdoSfx Then
             If sndShootPos >= 0 Then

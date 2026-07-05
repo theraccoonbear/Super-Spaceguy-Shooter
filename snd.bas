@@ -30,6 +30,12 @@ Dim Shared sndKickPos  As Integer : sndKickPos  = -1
 Dim Shared sndSnarePos As Integer : sndSnarePos = -1
 Dim Shared sndHihatPos As Integer : sndHihatPos = -1
 
+Dim Shared sndBlipPhase   As Single
+Dim Shared sndBlipFreq    As Single
+Dim Shared sndBlipTimer   As Integer : sndBlipTimer = -1
+Dim Shared sndBlipLen     As Integer
+Dim Shared sndBlipPlosLen As Integer
+
 Sub SND_Init()
     Dim sndK As Integer, sndF As Single, sndFade As Single
     Dim sndGenPh As Single, sndGenT As Single
@@ -116,3 +122,11 @@ Sub SND_Boom()  : sndBoomPos   = 0 : End Sub
 Sub SND_Hit()   : sndHitPos    = 0 : End Sub
 Sub SND_Pup()   : sndPupPos    = 0 : End Sub
 Sub SND_Whoosh(): sndWhooshPos = 0 : End Sub
+Sub SND_Blip(blipFreq As Single)
+    sndBlipFreq    = blipFreq
+    sndBlipPhase   = 0
+    sndBlipLen     = 1323 + INT(RND * 2205)  ' 30–80ms
+    sndBlipPlosLen = 0
+    IF RND > 0.45 THEN sndBlipPlosLen = 441 + INT(RND * 441)  ' ~55% chance of 10–20ms noise burst
+    sndBlipTimer   = sndBlipLen
+End Sub
