@@ -1097,16 +1097,14 @@ DO
         _DEST backBuffer
         _PUTIMAGE (0, 0)-(scrW - 1, scrH - 1), titleImg, backBuffer
         ' translucent footer so text reads over the image art
-        LINE (0, 158)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
-        FONT_Print fontPalette(9), backBuffer, "ARROWS/WASD  move", scrW \ 2 - 64, 164
-        FONT_Print fontPalette(9), backBuffer, "SPACE        fire", scrW \ 2 - 64, 176
-        FONT_Print fontPalette(9), backBuffer, "P            pause", scrW \ 2 - 64, 188
+        LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
         throbBright = INT(170 + 85 * SIN(tt * 5))
         COLOR _RGB(throbBright, throbBright, throbBright)
-        _PRINTSTRING (scrW / 2 - 80, 204), "PRESS SPACE TO START"
+        _PRINTSTRING (scrW / 2 - 80, 200), "PRESS SPACE TO START"
         IF highScore > 0 THEN
-            FONT_PrintCentered fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 220, scrW
+            FONT_PrintCentered fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 218, scrW
         END IF
+        FONT_Print fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H
         FONT_Print fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H
         IF titleEscConfirm THEN
             UI_DrawPanel scrW\2 - 76, scrH\2 - 34, scrW\2 + 76, scrH\2 + 34, "COMMAND CONSOLE"
