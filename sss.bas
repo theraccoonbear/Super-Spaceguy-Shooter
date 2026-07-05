@@ -1104,7 +1104,6 @@ DO
         END IF
 
         FX_Shake backBuffer, scrW, scrH
-        FX_VCRNoise scrW, scrH
 
         IF gameState = GS_PLAYING THEN
             SND_GameFill isManeuver
@@ -1304,6 +1303,22 @@ CASE GS_CRAWL
         LINE (0, scrH - FONT_CHAR_H - 3)-(LEN(crawlSpkW) * FONT_CHAR_W + 7, scrH - 1), _RGB(0, 20, 60), BF
         FONT_Print fontPalette(10), backBuffer, crawlSpkW, 4, scrH - FONT_CHAR_H - 1
     END IF
+    ' FFWD lozenge hint — always visible after lock-out period
+    IF crawlTimer > 60 THEN
+        DIM crawlFFHint AS STRING
+        IF held(E3D_KEY_SPACE) THEN
+            crawlFFHint = ">> FAST FORWARD <<"
+        ELSE
+            crawlFFHint = "HOLD SPACE TO FAST FORWARD"
+        END IF
+        DIM crawlFFHX AS INTEGER : crawlFFHX = (scrW - LEN(crawlFFHint) * FONT_CHAR_W) \ 2
+        LINE (crawlFFHX - 5, scrH - FONT_CHAR_H - 5)-(crawlFFHX + LEN(crawlFFHint) * FONT_CHAR_W + 4, scrH - 1), _RGBA(0, 8, 24, 210), BF
+        IF held(E3D_KEY_SPACE) THEN
+            FONT_Print fontPalette(14), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2
+        ELSE
+            FONT_Print fontPalette(8), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2
+        END IF
+    END IF
 
     ' auto-advance when last line has cleared the top fade band
     IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
@@ -1318,7 +1333,7 @@ CASE GS_CRAWL
             IF NOT spaceWas THEN
                 crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say ""
             END IF
-            IF (crawlTimer MOD 4) = 0 THEN SND_Blip 800 + INT(RND * 2200)
+            IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
             fxVCRActive = 0
             IF spaceWas THEN volMusic = crawlFFVolSave
@@ -1334,6 +1349,7 @@ CASE GS_CRAWL
     END IF
 
     _DEST 0 : _PUTIMAGE , backBuffer, 0
+    FX_VCRNoise scrW, scrH
     MUS_Fill 0
 
     ' ============================================================
