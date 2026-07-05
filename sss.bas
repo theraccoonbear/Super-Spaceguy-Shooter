@@ -186,7 +186,8 @@ DIM SHARED prevGameState AS INTEGER : prevGameState = -1
 DIM SHARED volMusic  AS SINGLE : volMusic  = 0.3
 DIM SHARED volSfx    AS SINGLE : volSfx    = 0.9
 DIM SHARED volSpeech AS SINGLE : volSpeech = 0.4
-DIM SHARED settingNarration AS INTEGER : settingNarration = 1  ' 1=full crawl narration, 0=title/event speech only
+DIM SHARED settingNarration  AS INTEGER : settingNarration  = 1  ' 1=full crawl narration, 0=title/event speech only
+DIM SHARED settingFullscreen AS INTEGER : settingFullscreen = 1
 DIM SHARED optSel    AS INTEGER
 DIM SHARED optUpWas  AS INTEGER
 DIM SHARED optDnWas  AS INTEGER
@@ -396,6 +397,7 @@ fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 SND_Init
 SPK_Init
 SETTINGS_Load
+IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 SEQ_Init
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
@@ -408,10 +410,17 @@ END IF
 ' ============================================================
 ' MAIN LOOP
 ' ============================================================
+DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
     ' --- input ---
     E3D_InputUpdate held()
+    IF _KEYDOWN(34048) AND NOT fsKeyWas THEN
+        settingFullscreen = 1 - settingFullscreen
+        IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
+        SETTINGS_Save
+    END IF
+    fsKeyWas = _KEYDOWN(34048)
 
     ' Detect state transitions for speech triggers
     IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
