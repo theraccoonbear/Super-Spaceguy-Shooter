@@ -479,7 +479,6 @@ SUB SPK_Init()
         DIM idx AS INTEGER, pi AS INTEGER
         DIM spkPpI AS INTEGER, spkPpOut AS STRING
         DIM spkPI2 AS INTEGER, spkPI3 AS INTEGER, spkPI4 AS INTEGER
-        DIM spkLogStr AS STRING, spkLogFH AS INTEGER, spkLogMiss AS INTEGER
         DIM spkWStart AS INTEGER
         DIM spkWOccI AS INTEGER, spkWOccN AS INTEGER
 
@@ -488,8 +487,6 @@ SUB SPK_Init()
         spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
         spkWordCount = 0
         DIM spkTs AS LONG : spkTs = CLNG(TIMER * 1000) MOD 3600000  ' ms since last hour
-        spkLogStr = "--- [" + LTRIM$(STR$(spkTs \ 60000)) + ":" + RIGHT$("0" + LTRIM$(STR$((spkTs \ 1000) MOD 60)), 2) + "." + RIGHT$("00" + LTRIM$(STR$(spkTs MOD 1000)), 3) + "] " + LEFT$(text, 60) + CHR$(10)
-        spkLogMiss = 0
 
         ' Pre-pass: replace punctuation with pause tokens before alpha stripping.
         ' Also eat apostrophes: 'S (possessive) -> nothing; bare ' (contraction) -> nothing.
@@ -566,7 +563,6 @@ SUB SPK_Init()
             spkWStart = spkPhoneCount
             SPK_DictFind wrd, idx
             IF idx >= 0 THEN
-                spkLogStr = spkLogStr + "  OK   " + wrd + " -> " + SPK_PhoneStr$(idx) + CHR$(10)
                 FOR pi = 0 TO spkDictPhoneLen(idx) - 1
                     IF spkPhoneCount < SPK_PHONE_MAX THEN
                         spkPhones(spkPhoneCount) = spkDictPh(idx, pi)
@@ -575,8 +571,6 @@ SUB SPK_Init()
                     END IF
                 NEXT pi
             ELSE
-                spkLogStr = spkLogStr + "  MISS " + wrd + CHR$(10)
-                spkLogMiss = spkLogMiss + 1
                 SPK_SpellWord wrd
             END IF
 
@@ -603,13 +597,6 @@ SUB SPK_Init()
 
             nextWord:
         LOOP
-        ' write utterance log — one file append per SPK_Say call
-        spkLogStr = spkLogStr + "  >> " + LTRIM$(STR$(spkPhoneCount)) + " phones" _
-        + ", " + LTRIM$(STR$(spkLogMiss)) + " misses" + CHR$(10)
-        spkLogFH = FREEFILE
-        OPEN _STARTDIR$ + "/sss_speech.log" FOR APPEND AS #spkLogFH
-        PRINT #spkLogFH, spkLogStr
-        CLOSE #spkLogFH
     END SUB
 
     ' ============================================================

@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if [ ! -f "$1" ]; then
+    echo "Error: source file '$1' not found" >&2
+    exit 1
+fi
+
+base=$(basename "$1" .bas)
+old_exe="./builds/$base"
+
+if [ "$1" == "sss.bas" ]; then
+    echo ">>> Baking in-game spoken text..."
+    "$(dirname "$0")/bake_speech_dict"
+    echo ">>> ...done!"
+fi
+
+# Remove stale executable so a failed build can't be mistaken for success
+rm -f "$old_exe"
+echo ">>> Building $1..."
+build_output=$(qb64pe -s:ExeDefaultDir=./builds -w -x "$1" 2>&1)
+
+build_status=$?
+echo "$build_output"
+
+if [ $build_status -ne 0 ] || echo "$build_output" | grep -Eiq 'error|fatal' || [ ! -x "$old_exe" ]; then
+    echo "Error: build failed for '$base'" >&2
+    exit 1
+fi
+
+echo ">>> done!"
+
+if [ "$2" == "/run" ]; then
+    "$old_exe" "${@:3}"
+fi

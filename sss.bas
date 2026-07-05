@@ -43,6 +43,7 @@ TYPE GameObj
     rx AS SINGLE : ry AS SINGLE : rz AS SINGLE
     drx AS SINGLE : dry AS SINGLE : drz AS SINGLE
     scl AS SINGLE
+    life AS SINGLE
 END TYPE
 
 DIM SHARED player   AS GameObj
@@ -50,8 +51,9 @@ DIM SHARED enemies(1 TO MAX_ENEMIES) AS GameObj
 DIM SHARED boss     AS GameObj
 
 ' --- tuning constants ---
-CONST PLAYER_SPEED        = 0.07    ' movement step per frame
-CONST ATTITUDE_LERP       = 0.14    ' ship tilt/roll settle rate
+CONST PLAYER_ACCEL        = 0.14    ' velocity lerp rate (controls both accel and drag)
+CONST PLAYER_MAX_VEL      = 0.12    ' max lateral velocity per frame
+CONST ATTITUDE_LERP       = 0.09    ' ship tilt/roll settle rate
 
 CONST BULLET_SPEED        = 0.35    ' player bullet X velocity
 CONST FIRE_COOLDOWN       = 0.18    ' seconds between shots
@@ -61,8 +63,7 @@ CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
 CONST FUEL_DRAIN_BOOST    = 0.006   ' extra drain per frame when thrusting
 CONST BULLET_RANGE        = 110     ' cull player bullet beyond player.px + this
-CONST BULLET_DRAW_FRONT   = 0.4     ' front tip offset for screen-space line
-CONST BULLET_DRAW_REAR    = 0.25    ' rear tip offset for screen-space line
+CONST BULLET_TRAIL_LEN    = 2.0     ' world-unit length of bolt body (rear to tip along nose)
 
 CONST EBULLET_SPEED       = 0.16    ' regular enemy bullet speed
 CONST EBULLET_CULL        = 8       ' cull when px < player.px - this
@@ -95,7 +96,7 @@ CONST SHIELD_RESTORE      = 30      ' shield added by powerup
 
 CONST BOSS_SCALE          = 3.5     ' boss mesh scale
 CONST BOSS_SPAWN_DIST     = 55      ' boss spawns this far ahead of player
-CONST BOSS_COMBAT_DIST    = 22      ' boss holds at this X distance
+CONST BOSS_COMBAT_DIST    = 45      ' boss holds at this X distance
 CONST BOSS_WARN_FRAMES    = 120     ' warning frames before boss spawns
 CONST BOSS_FIRE1          = 2.2     ' phase 1 fire interval
 CONST BOSS_FIRE2          = 1.5     ' phase 2 fire interval
@@ -105,7 +106,9 @@ CONST BOSS_DEATH_PARTS    = 35      ' particle count on boss death
 CONST CAM_OFFSET_X        = 6.5    ' camera behind player
 CONST CAM_OFFSET_Y        = 2.0    ' camera above player
 CONST CAM_LEAD_X          = 8      ' look-at point ahead of player
-CONST CAM_LAG_RATE        = 0.10   ' camera lag lerp rate
+CONST CAM_LAG_RATE        = 0.08   ' camera positional lag lerp rate
+CONST CAM_FWD_RATE        = 0.04   ' camera orientation lag lerp rate (slower = weightier feel)
+CONST CAM_FWD_SCALE       = 1.0    ' world units of camera tilt per unit of normalized velocity
 CONST GAME_FOV            = 72     ' field of view
 
 CONST DIM_FAR             = 55      ' distance dimming far threshold
@@ -154,6 +157,9 @@ DIM SHARED shipLives AS INTEGER : shipLives = 3
 DIM SHARED tt AS SINGLE
 DIM SHARED spawnTimer AS SINGLE
 DIM SHARED camLagY AS SINGLE, camLagZ AS SINGLE
+DIM SHARED camFwdY AS SINGLE, camFwdZ AS SINGLE
+DIM SHARED playerVY AS SINGLE, playerVZ AS SINGLE
+DIM SHARED isManeuver AS INTEGER
 DIM SHARED laserEnergy AS SINGLE : laserEnergy = 100.0
 DIM SHARED fuelLevel AS SINGLE : fuelLevel = 100.0
 DIM SHARED fuelStranded AS INTEGER
@@ -177,9 +183,9 @@ DIM SHARED cinematicFade AS INTEGER
 DIM SHARED cinPhase AS SINGLE
 DIM SHARED gameState AS INTEGER
 DIM SHARED prevGameState AS INTEGER : prevGameState = -1
-DIM SHARED volMusic  AS SINGLE : volMusic  = 0.1
-DIM SHARED volSfx    AS SINGLE : volSfx    = 0.65
-DIM SHARED volSpeech AS SINGLE : volSpeech = 1.0
+DIM SHARED volMusic  AS SINGLE : volMusic  = 0.3
+DIM SHARED volSfx    AS SINGLE : volSfx    = 0.9
+DIM SHARED volSpeech AS SINGLE : volSpeech = 0.4
 DIM SHARED settingNarration AS INTEGER : settingNarration = 1  ' 1=full crawl narration, 0=title/event speech only
 DIM SHARED optSel    AS INTEGER
 DIM SHARED optUpWas  AS INTEGER
@@ -216,6 +222,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
 '$INCLUDE:'ui.bas'
+'$INCLUDE:'player.bas'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
@@ -236,6 +243,8 @@ IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "
     GAME_Usage("")
 END IF
 
+DIM SHARED godMode AS INTEGER : godMode = (INSTR(ssCmdLine, "--god") > 0)
+
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
 IF ssCmdScnPos > 0 THEN
@@ -248,14 +257,14 @@ END IF
 ' validate --scene type prefix before opening the game window
 DIM ssSCnI AS INTEGER, ssSCnType AS STRING
 IF ssCmdScene <> "" THEN
-    ssSCnI = Len(ssCmdScene)
-    Do While ssSCnI > 0
-        If Mid$(ssCmdScene, ssSCnI, 1) >= "0" And Mid$(ssCmdScene, ssSCnI, 1) <= "9" Then ssSCnI = ssSCnI - 1 Else Exit Do
-    Loop
-    ssSCnType = LCase$(Left$(ssCmdScene, ssSCnI))
-    If ssSCnType <> "title" And ssSCnType <> "crawl" And ssSCnType <> "playing" And ssSCnType <> "boss" Then
+    ssSCnI = LEN(ssCmdScene)
+    DO WHILE ssSCnI > 0
+        IF MID$(ssCmdScene, ssSCnI, 1) >= "0" AND MID$(ssCmdScene, ssSCnI, 1) <= "9" THEN ssSCnI = ssSCnI - 1 ELSE EXIT DO
+    LOOP
+    ssSCnType = LCASE$(LEFT$(ssCmdScene, ssSCnI))
+    IF ssSCnType <> "title" AND ssSCnType <> "crawl" AND ssSCnType <> "playing" AND ssSCnType <> "boss" THEN
         GAME_Usage("unknown scene type '" + ssSCnType + "'")
-    End If
+    END IF
 END IF
 
 ' --- screen ---
@@ -290,13 +299,13 @@ planetNames(5) = GTEXT_Var$("planet5")
 planetNames(6) = GTEXT_Var$("planet6")
 
 ' --- input ---
-DIM held(0 TO 32767) AS INTEGER
+DIM SHARED held(0 TO 32767) AS INTEGER
 
 ' --- camera ---
-DIM cam AS E3D_Camera
+DIM SHARED cam AS E3D_Camera
 E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 
-DIM projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
+DIM SHARED projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
 E3D_MatPerspective cam, scrW / scrH, projMat
 
 ' --- light (coming from upper-left-front) ---
@@ -342,7 +351,7 @@ DIM fireTimer  AS SINGLE
 DIM hit        AS INTEGER
 DIM i AS INTEGER, j AS INTEGER
 DIM objMat AS E3D_Matrix4
-DIM tgtRx AS SINGLE, tgtRy AS SINGLE, tgtRz AS SINGLE
+' tgtRx/Ry/Rz moved into PLAYER_Update in player.bas
 DIM pPos AS E3D_Coord, pRot AS E3D_Coord
 DIM noLight AS E3D_Coord : noLight.x = 0 : noLight.y = 0 : noLight.z = -1
 DIM thrusterLight AS E3D_Coord
@@ -356,6 +365,8 @@ DIM ebClr AS LONG
 DIM partR AS INTEGER, partG AS INTEGER, partB AS INTEGER
 DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
+DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
+DIM pjFade AS SINGLE
 DIM bossFireTimer AS SINGLE
 DIM bossShots AS INTEGER
 DIM bossAngle AS SINGLE
@@ -367,7 +378,7 @@ DIM escWas AS INTEGER
 DIM spaceWas AS INTEGER
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
-DIM isManeuver AS INTEGER
+' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
 DIM dbgOverlay AS INTEGER
 DIM dbgGraveWas AS INTEGER
 DIM dbgT0 AS DOUBLE
@@ -388,6 +399,7 @@ SETTINGS_Load
 SEQ_Init
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
+    IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
     SEQ_Advance
 ELSE
     SEQ_Advance
@@ -462,24 +474,16 @@ DO
             END IF
             STAGE_Update
 
-            ' --- player movement (Y = up/down, Z = left/right) ---
-            IF gameState = GS_PLAYING AND NOT fuelStranded THEN
-                IF held(E3D_KEY_UP)    OR held(E3D_KEY_W) THEN player.py = player.py + PLAYER_SPEED
-                IF held(E3D_KEY_DOWN)  OR held(E3D_KEY_S) THEN player.py = player.py - PLAYER_SPEED
-                IF held(E3D_KEY_LEFT)  OR held(E3D_KEY_A) THEN player.pz = player.pz - PLAYER_SPEED
-                IF held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN player.pz = player.pz + PLAYER_SPEED
-            END IF
-
-            isManeuver = 0
-            IF NOT fuelStranded THEN
-                IF held(E3D_KEY_UP) OR held(E3D_KEY_W) OR held(E3D_KEY_DOWN) OR held(E3D_KEY_S) THEN isManeuver = -1
-                IF held(E3D_KEY_LEFT) OR held(E3D_KEY_A) OR held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN isManeuver = -1
-            END IF
+            ' --- player movement, velocity physics, attitude ---
+            PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
 
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
                 IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
                 IF fuelLevel <= 0 THEN fuelLevel = 0 : fuelStranded = -1
+            END IF
+            IF godMode THEN
+                lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
             END IF
 
             IF isManeuver THEN
@@ -490,21 +494,6 @@ DO
                 thrusterScale = thrusterScale + (0.28 - thrusterScale) * 0.06
             END IF
 
-            ' --- ship attitude: lerp toward target angles based on input ---
-            tgtRx = 0 : tgtRy = 0 : tgtRz = 0
-            IF gameState = GS_CINEMATIC THEN
-                ' pronounced right bank into atmosphere approach
-                tgtRx =  32 * cinPhase
-                tgtRy = -12 * cinPhase
-            ELSEIF NOT fuelStranded THEN
-                IF held(E3D_KEY_LEFT)  OR held(E3D_KEY_A) THEN tgtRx = -22 : tgtRy =  7
-                IF held(E3D_KEY_RIGHT) OR held(E3D_KEY_D) THEN tgtRx =  22 : tgtRy = -7
-                IF held(E3D_KEY_UP)    OR held(E3D_KEY_W) THEN tgtRz =  15
-                IF held(E3D_KEY_DOWN)  OR held(E3D_KEY_S) THEN tgtRz = -15
-            END IF
-            player.rx = player.rx + (tgtRx - player.rx) * ATTITUDE_LERP
-            player.ry = player.ry + (tgtRy - player.ry) * ATTITUDE_LERP
-            player.rz = player.rz + (tgtRz - player.rz) * ATTITUDE_LERP
 
             ' --- fire ---
             IF held(E3D_KEY_SPACE) AND invTimer = 0 AND gameState = GS_PLAYING THEN
@@ -513,10 +502,23 @@ DO
                         IF bullets(i).active = 0 THEN
                             bullets(i).active  = -1
                             bullets(i).meshIdx = MESH_BULLET
-                            bullets(i).px = player.px + 0.7
-                            bullets(i).py = player.py
-                            bullets(i).pz = player.pz
-                            bullets(i).vx = BULLET_SPEED
+                            ' compute nose unit vector from full E3D rotation (Rx*Ry*Rz applied to forward)
+                            DIM bvRx AS SINGLE, bvRy AS SINGLE, bvRz AS SINGLE
+                            DIM bvNx AS SINGLE, bvNy AS SINGLE, bvNz AS SINGLE
+                            bvRx = player.rx * _PI / 180.0
+                            bvRy = player.ry * _PI / 180.0
+                            bvRz = player.rz * _PI / 180.0
+                            bvNx = COS(bvRz) * COS(bvRy)
+                            bvNy = COS(bvRx)*SIN(bvRz)*COS(bvRy) + SIN(bvRx)*SIN(bvRy)
+                            bvNz = SIN(bvRx)*SIN(bvRz)*COS(bvRy) - COS(bvRx)*SIN(bvRy)
+                            ' spawn bolt so its rear (trailing point) clears the ship nose by ~1wu
+                            bullets(i).px = player.px + bvNx * (BULLET_TRAIL_LEN + 1.0)
+                            bullets(i).py = player.py + bvNy * (BULLET_TRAIL_LEN + 1.0)
+                            bullets(i).pz = player.pz + bvNz * (BULLET_TRAIL_LEN + 1.0)
+                            bullets(i).vx = bvNx * BULLET_SPEED
+                            bullets(i).vy = bvNy * BULLET_SPEED
+                            bullets(i).vz = bvNz * BULLET_SPEED
+                            bullets(i).life = BULLET_RANGE / BULLET_SPEED
                             bullets(i).scl = 1.0
                             fireTimer = FIRE_COOLDOWN
                             laserEnergy = laserEnergy - LASER_COST
@@ -534,7 +536,10 @@ DO
             FOR i = 1 TO MAX_BULLETS
                 IF bullets(i).active THEN
                     bullets(i).px = bullets(i).px + bullets(i).vx
-                    IF bullets(i).px > player.px + BULLET_RANGE THEN bullets(i).active = 0
+                    bullets(i).py = bullets(i).py + bullets(i).vy
+                    bullets(i).pz = bullets(i).pz + bullets(i).vz
+                    bullets(i).life = bullets(i).life - 1
+                    IF bullets(i).life <= 0 THEN bullets(i).active = 0
                 END IF
             NEXT i
 
@@ -872,24 +877,25 @@ DO
         ' --------------------------------------------------------
         ' RENDER
         ' --------------------------------------------------------
-        ' Camera lags player in Y/Z — frozen during cinematic so ship visibly crosses screen
-        IF gameState <> GS_CINEMATIC THEN
-            camLagY = camLagY + (player.py - camLagY) * CAM_LAG_RATE
-            camLagZ = camLagZ + (player.pz - camLagZ) * CAM_LAG_RATE
-        END IF
-        cam.POS.x = player.px - CAM_OFFSET_X
-        IF gameState = GS_CINEMATIC THEN cam.POS.x = cinematicCamX
-        cam.POS.y  = camLagY + CAM_OFFSET_Y
-        cam.POS.z  = camLagZ
+        ' camera: nose-following, velocity-oriented (see player.bas)
+        ' PLAYER_CamUpdate updates camLagY/Z and camFwdY/Z; cam fields set here
+        ' because nested UDT field writes from included Subs don't update globals.
+        PLAYER_CamUpdate
         IF gameState = GS_CINEMATIC THEN
-            ' lock look-at so ship drifts visibly across FOV instead of camera panning after it
+            cam.POS.x = cinematicCamX
+        ELSE
+            cam.POS.x = player.px - CAM_OFFSET_X
+        END IF
+        cam.POS.y = camLagY + CAM_OFFSET_Y - camFwdY * CAM_FWD_SCALE
+        cam.POS.z = camLagZ               - camFwdZ * CAM_FWD_SCALE
+        IF gameState = GS_CINEMATIC THEN
             cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
             cam.target.y = camLagY
             cam.target.z = camLagZ
         ELSE
             cam.target.x = player.px + CAM_LEAD_X
-            cam.target.y = player.py
-            cam.target.z = player.pz
+            cam.target.y = player.py + camFwdY * CAM_LEAD_X
+            cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
         END IF
         E3D_MatLookAt cam, viewMat
         E3D_MatMul projMat, viewMat, vpMat
@@ -991,22 +997,27 @@ DO
         _DEST backBuffer
         FOR j = 1 TO MAX_BULLETS
             IF bullets(j).active THEN
-                ' front tip (ahead of bullet center — closer to vanishing pt)
-                pjX  = (bullets(j).px + BULLET_DRAW_FRONT) * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY  = (bullets(j).px + BULLET_DRAW_FRONT) * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW  = (bullets(j).px + BULLET_DRAW_FRONT) * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-                ' rear tip (trailing edge — closer to player)
-                pjX2 = (bullets(j).px - BULLET_DRAW_REAR) * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY2 = (bullets(j).px - BULLET_DRAW_REAR) * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW2 = (bullets(j).px - BULLET_DRAW_REAR) * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
+                ' project bolt tip (current pos)
+                pjX  = bullets(j).px * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
+                pjY  = bullets(j).px * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
+                pjW  = bullets(j).px * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
+                ' project bolt rear (BULLET_TRAIL_LEN world-units behind tip along velocity axis)
+                pjBX = bullets(j).px - bullets(j).vx * (BULLET_TRAIL_LEN / BULLET_SPEED)
+                pjBY = bullets(j).py - bullets(j).vy * (BULLET_TRAIL_LEN / BULLET_SPEED)
+                pjBZ = bullets(j).pz - bullets(j).vz * (BULLET_TRAIL_LEN / BULLET_SPEED)
+                pjX2 = pjBX * vpMat.m(0,0) + pjBY * vpMat.m(0,1) + pjBZ * vpMat.m(0,2) + vpMat.m(0,3)
+                pjY2 = pjBX * vpMat.m(1,0) + pjBY * vpMat.m(1,1) + pjBZ * vpMat.m(1,2) + vpMat.m(1,3)
+                pjW2 = pjBX * vpMat.m(3,0) + pjBY * vpMat.m(3,1) + pjBZ * vpMat.m(3,2) + vpMat.m(3,3)
                 IF pjW > 0.0001 AND pjW2 > 0.0001 THEN
                     pjX  = (pjX  / pjW  + 1.0) * scrW * 0.5
                     pjY  = (1.0 - pjY  / pjW)  * scrH * 0.5
                     pjX2 = (pjX2 / pjW2 + 1.0) * scrW * 0.5
                     pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
                     IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
-                        LINE (pjX2, pjY2)-(pjX, pjY), _RGB(210, 215, 60)
-                        PSET (pjX, pjY), _RGB(240, 245, 140)
+                        pjFade = bullets(j).life / (BULLET_RANGE / BULLET_SPEED)
+                        IF pjFade > 1.0 THEN pjFade = 1.0
+                        LINE (INT(pjX2), INT(pjY2))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
+                        PSET (INT(pjX), INT(pjY)), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
                     END IF
                 END IF
             END IF
@@ -1357,13 +1368,19 @@ IF dbgOverlay THEN
         dbgFpsClr = _RGB(80, 210, 80)
     END IF
     _DEST 0
-    LINE (0, 0)-(85, 34), _RGBA(0, 0, 0, 190), BF
+    LINE (0, 0)-(105, 76), _RGBA(0, 0, 0, 190), BF
     COLOR dbgPolyClr
-    _PRINTSTRING (2, 2),  "POLY " + LTRIM$(STR$(E3D_scnCount)) + "/450"
+    _PRINTSTRING (2,  2),  "POLY " + LTRIM$(STR$(E3D_scnCount)) + "/450"
     COLOR dbgFpsClr
-    _PRINTSTRING (2, 13), "FPS  " + LTRIM$(STR$(CINT(dbgFps)))
+    _PRINTSTRING (2, 12), "FPS  " + LTRIM$(STR$(CINT(dbgFps)))
     COLOR _RGB(140, 140, 160)
-    _PRINTSTRING (2, 24), "ms   " + LEFT$(STR$(dbgFrameMs + 1000), 6)
+    _PRINTSTRING (2, 22), "ms   " + LEFT$(STR$(dbgFrameMs + 1000), 6)
+    COLOR _RGB(120, 200, 255)
+    _PRINTSTRING (2, 34), "RY   " + LEFT$(STR$(player.ry + 1000), 7)
+    _PRINTSTRING (2, 44), "RZ   " + LEFT$(STR$(player.rz + 1000), 7)
+    COLOR _RGB(180, 255, 180)
+    _PRINTSTRING (2, 54), "VY   " + LEFT$(STR$(playerVY + 1000), 7)
+    _PRINTSTRING (2, 64), "VZ   " + LEFT$(STR$(playerVZ + 1000), 7)
 END IF
 
 _LIMIT 60
@@ -1410,6 +1427,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  -v, --version          Print version and exit"
     PRINT #guFH, "  -h, --help             Show this help and exit"
     PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
+    PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
