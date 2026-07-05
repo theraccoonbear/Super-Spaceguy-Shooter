@@ -1,20 +1,20 @@
 [BLOCK:palette]
-~00 HELLO WORLD!
-~11 HELLO WORLD!
-~22 HELLO WORLD!
-~33 HELLO WORLD!
-~44 HELLO WORLD!
-~55 HELLO WORLD!
-~66 HELLO WORLD!
-~77 HELLO WORLD!
-~88 HELLO WORLD!
-~99 HELLO WORLD!
-~AA HELLO WORLD!
-~BB HELLO WORLD!
-~CC HELLO WORLD!
-~DD HELLO WORLD!
-~EE HELLO WORLD!
-~FF HELLO WORLD!
+~00 HELLO WORLD! Black
+~11 HELLO WORLD! Blue
+~22 HELLO WORLD! Green
+~33 HELLO WORLD! Cyan
+~44 HELLO WORLD! Red
+~55 HELLO WORLD! Magenta
+~66 HELLO WORLD! Brown
+~77 HELLO WORLD! Light Grey
+~88 HELLO WORLD! Dark Grey
+~99 HELLO WORLD! Light Blue
+~AA HELLO WORLD! Light Green
+~BB HELLO WORLD! Light Cyan
+~CC HELLO WORLD! Light Red
+~DD HELLO WORLD! Light Magenta
+~EE HELLO WORLD! Yellow
+~FF HELLO WORLD! White
 
 ~00 ~11 ~22 ~33 ~44 ~55 ~66 ~77 ~88 ~99 ~AA ~BB ~CC ~DD ~EE ~FF
 
@@ -33,21 +33,21 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6By famine, by debt, by the quiet purchase of dying parliaments, he swallowed world after world, until his banner, ~4{{the_empire}}~6, flew over a hundred systems.
 
-~6Now refugees flee toward ~3{{planet1}}~6 ahead of his collection fleets. A convoy broker has hired an independent pilot to slip past the blockade with medicine and grain. The Empire's patrols are already listening for ships that fly too quiet, too low, too desperate.
+~6Now refugees flee toward ~2{{planet1}}~6 ahead of his collection fleets. A convoy broker has hired an independent pilot to slip past the blockade with medicine and grain. The Empire's patrols are already listening for ships that fly too quiet, too low, too desperate.
 
 [BLOCK:stage2]
 ~4-~E=~7[ ~3CHAPTER 2 ~7]~E=~4-
  
-~6The aid run worked, barely. But someone on ~3{{planet1}}'s~6 docks knew a face, and ~4{{the_empire}}~6 intelligence does not forget.
+~6The aid run worked, barely. But someone on ~2{{planet1}}'s~6 docks knew a face, and ~4{{the_empire}}~6 intelligence does not forget.
 
-~6The same broker who arranged the aid now speaks in lower tones, introducing a new cargo bound for ~3{{planet2}}~6: rifles, not rations, meant for a resistance cell calling itself ~5~{{resistance}}~6.
+~6The same broker who arranged the aid now speaks in lower tones, introducing a new cargo bound for ~2{{planet2}}~6: rifles, not rations, meant for a resistance cell calling itself ~5{{resistance}}~6.
 
 ~6The pilot is no longer anonymous. Patrol chatter now carries a name, a ship designation, a bounty class. What began as charity has become rebellion, whether the pilot chose it or not.
 
 [BLOCK:stage3]
 ~4-~E=~7[ ~3CHAPTER 3 ~7]~E=~4-
 
-~6A new client on ~3{{planet3}}~6. Clean paperwork, easy terms, too easy.
+~6A new client on ~2{{planet3}}~6. Clean paperwork, easy terms, too easy.
 
 ~6Too late, the pilot learns the cargo manifest was bait. The "buyer" is ~4{{the_empire}}~6 Internal Security, and the meet is an ambush built to end ~5{{resistance}}'s~6 newest courier in one stroke.
 
@@ -58,14 +58,14 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6The Empire's bounty boards now carry a face, a price, and the word ~4TRAITOR~6 stamped beneath it.
 
-~6There is no pretending neutrality anymore. ~5{{resistance}}~6 offers what little it has left: trust, and a data core too dangerous to transmit. It must fly in the hold of a ship bound for ~3{{planet4}}~6, past eyes that are now actively hunting it.
+~6There is no pretending neutrality anymore. ~5{{resistance}}~6 offers what little it has left: trust, and a data core too dangerous to transmit. It must fly in the hold of a ship bound for ~2{{planet4}}~6, past eyes that are now actively hunting it.
 
 ~6The pilot carries war secrets now, not grain.
 
 [BLOCK:stage5]
 ~4-~E=~7[ ~3CHAPTER 5 ~7]~E=~4-
 
-~6Deep inside ~4{{the_empire}}'s~6 research directorate, a scientist has chosen to vanish rather than finish what ~4{{emperor}}~6 ordered her to build. She is bound for ~3{{planet5}}~6, if she survives the trip.
+~6Deep inside ~4{{the_empire}}'s~6 research directorate, a scientist has chosen to vanish rather than finish what ~4{{emperor}}~6 ordered her to build. She is bound for ~2{{planet5}}~6, if she survives the trip.
 
 ~5{{resistance}}~6 has one shot at extraction, and so does ~4{{emperor}}'s~6 fleet, racing to silence her before she reaches free space. Whoever reaches her escort ship first decides whether her knowledge saves worlds, or dies with her.
 
@@ -74,17 +74,17 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6The cargo bay is empty. There is nothing left to smuggle, nothing left to deliver.
 
-~6Ahead lies ~3{{emperor_homeworld}}~6, throne-world of the empire that swallowed a hundred systems one starving planet at a time. ~4{{emperor}}~6 waits behind a wall of warships built from the wealth of everyone this pilot has flown for.
+~6Ahead lies ~2{{emperor_homeworld}}~6, throne-world of the empire that swallowed a hundred systems one starving planet at a time. ~4{{emperor}}~6 waits behind a wall of warships built from the wealth of everyone this pilot has flown for.
 
 ~6This is no longer a courier's run. This is the reckoning.
 
 [BLOCK:outro]
-~4-~E=~7[ EPILOGUE ~7]~E=~4-
+~4-~E=~7[ ~3EPILOGUE ~7]~E=~4-
 
-~3{{emperor_homeworld}}~6 burns behind the wreckage of ~4{{the_empire}}'s~6 last fleet.
+~2{{emperor_homeworld}}~6 burns behind the wreckage of ~4{{the_empire}}'s~6 last fleet.
 In the ruin of ~4{{emperor}}'s~6 throne hall, the pilot finds what the propaganda never showed: star charts, older than the empire itself, marking a single world of origin.
-The name on every Maw banner, every imperial seal, every oath of conquest, is ~3{{emperor_homeworld}}~6.
+The name on every Maw banner, every imperial seal, every oath of conquest, is ~2{{emperor_homeworld}}~6.
 
 ~6The local records have another name for it.
 
-~6They call it ~4{{emperor_homeworld_true_name}}.
+~6They call it ~1{{emperor_homeworld_true_name}}.
