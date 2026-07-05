@@ -376,7 +376,8 @@ DIM gameOverDelay AS INTEGER
 DIM pKeyWas AS INTEGER
 DIM escConfirm AS INTEGER
 DIM escWas AS INTEGER
-DIM spaceWas AS INTEGER
+DIM spaceWas       AS INTEGER
+DIM crawlFFVolSave AS SINGLE
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
 ' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
@@ -1103,6 +1104,7 @@ DO
         END IF
 
         FX_Shake backBuffer, scrW, scrH
+        FX_VCRNoise scrW, scrH
 
         IF gameState = GS_PLAYING THEN
             SND_GameFill isManeuver
@@ -1200,11 +1202,15 @@ CASE GS_CRAWL
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
-    crawlScroll = crawlScroll - CRAWL_SPEED
+    IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
+        crawlScroll = crawlScroll - CRAWL_SPEED * 5
+    ELSE
+        crawlScroll = crawlScroll - CRAWL_SPEED
+    END IF
     ' Fire each paragraph's speech when its first line scrolls near the bottom.
     ' All paragraphs use the same crawlRateScale (computed in CRAWL_Prep) so the
     ' entire narration fills the crawl window at a consistent pace.
-    IF settingNarration THEN
+    IF settingNarration AND NOT (held(E3D_KEY_SPACE) AND crawlTimer > 60) THEN
         DO WHILE crawlParaIdx < crawlParaCount
             IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN EXIT DO
             IF crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
@@ -1302,12 +1308,21 @@ CASE GS_CRAWL
     ' auto-advance when last line has cleared the top fade band
     IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
         crawlParaIdx = crawlParaCount : SPK_Say ""
+        fxVCRActive = 0 : IF spaceWas THEN volMusic = crawlFFVolSave
         SEQ_Advance
     END IF
-    ' SPACE to skip (locked 1 sec to prevent accidental carry-through from intro)
-    IF held(E3D_KEY_SPACE) AND NOT spaceWas AND crawlTimer > 60 THEN
-        crawlParaIdx = crawlParaCount : SPK_Say ""
-        SEQ_Advance
+    ' SPACE held = fast-forward (locked 1 sec to prevent accidental carry-through from intro)
+    IF crawlTimer > 60 THEN
+        IF held(E3D_KEY_SPACE) THEN
+            fxVCRActive = -1
+            IF NOT spaceWas THEN
+                crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say ""
+            END IF
+            IF (crawlTimer MOD 4) = 0 THEN SND_Blip 800 + INT(RND * 2200)
+        ELSE
+            fxVCRActive = 0
+            IF spaceWas THEN volMusic = crawlFFVolSave
+        END IF
     END IF
     spaceWas = held(E3D_KEY_SPACE)
     ' ` toggles speech word overlay (inline highlight + bottom chip)

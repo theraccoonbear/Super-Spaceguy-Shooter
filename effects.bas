@@ -13,6 +13,7 @@ Dim Shared fxShakeTimer As Integer
 Dim Shared fxFlashTimer As Integer
 Dim Shared fxShakeX     As Integer
 Dim Shared fxShakeY     As Integer
+Dim Shared fxVCRActive  As Integer
 
 Sub FX_SpawnBurst(cx As Single, cy As Single, cz As Single, n As Integer, spd As Single, lifBase As Integer, lifVar As Integer, clr As Long)
     Dim i As Integer, found As Integer
@@ -97,4 +98,21 @@ Sub FX_Shake(buf As Long, scrW As Single, scrH As Single)
     pDW = _Width(0) : pDH = _Height(0)
     _Dest 0
     _PutImage (fxShakeX, fxShakeY)-(pDW - 1 + fxShakeX, pDH - 1 + fxShakeY), buf, 0
+End Sub
+
+Sub FX_VCRNoise(scrW As Single, scrH As Single)
+    If Not fxVCRActive Then Exit Sub
+    Dim vcrY As Integer, vcrBi As Integer, vcrHh As Integer
+    ' scanline overlay — thin dark bars every 3 rows
+    For vcrY = 0 To scrH - 1 Step 3
+        LINE (0, vcrY)-(scrW - 1, vcrY), _RGBA(0, 0, 0, 50)
+    Next vcrY
+    ' tracking noise bands (2-4 per frame, random position/opacity)
+    For vcrBi = 0 To 2
+        If Rnd > 0.35 Then
+            vcrY  = Int(Rnd * scrH)
+            vcrHh = 1 + Int(Rnd * 3)
+            LINE (0, vcrY)-(scrW - 1, vcrY + vcrHh), _RGBA(200 + Int(Rnd * 55), 195 + Int(Rnd * 55), 185 + Int(Rnd * 55), 55 + Int(Rnd * 90)), BF
+        End If
+    Next vcrBi
 End Sub
