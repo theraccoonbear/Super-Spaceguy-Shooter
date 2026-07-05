@@ -623,6 +623,16 @@ DO
                     enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), hit
                     IF hit AND invTimer = 0 THEN
                         enemies(i).active = 0
+                        SELECT CASE enemies(i).meshIdx
+                        CASE MESH_ENEMY        : partR = 255 : partG =  80 : partB =  60
+                        CASE MESH_ENEMY_ARROW  : partR = 255 : partG = 140 : partB =   0
+                        CASE MESH_ENEMY_HLINE  : partR =  60 : partG = 210 : partB =  80
+                        CASE MESH_ENEMY_VCOL   : partR =  60 : partG = 220 : partB = 235
+                        CASE MESH_ENEMY_PINCER : partR = 235 : partG = 225 : partB =  50
+                        CASE ELSE              : partR = 185 : partG =  80 : partB = 255
+                        END SELECT
+                        SND_Boom
+                        FX_SpawnBurst enemies(i).px, enemies(i).py, enemies(i).pz, 10, 0.22, 18, 8, _RGB(partR, partG, partB)
                         PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
                     END IF
                 END IF
@@ -662,6 +672,8 @@ DO
                     asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), hit
                     IF hit AND invTimer = 0 THEN
                         asteroids(i).active = 0
+                        SND_Boom
+                        FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
                         PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
                     END IF
                 END IF
