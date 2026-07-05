@@ -20,6 +20,9 @@
 - No comments unless the WHY is non-obvious.
 - No new files unless the task requires them.
 
+## Pull requests
+- Every PR body must include `Closes #N` (or `Fixes #N`) for each GitHub issue the PR resolves. Without it the issue will not auto-close on merge.
+
 ## Tackling a task
 - Regardless of how enthusiastic the user is to get started, make a plan that is shared first.
 - For bugs, features, or any discrete coding task, there should be:
