@@ -12,7 +12,7 @@ Built with [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe).
 
 ## What it is
 
-Super Spaceguy Shooter is a cinematic space shooter with a full narrative arc: intro crawl, cutscenes, six combat stages, and an outro sequence. The player flies a ship in a 3D corridor — free movement on the Y/Z plane — and shoots down enemy waves while a story unfolds around them.
+Super Spaceguy Shooter is a cinematic space shooter with a full narrative arc: intro crawl, cutscenes, six combat stages, and an outro sequence. The player flies a ship on a forward rail with free Y/Z movement; velocity-driven bank and pitch sell the illusion of full 3D maneuvering. Enemy waves are shot down while a story unfolds around them.
 
 It runs natively on Linux, macOS, and Windows as a single compiled binary with no runtime dependencies.
 
@@ -30,9 +30,11 @@ It runs natively on Linux, macOS, and Windows as a single compiled binary with n
 You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) installed.
 
 ```bash
-# from the repo root
+# recommended — bakes the speech phoneme dict then compiles
+cd code/3d && tools/buildqb sss.bas
+
+# or directly
 ./qb64pe -x code/3d/sss.bas -o code/3d/builds/sss
-./code/3d/builds/sss
 ```
 
 Pre-built binaries for Linux, macOS, and Windows are produced by CI on every merge to `master` and attached to tagged releases.
@@ -75,7 +77,7 @@ The codebase is split across ~30 `$INCLUDE` modules, each owning a vertical slic
 | `camera.bas` | Perspective projection |
 | `scene.bas` / `stage.bas` | Level layout and wave management |
 | `behavior.bas` | Enemy AI and object behaviors |
-| `collision.bas` | Sphere-based collision detection |
+| `collision.bas` | AABB collision detection |
 | `effects.bas` | Particle and visual effects |
 | `starfield.bas` | Parallax star background |
 | `hud.bas` | In-game heads-up display |

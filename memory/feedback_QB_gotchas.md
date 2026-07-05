@@ -76,6 +76,20 @@ All three access patterns fail when the array is declared at module level in an 
 
 ---
 
+## Nested UDT field writes on global DIM SHARED UDTs silently no-op in included Subs
+
+Writing to a field of a `DIM SHARED` UDT instance that contains **nested UDT fields** from within a Sub in an included `.bas` file silently does nothing. The write appears to compile and run without error, but the global value is unchanged.
+
+Example: `DIM SHARED cam As E3D_Camera` (where `E3D_Camera.pos` is itself of type `E3D_Coord`). Writing `cam.pos.x = -6.5` from inside a Sub in player.bas leaves `cam.pos.x` at its previous value.
+
+**Symptoms:** Object appears to stay at its initial position/orientation regardless of how you update it in the included Sub. Confirmed cause of camera staying at the `E3D_MakeCamera` degenerate initial position (looking straight down) despite PLAYER_CamUpdate running.
+
+**Fix:** Do all writes to global DIM SHARED UDT fields in the main compilation unit (sss.bas). The included Sub can update DIM SHARED **scalar** variables (Single, Integer, Long) which propagate correctly — then the main unit reads those scalars and writes the UDT fields.
+
+**What still works:** Reading fields of a global DIM SHARED nested UDT from an included Sub is fine. Only writes are broken.
+
+---
+
 ## Const declarations must appear before first use
 
 QB64PE processes the file top-to-bottom. If an identifier is encountered before any `Const` declaration for it, QB64PE creates an implicit variable for it. When the `Const` declaration is reached later, the compiler errors with "Name already in use (CONSTNAME)".
