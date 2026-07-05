@@ -6,7 +6,7 @@
 ~44 HELLO WORLD! Red
 ~55 HELLO WORLD! Magenta
 ~66 HELLO WORLD! Brown
-~77 HELLO WORLD! Light Grey
+~77 HELLO WORLD! Slate Blue (Default)
 ~88 HELLO WORLD! Dark Grey
 ~99 HELLO WORLD! Light Blue
 ~AA HELLO WORLD! Light Green
