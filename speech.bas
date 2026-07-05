@@ -603,13 +603,6 @@ SUB SPK_Init()
 
             nextWord:
         LOOP
-        ' write utterance log — one file append per SPK_Say call
-        spkLogStr = spkLogStr + "  >> " + LTRIM$(STR$(spkPhoneCount)) + " phones" _
-        + ", " + LTRIM$(STR$(spkLogMiss)) + " misses" + CHR$(10)
-        spkLogFH = FREEFILE
-        OPEN _STARTDIR$ + "/sss_speech.log" FOR APPEND AS #spkLogFH
-        PRINT #spkLogFH, spkLogStr
-        CLOSE #spkLogFH
     END SUB
 
     ' ============================================================
