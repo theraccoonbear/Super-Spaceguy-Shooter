@@ -7,7 +7,8 @@ Sub SETTINGS_Save ()
     Print #sfH, "music="     + LTrim$(Str$(volMusic))
     Print #sfH, "sfx="       + LTrim$(Str$(volSfx))
     Print #sfH, "speech="    + LTrim$(Str$(volSpeech))
-    Print #sfH, "narration=" + LTrim$(Str$(settingNarration))
+    Print #sfH, "narration="   + LTrim$(Str$(settingNarration))
+    Print #sfH, "fullscreen="  + LTrim$(Str$(settingFullscreen))
     Close #sfH
 End Sub
 
@@ -28,7 +29,8 @@ Sub SETTINGS_Load ()
                 Case "music"     : volMusic          = sfVal
                 Case "sfx"       : volSfx            = sfVal
                 Case "speech"    : volSpeech          = sfVal
-                Case "narration" : settingNarration   = Int(sfVal + 0.5)
+                Case "narration"   : settingNarration   = Int(sfVal + 0.5)
+                Case "fullscreen"  : settingFullscreen  = Int(sfVal + 0.5)
             End Select
         End If
     Loop
@@ -38,10 +40,10 @@ End Sub
 Sub OPTS_Update ()
     Dim oI As Integer, oY As Integer, oFill As Integer
     Dim oUp As Integer, oDn As Integer, oLf As Integer, oRt As Integer, oEsc As Integer
-    Dim oVols(0 To 3) As Single
+    Dim oVols(0 To 4) As Single
     Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
 
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration
+    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration : oVols(4) = settingFullscreen
 
     ' ---- input ----
     oUp  = _KEYDOWN(18432)   ' up arrow
@@ -52,11 +54,11 @@ Sub OPTS_Update ()
 
     ' navigate: edge-detect on up/down
     If oUp And Not optUpWas Then
-        optSel = (optSel + 3) Mod 4
+        optSel = (optSel + 4) Mod 5
         optLfRpt = 0 : optRtRpt = 0
     End If
     If oDn And Not optDnWas Then
-        optSel = (optSel + 1) Mod 4
+        optSel = (optSel + 1) Mod 5
         optLfRpt = 0 : optRtRpt = 0
     End If
 
@@ -68,6 +70,7 @@ Sub OPTS_Update ()
                 Case 1 : volSfx           = volSfx    - 0.1 : If volSfx    < 0 Then volSfx    = 0
                 Case 2 : volSpeech        = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
                 Case 3 : settingNarration = 0
+                Case 4 : settingFullscreen = 0 : _FULLSCREEN OFF
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optLfWas Then SPK_Say "POOP"
@@ -85,6 +88,7 @@ Sub OPTS_Update ()
                 Case 1 : volSfx           = volSfx    + 0.1 : If volSfx    > 1 Then volSfx    = 1
                 Case 2 : volSpeech        = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
                 Case 3 : settingNarration = 1
+                Case 4 : settingFullscreen = 1 : _FULLSCREEN _SQUAREPIXELS
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optRtWas Then SPK_Say "POOP"
@@ -103,7 +107,7 @@ Sub OPTS_Update ()
     optUpWas = oUp : optDnWas = oDn : optLfWas = oLf : optRtWas = oRt : optEscWas = oEsc
 
     ' refresh local vol copy after adjustments
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration
+    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration : oVols(4) = settingFullscreen
 
     ' ---- render ----
     _DEST backBuffer
@@ -118,11 +122,11 @@ Sub OPTS_Update ()
     ' main content panel
     UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
 
-    Dim oLabels(0 To 3) As String
-    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION"
+    Dim oLabels(0 To 4) As String
+    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN"
 
-    For oI = 0 To 3
-        oY = 58 + oI * 44
+    For oI = 0 To 4
+        oY = 44 + oI * 34
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
@@ -158,6 +162,8 @@ Sub OPTS_Update ()
         Dim oPct As String
         If oI = 3 Then
             If settingNarration Then oPct = "ON" Else oPct = "OFF"
+        ElseIf oI = 4 Then
+            If settingFullscreen Then oPct = "ON" Else oPct = "OFF"
         Else
             oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
         End If
