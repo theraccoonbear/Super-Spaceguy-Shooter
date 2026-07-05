@@ -1332,6 +1332,7 @@ CASE GS_CRAWL
         crawlParaIdx = crawlParaCount : SPK_Say ""
         fxVCRActive = 0 : IF spaceWas THEN volMusic = crawlFFVolSave
         SEQ_Advance
+        EXIT SELECT
     END IF
     ' SPACE held = fast-forward (locked 1 sec to prevent accidental carry-through from intro)
     IF crawlTimer > 60 THEN
