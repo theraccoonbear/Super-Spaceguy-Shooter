@@ -6,7 +6,7 @@
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: gr*
 
-Sub GAME_NewGame
+Sub GAME_ResetState
     Dim grI As Integer
 
     score = 0 : stageScore = BOSS_TRIGGER : lives = 100 : shipLives = 3 : laserEnergy = 100.0 : gameOver = 0 : diffTime = 0 : diffScale = 0
@@ -14,7 +14,8 @@ Sub GAME_NewGame
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
     thrusterScale = 0.30 : pauseFlag = 0 : pKeyWas = 0 : invTimer = 120 : escConfirm = 0 : titleEscConfirm = 0
-    camLagY = 0 : camLagZ = 0
+    camLagY = 0 : camLagZ = 0 : camFwdY = 0 : camFwdZ = 0
+    playerVY = 0 : playerVZ = 0
     boss.active = 0 : bossHP = 0 : bossWarnTimer = 0 : bossMoveTimer = 0 : bossState = 0
     planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0 : planetCurrent = PLANET_COUNT : planetNameIdx = PLANET_COUNT
     cinematicCamX = 0 : shipCinVX = 0 : cinematicFade = 0
@@ -29,8 +30,10 @@ Sub GAME_NewGame
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    ' If we're at the title waypoint, advance into the stages.
-    ' Otherwise (ESC mid-game) restart the full sequence from the top.
+End Sub
+
+Sub GAME_NewGame
+    GAME_ResetState
     If seqIdx >= 0 And seqIdx < seqCount And seqKind(seqIdx) = SEQ_TITLE Then
         SEQ_Advance
     Else

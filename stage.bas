@@ -63,7 +63,8 @@ Sub STAGE_Update
             fuelLevel = 100.0 : fuelStranded = 0
             stageScore = score + BOSS_TRIGGER
             player.py = player.py * 0.25 : player.pz = player.pz * 0.25
-            camLagY = 0 : camLagZ = 0
+            camLagY = 0 : camLagZ = 0 : camFwdY = 0 : camFwdZ = 0
+            playerVY = 0 : playerVZ = 0
             For stI = 1 To MAX_ENEMIES   : enemies(stI).active = 0 : enemyFireTimer(stI) = 0 : Next stI
             For stI = 1 To MAX_BULLETS   : bullets(stI).active = 0  : Next stI
             For stI = 1 To MAX_ASTEROIDS : asteroids(stI).active = 0 : Next stI

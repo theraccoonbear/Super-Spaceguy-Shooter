@@ -22,10 +22,30 @@ Sub HUD_Draw
 
     ' crosshair and target locks — gameplay only
     If gameState = GS_PLAYING Then
-        LINE (scrW/2 - 7, scrH/2)-(scrW/2 - 3, scrH/2), _RGB(100, 255, 100)
-        LINE (scrW/2 + 3, scrH/2)-(scrW/2 + 7, scrH/2), _RGB(100, 255, 100)
-        LINE (scrW/2, scrH/2 - 5)-(scrW/2, scrH/2 - 2), _RGB(100, 255, 100)
-        LINE (scrW/2, scrH/2 + 2)-(scrW/2, scrH/2 + 5), _RGB(100, 255, 100)
+        ' project aim point along ship nose — full E3D rotation Rx*Ry*Rz applied to forward (1,0,0)
+        Dim hdRx As Single, hdRy As Single, hdRz As Single
+        Dim hdAimPX As Single, hdAimPY As Single, hdAimPZ As Single
+        Dim hdCPjX As Single, hdCPjY As Single, hdCPjW As Single
+        Dim hdCSX As Single, hdCSY As Single
+        hdRx = player.rx * _PI / 180.0
+        hdRy = player.ry * _PI / 180.0
+        hdRz = player.rz * _PI / 180.0
+        hdAimPX = player.px + COS(hdRz)*COS(hdRy) * 20
+        hdAimPY = player.py + (COS(hdRx)*SIN(hdRz)*COS(hdRy) + SIN(hdRx)*SIN(hdRy)) * 20
+        hdAimPZ = player.pz + (SIN(hdRx)*SIN(hdRz)*COS(hdRy) - COS(hdRx)*SIN(hdRy)) * 20
+        hdCPjX = hdAimPX * vpMat.m(0,0) + hdAimPY * vpMat.m(0,1) + hdAimPZ * vpMat.m(0,2) + vpMat.m(0,3)
+        hdCPjY = hdAimPX * vpMat.m(1,0) + hdAimPY * vpMat.m(1,1) + hdAimPZ * vpMat.m(1,2) + vpMat.m(1,3)
+        hdCPjW = hdAimPX * vpMat.m(3,0) + hdAimPY * vpMat.m(3,1) + hdAimPZ * vpMat.m(3,2) + vpMat.m(3,3)
+        If hdCPjW > 0.001 Then
+            hdCSX = (hdCPjX / hdCPjW + 1.0) * (scrW * 0.5)
+            hdCSY = (1.0 - hdCPjY / hdCPjW) * (scrH * 0.5)
+        Else
+            hdCSX = scrW * 0.5 : hdCSY = scrH * 0.5
+        End If
+        LINE (hdCSX - 7, hdCSY)-(hdCSX - 3, hdCSY), _RGB(100, 255, 100)
+        LINE (hdCSX + 3, hdCSY)-(hdCSX + 7, hdCSY), _RGB(100, 255, 100)
+        LINE (hdCSX, hdCSY - 5)-(hdCSX, hdCSY - 2), _RGB(100, 255, 100)
+        LINE (hdCSX, hdCSY + 2)-(hdCSX, hdCSY + 5), _RGB(100, 255, 100)
 
         hdTR = 10
         For hdI = 1 To MAX_ENEMIES

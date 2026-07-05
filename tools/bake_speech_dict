@@ -1,21 +1,21 @@
 #!/bin/bash
 # bake_speech_dict.sh — extract CMU phoneme entries needed for SSS game speech
-# Run from repo root: bash 3d/tools/bake_speech_dict.sh
+# Run from repo root: bash tools/bake_speech_dict.sh
 set -e
 
-DICT="3d/assets/cmudict-0.txt"
-OUT="3d/assets/speech_dict.txt"
+DICT="assets/cmudict-0.txt"
+OUT="assets/speech_dict.txt"
 TMP="$(mktemp)"
 
 # ---- collect all unique words from game text and names ----
 {
   # gametext.txt: strip block tags, color codes, template vars; pull words
   sed 's/{{[^}]*}}/ /g; s/\[BLOCK:[^]]*\]//g; s/~[0-9A-Fa-f][^ ]*//g' \
-      3d/assets/gametext.txt | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
+      assets/gametext.txt | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
 
   # gamevalues.ini: expand named vars (emperor, planets, resistance, etc.)
   grep -E '^(emperor|resistance|planet[1-9]|emperor_homeworld)' \
-      3d/assets/gamevalues.ini | cut -d= -f2- | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
+      assets/gamevalues.ini | cut -d= -f2- | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
 
   # hardcoded in-game phrases
   printf '%s\n' \
@@ -43,7 +43,7 @@ DATATMP="$(mktemp)"
 } | sort -k1,1 > "$DATATMP"
 
 # ---- merge custom entries (alien names etc. not in CMU) ----
-CUSTOM="3d/assets/custom_words.txt"
+CUSTOM="assets/custom_words.txt"
 if [ -f "$CUSTOM" ]; then
   grep -v '^#\|^$' "$CUSTOM" >> "$DATATMP"
   sort -k1,1 "$DATATMP" -o "$DATATMP"
