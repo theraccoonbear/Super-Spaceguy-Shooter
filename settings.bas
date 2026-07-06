@@ -73,7 +73,7 @@ Sub OPTS_Update ()
                 Case 4 : settingFullscreen = 0 : _FULLSCREEN OFF
             End Select
             If optSel = 1 Then SND_Pup
-            If optSel = 2 And Not optLfWas Then SPK_Say "POOP"
+            If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
         End If
         optLfRpt = optLfRpt + 1
@@ -91,7 +91,7 @@ Sub OPTS_Update ()
                 Case 4 : settingFullscreen = 1 : _FULLSCREEN _SQUAREPIXELS
             End Select
             If optSel = 1 Then SND_Pup
-            If optSel = 2 And Not optRtWas Then SPK_Say "POOP"
+            If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
         End If
         optRtRpt = optRtRpt + 1
