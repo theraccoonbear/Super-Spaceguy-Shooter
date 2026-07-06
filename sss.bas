@@ -9,6 +9,8 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 $Resize:stretch
+$EMBED:'code/3d/assets/cogikel.ans':'COGIKEL'
+$EMBED:'code/3d/assets/ctut.ans':'CTUT'
 $EMBED:'code/3d/assets/sss-title-final.png':'TITLEIMG'
 $EMBED:'code/3d/assets/planet-01-clean.png':'PLANET01'
 $EMBED:'code/3d/assets/planet-02-clean.png':'PLANET02'
@@ -33,6 +35,7 @@ CONST GS_INTRO     = 5
 CONST GS_CRAWL     = 6
 CONST GS_OPTIONS   = 7
 CONST GS_ABOUT     = 8
+CONST GS_LEADIN    = 9
 CONST MAX_ENEMIES   = 35
 CONST MAX_BULLETS   = 30
 CONST MAX_ASTEROIDS = 15
@@ -232,6 +235,7 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
 '$INCLUDE:'ui.bas'
+'$INCLUDE:'leadin.bas'
 '$INCLUDE:'player.bas'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
@@ -418,6 +422,8 @@ IF ssCmdScene <> "" THEN
     SEQ_Advance
 ELSE
     SEQ_Advance
+    gameState = GS_LEADIN
+    LEADIN_Init
 END IF
 
     ' ============================================================
@@ -1438,6 +1444,12 @@ CASE GS_OPTIONS
 CASE GS_ABOUT
     ABOUT_Update
     MUS_Fill 0
+
+    ' ============================================================
+    ' STUDIO / PRODUCER LEAD-IN CARDS
+    ' ============================================================
+CASE GS_LEADIN
+    LEADIN_Update
 
 END SELECT
 
