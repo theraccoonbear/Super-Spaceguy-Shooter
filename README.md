@@ -31,10 +31,11 @@ You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) installed.
 
 ```bash
 # recommended — bakes the speech phoneme dict then compiles
-cd code/3d && tools/buildqb sss.bas
+# run from the repo root
+tools/buildqb sss.bas
 
-# or directly
-./qb64pe -x code/3d/sss.bas -o code/3d/builds/sss
+# or directly, from the QB64-PE install directory
+./qb64pe -x /path/to/repo/sss.bas -o /path/to/repo/builds/sss
 ```
 
 Pre-built binaries for Linux, macOS, and Windows are produced by CI on every merge to `master` and attached to tagged releases.
@@ -90,3 +91,39 @@ The codebase is split across ~30 `$INCLUDE` modules, each owning a vertical slic
 | `sequence.bas` | Scene sequencer |
 | `settings.bas` | Persistent INI-file settings |
 | `input.bas` | Keyboard input with edge detection |
+
+---
+
+## Controls
+
+| Key | Action |
+|---|---|
+| Arrow keys / WASD | Move ship |
+| Space | Fire |
+| ESC | Pause / options menu |
+| `` ` `` | Toggle spoken-word overlay during crawl |
+| Space (crawl) | Fast-forward narrative |
+
+---
+
+## Asset credits
+
+| Asset | Author | License |
+|---|---|---|
+| Enemy ship models | Liz Reddington | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) via poly.pizza |
+| Speedship model | Herminio Nieves | CC BY 3.0 via poly.pizza |
+| Planet imagery | [Voidweaver.space](https://voidweaver.space) | CC0 — public domain |
+| Title and emperor art | OpenAI / ChatGPT (modified in GIMP by theraccoonbear) | See [OpenAI usage policy](https://openai.com/policies/usage-policies) |
+| CMU Pronouncing Dictionary | Carnegie Mellon University | © 1993–2015 CMU, all rights reserved |
+| QB64 Phoenix Edition | QB64 Team / QB64-PE Team | MIT |
+
+---
+
+## License
+
+**Source code:** GNU General Public License v3.0 — see [`LICENSE`](LICENSE).
+You are free to use, modify, and redistribute this code, but any derivative work must also be released under the GPL v3. This license explicitly prevents the code from being incorporated into proprietary closed-source products.
+
+**Original assets** (art, writing, and audio not listed above): [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Share-alike — derivatives must use the same license.
+
+**Third-party assets** retain their own licenses as noted in the table above.
