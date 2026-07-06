@@ -169,7 +169,6 @@ Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y 
     Dim fapx As Integer, fapy As Integer, facol As Long, faa As Integer
     Dim charBuf(0 To FONT_CHAR_W * FONT_CHAR_H - 1) As Long
     If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
-    If alpha >= 255 Then FONT_Print sheet, dest, txt, x, y : Exit Sub
     _BLEND dest
     For fai = 1 To Len(txt)
         fac = Asc(Mid$(txt, fai, 1))
@@ -208,7 +207,6 @@ Sub FONT_PrintRichAlpha(sheets() As Long, dest As Long, txt As String, x As Inte
     Dim frapx As Integer, frapy As Integer, fracol As Long, fraa As Integer
     Dim fraCharBuf(0 To FONT_CHAR_W * FONT_CHAR_H - 1) As Long
     If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
-    If alpha >= 255 Then FONT_PrintRich sheets(), dest, txt, x, y : Exit Sub
     fraSheet = sheets(7)
     fraX = x
     _BLEND dest
