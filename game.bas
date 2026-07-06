@@ -14,7 +14,7 @@ Sub GAME_ResetState
     fuelLevel = 100.0 : fuelStranded = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
-    thrusterScale = 0.30 : pauseFlag = 0 : pKeyWas = 0 : invTimer = 120 : escConfirm = 0 : titleEscConfirm = 0
+    thrusterScale = 0.30 : invTimer = 120 : escConfirm = 0 : titleEscConfirm = 0
     camLagY = 0 : camLagZ = 0 : camFwdY = 0 : camFwdZ = 0
     playerVY = 0 : playerVZ = 0
     boss.active = 0 : bossHP = 0 : bossWarnTimer = 0 : bossMoveTimer = 0 : bossState = 0
