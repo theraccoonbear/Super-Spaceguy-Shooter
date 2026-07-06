@@ -473,6 +473,8 @@ SUB SPK_Init()
 
     ' ============================================================
     ' Queue text for speech.  Call at any time; SPK_Fill drains it.
+    ' Do NOT call with a string literal — all spoken strings must
+    ' live in gametext.txt so bake_speech_dict picks them up automatically.
     ' ============================================================
     SUB SPK_Say(text AS STRING)
         DIM wrd AS STRING, rest AS STRING, p AS INTEGER, uc AS STRING
