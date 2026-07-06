@@ -9,7 +9,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  dict-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate speech dict and check for missing pronunciations
+        shell: bash
+        run: bash tools/bake_speech_dict
+      - name: Fail if speech_dict.txt is stale
+        shell: bash
+        run: |
+          git diff --exit-code assets/speech_dict.txt || {
+            echo "::error::speech_dict.txt is stale — run tools/bake_speech_dict and commit"
+            exit 1
+          }
+
   build:
+    needs: dict-check
     strategy:
       fail-fast: false
       matrix:
