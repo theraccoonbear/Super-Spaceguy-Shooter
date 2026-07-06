@@ -1343,7 +1343,16 @@ CASE GS_CRAWL
             fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
-            IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
+            IF crawlFFActive THEN
+                volMusic = crawlFFVolSave : crawlFFActive = 0
+                ' re-find the on-screen paragraph so narration resumes from current position
+                DIM crawlResI AS INTEGER : crawlResI = 0
+                DIM crawlResP AS INTEGER
+                FOR crawlResP = 0 TO crawlParaCount - 1
+                    IF crawlScroll + crawlParaLine(crawlResP) * CRAWL_LINE_H <= scrH - CRAWL_LINE_H THEN crawlResI = crawlResP
+                NEXT crawlResP
+                crawlParaIdx = crawlResI
+            END IF
             fxVCRActive = 0
         END IF
     END IF
