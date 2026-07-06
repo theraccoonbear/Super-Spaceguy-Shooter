@@ -10,8 +10,9 @@ Dim Shared liCard  As Integer    ' 1=cogikel, 2=ctut, 0=done
 Dim Shared liTimer As Integer
 Dim Shared liSurf  As Long       ' 640x480 offscreen render surface
 
-Const LI_HOLD = 200              ' frames to hold each card (~3s at 60fps)
-Const LI_FADE = 35               ' fade-in / fade-out window in frames
+Const LI_ENABLED = 1             ' set to 0 to skip lead-ins entirely
+Const LI_HOLD    = 200           ' frames to hold each card (~3s at 60fps)
+Const LI_FADE    = 35            ' fade-in / fade-out window in frames
 
 ' Map a 256-colour palette index to R, G, B components.
 Sub LEADIN_ColorRGB(liN As Integer, liR As Integer, liG As Integer, liB As Integer)
@@ -200,6 +201,7 @@ Sub LEADIN_ShowCard(liCardN As Integer)
 End Sub
 
 Sub LEADIN_Init()
+    If Not LI_ENABLED Then SEQ_Advance : Exit Sub
     liSurf = _NEWIMAGE(640, 480, 32)
     liCard = 1 : liTimer = 0
     LEADIN_ShowCard 1
