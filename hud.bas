@@ -101,7 +101,6 @@ Sub HUD_Draw
 
     ' score
     FONT_Print fontPalette(9), backBuffer, "SCORE: " + LTRIM$(STR$(score)), 4, 4
-
     ' ship life icons — bottom-left corner
     For hdJ = 1 To 3
         If hdJ <= shipLives Then
