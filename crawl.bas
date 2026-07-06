@@ -35,6 +35,7 @@ DIM crawlLY AS INTEGER
 DIM crawlFY AS INTEGER
 DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
 DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
+DIM SHARED crawlFFActive AS INTEGER    ' -1 while FF is active; tracks vol save/restore independent of spaceWas
 
 ' Strip ~X color codes; expand single digits to English words for speech.
 Function CRAWL_StripColor$(scS As String)
@@ -251,4 +252,6 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
         spkPhoneCount = 0 : spkPhoneIdx = 0  ' reset dry-run queue; no audio plays yet
     End If
     crawlSpeechDone = 0
+    crawlBtWas = 0
+    crawlFFActive = 0
 END SUB
