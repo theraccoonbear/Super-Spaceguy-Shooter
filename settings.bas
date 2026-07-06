@@ -144,9 +144,9 @@ Sub OPTS_Update ()
             LINE (scrW - 31, oY - 3)-(scrW - 35, oY - 3), oCC : LINE (scrW - 31, oY - 3)-(scrW - 31, oY + 1), oCC
             LINE (30, oY + 17)-(34, oY + 17), oCC : LINE (30, oY + 17)-(30, oY + 13), oCC
             LINE (scrW - 31, oY + 17)-(scrW - 35, oY + 17), oCC : LINE (scrW - 31, oY + 17)-(scrW - 31, oY + 13), oCC
-            FONT_Print fontPalette(14), backBuffer, oLabels(oI), 38, oY
+            FONT_PrintAlpha fontPalette(14), backBuffer, oLabels(oI), 38, oY, 255
         Else
-            FONT_Print fontPalette(9), backBuffer, oLabels(oI), 38, oY
+            FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oI), 38, oY, 255
         End If
 
         ' bar trough — centered in 16px label glyph (oY+4 to oY+12)
@@ -173,10 +173,10 @@ Sub OPTS_Update ()
         Else
             oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
         End If
-        FONT_Print fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY + 4
+        FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY + 4, 255
     Next oI
 
-    FONT_PrintCentered fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW
+    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0

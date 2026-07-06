@@ -36,6 +36,6 @@ Sub UI_DrawPanel(uiX1 As Integer, uiY1 As Integer, uiX2 As Integer, uiY2 As Inte
     If Len(uiTitle) > 0 Then
         LINE (uiX1 + 2, uiY1 + 2)-(uiX2 - 2, uiY1 + UI_TITLE_H), _RGB(0, 28, 68), BF
         LINE (uiX1 + 2, uiY1 + UI_TITLE_H)-(uiX2 - 2, uiY1 + UI_TITLE_H), _RGB(0, 100, 180)
-        FONT_PrintCentered fontPalette(11), backBuffer, uiTitle, uiY1 + 3, scrW
+        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, uiTitle, uiY1 + 3, scrW, 255
     End If
 End Sub
