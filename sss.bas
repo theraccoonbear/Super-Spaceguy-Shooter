@@ -112,9 +112,11 @@ CONST BOSS_SCALE          = 3.5     ' boss mesh scale
 CONST BOSS_SPAWN_DIST     = 55      ' boss spawns this far ahead of player
 CONST BOSS_COMBAT_DIST    = 45      ' boss holds at this X distance
 CONST BOSS_WARN_FRAMES    = 120     ' warning frames before boss spawns
+CONST BOSS_FIRE_INIT      = 2.5     ' fire interval at boss spawn (before phase lock-in)
 CONST BOSS_FIRE1          = 2.2     ' phase 1 fire interval
 CONST BOSS_FIRE2          = 1.5     ' phase 2 fire interval
 CONST BOSS_FIRE3          = 0.9     ' phase 3 fire interval
+CONST BOSS_DIM_FLOOR      = 0.35    ' minimum lighting factor for boss (keeps it visible at range)
 CONST BOSS_DEATH_PARTS    = 35      ' particle count on boss death
 
 CONST CAM_OFFSET_X        = 6.5    ' camera behind player
@@ -342,7 +344,6 @@ planetImages(3) = _LOADIMAGE(_EMBEDDED$("PLANET03"), 32, "memory")
 planetImages(4) = _LOADIMAGE(_EMBEDDED$("PLANET04"), 32, "memory")
 planetImages(5) = _LOADIMAGE(_EMBEDDED$("PLANET05"), 32, "memory")
 planetImages(6) = _LOADIMAGE(_EMBEDDED$("PLANET06"), 32, "memory")
-
 
 emperorName = GTEXT_Var$("emperor")
 empireName  = GTEXT_Var$("the_empire")
