@@ -1,6 +1,6 @@
 # Super Spaceguy Shooter
 
-> Third-person pseudo-rail 3D space shooter written entirely in QB64-PE (QBasic)
+> A political allegory wrapped in a love letter to 90s gaming — written entirely in QB64-PE (QBasic)
 
 [![Build Linux](https://img.shields.io/github/actions/workflow/status/theraccoonbear/Super-Spaceguy-Shooter/build.yml?branch=master&label=Linux)](https://github.com/theraccoonbear/Super-Spaceguy-Shooter/actions/workflows/build.yml)
 [![Build macOS](https://img.shields.io/github/actions/workflow/status/theraccoonbear/Super-Spaceguy-Shooter/build.yml?branch=master&label=macOS)](https://github.com/theraccoonbear/Super-Spaceguy-Shooter/actions/workflows/build.yml)
@@ -86,7 +86,7 @@ The codebase is split across ~30 `$INCLUDE` modules, each owning a vertical slic
 | `speech.bas` | Phoneme voice synthesizer |
 | `font.bas` | Bitmap font renderer with color palettes |
 | `ui.bas` | Sci-fi panel UI components |
-| `crawl.bas` | Star Wars-style scrolling text crawl |
+| `crawl.bas` | Scrolling narrative text crawl |
 | `sequence.bas` | Scene sequencer |
 | `settings.bas` | Persistent INI-file settings |
 | `input.bas` | Keyboard input with edge detection |
