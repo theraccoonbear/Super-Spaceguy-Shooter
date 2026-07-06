@@ -208,7 +208,6 @@ DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED godMode    AS INTEGER
 DIM SHARED settingNerf AS INTEGER
-
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -289,6 +288,9 @@ FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
 GTEXT_Load _EMBEDDED$("GAMETEXT")
 GTEXT_Diag
+DIM sSpkTitle    AS STRING : sSpkTitle    = GTEXT_Get$("speech_title")
+DIM sSpkBossWarn AS STRING : sSpkBossWarn = GTEXT_Get$("speech_boss_warning")
+DIM sSpkGameOver AS STRING : sSpkGameOver = GTEXT_Get$("speech_game_over")
 planetImages(1) = _LOADIMAGE(_EMBEDDED$("PLANET01"), 32, "memory")
 planetImages(2) = _LOADIMAGE(_EMBEDDED$("PLANET02"), 32, "memory")
 planetImages(3) = _LOADIMAGE(_EMBEDDED$("PLANET03"), 32, "memory")
@@ -431,7 +433,7 @@ DO
 
     ' Detect state transitions for speech triggers
     IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
-        SPK_Say "SUPER SPACE GUY SHOOTER"
+        SPK_Say sSpkTitle
     END IF
     prevGameState = gameState
 
@@ -704,7 +706,7 @@ DO
             ' --- boss ---
             IF gameState = GS_PLAYING AND boss.active = 0 AND bossWarnTimer = 0 AND score >= stageScore THEN
                 bossWarnTimer = BOSS_WARN_FRAMES
-                SPK_Say "WARNING BOSS INCOMING"
+                SPK_Say sSpkBossWarn
             END IF
             IF bossWarnTimer > 0 THEN
                 bossWarnTimer = bossWarnTimer - 1
@@ -892,7 +894,7 @@ DO
                 gameState = GS_GAMEOVER
                 StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
                 MUS_SetCue "gameover"
-                SPK_Say "GAME OVER"
+                SPK_Say sSpkGameOver
                 gameOver = 0
             END IF
 
