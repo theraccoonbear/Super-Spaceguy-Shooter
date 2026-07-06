@@ -31,7 +31,7 @@ Sub BOSS_Update
             boss.scl = BOSS_SCALE
             If settingNerf Then bossHP = BOSS_MAX_HP_NERF Else bossHP = BOSS_MAX_HP
             bossPhase    = 1
-            bossFireTimer = 2.5
+            bossFireTimer = BOSS_FIRE_INIT
             bossMoveTimer = 0
             bossTargetY  = player.py
             bossTargetZ  = player.pz
