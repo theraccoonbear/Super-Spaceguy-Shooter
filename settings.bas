@@ -104,6 +104,12 @@ Sub OPTS_Update ()
         gameState = GS_TITLE
     End If
 
+    Dim oAbout As Integer : oAbout = _KEYDOWN(65) Or _KEYDOWN(97)
+    If oAbout And Not optAboutWas Then
+        ABOUT_Prep : gameState = GS_ABOUT
+    End If
+    optAboutWas = oAbout
+
     optUpWas = oUp : optDnWas = oDn : optLfWas = oLf : optRtWas = oRt : optEscWas = oEsc
 
     ' refresh local vol copy after adjustments
@@ -170,7 +176,7 @@ Sub OPTS_Update ()
         FONT_Print fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY + 4
     Next oI
 
-    FONT_PrintCentered fontPalette(8), backBuffer, "< > adjust   up/dn select   ESC save", scrH - 14, scrW
+    FONT_PrintCentered fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
