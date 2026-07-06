@@ -1,5 +1,13 @@
 ' ============================================================
 ' Super Spaceguy Shooter  —  sss.bas
+' Copyright (C) 2024-2026 theraccoonbear
+' SPDX-License-Identifier: GPL-3.0-or-later
+'
+' This program is free software: you can redistribute it and/or modify
+' it under the terms of the GNU General Public License as published by
+' the Free Software Foundation, either version 3 of the License, or
+' (at your option) any later version.
+' ============================================================
 ' 3rd person pseudo-rail 3D space shooter
 ' Player moves freely in Y/Z (up/down, left/right)
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
