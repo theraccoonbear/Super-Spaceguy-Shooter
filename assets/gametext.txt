@@ -67,7 +67,7 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6Deep inside ~4{{the_empire}}'s~6 research directorate, a scientist has chosen to vanish rather than finish what ~4{{emperor}}~6 ordered her to build. She is bound for ~2{{planet5}}~6, if she survives the trip.
 
-~5{{resistance}}~6 has one shot at extraction, and so does ~4{{emperor}}'s~6 fleet, racing to silence her before she reaches free space. Whoever reaches her escort ship first decides whether her knowledge saves worlds, or dies with her.
+~5{{resistance}}~6 has one shot at extraction, and so does ~4{{emperor}}'s~6 fleet, racing to silence her before she reaches free space. Whoever finds her first decides whether her knowledge survives, or disappears with her.
 
 [BLOCK:stage6]
 ~4-~E=~7[ ~3CHAPTER 6 ~7]~E=~4-
@@ -83,7 +83,7 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~2{{emperor_homeworld}}~6 burns behind the wreckage of ~4{{the_empire}}'s~6 last fleet.
 In the ruin of ~4{{emperor}}'s~6 throne hall, the pilot finds what the propaganda never showed: star charts, older than the empire itself, marking a single world of origin.
-The name on every Maw banner, every imperial seal, every oath of conquest, is ~2{{emperor_homeworld}}~6.
+The world behind every ~4{{the_empire}}~6 banner, every imperial seal, every oath of conquest: it is ~2{{emperor_homeworld}}~6.
 
 ~6The local records have another name for it.
 
