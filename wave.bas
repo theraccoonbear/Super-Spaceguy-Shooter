@@ -33,6 +33,7 @@ Sub WAVE_Spawn
         End If
         wvType    = waveType
         waveCount = waveCount - 1
+        If debugMode Then Print "[wave] type=" + LTrim$(Str$(wvType)) + "  score=" + LTrim$(Str$(score))
         Select Case wvType
         Case 0 : wvCount = 1
         Case 1 : wvCount = 2
