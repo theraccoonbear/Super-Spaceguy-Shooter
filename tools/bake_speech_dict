@@ -9,14 +9,15 @@ TMP="$(mktemp)"
 
 # ---- collect all unique words from game text and names ----
 {
-  # gametext.txt: strip block tags, color codes, template vars; pull words
-  sed 's/{{[^}]*}}/ /g; s/\[BLOCK:[^]]*\]//g; s/~[0-9A-Fa-f][^ ]*//g' \
+  # gametext.txt: strip block tags, color codes (~X), template vars; pull words
+  # Note: s/~[0-9A-Fa-f]//g strips only the ~X code, not the following word.
+  sed 's/{{[^}]*}}/ /g; s/\[BLOCK:[^]]*\]//g; s/~[0-9A-Fa-f]//g' \
       assets/gametext.txt | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
   printf '\n'
 
-  # gamevalues.ini: expand named vars (emperor, planets, resistance, etc.)
-  grep -E '^(emperor|resistance|planet[1-9]|emperor_homeworld)' \
-      assets/gamevalues.ini | cut -d= -f2- | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
+  # gamevalues.ini: extract all token values (covers the_empire, planet6, etc.)
+  grep -v '^[;[:space:]]' assets/gamevalues.ini | grep '=' | cut -d= -f2- \
+      | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z'
   printf '\n'
 } | sort -u | grep -v '^$' > "$TMP"
 
