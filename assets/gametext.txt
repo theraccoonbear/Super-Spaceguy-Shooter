@@ -91,6 +91,7 @@ The world behind every ~4{{the_empire}}~6 banner, every imperial seal, every oat
 
 [BLOCK:about]
 ~EA GAME BY THERACCOONBEAR
+~8GNU GENERAL PUBLIC LICENSE V3
 
 ~BDEVELOPED WITH THE AID OF
 ~BCLAUDE CODE  (ANTHROPIC)
