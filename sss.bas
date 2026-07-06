@@ -1525,7 +1525,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  -h, --help             Show this help and exit"
     PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
-  PRINT #guFH, "  --nerf                 Nerf mode: 10 kills trigger boss (was 1000), boss has 10 HP (was 30)"
+    PRINT #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
