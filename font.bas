@@ -168,3 +168,36 @@ Sub FONT_PrintCenteredRich(sheets() As Long, dest As Long, txt As String, y As I
     Loop
     FONT_PrintRich sheets(), dest, txt, (scrW - fcrLen * FONT_CHAR_W) \ 2, y
 End Sub
+
+' Print txt at a specific opacity (alpha 0=invisible, 255=opaque).
+' Composites over existing dest content; restores _DONTBLEND on exit.
+Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y As Integer, alpha As Integer)
+    Dim fai As Integer, fac As Integer, facx As Integer, facy As Integer
+    Dim fapx As Integer, fapy As Integer
+    Dim facol As Long, faa As Integer
+    _BLEND dest
+    _Source sheet
+    _Dest dest
+    For fai = 1 To Len(txt)
+        fac = Asc(Mid$(txt, fai, 1))
+        If fac >= 32 And fac <= 126 Then
+            facx = ((fac - 32) Mod FONT_COLS) * FONT_CHAR_W
+            facy = ((fac - 32) \ FONT_COLS) * FONT_CHAR_H
+            For fapy = 0 To FONT_CHAR_H - 1
+                For fapx = 0 To FONT_CHAR_W - 1
+                    facol = Point(facx + fapx, facy + fapy)
+                    faa = (_Alpha32(facol) * alpha) \ 255
+                    If faa > 0 Then
+                        PSet (x + (fai - 1) * FONT_CHAR_W + fapx, y + fapy), _RGBA32(_Red32(facol), _Green32(facol), _Blue32(facol), faa)
+                    End If
+                Next fapx
+            Next fapy
+        End If
+    Next fai
+    _Source 0
+    _DONTBLEND dest
+End Sub
+
+Sub FONT_PrintCenteredAlpha(sheet As Long, dest As Long, txt As String, y As Integer, scrW As Integer, alpha As Integer)
+    FONT_PrintAlpha sheet, dest, txt, (scrW - Len(txt) * FONT_CHAR_W) \ 2, y, alpha
+End Sub
