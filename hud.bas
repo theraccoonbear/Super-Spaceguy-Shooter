@@ -197,12 +197,4 @@ Sub HUD_Draw
         _PRINTSTRING (scrW / 2 - 32, scrH / 2 - 8), "GET READY"
     End If
 
-    ' pause overlay
-    If pauseFlag Then
-        hdThrobBright = INT(160 + 95 * SIN(tt * 7))
-        COLOR _RGB(hdThrobBright, hdThrobBright, 255)
-        _PRINTSTRING (scrW / 2 - 20, scrH / 2 - 8), "PAUSE"
-        COLOR _RGB(120, 120, 180)
-        _PRINTSTRING (scrW / 2 - 20, scrH / 2 + 8), "P=RESUME"
-    End If
 End Sub

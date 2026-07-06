@@ -201,7 +201,6 @@ DIM SHARED optRtRpt  AS INTEGER
 DIM SHARED optEscWas   AS INTEGER
 DIM SHARED optAboutWas AS INTEGER
 DIM SHARED crawlNextState AS INTEGER
-DIM SHARED pauseFlag AS INTEGER
 DIM SHARED invTimer AS INTEGER
 DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE
@@ -383,7 +382,6 @@ DIM bossShots AS INTEGER
 DIM bossAngle AS SINGLE
 DIM highScore AS LONG
 DIM gameOverDelay AS INTEGER
-DIM pKeyWas AS INTEGER
 DIM escConfirm AS INTEGER
 DIM escWas AS INTEGER
 DIM spaceWas       AS INTEGER
@@ -478,12 +476,7 @@ DO
             END IF
         END IF
 
-        ' --- pause toggle (P key, debounced) ---
-        IF _KEYDOWN(112) AND NOT pKeyWas THEN pauseFlag = 1 - pauseFlag
-        pKeyWas = _KEYDOWN(112)
-
-        IF NOT pauseFlag THEN
-            ' --- timers ---
+        ' --- timers ---
             tt = tt + 0.025
             spawnTimer = spawnTimer + 0.025
             IF fireTimer > 0 THEN fireTimer = fireTimer - 0.025
@@ -904,7 +897,6 @@ DO
                 SPK_Say sSpkGameOver
                 gameOver = 0
             END IF
-        END IF  ' not pauseFlag
 
         ' --------------------------------------------------------
         ' RENDER
