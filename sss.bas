@@ -417,6 +417,23 @@ ELSE
 END IF
 
 ' ============================================================
+' FONT ALPHA MASK SMOKE TEST — press any key to continue
+' Shows emperor image with text layered over it; letters should
+' be clean (no black box), holes in A/B/D/P/Q show the bg.
+' ============================================================
+DIM ftK AS STRING
+_DEST backBuffer
+_PUTIMAGE (0, 0)-(scrW - 1, scrH - 1), emperorImg, backBuffer
+FONT_Print fontPalette(7),  backBuffer, "LOREM IPSUM DOLOR SIT AMET",  4,  4
+FONT_Print fontPalette(14), backBuffer, "ABCDEFGHIJKLMNOPQRSTUVWXYZ",  4, 22
+FONT_Print fontPalette(2),  backBuffer, "PACK MY BOX WITH FIVE DOZEN", 4, 40
+FONT_Print fontPalette(12), backBuffer, "QUICK BROWN FOX JUMPS OVER",  4, 58
+FONT_PrintAlpha fontPalette(7),  backBuffer, "50% OPACITY - ADIPISCING",    4, 80,  128
+FONT_PrintAlpha fontPalette(14), backBuffer, "25% OPACITY - CONSECTETUR",   4, 98,   64
+FONT_PrintAlpha fontPalette(2),  backBuffer, "75% OPACITY - PELLENTESQUE",  4, 116, 192
+_PUTIMAGE , backBuffer, 0
+DO : ftK = INKEY$ : LOOP WHILE ftK = ""
+' ============================================================
 ' MAIN LOOP
 ' ============================================================
 DIM fsKeyWas AS INTEGER
