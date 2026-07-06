@@ -183,3 +183,4 @@ Function GTEXT_Get$(ggK As String)
     Loop
     GTEXT_Get$ = ""
 End Function
+

@@ -118,3 +118,15 @@ The name on every Maw banner, every imperial seal, every oath of conquest, is ~2
 ~9CMU PRONOUNCING DICTIONARY
 ~8(C) 1993-2015 CARNEGIE MELLON UNIVERSITY
 ~8ALL RIGHTS RESERVED
+
+[BLOCK:speech_title]
+SUPER SPACE GUY SHOOTER
+
+[BLOCK:speech_boss_warning]
+WARNING BOSS INCOMING
+
+[BLOCK:speech_game_over]
+GAME OVER
+
+[BLOCK:speech_poop]
+POOP
