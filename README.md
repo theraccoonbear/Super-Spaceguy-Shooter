@@ -31,10 +31,11 @@ You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) installed.
 
 ```bash
 # recommended — bakes the speech phoneme dict then compiles
-cd code/3d && tools/buildqb sss.bas
+# run from the repo root
+tools/buildqb sss.bas
 
-# or directly
-./qb64pe -x code/3d/sss.bas -o code/3d/builds/sss
+# or directly, from the QB64-PE install directory
+./qb64pe -x /path/to/repo/sss.bas -o /path/to/repo/builds/sss
 ```
 
 Pre-built binaries for Linux, macOS, and Windows are produced by CI on every merge to `master` and attached to tagged releases.
