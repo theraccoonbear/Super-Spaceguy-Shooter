@@ -1,5 +1,6 @@
 ' ============================================================
 ' Super Spaceguy Shooter  —  sss.bas
+' https://github.com/theraccoonbear/Super-Spaceguy-Shooter
 ' Copyright (C) 2024-2026 theraccoonbear
 ' SPDX-License-Identifier: GPL-3.0-or-later
 '
