@@ -136,7 +136,7 @@ Sub ABOUT_Update()
         abY = Int(aboutScroll + abI * ABOUT_LINE_H)
         If abY > 20 And abY < scrH - 20 Then
             If Len(aboutLines$(abI)) > 0 Then
-                FONT_PrintCenteredRich fontPalette(), backBuffer, aboutLines$(abI), abY, scrW
+                FONT_PrintCenteredRichAlpha fontPalette(), backBuffer, aboutLines$(abI), abY, scrW, 255
             End If
         End If
     Next abI
@@ -149,7 +149,7 @@ Sub ABOUT_Update()
     Line (17, scrH - 36)-(scrW - 18, scrH - 28), _RGBA(2, 4, 18, 100), BF
     Line (17, scrH - 28)-(scrW - 18, scrH - 20), _RGBA(2, 4, 18, 220), BF
 
-    FONT_PrintCentered fontPalette(8), backBuffer, "up/dn scroll   ESC back", scrH - 14, scrW
+    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "up/dn scroll   ESC back", scrH - 14, scrW, 255
 
     _Dest 0
     _PutImage , backBuffer, 0
