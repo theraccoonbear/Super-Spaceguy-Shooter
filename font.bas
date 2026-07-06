@@ -163,8 +163,11 @@ Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y 
     Dim tw As Integer, tmpImg As Long
     If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
     tw = Len(txt) * FONT_CHAR_W
-    tmpImg = _NewImage(tw, FONT_CHAR_H, 32)
-    ' copy glyphs into tmpImg (no blend — preserves per-pixel alpha from sheet)
+    tmpImg = _NewImage(tw, FONT_CHAR_H, 32)   ' initializes fully transparent
+    ' copy glyphs with _BLEND on tmpImg: alpha=0 background pixels in sheet leave
+    ' tmpImg unchanged (transparent); alpha=255 glyph pixels composite fully in.
+    ' Without _BLEND, _PUTIMAGE treats all source pixels as opaque → alpha=255 bg.
+    _BLEND tmpImg
     For fai = 1 To Len(txt)
         fac = Asc(Mid$(txt, fai, 1))
         If fac >= 32 And fac <= 126 Then
@@ -173,6 +176,7 @@ Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y 
             _PUTIMAGE ((fai-1)*FONT_CHAR_W, 0)-((fai-1)*FONT_CHAR_W + FONT_CHAR_W - 1, FONT_CHAR_H - 1), sheet, tmpImg, (facx, facy)-(facx + FONT_CHAR_W - 1, facy + FONT_CHAR_H - 1)
         End If
     Next fai
+    _DONTBLEND tmpImg
     ' scale glyph alphas in-place; _Source=_Dest=tmpImg so Point reads correctly
     _Source tmpImg
     _Dest tmpImg
@@ -185,11 +189,12 @@ Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y 
             End If
         Next fapx
     Next fapy
-    ' composite onto dest
+    ' composite onto dest; explicit src rect matches FONT_Print pattern
     _BLEND dest
-    _PUTIMAGE (x, y)-(x + tw - 1, y + FONT_CHAR_H - 1), tmpImg, dest
+    _PUTIMAGE (x, y)-(x + tw - 1, y + FONT_CHAR_H - 1), tmpImg, dest, (0, 0)-(tw - 1, FONT_CHAR_H - 1)
     _DONTBLEND dest
     _Dest dest
+    _Source 0
     _FreeImage tmpImg
 End Sub
 
