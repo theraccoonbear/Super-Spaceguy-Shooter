@@ -157,45 +157,40 @@ End Sub
 ' Renders to a temp image so per-pixel alpha scaling is safe, then composites
 ' onto dest with _BLEND. Allocates/frees a small image per call — suitable for
 ' effects (fade-in, dimmed hints) but not tight per-frame loops.
+' _BLEND + _PUTIMAGE to off-screen images has quirks in QB64-PE that break partial
+' alpha. Instead: _Dest sheet → Point reads from sheet; buffer the char; _Dest dest
+' + _BLEND + PSet writes composited pixels. No temp image, no alpha surprises.
 Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y As Integer, alpha As Integer)
     Dim fai As Integer, fac As Integer, facx As Integer, facy As Integer
     Dim fapx As Integer, fapy As Integer, facol As Long, faa As Integer
-    Dim tw As Integer, tmpImg As Long
+    Dim charBuf(0 To FONT_CHAR_W * FONT_CHAR_H - 1) As Long
     If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
-    tw = Len(txt) * FONT_CHAR_W
-    tmpImg = _NewImage(tw, FONT_CHAR_H, 32)   ' initializes fully transparent
-    ' copy glyphs with _BLEND on tmpImg: alpha=0 background pixels in sheet leave
-    ' tmpImg unchanged (transparent); alpha=255 glyph pixels composite fully in.
-    ' Without _BLEND, _PUTIMAGE treats all source pixels as opaque → alpha=255 bg.
-    _BLEND tmpImg
+    _BLEND dest
     For fai = 1 To Len(txt)
         fac = Asc(Mid$(txt, fai, 1))
         If fac >= 32 And fac <= 126 Then
             facx = ((fac - 32) Mod FONT_COLS) * FONT_CHAR_W
             facy = ((fac - 32) \ FONT_COLS) * FONT_CHAR_H
-            _PUTIMAGE ((fai-1)*FONT_CHAR_W, 0)-((fai-1)*FONT_CHAR_W + FONT_CHAR_W - 1, FONT_CHAR_H - 1), sheet, tmpImg, (facx, facy)-(facx + FONT_CHAR_W - 1, facy + FONT_CHAR_H - 1)
+            _Source sheet : _Dest sheet
+            For fapy = 0 To FONT_CHAR_H - 1
+                For fapx = 0 To FONT_CHAR_W - 1
+                    charBuf(fapy * FONT_CHAR_W + fapx) = Point(facx + fapx, facy + fapy)
+                Next fapx
+            Next fapy
+            _Source 0 : _Dest dest
+            For fapy = 0 To FONT_CHAR_H - 1
+                For fapx = 0 To FONT_CHAR_W - 1
+                    facol = charBuf(fapy * FONT_CHAR_W + fapx)
+                    If _Alpha32(facol) > 0 Then
+                        faa = (_Alpha32(facol) * alpha) \ 255
+                        PSet (x + (fai - 1) * FONT_CHAR_W + fapx, y + fapy), _RGBA32(_Red32(facol), _Green32(facol), _Blue32(facol), faa)
+                    End If
+                Next fapx
+            Next fapy
         End If
     Next fai
-    _DONTBLEND tmpImg
-    ' scale glyph alphas in-place; _Source=_Dest=tmpImg so Point reads correctly
-    _Source tmpImg
-    _Dest tmpImg
-    For fapy = 0 To FONT_CHAR_H - 1
-        For fapx = 0 To tw - 1
-            facol = Point(fapx, fapy)
-            If _Alpha32(facol) > 0 Then
-                faa = (_Alpha32(facol) * alpha) \ 255
-                PSet (fapx, fapy), _RGBA32(_Red32(facol), _Green32(facol), _Blue32(facol), faa)
-            End If
-        Next fapx
-    Next fapy
-    ' composite onto dest; explicit src rect matches FONT_Print pattern
-    _BLEND dest
-    _PUTIMAGE (x, y)-(x + tw - 1, y + FONT_CHAR_H - 1), tmpImg, dest, (0, 0)-(tw - 1, FONT_CHAR_H - 1)
     _DONTBLEND dest
     _Dest dest
-    _Source 0
-    _FreeImage tmpImg
 End Sub
 
 Sub FONT_PrintCenteredAlpha(sheet As Long, dest As Long, txt As String, y As Integer, scrW As Integer, alpha As Integer)
