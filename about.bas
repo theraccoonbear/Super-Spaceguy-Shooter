@@ -95,7 +95,7 @@ Sub ABOUT_Prep()
     End If
 
     aboutScroll = scrH - 22    ' first line appears at bottom of content area
-    aboutUpWas = 0 : aboutDnWas = 0 : aboutEscWas = 0
+    aboutUpWas = _KEYDOWN(18432) : aboutDnWas = _KEYDOWN(20480) : aboutEscWas = _KEYDOWN(27)
 End Sub
 
 Sub ABOUT_Update()

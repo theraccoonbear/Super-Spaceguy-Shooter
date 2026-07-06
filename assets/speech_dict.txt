@@ -354,4 +354,4 @@ XEROMITH  Z EH1 R OW0 M IH0 TH
 YELLOW  Y EH1 L OW0
 ZERO  Z IY1 R OW0
 
-# 342 / 356 words found in CMU dict (plus custom 10 entries)
+# 342 / 356 words found in CMU dict (plus 10 custom entries)
