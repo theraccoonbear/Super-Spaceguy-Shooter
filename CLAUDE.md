@@ -8,6 +8,7 @@
 ## Build requirement
 - Always do a test build after any code change. Fix all errors before reporting back.
 - Build command: from the QB64-PE install directory, run `./qb64pe -x code/3d/sss.bas -o code/3d/builds/sss`
+- After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `cd code/3d && bash tools/bake_speech_dict` and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
 - `Dim x As String` inside `$INCLUDE` files is ignored at module scope — use `$` suffix (`x$`) instead
