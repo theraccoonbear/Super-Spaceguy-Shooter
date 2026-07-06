@@ -34,7 +34,8 @@ CONST MAX_BULLETS   = 30
 CONST MAX_ASTEROIDS = 15
 CONST MAX_POWERUPS  = 5
 CONST MAX_EBULLETS  = 24
-CONST BOSS_MAX_HP   = 10
+CONST BOSS_MAX_HP      = 30
+CONST BOSS_MAX_HP_NERF = 10
 
 TYPE GameObj
     active  AS INTEGER
@@ -141,7 +142,8 @@ CONST MESH_THRUSTER     = 11
 CONST MESH_EBULLET      = 12
 CONST MESH_BOSS         = 13
 CONST MESH_COUNT        = 13
-CONST BOSS_TRIGGER      = 100
+CONST BOSS_TRIGGER      = 1000
+CONST BOSS_TRIGGER_NERF = 100
 
 ' --- game object pools ---
 DIM SHARED bullets(1 TO MAX_BULLETS)     AS GameObj
@@ -247,7 +249,8 @@ IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "
     GAME_Usage("")
 END IF
 
-DIM SHARED godMode AS INTEGER : godMode = (INSTR(ssCmdLine, "--god") > 0)
+DIM SHARED godMode    AS INTEGER : godMode    = (INSTR(ssCmdLine, "--god")  > 0)
+DIM SHARED settingNerf AS INTEGER : settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
 
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
@@ -718,7 +721,7 @@ DO
                     boss.pz = player.pz
                     boss.vx = -0.05
                     boss.scl = BOSS_SCALE
-                    bossHP = BOSS_MAX_HP
+                    IF settingNerf THEN bossHP = BOSS_MAX_HP_NERF ELSE bossHP = BOSS_MAX_HP
                     bossPhase = 1
                     bossFireTimer = 2.5
                     bossMoveTimer = 0
@@ -1522,6 +1525,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  -h, --help             Show this help and exit"
     PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
+  PRINT #guFH, "  --nerf                 Nerf mode: 10 kills trigger boss (was 1000), boss has 10 HP (was 30)"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
