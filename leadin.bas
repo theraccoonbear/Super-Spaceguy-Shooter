@@ -238,7 +238,8 @@ Sub LEADIN_Update()
     If liTimer >= LI_HOLD Or liKey > 0 Then
         liCard = liCard + 1
         If liCard > 2 Then
-            liCard = 0 : gameState = GS_TITLE
+            liCard = 0
+            SEQ_Advance
         Else
             liTimer = 0
             LEADIN_ShowCard liCard

@@ -421,7 +421,6 @@ IF ssCmdScene <> "" THEN
     IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
     SEQ_Advance
 ELSE
-    SEQ_Advance
     gameState = GS_LEADIN
     LEADIN_Init
 END IF
