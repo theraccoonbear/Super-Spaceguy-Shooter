@@ -2,11 +2,16 @@
 '
 ' ASCII 32-126 rendered into a 128x96 sprite sheet (16 chars x 6 rows, 8x16 per char).
 ' Gradient is baked top-to-bottom within each character cell at build time.
-' Call FONT_BuildSheet once after Screen is created.
+' Call FONT_BuildSheet / FONT_BuildPalette once after Screen is created.
 '
-' Rendering uses _PUTIMAGE with _BLEND on the destination so each glyph's
-' per-pixel alpha mask composites cleanly — no black box, holes in A/B/D/etc.
-' show the background. _Dest is left set to dest on return.
+' Primary render paths (use these):
+'   FONT_PrintAlpha        — plain text, variable opacity
+'   FONT_PrintCenteredAlpha
+'   FONT_PrintRichAlpha    — ~X inline color codes, variable opacity
+'   FONT_PrintCenteredRichAlpha
+'
+' Deprecated (opaque only, kept as internal fast path):
+'   FONT_Print, FONT_PrintCentered, FONT_PrintRich, FONT_PrintCenteredRich
 
 Const FONT_CHAR_W = 8
 Const FONT_CHAR_H = 16
@@ -60,6 +65,7 @@ Sub FONT_BuildSheet(sheet As Long, topClr As Long, botClr As Long)
     _Dest 0
 End Sub
 
+' DEPRECATED — use FONT_PrintAlpha(sheet, dest, txt, x, y, 255)
 Sub FONT_Print(sheet As Long, dest As Long, txt As String, x As Integer, y As Integer)
     Dim i As Integer, c As Integer, cx As Integer, cy As Integer, dx As Integer
     _BLEND dest
@@ -76,6 +82,7 @@ Sub FONT_Print(sheet As Long, dest As Long, txt As String, x As Integer, y As In
     _Dest dest
 End Sub
 
+' DEPRECATED — use FONT_PrintCenteredAlpha(sheet, dest, txt, y, scrW, 255)
 Sub FONT_PrintCentered(sheet As Long, dest As Long, txt As String, y As Integer, scrW As Integer)
     FONT_Print sheet, dest, txt, (scrW - Len(txt) * FONT_CHAR_W) \ 2, y
 End Sub
@@ -106,7 +113,7 @@ Sub FONT_BuildPalette(sheets() As Long)
     Next fpI
 End Sub
 
-' Print txt with inline ~X color codes (X = hex digit 0-F). Default color: sheets(7).
+' DEPRECATED — use FONT_PrintRichAlpha(sheets(), dest, txt, x, y, 255)
 Sub FONT_PrintRich(sheets() As Long, dest As Long, txt As String, x As Integer, y As Integer)
     Dim frI As Integer, frC As Integer, frCX As Integer, frCY As Integer
     Dim frSheet As Long, frX As Integer, frHex As Integer, frSkip As Integer
@@ -139,6 +146,7 @@ Sub FONT_PrintRich(sheets() As Long, dest As Long, txt As String, x As Integer, 
     _Dest dest
 End Sub
 
+' DEPRECATED — use FONT_PrintCenteredRichAlpha(sheets(), dest, txt, y, scrW, 255)
 Sub FONT_PrintCenteredRich(sheets() As Long, dest As Long, txt As String, y As Integer, scrW As Integer)
     Dim fcrI As Integer, fcrC As Integer, fcrHex As Integer, fcrLen As Integer, fcrSkip As Integer
     fcrLen = 0 : fcrI = 1
@@ -156,18 +164,12 @@ Sub FONT_PrintCenteredRich(sheets() As Long, dest As Long, txt As String, y As I
     FONT_PrintRich sheets(), dest, txt, (scrW - fcrLen * FONT_CHAR_W) \ 2, y
 End Sub
 
-' Print txt at a specific opacity (alpha 0=invisible, 255=opaque).
-' Renders to a temp image so per-pixel alpha scaling is safe, then composites
-' onto dest with _BLEND. Allocates/frees a small image per call — suitable for
-' effects (fade-in, dimmed hints) but not tight per-frame loops.
-' _BLEND + _PUTIMAGE to off-screen images has quirks in QB64-PE that break partial
-' alpha. Instead: _Dest sheet → Point reads from sheet; buffer the char; _Dest dest
-' + _BLEND + PSet writes composited pixels. No temp image, no alpha surprises.
 Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y As Integer, alpha As Integer)
     Dim fai As Integer, fac As Integer, facx As Integer, facy As Integer
     Dim fapx As Integer, fapy As Integer, facol As Long, faa As Integer
     Dim charBuf(0 To FONT_CHAR_W * FONT_CHAR_H - 1) As Long
     If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
+    If alpha >= 255 Then FONT_Print sheet, dest, txt, x, y : Exit Sub
     _BLEND dest
     For fai = 1 To Len(txt)
         fac = Asc(Mid$(txt, fai, 1))
@@ -198,4 +200,72 @@ End Sub
 
 Sub FONT_PrintCenteredAlpha(sheet As Long, dest As Long, txt As String, y As Integer, scrW As Integer, alpha As Integer)
     FONT_PrintAlpha sheet, dest, txt, (scrW - Len(txt) * FONT_CHAR_W) \ 2, y, alpha
+End Sub
+
+Sub FONT_PrintRichAlpha(sheets() As Long, dest As Long, txt As String, x As Integer, y As Integer, alpha As Integer)
+    Dim fraI As Integer, fraC As Integer, fraCX As Integer, fraCY As Integer
+    Dim fraSheet As Long, fraX As Integer, fraHex As Integer, fraSkip As Integer
+    Dim frapx As Integer, frapy As Integer, fracol As Long, fraa As Integer
+    Dim fraCharBuf(0 To FONT_CHAR_W * FONT_CHAR_H - 1) As Long
+    If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
+    If alpha >= 255 Then FONT_PrintRich sheets(), dest, txt, x, y : Exit Sub
+    fraSheet = sheets(7)
+    fraX = x
+    _BLEND dest
+    fraI = 1
+    Do While fraI <= Len(txt)
+        fraC = Asc(Mid$(txt, fraI, 1))
+        fraSkip = 0
+        If fraC = 126 And fraI < Len(txt) Then
+            fraHex = Asc(UCase$(Mid$(txt, fraI + 1, 1)))
+            If fraHex >= 48 And fraHex <= 57 Then
+                fraSheet = sheets(fraHex - 48) : fraI = fraI + 2 : fraSkip = -1
+            ElseIf fraHex >= 65 And fraHex <= 70 Then
+                fraSheet = sheets(fraHex - 55) : fraI = fraI + 2 : fraSkip = -1
+            End If
+        End If
+        If Not fraSkip Then
+            If fraC >= 32 And fraC <= 126 Then
+                fraCX = ((fraC - 32) Mod FONT_COLS) * FONT_CHAR_W
+                fraCY = ((fraC - 32) \ FONT_COLS) * FONT_CHAR_H
+                _Source fraSheet : _Dest fraSheet
+                For frapy = 0 To FONT_CHAR_H - 1
+                    For frapx = 0 To FONT_CHAR_W - 1
+                        fraCharBuf(frapy * FONT_CHAR_W + frapx) = Point(fraCX + frapx, fraCY + frapy)
+                    Next frapx
+                Next frapy
+                _Source 0 : _Dest dest
+                For frapy = 0 To FONT_CHAR_H - 1
+                    For frapx = 0 To FONT_CHAR_W - 1
+                        fracol = fraCharBuf(frapy * FONT_CHAR_W + frapx)
+                        If _Alpha32(fracol) > 0 Then
+                            fraa = (_Alpha32(fracol) * alpha) \ 255
+                            PSet (fraX + frapx, y + frapy), _RGBA32(_Red32(fracol), _Green32(fracol), _Blue32(fracol), fraa)
+                        End If
+                    Next frapx
+                Next frapy
+                fraX = fraX + FONT_CHAR_W
+            End If
+            fraI = fraI + 1
+        End If
+    Loop
+    _DONTBLEND dest
+    _Dest dest
+End Sub
+
+Sub FONT_PrintCenteredRichAlpha(sheets() As Long, dest As Long, txt As String, y As Integer, scrW As Integer, alpha As Integer)
+    Dim fcraI As Integer, fcraC As Integer, fcraHex As Integer, fcraLen As Integer, fcraSkip As Integer
+    fcraLen = 0 : fcraI = 1
+    Do While fcraI <= Len(txt)
+        fcraC = Asc(Mid$(txt, fcraI, 1))
+        fcraSkip = 0
+        If fcraC = 126 And fcraI < Len(txt) Then
+            fcraHex = Asc(UCase$(Mid$(txt, fcraI + 1, 1)))
+            If (fcraHex >= 48 And fcraHex <= 57) Or (fcraHex >= 65 And fcraHex <= 70) Then
+                fcraI = fcraI + 2 : fcraSkip = -1
+            End If
+        End If
+        If Not fcraSkip Then fcraLen = fcraLen + 1 : fcraI = fcraI + 1
+    Loop
+    FONT_PrintRichAlpha sheets(), dest, txt, (scrW - fcraLen * FONT_CHAR_W) \ 2, y, alpha
 End Sub

@@ -100,7 +100,7 @@ Sub HUD_Draw
     End If
 
     ' score
-    FONT_Print fontPalette(9), backBuffer, "SCORE: " + LTRIM$(STR$(score)), 4, 4
+    FONT_PrintAlpha fontPalette(9), backBuffer, "SCORE: " + LTRIM$(STR$(score)), 4, 4, 255
     ' ship life icons — bottom-left corner
     For hdJ = 1 To 3
         If hdJ <= shipLives Then
@@ -120,7 +120,7 @@ Sub HUD_Draw
     hdLaserFill  = INT((laserEnergy / 100.0) * 28)
     hdFuelFill   = INT((fuelLevel   / 100.0) * 28)
 
-    FONT_Print fontPalette(9), backBuffer, "SH", scrW - 150, 4
+    FONT_PrintAlpha fontPalette(9), backBuffer, "SH", scrW - 150, 4, 255
     LINE (scrW - 134, 8)-(scrW - 104, 14), _RGB(15, 20, 30), BF
     If hdShieldFill > 0 Then
         If lives > 60 Then
@@ -135,7 +135,7 @@ Sub HUD_Draw
     End If
     LINE (scrW - 134, 8)-(scrW - 104, 14), _RGB(70, 90, 100), B
 
-    FONT_Print fontPalette(9), backBuffer, "LA", scrW - 100, 4
+    FONT_PrintAlpha fontPalette(9), backBuffer, "LA", scrW - 100, 4, 255
     LINE (scrW - 84, 8)-(scrW - 54, 14), _RGB(15, 20, 30), BF
     If hdLaserFill > 0 Then
         If laserEnergy > 30 Then
@@ -148,7 +148,7 @@ Sub HUD_Draw
     End If
     LINE (scrW - 84, 8)-(scrW - 54, 14), _RGB(70, 90, 100), B
 
-    FONT_Print fontPalette(9), backBuffer, "FU", scrW - 50, 4
+    FONT_PrintAlpha fontPalette(9), backBuffer, "FU", scrW - 50, 4, 255
     LINE (scrW - 34, 8)-(scrW - 4, 14), _RGB(15, 20, 30), BF
     If hdFuelFill > 0 Then
         If fuelLevel > 40 Then
@@ -163,7 +163,7 @@ Sub HUD_Draw
 
     ' boss HP bar
     If boss.active Then
-        FONT_Print fontPalette(14), backBuffer, "BOSS", scrW\2 - 88, scrH - 18
+        FONT_PrintAlpha fontPalette(14), backBuffer, "BOSS", scrW\2 - 88, scrH - 18, 255
         hdBossHPBar = INT((bossHP / BOSS_MAX_HP) * 100)
         LINE (scrW/2 - 52, scrH - 14)-(scrW/2 + 52, scrH - 5), _RGB(15, 20, 30), BF
         If hdBossHPBar > 0 Then
@@ -176,8 +176,8 @@ Sub HUD_Draw
     ' boss warning flash
     If bossWarnTimer > 0 And boss.active = 0 Then
         If (bossWarnTimer Mod 18) < 9 Then
-            FONT_PrintCentered fontPalette(14), backBuffer, "! WARNING !", scrH\2 - 10, scrW
-            FONT_PrintCentered fontPalette(14), backBuffer, "BOSS INCOMING", scrH\2 + 8, scrW
+            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "! WARNING !", scrH\2 - 10, scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BOSS INCOMING", scrH\2 + 8, scrW, 255
         End If
     End If
 
