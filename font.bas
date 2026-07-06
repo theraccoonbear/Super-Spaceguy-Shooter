@@ -193,7 +193,6 @@ Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y 
             Next fapy
         End If
     Next fai
-    _DONTBLEND dest
     _Dest dest
 End Sub
 
@@ -247,7 +246,6 @@ Sub FONT_PrintRichAlpha(sheets() As Long, dest As Long, txt As String, x As Inte
             fraI = fraI + 1
         End If
     Loop
-    _DONTBLEND dest
     _Dest dest
 End Sub
 
