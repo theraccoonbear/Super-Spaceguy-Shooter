@@ -2,11 +2,11 @@
 '
 ' ASCII 32-126 rendered into a 128x96 sprite sheet (16 chars x 6 rows, 8x16 per char).
 ' Gradient is baked top-to-bottom within each character cell at build time.
-' Call FONT_BuildSheet once after Screen is created. Use FONT_Print / FONT_PrintCentered
-' to blit; fading is handled by the caller with a screen-level overlay.
+' Call FONT_BuildSheet once after Screen is created.
 '
-' FONT_Print uses _Source/_Dest + PSet (not _PutImage) to avoid alpha-blend quirks
-' when blitting to off-screen images. It leaves _Dest set to dest on return.
+' Rendering uses _PUTIMAGE with _BLEND on the destination so each glyph's
+' per-pixel alpha mask composites cleanly — no black box, holes in A/B/D/etc.
+' show the background. _Dest is left set to dest on return.
 
 Const FONT_CHAR_W = 8
 Const FONT_CHAR_H = 16
@@ -36,8 +36,9 @@ Sub FONT_BuildSheet(sheet As Long, topClr As Long, botClr As Long)
     tr = _Red32(topClr)  : tg = _Green32(topClr)  : tb = _Blue32(topClr)
     br = _Red32(botClr)  : bg = _Green32(botClr)  : bb = _Blue32(botClr)
 
-    ' walk every pixel: white (glyph) -> gradient color; black (bg) -> transparent
-    ' _Source must match _Dest so Point reads from the sheet, not the game screen
+    ' walk every pixel: white (glyph) -> gradient color + alpha=255
+    '                   black (bg/holes) -> fully transparent
+    ' _Source must equal _Dest here so Point reads from sheet, not game screen
     _Source sheet
     For y = 0 To FONT_CHAR_H * FONT_ROWS - 1
         t = (y Mod FONT_CHAR_H) / (FONT_CHAR_H - 1.0)
@@ -57,29 +58,19 @@ Sub FONT_BuildSheet(sheet As Long, topClr As Long, botClr As Long)
 End Sub
 
 Sub FONT_Print(sheet As Long, dest As Long, txt As String, x As Integer, y As Integer)
-    Dim i As Integer, c As Integer, cx As Integer, cy As Integer
-    Dim px As Integer, py As Integer
-    Dim col As Long
-    ' _Source makes Point read from sheet; _Dest makes PSet write to dest.
-    ' _Dest is left as dest on return so callers can continue drawing there.
-    _Source sheet
-    _Dest dest
+    Dim i As Integer, c As Integer, cx As Integer, cy As Integer, dx As Integer
+    _BLEND dest
     For i = 1 To Len(txt)
         c = Asc(Mid$(txt, i, 1))
         If c >= 32 And c <= 126 Then
             cx = ((c - 32) Mod FONT_COLS) * FONT_CHAR_W
             cy = ((c - 32) \ FONT_COLS) * FONT_CHAR_H
-            For py = 0 To FONT_CHAR_H - 1
-                For px = 0 To FONT_CHAR_W - 1
-                    col = Point(cx + px, cy + py)
-                    If _Alpha32(col) > 0 Then
-                        PSet (x + (i - 1) * FONT_CHAR_W + px, y + py), col
-                    End If
-                Next px
-            Next py
+            dx = x + (i - 1) * FONT_CHAR_W
+            _PUTIMAGE (dx, y)-(dx + FONT_CHAR_W - 1, y + FONT_CHAR_H - 1), sheet, dest, (cx, cy)-(cx + FONT_CHAR_W - 1, cy + FONT_CHAR_H - 1)
         End If
     Next i
-    _Source 0
+    _DONTBLEND dest
+    _Dest dest
 End Sub
 
 Sub FONT_PrintCentered(sheet As Long, dest As Long, txt As String, y As Integer, scrW As Integer)
@@ -115,12 +106,10 @@ End Sub
 ' Print txt with inline ~X color codes (X = hex digit 0-F). Default color: sheets(7).
 Sub FONT_PrintRich(sheets() As Long, dest As Long, txt As String, x As Integer, y As Integer)
     Dim frI As Integer, frC As Integer, frCX As Integer, frCY As Integer
-    Dim frPX As Integer, frPY As Integer
-    Dim frCol As Long, frSheet As Long, frX As Integer
-    Dim frHex As Integer, frSkip As Integer
+    Dim frSheet As Long, frX As Integer, frHex As Integer, frSkip As Integer
     frSheet = sheets(7)
     frX = x
-    _Dest dest
+    _BLEND dest
     frI = 1
     Do While frI <= Len(txt)
         frC = Asc(Mid$(txt, frI, 1))
@@ -137,19 +126,14 @@ Sub FONT_PrintRich(sheets() As Long, dest As Long, txt As String, x As Integer, 
             If frC >= 32 And frC <= 126 Then
                 frCX = ((frC - 32) Mod FONT_COLS) * FONT_CHAR_W
                 frCY = ((frC - 32) \ FONT_COLS) * FONT_CHAR_H
-                _Source frSheet
-                For frPY = 0 To FONT_CHAR_H - 1
-                    For frPX = 0 To FONT_CHAR_W - 1
-                        frCol = Point(frCX + frPX, frCY + frPY)
-                        If _Alpha32(frCol) > 0 Then PSet (frX + frPX, y + frPY), frCol
-                    Next frPX
-                Next frPY
+                _PUTIMAGE (frX, y)-(frX + FONT_CHAR_W - 1, y + FONT_CHAR_H - 1), frSheet, dest, (frCX, frCY)-(frCX + FONT_CHAR_W - 1, frCY + FONT_CHAR_H - 1)
                 frX = frX + FONT_CHAR_W
             End If
             frI = frI + 1
         End If
     Loop
-    _Source 0
+    _DONTBLEND dest
+    _Dest dest
 End Sub
 
 Sub FONT_PrintCenteredRich(sheets() As Long, dest As Long, txt As String, y As Integer, scrW As Integer)
@@ -170,32 +154,43 @@ Sub FONT_PrintCenteredRich(sheets() As Long, dest As Long, txt As String, y As I
 End Sub
 
 ' Print txt at a specific opacity (alpha 0=invisible, 255=opaque).
-' Composites over existing dest content; restores _DONTBLEND on exit.
+' Renders to a temp image so per-pixel alpha scaling is safe, then composites
+' onto dest with _BLEND. Allocates/frees a small image per call — suitable for
+' effects (fade-in, dimmed hints) but not tight per-frame loops.
 Sub FONT_PrintAlpha(sheet As Long, dest As Long, txt As String, x As Integer, y As Integer, alpha As Integer)
     Dim fai As Integer, fac As Integer, facx As Integer, facy As Integer
-    Dim fapx As Integer, fapy As Integer
-    Dim facol As Long, faa As Integer
-    _BLEND dest
-    _Source sheet
-    _Dest dest
+    Dim fapx As Integer, fapy As Integer, facol As Long, faa As Integer
+    Dim tw As Integer, tmpImg As Long
+    If alpha <= 0 Or Len(txt) = 0 Then Exit Sub
+    tw = Len(txt) * FONT_CHAR_W
+    tmpImg = _NewImage(tw, FONT_CHAR_H, 32)
+    ' copy glyphs into tmpImg (no blend — preserves per-pixel alpha from sheet)
     For fai = 1 To Len(txt)
         fac = Asc(Mid$(txt, fai, 1))
         If fac >= 32 And fac <= 126 Then
             facx = ((fac - 32) Mod FONT_COLS) * FONT_CHAR_W
             facy = ((fac - 32) \ FONT_COLS) * FONT_CHAR_H
-            For fapy = 0 To FONT_CHAR_H - 1
-                For fapx = 0 To FONT_CHAR_W - 1
-                    facol = Point(facx + fapx, facy + fapy)
-                    faa = (_Alpha32(facol) * alpha) \ 255
-                    If faa > 0 Then
-                        PSet (x + (fai - 1) * FONT_CHAR_W + fapx, y + fapy), _RGBA32(_Red32(facol), _Green32(facol), _Blue32(facol), faa)
-                    End If
-                Next fapx
-            Next fapy
+            _PUTIMAGE ((fai-1)*FONT_CHAR_W, 0)-((fai-1)*FONT_CHAR_W + FONT_CHAR_W - 1, FONT_CHAR_H - 1), sheet, tmpImg, (facx, facy)-(facx + FONT_CHAR_W - 1, facy + FONT_CHAR_H - 1)
         End If
     Next fai
-    _Source 0
+    ' scale glyph alphas in-place; _Source=_Dest=tmpImg so Point reads correctly
+    _Source tmpImg
+    _Dest tmpImg
+    For fapy = 0 To FONT_CHAR_H - 1
+        For fapx = 0 To tw - 1
+            facol = Point(fapx, fapy)
+            If _Alpha32(facol) > 0 Then
+                faa = (_Alpha32(facol) * alpha) \ 255
+                PSet (fapx, fapy), _RGBA32(_Red32(facol), _Green32(facol), _Blue32(facol), faa)
+            End If
+        Next fapx
+    Next fapy
+    ' composite onto dest
+    _BLEND dest
+    _PUTIMAGE (x, y)-(x + tw - 1, y + FONT_CHAR_H - 1), tmpImg, dest
     _DONTBLEND dest
+    _Dest dest
+    _FreeImage tmpImg
 End Sub
 
 Sub FONT_PrintCenteredAlpha(sheet As Long, dest As Long, txt As String, y As Integer, scrW As Integer, alpha As Integer)
