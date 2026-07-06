@@ -207,6 +207,8 @@ DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE
 DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
+DIM SHARED godMode    AS INTEGER
+DIM SHARED settingNerf AS INTEGER
 
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
@@ -249,8 +251,8 @@ IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "
     GAME_Usage("")
 END IF
 
-DIM SHARED godMode    AS INTEGER : godMode    = (INSTR(ssCmdLine, "--god")  > 0)
-DIM SHARED settingNerf AS INTEGER : settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
+godMode    = (INSTR(ssCmdLine, "--god")  > 0)
+settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
 
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
