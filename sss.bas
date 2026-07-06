@@ -1145,24 +1145,24 @@ DO
         escWas = held(E3D_KEY_ESCAPE)
         IF titleEscConfirm THEN
             IF _KEYDOWN(65) OR _KEYDOWN(97) THEN  ' A — about
-                ABOUT_Prep : gameState = GS_ABOUT : titleEscConfirm = 0
-            END IF
-            IF _KEYDOWN(83) OR _KEYDOWN(115) THEN  ' S — settings
-            gameState = GS_OPTIONS : titleEscConfirm = 0
-            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
+            ABOUT_Prep : gameState = GS_ABOUT : titleEscConfirm = 0
         END IF
-        IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
-        IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
-        MUS_Fill 0
-        EXIT SELECT
+        IF _KEYDOWN(83) OR _KEYDOWN(115) THEN  ' S — settings
+        gameState = GS_OPTIONS : titleEscConfirm = 0
+        optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
     END IF
+    IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
+    IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
     MUS_Fill 0
-    IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN GAME_NewGame
-    spaceWas = held(E3D_KEY_SPACE)
+    EXIT SELECT
+END IF
+MUS_Fill 0
+IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN GAME_NewGame
+spaceWas = held(E3D_KEY_SPACE)
 
-    ' ============================================================
-    ' INTRO SCREEN — emperor reveal
-    ' ============================================================
+' ============================================================
+' INTRO SCREEN — emperor reveal
+' ============================================================
 CASE GS_INTRO
     tt = tt + 0.025
     introTimer = introTimer + 1
@@ -1171,9 +1171,6 @@ CASE GS_INTRO
     IF emperorImg <> 0 THEN
         _PUTIMAGE (10, 0)-(309, scrH - 1), emperorImg, backBuffer
     END IF
-    ' empire name header bar
-    LINE (0, 0)-(scrW - 1, 22), _RGBA(0, 0, 8, 210), BF
-    FONT_PrintCentered fontPalette(14), backBuffer, empireName, 4, scrW
     ' emperor name + prompt footer bar
     LINE (0, scrH - 38)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 210), BF
     FONT_PrintCentered fontPalette(14), backBuffer, emperorName, scrH - 34, scrW
@@ -1311,20 +1308,11 @@ CASE GS_CRAWL
         FONT_Print fontPalette(10), backBuffer, crawlSpkW, 4, scrH - FONT_CHAR_H - 1
     END IF
     ' FFWD lozenge hint — always visible after lock-out period
-    IF crawlTimer > 60 THEN
-        DIM crawlFFHint AS STRING
-        IF held(E3D_KEY_SPACE) THEN
-            crawlFFHint = ">> FAST FORWARD <<"
-        ELSE
-            crawlFFHint = "HOLD SPACE TO FAST FORWARD"
-        END IF
+    IF crawlTimer > 60 AND held(E3D_KEY_SPACE) THEN
+        DIM crawlFFHint AS STRING : crawlFFHint = ">> FAST FORWARD <<"
         DIM crawlFFHX AS INTEGER : crawlFFHX = (scrW - LEN(crawlFFHint) * FONT_CHAR_W) \ 2
         LINE (crawlFFHX - 5, scrH - FONT_CHAR_H - 5)-(crawlFFHX + LEN(crawlFFHint) * FONT_CHAR_W + 4, scrH - 1), _RGBA(0, 8, 24, 210), BF
-        IF held(E3D_KEY_SPACE) THEN
-            FONT_Print fontPalette(14), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2
-        ELSE
-            FONT_Print fontPalette(8), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2
-        END IF
+        FONT_Print fontPalette(14), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2
     END IF
 
     ' auto-advance when last line has cleared the top fade band
@@ -1345,13 +1333,45 @@ CASE GS_CRAWL
         ELSE
             IF crawlFFActive THEN
                 volMusic = crawlFFVolSave : crawlFFActive = 0
-                ' re-find the on-screen paragraph so narration resumes from current position
-                DIM crawlResI AS INTEGER : crawlResI = 0
-                DIM crawlResP AS INTEGER
-                FOR crawlResP = 0 TO crawlParaCount - 1
-                    IF crawlScroll + crawlParaLine(crawlResP) * CRAWL_LINE_H <= scrH - CRAWL_LINE_H THEN crawlResI = crawlResP
-                NEXT crawlResP
-                crawlParaIdx = crawlResI
+                IF settingNarration THEN
+                    ' Find highest-indexed paragraph whose trigger scroll has been passed
+                    DIM crawlResI AS INTEGER : crawlResI = -1
+                    DIM crawlResP AS INTEGER
+                    FOR crawlResP = crawlParaCount - 1 TO 0 STEP -1
+                        IF crawlScroll + crawlParaLine(crawlResP) * CRAWL_LINE_H <= scrH - CRAWL_LINE_H THEN
+                            crawlResI = crawlResP : EXIT FOR
+                        END IF
+                    NEXT crawlResP
+                    IF crawlResI < 0 THEN
+                        crawlParaIdx = 0  ' nothing triggered yet; let trigger loop handle entry
+                    ELSE
+                        ' Build phoneme queue then skip past the portion that would already have played
+                        SPK_Say crawlParaText$(crawlResI)
+                        spkRateScale = crawlRateScale
+                        DIM crawlSyncS AS SINGLE
+                        crawlSyncS = (scrH - CRAWL_LINE_H) - crawlParaLine(crawlResI) * CRAWL_LINE_H
+                        DIM crawlSyncEla AS LONG
+                        crawlSyncEla = CLNG((crawlSyncS - crawlScroll) / CRAWL_SPEED / 60.0 * SAMPLE_RATE)
+                        DIM crawlSyncJ AS INTEGER : crawlSyncJ = 0
+                        DIM crawlSyncDur AS LONG : crawlSyncDur = 0
+                        DO WHILE crawlSyncJ < spkPhoneCount
+                            DIM crawlSyncPD AS LONG
+                            crawlSyncPD = CLNG(spkDur(spkPhones(crawlSyncJ), spkStress(crawlSyncJ)) * crawlRateScale)
+                            IF crawlSyncDur + crawlSyncPD > crawlSyncEla THEN EXIT DO
+                            crawlSyncDur = crawlSyncDur + crawlSyncPD
+                            crawlSyncJ = crawlSyncJ + 1
+                        LOOP
+                        IF crawlSyncJ >= spkPhoneCount THEN
+                            ' Paragraph fully elapsed; silence queue and advance to next
+                            spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
+                        ELSE
+                            spkPhoneIdx = crawlSyncJ : spkSamplePos = 0
+                        END IF
+                        crawlParaIdx = crawlResI + 1
+                    END IF
+                ELSE
+                    crawlParaIdx = crawlParaCount
+                END IF
             END IF
             fxVCRActive = 0
         END IF
