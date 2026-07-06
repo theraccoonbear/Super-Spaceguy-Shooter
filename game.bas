@@ -27,6 +27,7 @@ Sub GAME_ResetState
     For grI = 1 To MAX_POWERUPS  : powerups(grI).active = 0  : Next grI
     For grI = 1 To MAX_EBULLETS  : ebullets(grI).active = 0  : Next grI
     FX_Clear
+    fxVCRActive = 0
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF

@@ -1149,7 +1149,7 @@ DO
             END IF
             IF _KEYDOWN(83) OR _KEYDOWN(115) THEN  ' S — settings
             gameState = GS_OPTIONS : titleEscConfirm = 0
-            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1
+            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
         END IF
         IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
         IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
@@ -1330,21 +1330,21 @@ CASE GS_CRAWL
     ' auto-advance when last line has cleared the top fade band
     IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
         crawlParaIdx = crawlParaCount : SPK_Say ""
-        fxVCRActive = 0 : IF spaceWas THEN volMusic = crawlFFVolSave
+        fxVCRActive = 0 : IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
         SEQ_Advance
         EXIT SELECT
     END IF
     ' SPACE held = fast-forward (locked 1 sec to prevent accidental carry-through from intro)
     IF crawlTimer > 60 THEN
         IF held(E3D_KEY_SPACE) THEN
-            fxVCRActive = -1
-            IF NOT spaceWas THEN
-                crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say ""
+            IF NOT crawlFFActive THEN
+                crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
             END IF
+            fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
+            IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
             fxVCRActive = 0
-            IF spaceWas THEN volMusic = crawlFFVolSave
         END IF
     END IF
     spaceWas = held(E3D_KEY_SPACE)
