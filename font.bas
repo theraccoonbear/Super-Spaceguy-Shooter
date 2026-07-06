@@ -38,7 +38,10 @@ Sub FONT_BuildSheet(sheet As Long, topClr As Long, botClr As Long)
 
     ' walk every pixel: white (glyph) -> gradient color + alpha=255
     '                   black (bg/holes) -> fully transparent
-    ' _Source must equal _Dest here so Point reads from sheet, not game screen
+    ' _DONTBLEND so PSet writes exact RGBA — without it, PSet _RGBA(0,0,0,0) with
+    ' the default _BLEND just composites transparent over existing opaque black,
+    ' leaving alpha=255. _Source=_Dest=sheet so Point reads from the sheet.
+    _DONTBLEND sheet
     _Source sheet
     For y = 0 To FONT_CHAR_H * FONT_ROWS - 1
         t = (y Mod FONT_CHAR_H) / (FONT_CHAR_H - 1.0)
