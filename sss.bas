@@ -332,10 +332,11 @@ DIM SHARED projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
 E3D_MatPerspective cam, scrW / scrH, projMat
 
 ' --- camera orbit mode ---
-DIM SHARED camOrbitMode  AS INTEGER
-DIM SHARED camOrbitTheta AS SINGLE
-DIM SHARED camOrbitPhi   AS SINGLE
-DIM SHARED camOrbitR     AS SINGLE
+DIM SHARED camOrbitMode   AS INTEGER  ' -1 while adjusting (physics paused)
+DIM SHARED camAngleLocked AS INTEGER  ' -1 once user has set an angle; holds it during play
+DIM SHARED camOrbitTheta  AS SINGLE
+DIM SHARED camOrbitPhi    AS SINGLE
+DIM SHARED camOrbitR      AS SINGLE
 
 ' --- light (coming from upper-left-front) ---
 DIM lightDir AS E3D_Coord
@@ -500,28 +501,8 @@ END IF
                 escWas = held(E3D_KEY_ESCAPE)
             END IF
 
-            ' camera orbit: Tab toggles; arrows orbit camera while game runs
-            IF gameState = GS_PLAYING THEN
-                IF held(E3D_KEY_TAB) AND NOT tabWas THEN
-                    camOrbitMode = 1 - camOrbitMode
-                    IF camOrbitMode THEN
-                        camOrbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
-                        camOrbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
-                        camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
-                    END IF
-                END IF
-                tabWas = held(E3D_KEY_TAB)
-                IF camOrbitMode THEN
-                    IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
-                    IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
-                    IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
-                    IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
-                    IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
-                    IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
-                END IF
-            END IF
-
             ' ESC: rising edge toggles confirm dialog (game only); Y returns to title, Esc/N cancels
+            ' Processed before orbit block so GOTO camRender can't swallow it.
             IF gameState = GS_PLAYING THEN
                 IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN escConfirm = 1 - escConfirm
                 escWas = held(E3D_KEY_ESCAPE)
@@ -542,6 +523,30 @@ END IF
                 END IF
             END IF
 
+            ' camera orbit: Tab toggles; arrows set angle; physics paused while active
+            IF gameState = GS_PLAYING THEN
+                IF held(E3D_KEY_TAB) AND NOT tabWas THEN
+                    camOrbitMode = 1 - camOrbitMode
+                    IF camOrbitMode THEN
+                        camOrbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
+                        camOrbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
+                        camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
+                    ELSE
+                        camAngleLocked = -1
+                    END IF
+                END IF
+                tabWas = held(E3D_KEY_TAB)
+                IF camOrbitMode THEN
+                    IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
+                    IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
+                    IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
+                    IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
+                    IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
+                    IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
+                    GOTO camRender
+                END IF
+            END IF
+
             ' --- timers ---
             tt = tt + 0.025
             spawnTimer = spawnTimer + 0.025
@@ -554,11 +559,7 @@ END IF
             STAGE_Update
 
             ' --- player movement, velocity physics, attitude ---
-            IF camOrbitMode THEN
-                PLAYER_Update held(E3D_KEY_W), held(E3D_KEY_S), held(E3D_KEY_A), held(E3D_KEY_D)
-            ELSE
-                PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
-            END IF
+            PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
 
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
@@ -1026,6 +1027,7 @@ END IF
                 gameOver = 0
             END IF
 
+            camRender:
             ' --------------------------------------------------------
             ' RENDER
             ' --------------------------------------------------------
@@ -1049,7 +1051,7 @@ END IF
                 cam.target.y = player.py + camFwdY * CAM_LEAD_X
                 cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
             END IF
-            IF camOrbitMode THEN
+            IF camOrbitMode OR camAngleLocked THEN
                 cam.POS.x    = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
                 cam.POS.y    = player.py + camOrbitR * SIN(camOrbitPhi)
                 cam.POS.z    = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)

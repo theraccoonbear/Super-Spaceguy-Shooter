@@ -16,6 +16,7 @@ Sub GAME_ResetState
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
     thrusterScale = 0.30 : invTimer = 120 : escConfirm = 0 : titleEscConfirm = 0
     camLagY = 0 : camLagZ = 0 : camFwdY = 0 : camFwdZ = 0
+    camOrbitMode = 0 : camAngleLocked = 0
     playerVY = 0 : playerVZ = 0
     boss.active = 0 : bossHP = 0 : bossWarnTimer = 0 : bossMoveTimer = 0 : bossState = 0
     planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0 : planetCurrent = PLANET_COUNT : planetNameIdx = PLANET_COUNT
