@@ -18,18 +18,13 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
-# QB64-PE resolves $EMBED paths relative to its binary directory.
-# Match the symlink qb64build.sh sets up so tests compile against the same assets.
-mkdir -p "$QB64_DIR/code"
-ln -sfn "$REPODIR" "$QB64_DIR/code/3d"
-
 TESTBIN="$REPODIR/tests/seq_trace_test"
 
 echo "==> Building tests/seq_trace_test.bas..."
 if command -v xvfb-run &>/dev/null; then
-  xvfb-run "$QB64" -x "$QB64_DIR/code/3d/tests/seq_trace_test.bas" -o "$TESTBIN"
+  xvfb-run "$QB64" -x "$REPODIR/tests/seq_trace_test.bas" -o "$TESTBIN"
 else
-  "$QB64" -x "$QB64_DIR/code/3d/tests/seq_trace_test.bas" -o "$TESTBIN"
+  "$QB64" -x "$REPODIR/tests/seq_trace_test.bas" -o "$TESTBIN"
 fi
 
 echo "==> Running seq_trace_test..."
