@@ -71,9 +71,21 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
-# QB64-PE resolves $EMBED paths relative to _STARTDIR$ (the directory it
-# was launched from). Invoke the compiler from REPODIR so that
-# '$EMBED:assets/...' resolves to the repo's assets directory.
+# QB64-PE resolves $EMBED paths relative to its binary directory.
+# Create assets -> repo/assets in the QB64-PE dir so '$EMBED:assets/...'
+# finds the right files regardless of where the repo lives on disk.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    WIN_LINK=$(cygpath -w "$QB64_DIR/assets")
+    WIN_TARGET=$(cygpath -w "$REPODIR/assets")
+    WIN_LINK="$WIN_LINK" WIN_TARGET="$WIN_TARGET" \
+      powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET'
+    ;;
+  *)
+    ln -sfn "$REPODIR/assets" "$QB64_DIR/assets"
+    ;;
+esac
+
 echo "==> Building sss.bas..."
 mkdir -p "$REPODIR/builds"
 case "$(uname -s)" in
@@ -81,10 +93,9 @@ case "$(uname -s)" in
     QB64_WIN=$(cygpath -w "$QB64")
     SRC_WIN=$(cygpath -w "$REPODIR/sss.bas")
     OUT_WIN=$(cygpath -w "$REPODIR/builds")
-    REPO_WIN=$(cygpath -w "$REPODIR")
     # QB64-PE exits 1 on Windows even after a successful -x compile; verify output instead
-    QB64_WIN="$QB64_WIN" SRC_WIN="$SRC_WIN" OUT_WIN="$OUT_WIN" REPO_WIN="$REPO_WIN" \
-      powershell -Command 'Set-Location $env:REPO_WIN; & $env:QB64_WIN -x -w "-s:ExeDefaultDir=$env:OUT_WIN" $env:SRC_WIN; exit 0'
+    QB64_WIN="$QB64_WIN" SRC_WIN="$SRC_WIN" OUT_WIN="$OUT_WIN" \
+      powershell -Command '& $env:QB64_WIN -x -w "-s:ExeDefaultDir=$env:OUT_WIN" $env:SRC_WIN; exit 0'
     if [ ! -f "$REPODIR/builds/sss.exe" ]; then
       echo "ERROR: sss.exe not produced by QB64-PE"
       exit 1
@@ -92,9 +103,9 @@ case "$(uname -s)" in
     ;;
   *)
     if command -v xvfb-run &>/dev/null; then
-      ( cd "$REPODIR" && xvfb-run "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" sss.bas )
+      xvfb-run "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "$REPODIR/sss.bas"
     else
-      ( cd "$REPODIR" && "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" sss.bas )
+      "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "$REPODIR/sss.bas"
     fi
     ;;
 esac

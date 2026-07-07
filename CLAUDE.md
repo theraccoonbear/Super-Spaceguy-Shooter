@@ -7,7 +7,7 @@
 
 ## Build requirement
 - Always do a test build after any code change. Fix all errors before reporting back.
-- Build command: from the repo root, run `./tools/buildqb sss.bas`  (QB64-PE resolves `$EMBED` paths relative to its launch directory, so invoking from repo root makes `assets/...` resolve correctly)
+- Build command: from the repo root, run `./tools/buildqb sss.bas`  (script auto-creates `qb64pe-dir/assets → repo/assets` symlink so `$EMBED:'assets/...'` resolves correctly from QB64-PE's binary dir)
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
