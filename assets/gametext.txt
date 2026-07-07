@@ -101,6 +101,9 @@ The world behind every ~4{{the_empire}}~6 banner, every imperial seal, every oat
 ~9SHIPS: LIZ REDDINGTON
 ~8CC BY 3.0  /  POLY.PIZZA
 
+~9ASTEROIDS: J-TOASTIE
+~8CC BY 3.0  /  POLY.PIZZA
+
 ~9SPEEDSHIP MODEL: HERMINIO NIEVES
 
 ~9PLANET IMAGERY: VOIDWEAVER.SPACE
