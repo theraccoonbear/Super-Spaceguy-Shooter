@@ -533,6 +533,7 @@ END IF
                         camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
                     ELSE
                         camAngleLocked = -1
+                        SETTINGS_Save
                     END IF
                 END IF
                 tabWas = held(E3D_KEY_TAB)
