@@ -24,6 +24,55 @@ jobs:
             exit 1
           }
 
+  test:
+    name: Sequence state tests
+    needs: dict-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve QB64-PE release version
+        id: qb64pe_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_JSON=$(gh api repos/QB64-Phoenix-Edition/QB64pe/releases/latest)
+          ASSET_URL=$(echo "$RELEASE_JSON" \
+            | python3 -c "import sys,json; assets=json.load(sys.stdin)['assets']; print(next(a['browser_download_url'] for a in assets if 'lnx' in a['name'].lower()))")
+          VERSION=$(echo "$RELEASE_JSON" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          echo "asset_url=$ASSET_URL" >> $GITHUB_OUTPUT
+          echo "version=$VERSION"     >> $GITHUB_OUTPUT
+
+      - name: Cache QB64-PE
+        id: cache_qb64pe
+        uses: actions/cache@v4
+        with:
+          path: qb64pe-bin
+          key: qb64pe-${{ steps.qb64pe_release.outputs.version }}-${{ runner.os }}
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb
+
+      - name: Install QB64-PE
+        if: steps.cache_qb64pe.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o qb64pe.tar.gz "${{ steps.qb64pe_release.outputs.asset_url }}"
+          tar xzf qb64pe.tar.gz
+          cd qb64pe && bash setup_lnx.sh 1 && cd ..
+          mv qb64pe qb64pe-bin
+
+      - name: Build and run seq_trace_test
+        run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
+
+      - name: Dump compile log on failure
+        if: failure()
+        run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
+
   build:
     needs: dict-check
     strategy:
@@ -157,7 +206,7 @@ jobs:
             ${{ matrix.sidecar-release-name }}
 
   release:
-    needs: build
+    needs: [build, test]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
