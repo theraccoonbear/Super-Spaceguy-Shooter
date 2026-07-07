@@ -1317,7 +1317,7 @@ CASE GS_CRAWL
     END IF
     ' FFWD lozenge hint — always visible after lock-out period
     IF crawlTimer > 60 AND held(E3D_KEY_SPACE) THEN
-        DIM crawlFFHint AS STRING : crawlFFHint = ">> FAST FORWARD  |  +ESC SKIP <<"
+        DIM crawlFFHint AS STRING : crawlFFHint = ">> FAST FORWARD <<"
         DIM crawlFFHX AS INTEGER : crawlFFHX = (scrW - LEN(crawlFFHint) * FONT_CHAR_W) \ 2
         LINE (crawlFFHX - 5, scrH - FONT_CHAR_H - 5)-(crawlFFHX + LEN(crawlFFHint) * FONT_CHAR_W + 4, scrH - 1), _RGBA(0, 8, 24, 210), BF
         FONT_PrintAlpha fontPalette(14), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2, 255
