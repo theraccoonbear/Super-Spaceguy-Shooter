@@ -461,7 +461,7 @@ END IF
                 CASE GS_LEADIN   : dbgStateName = "GS_LEADIN"
                 CASE ELSE        : dbgStateName = "GS_?" + LTRIM$(STR$(gameState))
             END SELECT
-            PRINT "[state] " + dbgStateName
+            DBG_Print "[state] " + dbgStateName
         END IF
         prevGameState = gameState
 
@@ -635,6 +635,7 @@ END IF
                                 enemies(i).active = 0
                                 bullets(j).active = 0
                                 score = score + SCORE_ENEMY
+                                IF debugMode THEN DBG_Print "[kill] enemy  score=" + LTRIM$(STR$(score))
                                 SND_Boom
                                 scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
                                 SELECT CASE enemies(i).meshIdx
@@ -739,7 +740,7 @@ END IF
             IF bossWarnTimer > 0 THEN
                 bossWarnTimer = bossWarnTimer - 1
                 IF bossWarnTimer = 0 AND gameState = GS_PLAYING THEN
-                    IF debugMode THEN PRINT "[boss] spawned  score=" + LTRIM$(STR$(score))
+                    IF debugMode THEN DBG_Print "[boss] spawned  score=" + LTRIM$(STR$(score))
                     boss.active  = -1
                     boss.meshIdx = MESH_BOSS
                     boss.px = player.px + BOSS_SPAWN_DIST
@@ -859,7 +860,7 @@ END IF
                             fxShakeTimer = 2
                             SND_Boom
                             IF bossHP <= 0 THEN
-                                IF debugMode THEN PRINT "[boss] defeated  score=" + LTRIM$(STR$(score))
+                                IF debugMode THEN DBG_Print "[boss] defeated  score=" + LTRIM$(STR$(score))
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
@@ -1535,6 +1536,14 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
             lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
         END IF
     END IF
+END SUB
+
+SUB DBG_Print(dbgMsg AS STRING)
+    DIM dbgF AS INTEGER
+    dbgF = FreeFile
+    OPEN "/dev/tty" FOR APPEND AS #dbgF
+    PRINT #dbgF, dbgMsg
+    CLOSE #dbgF
 END SUB
 
 SUB GAME_Usage(guErr AS STRING)
