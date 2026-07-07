@@ -41,7 +41,7 @@ Sub LEADIN_Update()
     _Dest backBuffer
     _DONTBLEND backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 0), BF
-    If liImg(liCard) > 0 Then
+    If liImg(liCard) <> 0 Then
         _PutImage (0, 0)-(scrW - 1, scrH - 1), liImg(liCard), backBuffer
     End If
     If liAlpha < 255 Then
