@@ -331,6 +331,12 @@ E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 DIM SHARED projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
 E3D_MatPerspective cam, scrW / scrH, projMat
 
+' --- camera orbit mode ---
+DIM SHARED camOrbitMode  AS INTEGER
+DIM SHARED camOrbitTheta AS SINGLE
+DIM SHARED camOrbitPhi   AS SINGLE
+DIM SHARED camOrbitR     AS SINGLE
+
 ' --- light (coming from upper-left-front) ---
 DIM lightDir AS E3D_Coord
 lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
@@ -441,6 +447,7 @@ END IF
     ' MAIN LOOP
     ' ============================================================
     DIM fsKeyWas AS INTEGER
+    DIM tabWas   AS INTEGER
     DO
         dbgT0 = TIMER
         ' --- input ---
@@ -491,6 +498,31 @@ END IF
                     EXIT SELECT
                 END IF
                 escWas = held(E3D_KEY_ESCAPE)
+            END IF
+
+            ' camera orbit: Tab toggles; arrows orbit camera; ESC exits orbit
+            IF gameState = GS_PLAYING THEN
+                IF held(E3D_KEY_TAB) AND NOT tabWas THEN
+                    camOrbitMode = 1 - camOrbitMode
+                    IF camOrbitMode THEN
+                        camOrbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
+                        camOrbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
+                        camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
+                    END IF
+                END IF
+                tabWas = held(E3D_KEY_TAB)
+                IF camOrbitMode THEN
+                    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN camOrbitMode = 0
+                    escWas = held(E3D_KEY_ESCAPE)
+                    IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
+                    IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
+                    IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
+                    IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
+                    IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
+                    IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
+                    PLAYER_Update 0, 0, 0, 0
+                    GOTO camRender
+                END IF
             END IF
 
             ' ESC: rising edge toggles confirm dialog (game only); Y returns to title, Esc/N cancels
@@ -994,6 +1026,7 @@ END IF
                 gameOver = 0
             END IF
 
+            camRender:
             ' --------------------------------------------------------
             ' RENDER
             ' --------------------------------------------------------
@@ -1016,6 +1049,14 @@ END IF
                 cam.target.x = player.px + CAM_LEAD_X
                 cam.target.y = player.py + camFwdY * CAM_LEAD_X
                 cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
+            END IF
+            IF camOrbitMode THEN
+                cam.POS.x    = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
+                cam.POS.y    = player.py + camOrbitR * SIN(camOrbitPhi)
+                cam.POS.z    = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
+                cam.target.x = player.px
+                cam.target.y = player.py
+                cam.target.z = player.pz
             END IF
             E3D_MatLookAt cam, viewMat
             E3D_MatMul projMat, viewMat, vpMat
@@ -1192,6 +1233,12 @@ END IF
 
             ' --- HUD ---
             HUD_Draw
+
+            IF camOrbitMode THEN
+                _DEST backBuffer
+                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4, 160
+                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:EXIT  ARROWS:ROTATE", 4, 4 + FONT_CHAR_H + 1, 120
+            END IF
 
             FX_Flash scrW, scrH
 
