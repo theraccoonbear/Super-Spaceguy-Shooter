@@ -1491,37 +1491,6 @@ CASE GS_LEADIN
 
 END SELECT
 
-' --- lead indicator: project nearest forward enemy to screen ---
-IF gameState = GS_PLAYING THEN
-    DIM ldI AS INTEGER, ldBest AS INTEGER, ldBestDX AS SINGLE
-    ldBest = 0 : ldBestDX = 1e9
-    FOR ldI = 1 TO MAX_ENEMIES
-        IF enemies(ldI).active THEN
-            DIM ldDX AS SINGLE : ldDX = enemies(ldI).px - player.px
-            IF ldDX > 0 AND ldDX < ldBestDX THEN ldBestDX = ldDX : ldBest = ldI
-        END IF
-    NEXT ldI
-    IF ldBest > 0 THEN
-        DIM ldWx AS SINGLE, ldWy AS SINGLE, ldWz AS SINGLE
-        DIM ldPx AS SINGLE, ldPy AS SINGLE, ldPw AS SINGLE
-        DIM ldSx AS SINGLE, ldSy AS SINGLE
-        ldWx = enemies(ldBest).px : ldWy = enemies(ldBest).py : ldWz = enemies(ldBest).pz
-        ldPx = ldWx*vpMat.m(0,0) + ldWy*vpMat.m(0,1) + ldWz*vpMat.m(0,2) + vpMat.m(0,3)
-        ldPy = ldWx*vpMat.m(1,0) + ldWy*vpMat.m(1,1) + ldWz*vpMat.m(1,2) + vpMat.m(1,3)
-        ldPw = ldWx*vpMat.m(3,0) + ldWy*vpMat.m(3,1) + ldWz*vpMat.m(3,2) + vpMat.m(3,3)
-        IF ldPw > 0 THEN
-            ldSx = (ldPx / ldPw + 1.0) * scrW * 0.5
-            ldSy = (1.0 - ldPy / ldPw) * scrH * 0.5
-            _DEST 0
-            DIM ldClr AS LONG : ldClr = _RGBA(0, 220, 255, 200)
-            LINE (ldSx - 6, ldSy)-(ldSx - 2, ldSy), ldClr
-            LINE (ldSx + 2, ldSy)-(ldSx + 6, ldSy), ldClr
-            LINE (ldSx, ldSy - 6)-(ldSx, ldSy - 2), ldClr
-            LINE (ldSx, ldSy + 2)-(ldSx, ldSy + 6), ldClr
-        END IF
-    END IF
-END IF
-
 ' --- debug overlay toggle: ` (backtick) ---
 IF _KEYDOWN(96) AND NOT dbgGraveWas THEN dbgOverlay = 1 - dbgOverlay
 dbgGraveWas = _KEYDOWN(96)
