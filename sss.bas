@@ -67,6 +67,8 @@ CONST ATTITUDE_LERP       = 0.09    ' ship tilt/roll settle rate
 CONST BULLET_SPEED        = 0.35    ' player bullet X velocity
 CONST FIRE_COOLDOWN       = 0.18    ' seconds between shots
 CONST LASER_COST          = 5.0     ' laser energy drained per shot (%)
+CONST AIM_ASSIST          = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
+CONST HIT_SCALE           = 1.5     ' enemy AABB scale factor for hit detection (visual stays unchanged)
 CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
@@ -352,6 +354,12 @@ DIM mlI AS INTEGER
 FOR mlI = 1 TO MESH_COUNT
     E3D_BakeMeshNormals meshLib(mlI)
 NEXT mlI
+DIM hsI AS INTEGER
+FOR hsI = MESH_ENEMY TO MESH_ENEMY_VWEDGE
+    boxLib(hsI).hx = boxLib(hsI).hx * HIT_SCALE
+    boxLib(hsI).hy = boxLib(hsI).hy * HIT_SCALE
+    boxLib(hsI).hz = boxLib(hsI).hz * HIT_SCALE
+NEXT hsI
 
 ' --- init player ---
 player.active  = -1
@@ -537,6 +545,31 @@ END IF
                             bullets(i).px = player.px + bvNx * (BULLET_TRAIL_LEN + 1.0)
                             bullets(i).py = player.py + bvNy * (BULLET_TRAIL_LEN + 1.0)
                             bullets(i).pz = player.pz + bvNz * (BULLET_TRAIL_LEN + 1.0)
+                            ' aim assist: nudge toward nearest enemy within ~20deg forward cone
+                            DIM aaDX AS SINGLE, aaDY AS SINGLE, aaDZ AS SINGLE, aaDist AS SINGLE
+                            DIM aaBestDist AS SINGLE, aaNY AS SINGLE, aaNZ AS SINGLE
+                            aaBestDist = 1e9
+                            FOR aai = 1 TO MAX_ENEMIES
+                                IF enemies(aai).active THEN
+                                    aaDX = enemies(aai).px - player.px
+                                    aaDY = enemies(aai).py - player.py
+                                    aaDZ = enemies(aai).pz - player.pz
+                                    aaDist = SQR(aaDX*aaDX + aaDY*aaDY + aaDZ*aaDZ)
+                                    IF aaDist > 0.1 AND aaDX > 0 THEN
+                                        IF (aaDX / aaDist) > 0.94 THEN  ' ~20deg cone (cos20°≈0.94)
+                                            IF aaDist < aaBestDist THEN
+                                                aaBestDist = aaDist
+                                                aaNY = aaDY / aaDist
+                                                aaNZ = aaDZ / aaDist
+                                            END IF
+                                        END IF
+                                    END IF
+                                END IF
+                            NEXT aai
+                            IF aaBestDist < 1e9 THEN
+                                bvNy = bvNy + (aaNY - bvNy) * AIM_ASSIST
+                                bvNz = bvNz + (aaNZ - bvNz) * AIM_ASSIST
+                            END IF
                             bullets(i).vx = bvNx * BULLET_SPEED
                             bullets(i).vy = bvNy * BULLET_SPEED
                             bullets(i).vz = bvNz * BULLET_SPEED
@@ -1457,6 +1490,37 @@ CASE GS_LEADIN
     LEADIN_Update
 
 END SELECT
+
+' --- lead indicator: project nearest forward enemy to screen ---
+IF gameState = GS_PLAYING THEN
+    DIM ldI AS INTEGER, ldBest AS INTEGER, ldBestDX AS SINGLE
+    ldBest = 0 : ldBestDX = 1e9
+    FOR ldI = 1 TO MAX_ENEMIES
+        IF enemies(ldI).active THEN
+            DIM ldDX AS SINGLE : ldDX = enemies(ldI).px - player.px
+            IF ldDX > 0 AND ldDX < ldBestDX THEN ldBestDX = ldDX : ldBest = ldI
+        END IF
+    NEXT ldI
+    IF ldBest > 0 THEN
+        DIM ldWx AS SINGLE, ldWy AS SINGLE, ldWz AS SINGLE
+        DIM ldPx AS SINGLE, ldPy AS SINGLE, ldPw AS SINGLE
+        DIM ldSx AS SINGLE, ldSy AS SINGLE
+        ldWx = enemies(ldBest).px : ldWy = enemies(ldBest).py : ldWz = enemies(ldBest).pz
+        ldPx = ldWx*vpMat.m(0,0) + ldWy*vpMat.m(0,1) + ldWz*vpMat.m(0,2) + vpMat.m(0,3)
+        ldPy = ldWx*vpMat.m(1,0) + ldWy*vpMat.m(1,1) + ldWz*vpMat.m(1,2) + vpMat.m(1,3)
+        ldPw = ldWx*vpMat.m(3,0) + ldWy*vpMat.m(3,1) + ldWz*vpMat.m(3,2) + vpMat.m(3,3)
+        IF ldPw > 0 THEN
+            ldSx = (ldPx / ldPw + 1.0) * scrW * 0.5
+            ldSy = (1.0 - ldPy / ldPw) * scrH * 0.5
+            _DEST 0
+            DIM ldClr AS LONG : ldClr = _RGBA(0, 220, 255, 200)
+            LINE (ldSx - 6, ldSy)-(ldSx - 2, ldSy), ldClr
+            LINE (ldSx + 2, ldSy)-(ldSx + 6, ldSy), ldClr
+            LINE (ldSx, ldSy - 6)-(ldSx, ldSy - 2), ldClr
+            LINE (ldSx, ldSy + 2)-(ldSx, ldSy + 6), ldClr
+        END IF
+    END IF
+END IF
 
 ' --- debug overlay toggle: ` (backtick) ---
 IF _KEYDOWN(96) AND NOT dbgGraveWas THEN dbgOverlay = 1 - dbgOverlay
