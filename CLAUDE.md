@@ -15,6 +15,7 @@
 - `_COMMAND$(n)` subscript form is not supported in QB64-PE v4.5.0 — use `COMMAND$` (full string)
 - All `Dim` inside Subs are module-scope in QB64-PE; variable names must be unique across all Subs in a compilation unit
 - Short names like `pos`, `val` are built-in keywords — prefix vars with context (e.g. `objPos`, `sndVal`)
+- `Not` is bitwise, not logical: `Not 1 = -2` (truthy), so `If Not flag` misbehaves when `flag` is `1` instead of `-1`. Use `If flag = 0` to guard a disabled feature, or define boolean consts as `0`/`-1`
 
 ## Scope of work
 - Fix only what was asked. Don't refactor, clean up, or fix adjacent things unless asked.
