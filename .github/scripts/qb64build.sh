@@ -72,17 +72,17 @@ if [ ! -x "$QB64" ]; then
 fi
 
 # QB64-PE resolves $EMBED paths relative to its binary directory.
-# Link/junction code/3d -> repo inside the QB64-PE dir so 'code/3d/assets/...' resolves correctly.
-mkdir -p "$QB64_DIR/code"
+# Create assets -> repo/assets in the QB64-PE dir so '$EMBED:assets/...'
+# finds the right files regardless of where the repo lives on disk.
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
-    WIN_LINK=$(cygpath -w "$QB64_DIR/code/3d")
-    WIN_TARGET=$(cygpath -w "$REPODIR")
+    WIN_LINK=$(cygpath -w "$QB64_DIR/assets")
+    WIN_TARGET=$(cygpath -w "$REPODIR/assets")
     WIN_LINK="$WIN_LINK" WIN_TARGET="$WIN_TARGET" \
       powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET'
     ;;
   *)
-    ln -sfn "$REPODIR" "$QB64_DIR/code/3d"
+    ln -sfn "$REPODIR/assets" "$QB64_DIR/assets"
     ;;
 esac
 
@@ -91,7 +91,7 @@ mkdir -p "$REPODIR/builds"
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     QB64_WIN=$(cygpath -w "$QB64")
-    SRC_WIN=$(cygpath -w "$QB64_DIR/code/3d/sss.bas")
+    SRC_WIN=$(cygpath -w "$REPODIR/sss.bas")
     OUT_WIN=$(cygpath -w "$REPODIR/builds")
     # QB64-PE exits 1 on Windows even after a successful -x compile; verify output instead
     QB64_WIN="$QB64_WIN" SRC_WIN="$SRC_WIN" OUT_WIN="$OUT_WIN" \
@@ -103,9 +103,9 @@ case "$(uname -s)" in
     ;;
   *)
     if command -v xvfb-run &>/dev/null; then
-      xvfb-run "$QB64" -x -w -s:ExeDefaultDir="$REPODIR/builds" "$QB64_DIR/code/3d/sss.bas"
+      xvfb-run "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "$REPODIR/sss.bas"
     else
-      "$QB64" -x -w -s:ExeDefaultDir="$REPODIR/builds" "$QB64_DIR/code/3d/sss.bas"
+      "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "$REPODIR/sss.bas"
     fi
     ;;
 esac
