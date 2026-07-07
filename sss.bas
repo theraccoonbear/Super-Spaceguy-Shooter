@@ -904,7 +904,6 @@ END IF
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
-                                player.py = 0 : player.pz = 0
                                 MUS_SetCue "planet"
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
