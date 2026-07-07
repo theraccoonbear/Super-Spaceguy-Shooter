@@ -1338,6 +1338,7 @@ CASE GS_CRAWL
             END IF
             IF held(E3D_KEY_ESCAPE) THEN
                 fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
+                escWas = -1  ' consume ESC so next state doesn't see it as a fresh keypress
                 SEQ_Advance : EXIT SELECT
             END IF
             fxVCRActive = -1
