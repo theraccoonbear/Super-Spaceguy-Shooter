@@ -30,6 +30,13 @@ Sub STAGE_Update
         Next stI
     End If
 
+    ' glide ship back to lane center before cinematic starts; velocity decays naturally
+    ' (attitude follows via playerVY/VZ), position lerps to zero over the 120-frame window
+    If gameState = GS_PLANET Then
+        player.py = player.py + (0 - player.py) * 0.04
+        player.pz = player.pz + (0 - player.pz) * 0.04
+    End If
+
     ' cinematic transition: camera freezes, ship rockets toward planet
     If planetTimer = 120 And gameState = GS_PLANET Then
         gameState    = GS_CINEMATIC
