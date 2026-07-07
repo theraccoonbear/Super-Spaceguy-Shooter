@@ -90,6 +90,12 @@ The world behind every ~4{{the_empire}}~6 banner, every imperial seal, every oat
 ~6They call it ~1{{emperor_homeworld_true_name}}.
 
 [BLOCK:about]
+~EA CLOSER THAN YOU THINK GAME STUDIOS
+~EPRESENTATION
+
+~EIN ASSOCIATION WITH
+~ECOGIKEL HEAVY INDUSTRIES
+
 ~EA GAME BY THERACCOONBEAR
 ~8GNU GENERAL PUBLIC LICENSE V3
 

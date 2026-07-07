@@ -9,8 +9,8 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 $Resize:stretch
-$EMBED:'assets/cogikel.ans':'COGIKEL'
-$EMBED:'assets/ctut.ans':'CTUT'
+$EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
+$EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
 $EMBED:'assets/sss-title-final.png':'TITLEIMG'
 $EMBED:'assets/planet-01-clean.png':'PLANET01'
 $EMBED:'assets/planet-02-clean.png':'PLANET02'
@@ -1280,7 +1280,10 @@ CASE GS_INTRO
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
+    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN
+        SEQ_RewindToTitle
+        gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
+    END IF
     escWas = held(E3D_KEY_ESCAPE)
     IF held(E3D_KEY_SPACE) AND NOT spaceWas AND introTimer > 45 THEN
         introTimer = 0 : SEQ_Advance
