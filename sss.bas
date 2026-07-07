@@ -688,7 +688,7 @@ END IF
                     ' bullet vs enemy
                     FOR j = 1 TO MAX_BULLETS
                         IF bullets(j).active THEN
-                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), _
+                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), _
                             bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
                             IF hit THEN
                                 enemies(i).active = 0
@@ -712,7 +712,7 @@ END IF
 
                     ' player vs enemy
                     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), hit
+                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), hit
                     IF hit AND invTimer = 0 THEN
                         enemies(i).active = 0
                         SELECT CASE enemies(i).meshIdx
@@ -923,6 +923,7 @@ END IF
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
+                                player.py = 0 : player.pz = 0
                                 MUS_SetCue "planet"
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
