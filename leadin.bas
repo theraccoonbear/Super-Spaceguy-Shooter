@@ -15,7 +15,7 @@ Const LI_HOLD    = 200           ' frames to hold each card (~3s at 60fps)
 Const LI_FADE    = 35            ' fade-in / fade-out window in frames
 
 Sub LEADIN_Init()
-    If Not LI_ENABLED Then SEQ_Advance : Exit Sub
+    If LI_ENABLED = 0 Then SEQ_Advance : Exit Sub
     Dim liCtutData As String, liCogData As String
     liCtutData = _EMBEDDED$("CTUTPNG")
     liCogData  = _EMBEDDED$("COGIKELPNG")
