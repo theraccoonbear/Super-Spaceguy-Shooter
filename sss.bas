@@ -67,6 +67,8 @@ CONST ATTITUDE_LERP       = 0.09    ' ship tilt/roll settle rate
 CONST BULLET_SPEED        = 0.35    ' player bullet X velocity
 CONST FIRE_COOLDOWN       = 0.18    ' seconds between shots
 CONST LASER_COST          = 5.0     ' laser energy drained per shot (%)
+CONST AIM_ASSIST          = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
+CONST HIT_SCALE           = 1.5     ' enemy AABB scale factor for hit detection (visual stays unchanged)
 CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
@@ -354,6 +356,12 @@ DIM mlI AS INTEGER
 FOR mlI = 1 TO MESH_COUNT
     E3D_BakeMeshNormals meshLib(mlI)
 NEXT mlI
+DIM hsI AS INTEGER
+FOR hsI = MESH_ENEMY TO MESH_ENEMY_VWEDGE
+    boxLib(hsI).hx = boxLib(hsI).hx * HIT_SCALE
+    boxLib(hsI).hy = boxLib(hsI).hy * HIT_SCALE
+    boxLib(hsI).hz = boxLib(hsI).hz * HIT_SCALE
+NEXT hsI
 
 ' --- init player ---
 player.active  = -1
@@ -421,6 +429,7 @@ SEQ_Init
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
     IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
+    IF ssSCnType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
 ELSE
     gameState = GS_LEADIN
@@ -556,6 +565,31 @@ END IF
                             bullets(i).px = player.px + bvNx * (BULLET_TRAIL_LEN + 1.0)
                             bullets(i).py = player.py + bvNy * (BULLET_TRAIL_LEN + 1.0)
                             bullets(i).pz = player.pz + bvNz * (BULLET_TRAIL_LEN + 1.0)
+                            ' aim assist: nudge toward nearest enemy within ~20deg forward cone
+                            DIM aaDX AS SINGLE, aaDY AS SINGLE, aaDZ AS SINGLE, aaDist AS SINGLE
+                            DIM aaBestDist AS SINGLE, aaNY AS SINGLE, aaNZ AS SINGLE
+                            aaBestDist = 1e9
+                            FOR aai = 1 TO MAX_ENEMIES
+                                IF enemies(aai).active THEN
+                                    aaDX = enemies(aai).px - player.px
+                                    aaDY = enemies(aai).py - player.py
+                                    aaDZ = enemies(aai).pz - player.pz
+                                    aaDist = SQR(aaDX*aaDX + aaDY*aaDY + aaDZ*aaDZ)
+                                    IF aaDist > 0.1 AND aaDX > 0 THEN
+                                        IF (aaDX / aaDist) > 0.94 THEN  ' ~20deg cone (cos20°≈0.94)
+                                            IF aaDist < aaBestDist THEN
+                                                aaBestDist = aaDist
+                                                aaNY = aaDY / aaDist
+                                                aaNZ = aaDZ / aaDist
+                                            END IF
+                                        END IF
+                                    END IF
+                                END IF
+                            NEXT aai
+                            IF aaBestDist < 1e9 THEN
+                                bvNy = bvNy + (aaNY - bvNy) * AIM_ASSIST
+                                bvNz = bvNz + (aaNZ - bvNz) * AIM_ASSIST
+                            END IF
                             bullets(i).vx = bvNx * BULLET_SPEED
                             bullets(i).vy = bvNy * BULLET_SPEED
                             bullets(i).vz = bvNz * BULLET_SPEED
@@ -589,6 +623,8 @@ END IF
                 IF enemies(i).active THEN
                     enemies(i).px  = enemies(i).px  + enemies(i).vx
                     enemies(i).ry  = enemies(i).ry  + enemies(i).dry
+                    eOldPY = enemies(i).py
+                    eOldPZ = enemies(i).pz
                     IF enemies(i).px < player.px + 30 THEN
                         enemies(i).py = enemies(i).py + (player.py - enemies(i).py) * 0.008
                         enemies(i).pz = enemies(i).pz + (player.pz - enemies(i).pz) * 0.008
@@ -596,6 +632,10 @@ END IF
                         enemies(i).py = enemies(i).py + SIN(tt * 1.5 + i * 1.3) * 0.015
                         enemies(i).pz = enemies(i).pz + COS(tt * 1.1 + i * 2.1) * 0.015
                     END IF
+                    eAttDY = enemies(i).py - eOldPY
+                    eAttDZ = enemies(i).pz - eOldPZ
+                    enemies(i).rx = enemies(i).rx + ( (eAttDZ / 0.015) * 20 - enemies(i).rx) * 0.12
+                    enemies(i).rz = enemies(i).rz + (-(eAttDY / 0.015) * 15 - enemies(i).rz) * 0.12
 
                     ' fire at player when cooled down and in range
                     enemyFireTimer(i) = enemyFireTimer(i) - 0.025
@@ -1516,6 +1556,53 @@ IF dbgOverlay THEN
     COLOR _RGB(180, 255, 180)
     _PRINTSTRING (2, 54), "VY   " + LEFT$(STR$(playerVY + 1000), 7)
     _PRINTSTRING (2, 64), "VZ   " + LEFT$(STR$(playerVZ + 1000), 7)
+
+    ' enemy AABB wireframes
+    IF gameState = GS_PLAYING THEN
+        DIM dbgBi  AS INTEGER
+        DIM dbgBwx AS SINGLE, dbgBwy AS SINGLE, dbgBwz AS SINGLE
+        DIM dbgBhx AS SINGLE, dbgBhy AS SINGLE, dbgBhz AS SINGLE
+        DIM dbgBtx AS SINGLE, dbgBty AS SINGLE, dbgBtz AS SINGLE
+        DIM dbgBpx AS SINGLE, dbgBpy AS SINGLE, dbgBpw AS SINGLE
+        DIM dbgBsx(0 TO 7) AS SINGLE, dbgBsy(0 TO 7) AS SINGLE, dbgBsw(0 TO 7) AS SINGLE
+        DIM dbgBci AS INTEGER, dbgBa AS INTEGER, dbgBb AS INTEGER, dbgBdiff AS INTEGER
+        DIM dbgBclr AS LONG : dbgBclr = _RGB(0, 255, 120)
+        FOR dbgBi = 1 TO MAX_ENEMIES
+            IF enemies(dbgBi).active THEN
+                dbgBwx = enemies(dbgBi).px
+                dbgBwy = enemies(dbgBi).py
+                dbgBwz = enemies(dbgBi).pz
+                dbgBhx = boxLib(enemies(dbgBi).meshIdx).hx
+                dbgBhy = boxLib(enemies(dbgBi).meshIdx).hy
+                dbgBhz = boxLib(enemies(dbgBi).meshIdx).hz
+                FOR dbgBci = 0 TO 7
+                    IF (dbgBci AND 4) THEN dbgBtx = dbgBwx + dbgBhx ELSE dbgBtx = dbgBwx - dbgBhx
+                    IF (dbgBci AND 2) THEN dbgBty = dbgBwy + dbgBhy ELSE dbgBty = dbgBwy - dbgBhy
+                    IF (dbgBci AND 1) THEN dbgBtz = dbgBwz + dbgBhz ELSE dbgBtz = dbgBwz - dbgBhz
+                    dbgBpx  = dbgBtx * vpMat.m(0,0) + dbgBty * vpMat.m(0,1) + dbgBtz * vpMat.m(0,2) + vpMat.m(0,3)
+                    dbgBpy  = dbgBtx * vpMat.m(1,0) + dbgBty * vpMat.m(1,1) + dbgBtz * vpMat.m(1,2) + vpMat.m(1,3)
+                    dbgBpw  = dbgBtx * vpMat.m(3,0) + dbgBty * vpMat.m(3,1) + dbgBtz * vpMat.m(3,2) + vpMat.m(3,3)
+                    dbgBsw(dbgBci) = dbgBpw
+                    IF dbgBpw > 0 THEN
+                        dbgBsx(dbgBci) = (dbgBpx / dbgBpw + 1.0) * scrW * 0.5
+                        dbgBsy(dbgBci) = (1.0 - dbgBpy / dbgBpw) * scrH * 0.5
+                    END IF
+                NEXT dbgBci
+                FOR dbgBa = 0 TO 6
+                    FOR dbgBb = dbgBa + 1 TO 7
+                        dbgBdiff = dbgBa XOR dbgBb
+                        IF dbgBdiff = 1 OR dbgBdiff = 2 OR dbgBdiff = 4 THEN
+                            IF dbgBsw(dbgBa) > 0 THEN
+                                IF dbgBsw(dbgBb) > 0 THEN
+                                    LINE (dbgBsx(dbgBa), dbgBsy(dbgBa))-(dbgBsx(dbgBb), dbgBsy(dbgBb)), dbgBclr
+                                END IF
+                            END IF
+                        END IF
+                    NEXT dbgBb
+                NEXT dbgBa
+            END IF
+        NEXT dbgBi
+    END IF
 END IF
 
 _LIMIT 60
