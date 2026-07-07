@@ -14,6 +14,7 @@ Sub WAVE_Spawn
     Dim wvCX As Single, wvCY As Single, wvCZ As Single, wvVX As Single
     Dim wvDX(0 To 4) As Single, wvDY(0 To 4) As Single, wvDZ(0 To 4) As Single
     Dim wvI As Integer
+    Dim wvTypeName As String
 
     diffTime  = diffTime + 0.025
     diffScale = diffTime / DIFF_RAMP_DURATION
@@ -34,13 +35,14 @@ Sub WAVE_Spawn
         wvType    = waveType
         waveCount = waveCount - 1
         Select Case wvType
-        Case 0 : wvCount = 1
-        Case 1 : wvCount = 2
-        Case 2 : wvCount = 2
-        Case 3 : wvCount = 2
-        Case 4 : wvCount = 2
-        Case Else : wvCount = 2
+        Case 0 : wvCount = 1 : wvTypeName = "solo"
+        Case 1 : wvCount = 2 : wvTypeName = "arrow"
+        Case 2 : wvCount = 2 : wvTypeName = "hline"
+        Case 3 : wvCount = 2 : wvTypeName = "vcol"
+        Case 4 : wvCount = 2 : wvTypeName = "pincer"
+        Case Else : wvCount = 2 : wvTypeName = "vwedge"
         End Select
+        If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
         wvCX = player.px + SPAWN_DIST_MIN + RND * SPAWN_DIST_VAR
         wvCY = player.py + (RND * (SPAWN_SPREAD_Y * 2)) - SPAWN_SPREAD_Y
