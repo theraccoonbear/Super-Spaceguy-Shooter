@@ -1280,7 +1280,10 @@ CASE GS_INTRO
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
+    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN
+        SEQ_RewindToTitle
+        gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
+    END IF
     escWas = held(E3D_KEY_ESCAPE)
     IF held(E3D_KEY_SPACE) AND NOT spaceWas AND introTimer > 45 THEN
         introTimer = 0 : SEQ_Advance

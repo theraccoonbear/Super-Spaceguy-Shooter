@@ -16,8 +16,13 @@ Const LI_FADE    = 35            ' fade-in / fade-out window in frames
 
 Sub LEADIN_Init()
     If Not LI_ENABLED Then SEQ_Advance : Exit Sub
-    liImg(1) = _LOADIMAGE(_EMBEDDED$("CTUTPNG"),    32, "memory")
-    liImg(2) = _LOADIMAGE(_EMBEDDED$("COGIKELPNG"), 32, "memory")
+    Dim liCtutData As String, liCogData As String
+    liCtutData = _EMBEDDED$("CTUTPNG")
+    liCogData  = _EMBEDDED$("COGIKELPNG")
+    DBG_Print "[leadin] ctut embed len=" + LTrim$(Str$(Len(liCtutData))) + "  cogikel embed len=" + LTrim$(Str$(Len(liCogData)))
+    liImg(1) = _LOADIMAGE(liCtutData, 32, "memory")
+    liImg(2) = _LOADIMAGE(liCogData,  32, "memory")
+    DBG_Print "[leadin] img(1)=" + LTrim$(Str$(liImg(1))) + "  img(2)=" + LTrim$(Str$(liImg(2)))
     liCard = 1 : liTimer = 0
 End Sub
 
