@@ -223,6 +223,7 @@ DIM SHARED debugMode  AS INTEGER
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
 DIM SHARED vpMat AS E3D_Matrix4
+DIM SHARED boxLib(1 TO MESH_COUNT) AS E3D_AABB
 '$INCLUDE:'speech.bas'
 '$INCLUDE:'effects.bas'
 '$INCLUDE:'snd.bas'
@@ -241,6 +242,8 @@ DIM SHARED vpMat AS E3D_Matrix4
 '$INCLUDE:'ui.bas'
 '$INCLUDE:'leadin.bas'
 '$INCLUDE:'player.bas'
+'$INCLUDE:'enemy.bas'
+'$INCLUDE:'boss.bas'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
@@ -337,7 +340,6 @@ lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
 
 ' --- mesh library ---
 DIM meshLib(1 TO MESH_COUNT) AS E3D_Mesh
-DIM boxLib(1 TO MESH_COUNT) AS E3D_AABB
 DIM mdl AS STRING
 mdl = _EMBEDDED$("MODELS")
 E3D_LoadMesh mdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
@@ -547,63 +549,7 @@ END IF
 
 
             ' --- fire ---
-            IF held(E3D_KEY_SPACE) AND invTimer = 0 AND gameState = GS_PLAYING THEN
-                IF fireTimer <= 0 AND laserEnergy >= LASER_COST THEN
-                    FOR i = 1 TO MAX_BULLETS
-                        IF bullets(i).active = 0 THEN
-                            bullets(i).active  = -1
-                            bullets(i).meshIdx = MESH_BULLET
-                            ' compute nose unit vector from full E3D rotation (Rx*Ry*Rz applied to forward)
-                            DIM bvRx AS SINGLE, bvRy AS SINGLE, bvRz AS SINGLE
-                            DIM bvNx AS SINGLE, bvNy AS SINGLE, bvNz AS SINGLE
-                            bvRx = player.rx * _PI / 180.0
-                            bvRy = player.ry * _PI / 180.0
-                            bvRz = player.rz * _PI / 180.0
-                            bvNx = COS(bvRz) * COS(bvRy)
-                            bvNy = COS(bvRx)*SIN(bvRz)*COS(bvRy) + SIN(bvRx)*SIN(bvRy)
-                            bvNz = SIN(bvRx)*SIN(bvRz)*COS(bvRy) - COS(bvRx)*SIN(bvRy)
-                            ' spawn bolt so its rear (trailing point) clears the ship nose by ~1wu
-                            bullets(i).px = player.px + bvNx * (BULLET_TRAIL_LEN + 1.0)
-                            bullets(i).py = player.py + bvNy * (BULLET_TRAIL_LEN + 1.0)
-                            bullets(i).pz = player.pz + bvNz * (BULLET_TRAIL_LEN + 1.0)
-                            ' aim assist: nudge toward nearest enemy within ~20deg forward cone
-                            DIM aaDX AS SINGLE, aaDY AS SINGLE, aaDZ AS SINGLE, aaDist AS SINGLE
-                            DIM aaBestDist AS SINGLE, aaNY AS SINGLE, aaNZ AS SINGLE
-                            aaBestDist = 1e9
-                            FOR aai = 1 TO MAX_ENEMIES
-                                IF enemies(aai).active THEN
-                                    aaDX = enemies(aai).px - player.px
-                                    aaDY = enemies(aai).py - player.py
-                                    aaDZ = enemies(aai).pz - player.pz
-                                    aaDist = SQR(aaDX*aaDX + aaDY*aaDY + aaDZ*aaDZ)
-                                    IF aaDist > 0.1 AND aaDX > 0 THEN
-                                        IF (aaDX / aaDist) > 0.94 THEN  ' ~20deg cone (cos20°≈0.94)
-                                            IF aaDist < aaBestDist THEN
-                                                aaBestDist = aaDist
-                                                aaNY = aaDY / aaDist
-                                                aaNZ = aaDZ / aaDist
-                                            END IF
-                                        END IF
-                                    END IF
-                                END IF
-                            NEXT aai
-                            IF aaBestDist < 1e9 THEN
-                                bvNy = bvNy + (aaNY - bvNy) * AIM_ASSIST
-                                bvNz = bvNz + (aaNZ - bvNz) * AIM_ASSIST
-                            END IF
-                            bullets(i).vx = bvNx * BULLET_SPEED
-                            bullets(i).vy = bvNy * BULLET_SPEED
-                            bullets(i).vz = bvNz * BULLET_SPEED
-                            bullets(i).life = BULLET_RANGE / BULLET_SPEED
-                            bullets(i).scl = 1.0
-                            fireTimer = FIRE_COOLDOWN
-                            laserEnergy = laserEnergy - LASER_COST
-                            SND_Shoot
-                            EXIT FOR
-                        END IF
-                    NEXT i
-                END IF
-            END IF
+            PLAYER_Fire
 
             ' --- player thruster trail ---
             IF (INT(tt * 40)) MOD 2 = 0 THEN
@@ -625,115 +571,7 @@ END IF
             NEXT i
 
             ' --- update enemies ---
-            FOR i = 1 TO MAX_ENEMIES
-                IF enemies(i).active THEN
-                    enemies(i).px  = enemies(i).px  + enemies(i).vx
-                    enemies(i).ry  = enemies(i).ry  + enemies(i).dry
-                    eOldPY = enemies(i).py
-                    eOldPZ = enemies(i).pz
-                    IF enemies(i).px < player.px + 30 THEN
-                        enemies(i).py = enemies(i).py + (player.py - enemies(i).py) * 0.008
-                        enemies(i).pz = enemies(i).pz + (player.pz - enemies(i).pz) * 0.008
-                    ELSE
-                        enemies(i).py = enemies(i).py + SIN(tt * 1.5 + i * 1.3) * 0.015
-                        enemies(i).pz = enemies(i).pz + COS(tt * 1.1 + i * 2.1) * 0.015
-                    END IF
-                    eAttDY = enemies(i).py - eOldPY
-                    eAttDZ = enemies(i).pz - eOldPZ
-                    enemies(i).rx = enemies(i).rx + ( (eAttDZ / 0.015) * 20 - enemies(i).rx) * 0.12
-                    enemies(i).rz = enemies(i).rz + (-(eAttDY / 0.015) * 15 - enemies(i).rz) * 0.12
-
-                    ' contrail trail: staggered by slot index, every 3 frames
-                    IF (INT(tt * 40) + i) MOD 3 = 0 THEN
-                        DIM trlR AS INTEGER, trlG AS INTEGER, trlB AS INTEGER
-                        SELECT CASE enemies(i).meshIdx
-                        CASE MESH_ENEMY        : trlR = 160 : trlG =  50 : trlB =  35
-                        CASE MESH_ENEMY_ARROW  : trlR = 160 : trlG =  90 : trlB =   0
-                        CASE MESH_ENEMY_HLINE  : trlR =  40 : trlG = 140 : trlB =  55
-                        CASE MESH_ENEMY_VCOL   : trlR =  40 : trlG = 140 : trlB = 155
-                        CASE MESH_ENEMY_PINCER : trlR = 155 : trlG = 150 : trlB =  35
-                        CASE ELSE              : trlR = 120 : trlG =  50 : trlB = 165
-                        END SELECT
-                        FX_SpawnBurst enemies(i).px + 0.35, enemies(i).py, enemies(i).pz, 1, 0.005, 20, 6, _RGB(trlR, trlG, trlB)
-                    END IF
-
-                    ' fire at player when cooled down and in range
-                    enemyFireTimer(i) = enemyFireTimer(i) - 0.025
-                    IF enemyFireTimer(i) <= 0 AND enemies(i).px > player.px AND enemies(i).px < player.px + EFIRE_RANGE THEN
-                        eDX = player.px - enemies(i).px
-                        eDY = player.py - enemies(i).py
-                        eDZ = player.pz - enemies(i).pz
-                        eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
-                        IF eMag > 0.1 THEN
-                            DIM eLead AS SINGLE : eLead = (eMag / EBULLET_SPEED) * EFIRE_LEAD
-                            eDY = (player.py + playerVY * eLead) - enemies(i).py
-                            eDZ = (player.pz + playerVZ * eLead) - enemies(i).pz
-                            eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
-                            eDX = eDX / eMag : eDY = eDY / eMag : eDZ = eDZ / eMag
-                            FOR ej = 1 TO MAX_EBULLETS
-                                IF ebullets(ej).active = 0 THEN
-                                    ebullets(ej).active  = -1
-                                    ebullets(ej).meshIdx = enemies(i).meshIdx
-                                    ebullets(ej).px = enemies(i).px
-                                    ebullets(ej).py = enemies(i).py
-                                    ebullets(ej).pz = enemies(i).pz
-                                    ebullets(ej).vx = eDX * EBULLET_SPEED
-                                    ebullets(ej).vy = eDY * EBULLET_SPEED
-                                    ebullets(ej).vz = eDZ * EBULLET_SPEED
-                                    ebullets(ej).scl = 1.0
-                                    EXIT FOR
-                                END IF
-                            NEXT ej
-                        END IF
-                        enemyFireTimer(i) = EFIRE_COOL_MIN + RND * EFIRE_COOL_VAR
-                    END IF
-
-                    IF enemies(i).px < -5 THEN enemies(i).active = 0
-
-                    ' bullet vs enemy
-                    FOR j = 1 TO MAX_BULLETS
-                        IF bullets(j).active THEN
-                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), _
-                            bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
-                            IF hit THEN
-                                enemies(i).active = 0
-                                bullets(j).active = 0
-                                score = score + SCORE_ENEMY
-                                IF debugMode THEN DBG_Print "[kill] enemy  score=" + LTRIM$(STR$(score))
-                                SND_Boom
-                                scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
-                                SELECT CASE enemies(i).meshIdx
-                                CASE MESH_ENEMY        : partR = 255 : partG =  80 : partB =  60
-                                CASE MESH_ENEMY_ARROW  : partR = 255 : partG = 140 : partB =   0
-                                CASE MESH_ENEMY_HLINE  : partR =  60 : partG = 210 : partB =  80
-                                CASE MESH_ENEMY_VCOL   : partR =  60 : partG = 220 : partB = 235
-                                CASE MESH_ENEMY_PINCER : partR = 235 : partG = 225 : partB =  50
-                                CASE ELSE              : partR = 185 : partG =  80 : partB = 255
-                                END SELECT
-                                FX_SpawnBurst enemies(i).px, enemies(i).py, enemies(i).pz, 10, 0.22, 18, 8, _RGB(partR, partG, partB)
-                            END IF
-                        END IF
-                    NEXT j
-
-                    ' player vs enemy
-                    E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), hit
-                    IF hit AND invTimer = 0 THEN
-                        enemies(i).active = 0
-                        SELECT CASE enemies(i).meshIdx
-                        CASE MESH_ENEMY        : partR = 255 : partG =  80 : partB =  60
-                        CASE MESH_ENEMY_ARROW  : partR = 255 : partG = 140 : partB =   0
-                        CASE MESH_ENEMY_HLINE  : partR =  60 : partG = 210 : partB =  80
-                        CASE MESH_ENEMY_VCOL   : partR =  60 : partG = 220 : partB = 235
-                        CASE MESH_ENEMY_PINCER : partR = 235 : partG = 225 : partB =  50
-                        CASE ELSE              : partR = 185 : partG =  80 : partB = 255
-                        END SELECT
-                        SND_Boom
-                        FX_SpawnBurst enemies(i).px, enemies(i).py, enemies(i).pz, 10, 0.22, 18, 8, _RGB(partR, partG, partB)
-                        PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
-                    END IF
-                END IF
-            NEXT i
+            ENEMY_Update
 
             ' --- update asteroids ---
             FOR i = 1 TO MAX_ASTEROIDS
@@ -797,188 +635,10 @@ END IF
             NEXT i
 
             ' --- boss ---
-            IF gameState = GS_PLAYING AND boss.active = 0 AND bossWarnTimer = 0 AND score >= stageScore THEN
-                bossWarnTimer = BOSS_WARN_FRAMES
-                SPK_Say sSpkBossWarn
-            END IF
-            IF bossWarnTimer > 0 THEN
-                bossWarnTimer = bossWarnTimer - 1
-                IF bossWarnTimer = 0 AND gameState = GS_PLAYING THEN
-                    IF debugMode THEN DBG_Print "[boss] spawned  score=" + LTRIM$(STR$(score))
-                    boss.active  = -1
-                    boss.meshIdx = MESH_BOSS
-                    boss.px = player.px + BOSS_SPAWN_DIST
-                    boss.py = player.py
-                    boss.pz = player.pz
-                    boss.vx = -0.05
-                    boss.scl = BOSS_SCALE
-                    IF settingNerf THEN bossHP = BOSS_MAX_HP_NERF ELSE bossHP = BOSS_MAX_HP
-                    bossPhase = 1
-                    bossFireTimer = 2.5
-                    bossMoveTimer = 0
-                    bossTargetY = player.py
-                    bossTargetZ = player.pz
-                    bossState = 0
-                    MUS_SetCue "boss"
-                END IF
-            END IF
-
-            IF boss.active THEN
-                ' phase thresholds
-                IF bossHP > 20 THEN
-                    bossPhase = 1
-                ELSEIF bossHP > 10 THEN
-                    bossPhase = 2
-                ELSE
-                    bossPhase = 3
-                END IF
-
-                ' X approach: hold at combat range
-                IF boss.px > player.px + BOSS_COMBAT_DIST THEN
-                    boss.px = boss.px + boss.vx * (1.0 + (bossPhase - 1) * 0.4)
-                END IF
-
-                ' intent-driven lateral movement (see behavior.bas)
-                BOSS_UpdateMovement
-
-                ' fire patterns
-                bossFireTimer = bossFireTimer - 0.025
-                IF bossFireTimer <= 0 THEN
-                    eDX = player.px - boss.px
-                    eDY = player.py - boss.py
-                    eDZ = player.pz - boss.pz
-                    eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
-                    IF eMag > 0.1 THEN eDX = eDX/eMag : eDY = eDY/eMag : eDZ = eDZ/eMag
-                    SELECT CASE bossPhase
-                    CASE 1  ' 3-shot Y fan aimed at player
-                        bossShots = 0
-                        FOR ej = 1 TO MAX_EBULLETS
-                            IF ebullets(ej).active = 0 AND bossShots < 3 THEN
-                                ebullets(ej).active  = -1
-                                ebullets(ej).meshIdx = MESH_BOSS
-                                ebullets(ej).px = boss.px : ebullets(ej).py = boss.py : ebullets(ej).pz = boss.pz
-                                ebullets(ej).vx = eDX * 0.26
-                                ebullets(ej).vy = eDY * 0.26 + (bossShots - 1) * 0.07
-                                ebullets(ej).vz = eDZ * 0.26
-                                ebullets(ej).scl = 1.0
-                                bossShots = bossShots + 1
-                            END IF
-                        NEXT ej
-                        bossFireTimer = BOSS_FIRE1
-                        BOSS_SetEvasion bossPhase
-                    CASE 2  ' 5-shot aimed cross: center + 4 cardinal offsets
-                        bossShots = 0
-                        FOR ej = 1 TO MAX_EBULLETS
-                            IF ebullets(ej).active = 0 AND bossShots < 5 THEN
-                                ebullets(ej).active  = -1
-                                ebullets(ej).meshIdx = MESH_BOSS
-                                ebullets(ej).px = boss.px : ebullets(ej).py = boss.py : ebullets(ej).pz = boss.pz
-                                ebullets(ej).vx = eDX * 0.30
-                                SELECT CASE bossShots
-                                CASE 0 : ebullets(ej).vy = eDY * 0.30        : ebullets(ej).vz = eDZ * 0.30
-                                CASE 1 : ebullets(ej).vy = eDY * 0.30 - 0.11 : ebullets(ej).vz = eDZ * 0.30
-                                CASE 2 : ebullets(ej).vy = eDY * 0.30 + 0.11 : ebullets(ej).vz = eDZ * 0.30
-                                CASE 3 : ebullets(ej).vy = eDY * 0.30        : ebullets(ej).vz = eDZ * 0.30 - 0.11
-                                CASE 4 : ebullets(ej).vy = eDY * 0.30        : ebullets(ej).vz = eDZ * 0.30 + 0.11
-                                END SELECT
-                                ebullets(ej).scl = 1.0
-                                bossShots = bossShots + 1
-                            END IF
-                        NEXT ej
-                        bossFireTimer = BOSS_FIRE2
-                        BOSS_SetEvasion bossPhase
-                    CASE 3  ' 7-shot diagonal fan aimed at player, fast — requires Y+Z dodge
-                        bossShots = 0
-                        FOR ej = 1 TO MAX_EBULLETS
-                            IF ebullets(ej).active = 0 AND bossShots < 7 THEN
-                                ebullets(ej).active  = -1
-                                ebullets(ej).meshIdx = MESH_BOSS
-                                ebullets(ej).px = boss.px : ebullets(ej).py = boss.py : ebullets(ej).pz = boss.pz
-                                ebullets(ej).vx = eDX * 0.35
-                                ebullets(ej).vy = eDY * 0.35 + (bossShots - 3) * 0.07
-                                ebullets(ej).vz = eDZ * 0.35 + (bossShots - 3) * 0.07
-                                ebullets(ej).scl = 1.0
-                                bossShots = bossShots + 1
-                            END IF
-                        NEXT ej
-                        bossFireTimer = BOSS_FIRE3
-                        BOSS_SetEvasion bossPhase
-                    END SELECT
-                END IF
-
-                ' player vs boss body
-                E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                boss.px,   boss.py,   boss.pz,   boxLib(MESH_BOSS),   hit
-                IF hit AND invTimer = 0 THEN
-                    PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
-                END IF
-
-                ' player bullets vs boss
-                FOR j = 1 TO MAX_BULLETS
-                    IF bullets(j).active THEN
-                        E3D_AABBOverlap boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), _
-                        bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
-                        IF hit THEN
-                            bullets(j).active = 0
-                            bossHP = bossHP - 1
-                            fxShakeTimer = 2
-                            SND_Boom
-                            IF bossHP <= 0 THEN
-                                IF debugMode THEN DBG_Print "[boss] defeated  score=" + LTRIM$(STR$(score))
-                                boss.active   = 0
-                                gameState     = GS_PLANET
-                                planetTimer   = 1
-                                player.py = 0 : player.pz = 0
-                                MUS_SetCue "planet"
-                                planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
-                                planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
-                                score = score + 2000
-                                scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
-                                pk = 0
-                                FOR p = 1 TO FX_MAX_PARTICLES
-                                    IF fxPartActive(p) = 0 AND pk < BOSS_DEATH_PARTS THEN
-                                        fxPartActive(p) = -1
-                                        fxPartPX(p) = boss.px + (RND - 0.5) * 5
-                                        fxPartPY(p) = boss.py + (RND - 0.5) * 5
-                                        fxPartPZ(p) = boss.pz + (RND - 0.5) * 5
-                                        fxPartVX(p) = (RND - 0.5) * 0.40
-                                        fxPartVY(p) = (RND - 0.5) * 0.40
-                                        fxPartVZ(p) = (RND - 0.5) * 0.40
-                                        fxPartLife(p) = 35 + INT(RND * 25)
-                                        fxPartClr(p) = _RGB(255, INT(RND * 140) + 60, 0)
-                                        pk = pk + 1
-                                    END IF
-                                NEXT p
-                                MUS_SetCue "game"
-                            END IF
-                        END IF
-                    END IF
-                NEXT j
-            END IF
+            BOSS_Update
 
             ' --- update enemy bullets ---
-            FOR i = 1 TO MAX_EBULLETS
-                IF ebullets(i).active THEN
-                    ebullets(i).px = ebullets(i).px + ebullets(i).vx
-                    ebullets(i).py = ebullets(i).py + ebullets(i).vy
-                    ebullets(i).pz = ebullets(i).pz + ebullets(i).vz
-                    IF ebullets(i).px < player.px - EBULLET_CULL THEN ebullets(i).active = 0
-
-                    E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    ebullets(i).px, ebullets(i).py, ebullets(i).pz, boxLib(MESH_EBULLET), hit
-                    IF hit AND invTimer = 0 THEN
-                        ebullets(i).active = 0
-                        PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
-                    ELSEIF NOT hit THEN
-                        ' near-miss: bullet just passed the player's X plane within a narrow lateral window
-                        IF ebullets(i).px < player.px AND ebullets(i).px >= player.px - 0.42 THEN
-                            eDY = ABS(ebullets(i).py - player.py)
-                            eDZ = ABS(ebullets(i).pz - player.pz)
-                            IF eDY < 5.0 AND eDZ < 5.0 THEN SND_Whoosh
-                        END IF
-                    END IF
-                END IF
-            NEXT i
+            EBULLET_Update
 
             FX_Update
 
