@@ -605,6 +605,11 @@ END IF
                 END IF
             END IF
 
+            ' --- player thruster trail ---
+            IF (INT(tt * 40)) MOD 2 = 0 THEN
+                FX_SpawnBurst player.px - 1.1, player.py, player.pz, 1, 0.007, 18, 6, _RGB(80, 140, 255)
+            END IF
+
             ' --- spawning ---
             WAVE_Spawn
 
@@ -637,6 +642,20 @@ END IF
                     eAttDZ = enemies(i).pz - eOldPZ
                     enemies(i).rx = enemies(i).rx + ( (eAttDZ / 0.015) * 20 - enemies(i).rx) * 0.12
                     enemies(i).rz = enemies(i).rz + (-(eAttDY / 0.015) * 15 - enemies(i).rz) * 0.12
+
+                    ' contrail trail: staggered by slot index, every 3 frames
+                    IF (INT(tt * 40) + i) MOD 3 = 0 THEN
+                        DIM trlR AS INTEGER, trlG AS INTEGER, trlB AS INTEGER
+                        SELECT CASE enemies(i).meshIdx
+                        CASE MESH_ENEMY        : trlR = 160 : trlG =  50 : trlB =  35
+                        CASE MESH_ENEMY_ARROW  : trlR = 160 : trlG =  90 : trlB =   0
+                        CASE MESH_ENEMY_HLINE  : trlR =  40 : trlG = 140 : trlB =  55
+                        CASE MESH_ENEMY_VCOL   : trlR =  40 : trlG = 140 : trlB = 155
+                        CASE MESH_ENEMY_PINCER : trlR = 155 : trlG = 150 : trlB =  35
+                        CASE ELSE              : trlR = 120 : trlG =  50 : trlB = 165
+                        END SELECT
+                        FX_SpawnBurst enemies(i).px + 0.35, enemies(i).py, enemies(i).pz, 1, 0.005, 20, 6, _RGB(trlR, trlG, trlB)
+                    END IF
 
                     ' fire at player when cooled down and in range
                     enemyFireTimer(i) = enemyFireTimer(i) - 0.025
@@ -674,7 +693,7 @@ END IF
                     ' bullet vs enemy
                     FOR j = 1 TO MAX_BULLETS
                         IF bullets(j).active THEN
-                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), _
+                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), _
                             bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
                             IF hit THEN
                                 enemies(i).active = 0
@@ -698,7 +717,7 @@ END IF
 
                     ' player vs enemy
                     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), hit
+                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), hit
                     IF hit AND invTimer = 0 THEN
                         enemies(i).active = 0
                         SELECT CASE enemies(i).meshIdx
@@ -909,6 +928,7 @@ END IF
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
+                                player.py = 0 : player.pz = 0
                                 MUS_SetCue "planet"
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
