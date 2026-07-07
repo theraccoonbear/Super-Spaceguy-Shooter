@@ -14,17 +14,6 @@ if [ "$1" == "sss.bas" ]; then
     echo ">>> ...done!"
 fi
 
-# QB64-PE chdir's to its own binary dir at startup, so $EMBED paths resolve
-# relative to that dir. Symlink assets -> repo/assets there so
-# '$EMBED:assets/...' works regardless of where qb64pe is installed.
-QB64_BIN=$(which qb64pe 2>/dev/null)
-if [ -z "$QB64_BIN" ]; then
-    echo "Error: qb64pe not found in PATH" >&2
-    exit 1
-fi
-QB64_DIR=$(dirname "$(realpath "$QB64_BIN")")
-ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
-
 # Remove stale executable so a failed build can't be mistaken for success
 rm -f "$old_exe"
 echo ">>> Building $1..."
