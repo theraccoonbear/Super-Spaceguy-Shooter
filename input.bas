@@ -9,6 +9,7 @@ Const E3D_KEY_A      = 97
 Const E3D_KEY_S      = 115
 Const E3D_KEY_D      = 100
 Const E3D_KEY_ESCAPE = 27
+Const E3D_KEY_TAB    = 9
 
 ' Call once per frame before reading input
 Sub E3D_InputUpdate (held() As Integer)
@@ -22,4 +23,5 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_S)      = Abs(_KeyDown(115))
     held(E3D_KEY_D)      = Abs(_KeyDown(100))
     held(E3D_KEY_ESCAPE) = Abs(_KeyDown(27))
+    held(E3D_KEY_TAB)    = Abs(_KeyDown(9))
 End Sub
