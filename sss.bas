@@ -1495,6 +1495,53 @@ IF dbgOverlay THEN
     COLOR _RGB(180, 255, 180)
     _PRINTSTRING (2, 54), "VY   " + LEFT$(STR$(playerVY + 1000), 7)
     _PRINTSTRING (2, 64), "VZ   " + LEFT$(STR$(playerVZ + 1000), 7)
+
+    ' enemy AABB wireframes
+    IF gameState = GS_PLAYING THEN
+        DIM dbgBi  AS INTEGER
+        DIM dbgBwx AS SINGLE, dbgBwy AS SINGLE, dbgBwz AS SINGLE
+        DIM dbgBhx AS SINGLE, dbgBhy AS SINGLE, dbgBhz AS SINGLE
+        DIM dbgBtx AS SINGLE, dbgBty AS SINGLE, dbgBtz AS SINGLE
+        DIM dbgBpx AS SINGLE, dbgBpy AS SINGLE, dbgBpw AS SINGLE
+        DIM dbgBsx(0 TO 7) AS SINGLE, dbgBsy(0 TO 7) AS SINGLE, dbgBsw(0 TO 7) AS SINGLE
+        DIM dbgBci AS INTEGER, dbgBa AS INTEGER, dbgBb AS INTEGER, dbgBdiff AS INTEGER
+        DIM dbgBclr AS LONG : dbgBclr = _RGB(0, 255, 120)
+        FOR dbgBi = 1 TO MAX_ENEMIES
+            IF enemies(dbgBi).active THEN
+                dbgBwx = enemies(dbgBi).px
+                dbgBwy = enemies(dbgBi).py
+                dbgBwz = enemies(dbgBi).pz
+                dbgBhx = boxLib(enemies(dbgBi).meshIdx).hx
+                dbgBhy = boxLib(enemies(dbgBi).meshIdx).hy
+                dbgBhz = boxLib(enemies(dbgBi).meshIdx).hz
+                FOR dbgBci = 0 TO 7
+                    IF (dbgBci AND 4) THEN dbgBtx = dbgBwx + dbgBhx ELSE dbgBtx = dbgBwx - dbgBhx
+                    IF (dbgBci AND 2) THEN dbgBty = dbgBwy + dbgBhy ELSE dbgBty = dbgBwy - dbgBhy
+                    IF (dbgBci AND 1) THEN dbgBtz = dbgBwz + dbgBhz ELSE dbgBtz = dbgBwz - dbgBhz
+                    dbgBpx  = dbgBtx * vpMat.m(0,0) + dbgBty * vpMat.m(0,1) + dbgBtz * vpMat.m(0,2) + vpMat.m(0,3)
+                    dbgBpy  = dbgBtx * vpMat.m(1,0) + dbgBty * vpMat.m(1,1) + dbgBtz * vpMat.m(1,2) + vpMat.m(1,3)
+                    dbgBpw  = dbgBtx * vpMat.m(3,0) + dbgBty * vpMat.m(3,1) + dbgBtz * vpMat.m(3,2) + vpMat.m(3,3)
+                    dbgBsw(dbgBci) = dbgBpw
+                    IF dbgBpw > 0 THEN
+                        dbgBsx(dbgBci) = (dbgBpx / dbgBpw + 1.0) * scrW * 0.5
+                        dbgBsy(dbgBci) = (1.0 - dbgBpy / dbgBpw) * scrH * 0.5
+                    END IF
+                NEXT dbgBci
+                FOR dbgBa = 0 TO 6
+                    FOR dbgBb = dbgBa + 1 TO 7
+                        dbgBdiff = dbgBa XOR dbgBb
+                        IF dbgBdiff = 1 OR dbgBdiff = 2 OR dbgBdiff = 4 THEN
+                            IF dbgBsw(dbgBa) > 0 THEN
+                                IF dbgBsw(dbgBb) > 0 THEN
+                                    LINE (dbgBsx(dbgBa), dbgBsy(dbgBa))-(dbgBsx(dbgBb), dbgBsy(dbgBb)), dbgBclr
+                                END IF
+                            END IF
+                        END IF
+                    NEXT dbgBb
+                NEXT dbgBa
+            END IF
+        NEXT dbgBi
+    END IF
 END IF
 
 _LIMIT 60
