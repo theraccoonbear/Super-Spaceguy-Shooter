@@ -570,6 +570,8 @@ END IF
                 IF enemies(i).active THEN
                     enemies(i).px  = enemies(i).px  + enemies(i).vx
                     enemies(i).ry  = enemies(i).ry  + enemies(i).dry
+                    eOldPY = enemies(i).py
+                    eOldPZ = enemies(i).pz
                     IF enemies(i).px < player.px + 30 THEN
                         enemies(i).py = enemies(i).py + (player.py - enemies(i).py) * 0.008
                         enemies(i).pz = enemies(i).pz + (player.pz - enemies(i).pz) * 0.008
@@ -577,6 +579,10 @@ END IF
                         enemies(i).py = enemies(i).py + SIN(tt * 1.5 + i * 1.3) * 0.015
                         enemies(i).pz = enemies(i).pz + COS(tt * 1.1 + i * 2.1) * 0.015
                     END IF
+                    eAttDY = enemies(i).py - eOldPY
+                    eAttDZ = enemies(i).pz - eOldPZ
+                    enemies(i).rx = enemies(i).rx + ( (eAttDZ / 0.015) * 20 - enemies(i).rx) * 0.12
+                    enemies(i).rz = enemies(i).rz + (-(eAttDY / 0.015) * 15 - enemies(i).rz) * 0.12
 
                     ' fire at player when cooled down and in range
                     enemyFireTimer(i) = enemyFireTimer(i) - 0.025
