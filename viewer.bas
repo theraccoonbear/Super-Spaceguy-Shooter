@@ -5,7 +5,7 @@
 ' L: toggle light mode       ESC/Q: quit
 
 $Resize:stretch
-$EMBED:'code/3d/assets/models.e3d':'MODELS'
+$EMBED:'assets/models.e3d':'MODELS'
 
 '$INCLUDE:'types.bi'
 '$INCLUDE:'poly.bas'

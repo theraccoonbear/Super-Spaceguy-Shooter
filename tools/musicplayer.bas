@@ -1,13 +1,9 @@
 ' tools/musicplayer.bas -- standalone preview tool for music.mus cues
 '
-' Build: tools/buildqb tools/musicplayer.bas
-' (from the repo root; QB64-PE install dir must have code/3d -> repo symlink)
+' Build: from repo root — <qb64pe-dir>/qb64pe -x tools/musicplayer.bas -o builds/musicplayer
 '
 ' Controls: up/down to select, space/enter to play, ESC to quit
-
-' $EMBED paths resolve relative to the QB64-PE binary directory.
-' The CI script and local install both have code/3d -> repo root.
-$EMBED:'code/3d/assets/music.mus':'MUSICDATA'
+$EMBED:'assets/music.mus':'MUSICDATA'
 
 Const SAMPLE_RATE = 44100
 
