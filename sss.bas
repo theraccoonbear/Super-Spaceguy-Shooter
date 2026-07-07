@@ -1358,6 +1358,11 @@ CASE GS_CRAWL
             IF NOT crawlFFActive THEN
                 crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
             END IF
+            IF held(E3D_KEY_ESCAPE) THEN
+                fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
+                escWas = -1  ' consume ESC so next state doesn't see it as a fresh keypress
+                SEQ_Advance : EXIT SELECT
+            END IF
             fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
