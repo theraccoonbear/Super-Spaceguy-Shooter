@@ -67,6 +67,8 @@ CONST ATTITUDE_LERP       = 0.09    ' ship tilt/roll settle rate
 CONST BULLET_SPEED        = 0.35    ' player bullet X velocity
 CONST FIRE_COOLDOWN       = 0.18    ' seconds between shots
 CONST LASER_COST          = 5.0     ' laser energy drained per shot (%)
+CONST AIM_ASSIST          = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
+CONST HIT_SCALE           = 1.5     ' enemy AABB scale factor for hit detection (visual stays unchanged)
 CONST LASER_REGEN         = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 
 CONST FUEL_DRAIN          = 0.0185  ' base drain per frame (~90 sec at 60fps)
@@ -81,6 +83,7 @@ CONST EFIRE_INIT_VAR      = 2.0     ' enemy initial fire timer variance
 CONST EFIRE_COOL_MIN      = 3.5     ' post-shot cooldown min
 CONST EFIRE_COOL_VAR      = 2.2     ' post-shot cooldown variance
 CONST EFIRE_RANGE         = 40      ' X-range at which enemies fire
+CONST EFIRE_LEAD          = 0.65    ' fraction of perfect lead applied to enemy shots (0=dumb, 1=perfect)
 
 CONST DMG_COLLISION       = 17      ' shield damage from collision
 CONST DMG_LASER           = 5       ' shield damage from enemy bullet
@@ -215,6 +218,7 @@ DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED godMode    AS INTEGER
 DIM SHARED settingNerf AS INTEGER
+DIM SHARED debugMode  AS INTEGER
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -257,8 +261,9 @@ IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "
     GAME_Usage("")
 END IF
 
-godMode    = (INSTR(ssCmdLine, "--god")  > 0)
+godMode    = (INSTR(ssCmdLine, "--god")   > 0)
 settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
+debugMode   = (INSTR(ssCmdLine, "--debug") > 0)
 
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
@@ -352,6 +357,12 @@ DIM mlI AS INTEGER
 FOR mlI = 1 TO MESH_COUNT
     E3D_BakeMeshNormals meshLib(mlI)
 NEXT mlI
+DIM hsI AS INTEGER
+FOR hsI = MESH_ENEMY TO MESH_ENEMY_VWEDGE
+    boxLib(hsI).hx = boxLib(hsI).hx * HIT_SCALE
+    boxLib(hsI).hy = boxLib(hsI).hy * HIT_SCALE
+    boxLib(hsI).hz = boxLib(hsI).hz * HIT_SCALE
+NEXT hsI
 
 ' --- init player ---
 player.active  = -1
@@ -397,7 +408,7 @@ DIM crawlFFVolSave AS SINGLE
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
 ' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
-DIM dbgOverlay AS INTEGER
+DIM dbgOverlay AS INTEGER : IF debugMode THEN dbgOverlay = 1
 DIM dbgGraveWas AS INTEGER
 DIM dbgT0 AS DOUBLE
 DIM dbgFrameMs AS SINGLE
@@ -419,6 +430,7 @@ SEQ_Init
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
     IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
+    IF ssSCnType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
 ELSE
     gameState = GS_LEADIN
@@ -443,6 +455,23 @@ END IF
         ' Detect state transitions for speech triggers
         IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
             SPK_Say sSpkTitle
+        END IF
+        IF debugMode AND gameState <> prevGameState THEN
+            DIM dbgStateName AS STRING
+            SELECT CASE gameState
+                CASE GS_TITLE    : dbgStateName = "GS_TITLE"
+                CASE GS_PLAYING  : dbgStateName = "GS_PLAYING"
+                CASE GS_GAMEOVER : dbgStateName = "GS_GAMEOVER"
+                CASE GS_PLANET   : dbgStateName = "GS_PLANET"
+                CASE GS_CINEMATIC: dbgStateName = "GS_CINEMATIC"
+                CASE GS_INTRO    : dbgStateName = "GS_INTRO"
+                CASE GS_CRAWL    : dbgStateName = "GS_CRAWL"
+                CASE GS_OPTIONS  : dbgStateName = "GS_OPTIONS"
+                CASE GS_ABOUT    : dbgStateName = "GS_ABOUT"
+                CASE GS_LEADIN   : dbgStateName = "GS_LEADIN"
+                CASE ELSE        : dbgStateName = "GS_?" + LTRIM$(STR$(gameState))
+            END SELECT
+            DBG_Print "[state] " + dbgStateName
         END IF
         prevGameState = gameState
 
@@ -537,6 +566,31 @@ END IF
                             bullets(i).px = player.px + bvNx * (BULLET_TRAIL_LEN + 1.0)
                             bullets(i).py = player.py + bvNy * (BULLET_TRAIL_LEN + 1.0)
                             bullets(i).pz = player.pz + bvNz * (BULLET_TRAIL_LEN + 1.0)
+                            ' aim assist: nudge toward nearest enemy within ~20deg forward cone
+                            DIM aaDX AS SINGLE, aaDY AS SINGLE, aaDZ AS SINGLE, aaDist AS SINGLE
+                            DIM aaBestDist AS SINGLE, aaNY AS SINGLE, aaNZ AS SINGLE
+                            aaBestDist = 1e9
+                            FOR aai = 1 TO MAX_ENEMIES
+                                IF enemies(aai).active THEN
+                                    aaDX = enemies(aai).px - player.px
+                                    aaDY = enemies(aai).py - player.py
+                                    aaDZ = enemies(aai).pz - player.pz
+                                    aaDist = SQR(aaDX*aaDX + aaDY*aaDY + aaDZ*aaDZ)
+                                    IF aaDist > 0.1 AND aaDX > 0 THEN
+                                        IF (aaDX / aaDist) > 0.94 THEN  ' ~20deg cone (cos20°≈0.94)
+                                            IF aaDist < aaBestDist THEN
+                                                aaBestDist = aaDist
+                                                aaNY = aaDY / aaDist
+                                                aaNZ = aaDZ / aaDist
+                                            END IF
+                                        END IF
+                                    END IF
+                                END IF
+                            NEXT aai
+                            IF aaBestDist < 1e9 THEN
+                                bvNy = bvNy + (aaNY - bvNy) * AIM_ASSIST
+                                bvNz = bvNz + (aaNZ - bvNz) * AIM_ASSIST
+                            END IF
                             bullets(i).vx = bvNx * BULLET_SPEED
                             bullets(i).vy = bvNy * BULLET_SPEED
                             bullets(i).vz = bvNz * BULLET_SPEED
@@ -549,6 +603,11 @@ END IF
                         END IF
                     NEXT i
                 END IF
+            END IF
+
+            ' --- player thruster trail ---
+            IF (INT(tt * 40)) MOD 2 = 0 THEN
+                FX_SpawnBurst player.px - 1.1, player.py, player.pz, 1, 0.007, 18, 6, _RGB(80, 140, 255)
             END IF
 
             ' --- spawning ---
@@ -570,12 +629,32 @@ END IF
                 IF enemies(i).active THEN
                     enemies(i).px  = enemies(i).px  + enemies(i).vx
                     enemies(i).ry  = enemies(i).ry  + enemies(i).dry
+                    eOldPY = enemies(i).py
+                    eOldPZ = enemies(i).pz
                     IF enemies(i).px < player.px + 30 THEN
                         enemies(i).py = enemies(i).py + (player.py - enemies(i).py) * 0.008
                         enemies(i).pz = enemies(i).pz + (player.pz - enemies(i).pz) * 0.008
                     ELSE
                         enemies(i).py = enemies(i).py + SIN(tt * 1.5 + i * 1.3) * 0.015
                         enemies(i).pz = enemies(i).pz + COS(tt * 1.1 + i * 2.1) * 0.015
+                    END IF
+                    eAttDY = enemies(i).py - eOldPY
+                    eAttDZ = enemies(i).pz - eOldPZ
+                    enemies(i).rx = enemies(i).rx + ( (eAttDZ / 0.015) * 20 - enemies(i).rx) * 0.12
+                    enemies(i).rz = enemies(i).rz + (-(eAttDY / 0.015) * 15 - enemies(i).rz) * 0.12
+
+                    ' contrail trail: staggered by slot index, every 3 frames
+                    IF (INT(tt * 40) + i) MOD 3 = 0 THEN
+                        DIM trlR AS INTEGER, trlG AS INTEGER, trlB AS INTEGER
+                        SELECT CASE enemies(i).meshIdx
+                        CASE MESH_ENEMY        : trlR = 160 : trlG =  50 : trlB =  35
+                        CASE MESH_ENEMY_ARROW  : trlR = 160 : trlG =  90 : trlB =   0
+                        CASE MESH_ENEMY_HLINE  : trlR =  40 : trlG = 140 : trlB =  55
+                        CASE MESH_ENEMY_VCOL   : trlR =  40 : trlG = 140 : trlB = 155
+                        CASE MESH_ENEMY_PINCER : trlR = 155 : trlG = 150 : trlB =  35
+                        CASE ELSE              : trlR = 120 : trlG =  50 : trlB = 165
+                        END SELECT
+                        FX_SpawnBurst enemies(i).px + 0.35, enemies(i).py, enemies(i).pz, 1, 0.005, 20, 6, _RGB(trlR, trlG, trlB)
                     END IF
 
                     ' fire at player when cooled down and in range
@@ -586,6 +665,10 @@ END IF
                         eDZ = player.pz - enemies(i).pz
                         eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
                         IF eMag > 0.1 THEN
+                            DIM eLead AS SINGLE : eLead = (eMag / EBULLET_SPEED) * EFIRE_LEAD
+                            eDY = (player.py + playerVY * eLead) - enemies(i).py
+                            eDZ = (player.pz + playerVZ * eLead) - enemies(i).pz
+                            eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
                             eDX = eDX / eMag : eDY = eDY / eMag : eDZ = eDZ / eMag
                             FOR ej = 1 TO MAX_EBULLETS
                                 IF ebullets(ej).active = 0 THEN
@@ -610,12 +693,13 @@ END IF
                     ' bullet vs enemy
                     FOR j = 1 TO MAX_BULLETS
                         IF bullets(j).active THEN
-                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), _
+                            E3D_AABBOverlap enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), _
                             bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
                             IF hit THEN
                                 enemies(i).active = 0
                                 bullets(j).active = 0
                                 score = score + SCORE_ENEMY
+                                IF debugMode THEN DBG_Print "[kill] enemy  score=" + LTRIM$(STR$(score))
                                 SND_Boom
                                 scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
                                 SELECT CASE enemies(i).meshIdx
@@ -633,7 +717,7 @@ END IF
 
                     ' player vs enemy
                     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(MESH_ENEMY), hit
+                    enemies(i).px, enemies(i).py, enemies(i).pz, boxLib(enemies(i).meshIdx), hit
                     IF hit AND invTimer = 0 THEN
                         enemies(i).active = 0
                         SELECT CASE enemies(i).meshIdx
@@ -720,6 +804,7 @@ END IF
             IF bossWarnTimer > 0 THEN
                 bossWarnTimer = bossWarnTimer - 1
                 IF bossWarnTimer = 0 AND gameState = GS_PLAYING THEN
+                    IF debugMode THEN DBG_Print "[boss] spawned  score=" + LTRIM$(STR$(score))
                     boss.active  = -1
                     boss.meshIdx = MESH_BOSS
                     boss.px = player.px + BOSS_SPAWN_DIST
@@ -839,9 +924,11 @@ END IF
                             fxShakeTimer = 2
                             SND_Boom
                             IF bossHP <= 0 THEN
+                                IF debugMode THEN DBG_Print "[boss] defeated  score=" + LTRIM$(STR$(score))
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
+                                player.py = 0 : player.pz = 0
                                 MUS_SetCue "planet"
                                 planetCurrent = (planetCurrent MOD PLANET_COUNT) + 1
                                 planetNameIdx = (planetNameIdx MOD PLANET_COUNT) + 1
@@ -1336,6 +1423,11 @@ CASE GS_CRAWL
             IF NOT crawlFFActive THEN
                 crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
             END IF
+            IF held(E3D_KEY_ESCAPE) THEN
+                fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
+                escWas = -1  ' consume ESC so next state doesn't see it as a fresh keypress
+                SEQ_Advance : EXIT SELECT
+            END IF
             fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
@@ -1489,6 +1581,53 @@ IF dbgOverlay THEN
     COLOR _RGB(180, 255, 180)
     _PRINTSTRING (2, 54), "VY   " + LEFT$(STR$(playerVY + 1000), 7)
     _PRINTSTRING (2, 64), "VZ   " + LEFT$(STR$(playerVZ + 1000), 7)
+
+    ' enemy AABB wireframes
+    IF gameState = GS_PLAYING THEN
+        DIM dbgBi  AS INTEGER
+        DIM dbgBwx AS SINGLE, dbgBwy AS SINGLE, dbgBwz AS SINGLE
+        DIM dbgBhx AS SINGLE, dbgBhy AS SINGLE, dbgBhz AS SINGLE
+        DIM dbgBtx AS SINGLE, dbgBty AS SINGLE, dbgBtz AS SINGLE
+        DIM dbgBpx AS SINGLE, dbgBpy AS SINGLE, dbgBpw AS SINGLE
+        DIM dbgBsx(0 TO 7) AS SINGLE, dbgBsy(0 TO 7) AS SINGLE, dbgBsw(0 TO 7) AS SINGLE
+        DIM dbgBci AS INTEGER, dbgBa AS INTEGER, dbgBb AS INTEGER, dbgBdiff AS INTEGER
+        DIM dbgBclr AS LONG : dbgBclr = _RGB(0, 255, 120)
+        FOR dbgBi = 1 TO MAX_ENEMIES
+            IF enemies(dbgBi).active THEN
+                dbgBwx = enemies(dbgBi).px
+                dbgBwy = enemies(dbgBi).py
+                dbgBwz = enemies(dbgBi).pz
+                dbgBhx = boxLib(enemies(dbgBi).meshIdx).hx
+                dbgBhy = boxLib(enemies(dbgBi).meshIdx).hy
+                dbgBhz = boxLib(enemies(dbgBi).meshIdx).hz
+                FOR dbgBci = 0 TO 7
+                    IF (dbgBci AND 4) THEN dbgBtx = dbgBwx + dbgBhx ELSE dbgBtx = dbgBwx - dbgBhx
+                    IF (dbgBci AND 2) THEN dbgBty = dbgBwy + dbgBhy ELSE dbgBty = dbgBwy - dbgBhy
+                    IF (dbgBci AND 1) THEN dbgBtz = dbgBwz + dbgBhz ELSE dbgBtz = dbgBwz - dbgBhz
+                    dbgBpx  = dbgBtx * vpMat.m(0,0) + dbgBty * vpMat.m(0,1) + dbgBtz * vpMat.m(0,2) + vpMat.m(0,3)
+                    dbgBpy  = dbgBtx * vpMat.m(1,0) + dbgBty * vpMat.m(1,1) + dbgBtz * vpMat.m(1,2) + vpMat.m(1,3)
+                    dbgBpw  = dbgBtx * vpMat.m(3,0) + dbgBty * vpMat.m(3,1) + dbgBtz * vpMat.m(3,2) + vpMat.m(3,3)
+                    dbgBsw(dbgBci) = dbgBpw
+                    IF dbgBpw > 0 THEN
+                        dbgBsx(dbgBci) = (dbgBpx / dbgBpw + 1.0) * scrW * 0.5
+                        dbgBsy(dbgBci) = (1.0 - dbgBpy / dbgBpw) * scrH * 0.5
+                    END IF
+                NEXT dbgBci
+                FOR dbgBa = 0 TO 6
+                    FOR dbgBb = dbgBa + 1 TO 7
+                        dbgBdiff = dbgBa XOR dbgBb
+                        IF dbgBdiff = 1 OR dbgBdiff = 2 OR dbgBdiff = 4 THEN
+                            IF dbgBsw(dbgBa) > 0 THEN
+                                IF dbgBsw(dbgBb) > 0 THEN
+                                    LINE (dbgBsx(dbgBa), dbgBsy(dbgBa))-(dbgBsx(dbgBb), dbgBsy(dbgBb)), dbgBclr
+                                END IF
+                            END IF
+                        END IF
+                    NEXT dbgBb
+                NEXT dbgBa
+            END IF
+        NEXT dbgBi
+    END IF
 END IF
 
 _LIMIT 60
@@ -1516,6 +1655,14 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
     END IF
 END SUB
 
+SUB DBG_Print(dbgMsg AS STRING)
+    DIM dbgF AS INTEGER
+    dbgF = FreeFile
+    OPEN "/dev/tty" FOR APPEND AS #dbgF
+    PRINT #dbgF, dbgMsg
+    CLOSE #dbgF
+END SUB
+
 SUB GAME_Usage(guErr AS STRING)
     DIM guFH AS INTEGER : guFH = FREEFILE
     IF INSTR(_OS$, "WIN") THEN
@@ -1537,6 +1684,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
     PRINT #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
+    PRINT #guFH, "  --debug                Enable debug overlay and stdout event logging"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
