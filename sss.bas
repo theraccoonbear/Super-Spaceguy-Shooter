@@ -9,8 +9,8 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 $Resize:stretch
-$EMBED:'assets/cogikel.ans':'COGIKEL'
-$EMBED:'assets/ctut.ans':'CTUT'
+$EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
+$EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
 $EMBED:'assets/sss-title-final.png':'TITLEIMG'
 $EMBED:'assets/planet-01-clean.png':'PLANET01'
 $EMBED:'assets/planet-02-clean.png':'PLANET02'
