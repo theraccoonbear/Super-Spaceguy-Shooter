@@ -1,4 +1,4 @@
-Const FX_MAX_PARTICLES = 150
+Const FX_MAX_PARTICLES = 250
 
 Dim Shared fxPartActive(1 To FX_MAX_PARTICLES) As Integer
 Dim Shared fxPartPX(1 To FX_MAX_PARTICLES)     As Single
