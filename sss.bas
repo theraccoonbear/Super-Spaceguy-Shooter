@@ -500,7 +500,7 @@ END IF
                 escWas = held(E3D_KEY_ESCAPE)
             END IF
 
-            ' camera orbit: Tab toggles; arrows orbit camera; ESC exits orbit
+            ' camera orbit: Tab toggles; arrows orbit camera while game runs
             IF gameState = GS_PLAYING THEN
                 IF held(E3D_KEY_TAB) AND NOT tabWas THEN
                     camOrbitMode = 1 - camOrbitMode
@@ -512,16 +512,12 @@ END IF
                 END IF
                 tabWas = held(E3D_KEY_TAB)
                 IF camOrbitMode THEN
-                    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN camOrbitMode = 0
-                    escWas = held(E3D_KEY_ESCAPE)
                     IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
                     IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
                     IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
                     IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
                     IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
                     IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
-                    PLAYER_Update 0, 0, 0, 0
-                    GOTO camRender
                 END IF
             END IF
 
@@ -558,7 +554,11 @@ END IF
             STAGE_Update
 
             ' --- player movement, velocity physics, attitude ---
-            PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
+            IF camOrbitMode THEN
+                PLAYER_Update held(E3D_KEY_W), held(E3D_KEY_S), held(E3D_KEY_A), held(E3D_KEY_D)
+            ELSE
+                PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
+            END IF
 
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
@@ -1026,7 +1026,6 @@ END IF
                 gameOver = 0
             END IF
 
-            camRender:
             ' --------------------------------------------------------
             ' RENDER
             ' --------------------------------------------------------
