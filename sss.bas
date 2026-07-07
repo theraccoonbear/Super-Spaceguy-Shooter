@@ -217,6 +217,7 @@ DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED godMode    AS INTEGER
 DIM SHARED settingNerf AS INTEGER
+DIM SHARED debugMode  AS INTEGER
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -259,8 +260,9 @@ IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "
     GAME_Usage("")
 END IF
 
-godMode    = (INSTR(ssCmdLine, "--god")  > 0)
+godMode    = (INSTR(ssCmdLine, "--god")   > 0)
 settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
+debugMode   = (INSTR(ssCmdLine, "--debug") > 0)
 
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
@@ -405,7 +407,7 @@ DIM crawlFFVolSave AS SINGLE
 DIM titleEscConfirm AS INTEGER
 DIM throbBright AS INTEGER
 ' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
-DIM dbgOverlay AS INTEGER
+DIM dbgOverlay AS INTEGER : IF debugMode THEN dbgOverlay = 1
 DIM dbgGraveWas AS INTEGER
 DIM dbgT0 AS DOUBLE
 DIM dbgFrameMs AS SINGLE
@@ -452,6 +454,23 @@ END IF
         ' Detect state transitions for speech triggers
         IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
             SPK_Say sSpkTitle
+        END IF
+        IF debugMode AND gameState <> prevGameState THEN
+            DIM dbgStateName AS STRING
+            SELECT CASE gameState
+                CASE GS_TITLE    : dbgStateName = "GS_TITLE"
+                CASE GS_PLAYING  : dbgStateName = "GS_PLAYING"
+                CASE GS_GAMEOVER : dbgStateName = "GS_GAMEOVER"
+                CASE GS_PLANET   : dbgStateName = "GS_PLANET"
+                CASE GS_CINEMATIC: dbgStateName = "GS_CINEMATIC"
+                CASE GS_INTRO    : dbgStateName = "GS_INTRO"
+                CASE GS_CRAWL    : dbgStateName = "GS_CRAWL"
+                CASE GS_OPTIONS  : dbgStateName = "GS_OPTIONS"
+                CASE GS_ABOUT    : dbgStateName = "GS_ABOUT"
+                CASE GS_LEADIN   : dbgStateName = "GS_LEADIN"
+                CASE ELSE        : dbgStateName = "GS_?" + LTRIM$(STR$(gameState))
+            END SELECT
+            DBG_Print "[state] " + dbgStateName
         END IF
         prevGameState = gameState
 
@@ -656,6 +675,7 @@ END IF
                                 enemies(i).active = 0
                                 bullets(j).active = 0
                                 score = score + SCORE_ENEMY
+                                IF debugMode THEN DBG_Print "[kill] enemy  score=" + LTRIM$(STR$(score))
                                 SND_Boom
                                 scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
                                 SELECT CASE enemies(i).meshIdx
@@ -760,6 +780,7 @@ END IF
             IF bossWarnTimer > 0 THEN
                 bossWarnTimer = bossWarnTimer - 1
                 IF bossWarnTimer = 0 AND gameState = GS_PLAYING THEN
+                    IF debugMode THEN DBG_Print "[boss] spawned  score=" + LTRIM$(STR$(score))
                     boss.active  = -1
                     boss.meshIdx = MESH_BOSS
                     boss.px = player.px + BOSS_SPAWN_DIST
@@ -879,6 +900,7 @@ END IF
                             fxShakeTimer = 2
                             SND_Boom
                             IF bossHP <= 0 THEN
+                                IF debugMode THEN DBG_Print "[boss] defeated  score=" + LTRIM$(STR$(score))
                                 boss.active   = 0
                                 gameState     = GS_PLANET
                                 planetTimer   = 1
@@ -1376,6 +1398,11 @@ CASE GS_CRAWL
             IF NOT crawlFFActive THEN
                 crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
             END IF
+            IF held(E3D_KEY_ESCAPE) THEN
+                fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
+                escWas = -1  ' consume ESC so next state doesn't see it as a fresh keypress
+                SEQ_Advance : EXIT SELECT
+            END IF
             fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
@@ -1603,6 +1630,14 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
     END IF
 END SUB
 
+SUB DBG_Print(dbgMsg AS STRING)
+    DIM dbgF AS INTEGER
+    dbgF = FreeFile
+    OPEN "/dev/tty" FOR APPEND AS #dbgF
+    PRINT #dbgF, dbgMsg
+    CLOSE #dbgF
+END SUB
+
 SUB GAME_Usage(guErr AS STRING)
     DIM guFH AS INTEGER : guFH = FREEFILE
     IF INSTR(_OS$, "WIN") THEN
@@ -1624,6 +1659,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
     PRINT #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
+    PRINT #guFH, "  --debug                Enable debug overlay and stdout event logging"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
