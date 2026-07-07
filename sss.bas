@@ -427,6 +427,7 @@ SEQ_Init
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
     IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
+    IF ssSCnType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
 ELSE
     gameState = GS_LEADIN
