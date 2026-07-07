@@ -9,21 +9,21 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 $Resize:stretch
-$EMBED:'code/3d/assets/cogikel.ans':'COGIKEL'
-$EMBED:'code/3d/assets/ctut.ans':'CTUT'
-$EMBED:'code/3d/assets/sss-title-final.png':'TITLEIMG'
-$EMBED:'code/3d/assets/planet-01-clean.png':'PLANET01'
-$EMBED:'code/3d/assets/planet-02-clean.png':'PLANET02'
-$EMBED:'code/3d/assets/planet-03-clean.png':'PLANET03'
-$EMBED:'code/3d/assets/planet-04-clean.png':'PLANET04'
-$EMBED:'code/3d/assets/planet-05-clean.png':'PLANET05'
-$EMBED:'code/3d/assets/planet-06-clean.png':'PLANET06'
-$EMBED:'code/3d/assets/grotuk2.png':'EMPERORIMG'
-$EMBED:'code/3d/assets/models.e3d':'MODELS'
-$EMBED:'code/3d/assets/gametext.txt':'GAMETEXT'
-$EMBED:'code/3d/assets/gamevalues.ini':'GAMEVALUES'
-$EMBED:'code/3d/assets/speech_dict.txt':'SPEECHDICT'
-$EMBED:'code/3d/assets/music.mus':'MUSICDATA'
+$EMBED:'assets/cogikel.ans':'COGIKEL'
+$EMBED:'assets/ctut.ans':'CTUT'
+$EMBED:'assets/sss-title-final.png':'TITLEIMG'
+$EMBED:'assets/planet-01-clean.png':'PLANET01'
+$EMBED:'assets/planet-02-clean.png':'PLANET02'
+$EMBED:'assets/planet-03-clean.png':'PLANET03'
+$EMBED:'assets/planet-04-clean.png':'PLANET04'
+$EMBED:'assets/planet-05-clean.png':'PLANET05'
+$EMBED:'assets/planet-06-clean.png':'PLANET06'
+$EMBED:'assets/grotuk2.png':'EMPERORIMG'
+$EMBED:'assets/models.e3d':'MODELS'
+$EMBED:'assets/gametext.txt':'GAMETEXT'
+$EMBED:'assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'assets/speech_dict.txt':'SPEECHDICT'
+$EMBED:'assets/music.mus':'MUSICDATA'
 ' --- constants needed by included files ---
 CONST SAMPLE_RATE = 44100  ' audio sample rate; used by snd.bas and speech.bas
 CONST GS_TITLE     = 0

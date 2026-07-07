@@ -7,7 +7,7 @@
 
 ## Build requirement
 - Always do a test build after any code change. Fix all errors before reporting back.
-- Build command: from the QB64-PE install directory, run `./qb64pe -x <repo-root>/sss.bas -o <repo-root>/builds/sss`
+- Build command: from the QB64-PE install directory, run `./qb64pe -x <repo-root>/sss.bas -o <repo-root>/builds/sss`  (requires `<qb64pe-dir>/assets → <repo-root>/assets` symlink; the build script creates it automatically)
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
