@@ -83,6 +83,7 @@ CONST EFIRE_INIT_VAR      = 2.0     ' enemy initial fire timer variance
 CONST EFIRE_COOL_MIN      = 3.5     ' post-shot cooldown min
 CONST EFIRE_COOL_VAR      = 2.2     ' post-shot cooldown variance
 CONST EFIRE_RANGE         = 40      ' X-range at which enemies fire
+CONST EFIRE_LEAD          = 0.65    ' fraction of perfect lead applied to enemy shots (0=dumb, 1=perfect)
 
 CONST DMG_COLLISION       = 17      ' shield damage from collision
 CONST DMG_LASER           = 5       ' shield damage from enemy bullet
@@ -664,6 +665,10 @@ END IF
                         eDZ = player.pz - enemies(i).pz
                         eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
                         IF eMag > 0.1 THEN
+                            DIM eLead AS SINGLE : eLead = (eMag / EBULLET_SPEED) * EFIRE_LEAD
+                            eDY = (player.py + playerVY * eLead) - enemies(i).py
+                            eDZ = (player.pz + playerVZ * eLead) - enemies(i).pz
+                            eMag = SQR(eDX * eDX + eDY * eDY + eDZ * eDZ)
                             eDX = eDX / eMag : eDY = eDY / eMag : eDZ = eDZ / eMag
                             FOR ej = 1 TO MAX_EBULLETS
                                 IF ebullets(ej).active = 0 THEN
