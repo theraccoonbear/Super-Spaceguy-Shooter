@@ -548,10 +548,10 @@ END IF
                     END IF
                     rWas = held(E3D_KEY_R)
                     IF camOrbitMode THEN
-                        IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
-                        IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
-                        IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
-                        IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
+                        IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.008
+                        IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.008
+                        IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.008
+                        IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.008
                         IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
                         IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
                         GOTO camRender
