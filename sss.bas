@@ -12,6 +12,7 @@ $Resize:stretch
 $EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
 $EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
 $EMBED:'assets/sss-title-final.png':'TITLEIMG'
+$EMBED:'assets/just_juliaing.png':'JUSTJULIAING'
 $EMBED:'assets/planet-01-clean.png':'PLANET01'
 $EMBED:'assets/planet-02-clean.png':'PLANET02'
 $EMBED:'assets/planet-03-clean.png':'PLANET03'
