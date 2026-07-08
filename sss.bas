@@ -548,10 +548,8 @@ END IF
                     END IF
                     rWas = held(E3D_KEY_R)
                     IF camOrbitMode THEN
-                        IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.008
-                        IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.008
-                        IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.008
-                        IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.008
+                        IF held(E3D_KEY_UP)   THEN camOrbitPhi = camOrbitPhi + 0.008
+                        IF held(E3D_KEY_DOWN) THEN camOrbitPhi = camOrbitPhi - 0.008
                         IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
                         IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
                         GOTO camRender
@@ -1247,7 +1245,7 @@ END IF
             IF camOrbitMode THEN
                 _DEST backBuffer
                 FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4, 160
-                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  ARROWS:ROTATE  R:REVERT", 4, 4 + FONT_CHAR_H + 1, 120
+                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H + 1, 120
             END IF
 
             FX_Flash scrW, scrH
