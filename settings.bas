@@ -13,6 +13,9 @@ Sub SETTINGS_Save ()
         Print #sfH, "cam_theta=" + LTrim$(Str$(camOrbitTheta))
         Print #sfH, "cam_phi="   + LTrim$(Str$(camOrbitPhi))
         Print #sfH, "cam_r="     + LTrim$(Str$(camOrbitR))
+        If debugMode Then DBG_Print "[settings] saved  cam_phi=" + LTrim$(Str$(camOrbitPhi)) + "  cam_r=" + LTrim$(Str$(camOrbitR))
+    Else
+        If debugMode Then DBG_Print "[settings] saved"
     End If
     Close #sfH
 End Sub
@@ -52,6 +55,13 @@ Sub SETTINGS_Load ()
             End Select
         End If
     Loop
+    If debugMode Then
+        If camAngleLocked Then
+            DBG_Print "[settings] loaded  cam_phi=" + LTrim$(Str$(camOrbitPhi)) + "  cam_r=" + LTrim$(Str$(camOrbitR))
+        Else
+            DBG_Print "[settings] loaded"
+        End If
+    End If
     Close #sfH
 End Sub
 

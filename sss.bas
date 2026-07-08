@@ -556,6 +556,7 @@ END IF
                         IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
                         IF (camUpWas AND held(E3D_KEY_UP) = 0) OR (camDnWas AND held(E3D_KEY_DOWN) = 0) THEN
                             camAngleLocked = -1
+                            IF debugMode THEN DBG_Print "[cam] phi=" + LTRIM$(STR$(camOrbitPhi)) + "  r=" + LTRIM$(STR$(camOrbitR))
                             SETTINGS_Save
                         END IF
                         camUpWas = held(E3D_KEY_UP) : camDnWas = held(E3D_KEY_DOWN)
