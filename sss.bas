@@ -171,6 +171,11 @@ DIM SHARED tt AS SINGLE
 DIM SHARED spawnTimer AS SINGLE
 DIM SHARED camLagY AS SINGLE, camLagZ AS SINGLE
 DIM SHARED camFwdY AS SINGLE, camFwdZ AS SINGLE
+DIM SHARED camOrbitMode   AS INTEGER
+DIM SHARED camAngleLocked AS INTEGER
+DIM SHARED camOrbitTheta  AS SINGLE
+DIM SHARED camOrbitPhi    AS SINGLE
+DIM SHARED camOrbitR      AS SINGLE
 DIM SHARED playerVY AS SINGLE, playerVZ AS SINGLE
 DIM SHARED isManeuver AS INTEGER
 DIM SHARED laserEnergy AS SINGLE : laserEnergy = 100.0
@@ -443,6 +448,10 @@ END IF
     ' MAIN LOOP
     ' ============================================================
     DIM fsKeyWas AS INTEGER
+    DIM tabWas   AS INTEGER
+    DIM rWas     AS INTEGER
+    DIM camUpWas AS INTEGER
+    DIM camDnWas AS INTEGER
     DO
         dbgT0 = TIMER
         ' --- input ---
@@ -496,6 +505,7 @@ END IF
             END IF
 
             ' ESC: rising edge toggles confirm dialog (game only); Y returns to title, Esc/N cancels
+            ' Processed before orbit block so GOTO camRender can't swallow it.
             IF gameState = GS_PLAYING THEN
                 IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN escConfirm = 1 - escConfirm
                 escWas = held(E3D_KEY_ESCAPE)
@@ -513,6 +523,45 @@ END IF
                     _DEST 0
                     _PUTIMAGE , backBuffer, 0
                     EXIT SELECT
+                END IF
+            END IF
+
+            ' camera orbit: Tab toggles; arrows set angle; physics paused while active
+            IF gameState = GS_PLAYING THEN
+                IF held(E3D_KEY_TAB) AND NOT tabWas THEN
+                    camOrbitMode = 1 - camOrbitMode
+                    IF camOrbitMode THEN
+                        camOrbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
+                        camOrbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
+                        camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
+                    ELSE
+                        camAngleLocked = -1
+                        SETTINGS_Save
+                    END IF
+                END IF
+                tabWas = held(E3D_KEY_TAB)
+                IF camOrbitMode THEN
+                    IF held(E3D_KEY_R) AND NOT rWas THEN
+                        camOrbitTheta = _PI(1.0)
+                        camOrbitPhi   = _ATAN2(CAM_OFFSET_Y, CAM_OFFSET_X)
+                        camOrbitR     = SQR(CAM_OFFSET_X * CAM_OFFSET_X + CAM_OFFSET_Y * CAM_OFFSET_Y)
+                        camOrbitMode  = 0 : camAngleLocked = 0
+                        SETTINGS_Save
+                    END IF
+                    rWas = held(E3D_KEY_R)
+                    IF camOrbitMode THEN
+                        IF held(E3D_KEY_UP)   THEN camOrbitPhi = camOrbitPhi + 0.008
+                        IF held(E3D_KEY_DOWN) THEN camOrbitPhi = camOrbitPhi - 0.008
+                        IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
+                        IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
+                        IF (camUpWas AND held(E3D_KEY_UP) = 0) OR (camDnWas AND held(E3D_KEY_DOWN) = 0) THEN
+                            camAngleLocked = -1
+                            IF debugMode THEN DBG_Print "[cam] phi=" + LTRIM$(STR$(camOrbitPhi)) + "  r=" + LTRIM$(STR$(camOrbitR))
+                            SETTINGS_Save
+                        END IF
+                        camUpWas = held(E3D_KEY_UP) : camDnWas = held(E3D_KEY_DOWN)
+                        GOTO camRender
+                    END IF
                 END IF
             END IF
 
@@ -553,7 +602,7 @@ END IF
 
             ' --- player thruster trail ---
             IF (INT(tt * 40)) MOD 2 = 0 THEN
-                FX_SpawnBurst player.px - 1.1, player.py, player.pz, 1, 0.007, 18, 6, _RGB(80, 140, 255)
+                FX_SpawnTrail player.px - 1.1, player.py, player.pz, 2, 0.005, 24, 10, _RGB(80, 140, 255), -0.035, playerVY * 0.3 - 0.008, playerVZ * 0.3
             END IF
 
             ' --- spawning ---
@@ -654,6 +703,7 @@ END IF
                 gameOver = 0
             END IF
 
+            camRender:
             ' --------------------------------------------------------
             ' RENDER
             ' --------------------------------------------------------
@@ -676,6 +726,11 @@ END IF
                 cam.target.x = player.px + CAM_LEAD_X
                 cam.target.y = player.py + camFwdY * CAM_LEAD_X
                 cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
+            END IF
+            IF camOrbitMode OR camAngleLocked THEN
+                cam.POS.x = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
+                cam.POS.y = player.py + camOrbitR * SIN(camOrbitPhi)
+                cam.POS.z = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
             END IF
             E3D_MatLookAt cam, viewMat
             E3D_MatMul projMat, viewMat, vpMat
@@ -852,6 +907,12 @@ END IF
 
             ' --- HUD ---
             HUD_Draw
+
+            IF camOrbitMode THEN
+                _DEST backBuffer
+                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4, 160
+                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H + 1, 120
+            END IF
 
             FX_Flash scrW, scrH
 

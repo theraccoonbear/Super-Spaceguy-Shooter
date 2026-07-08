@@ -4,11 +4,19 @@ Sub SETTINGS_Save ()
     Dim sfH As Integer
     sfH = FreeFile
     Open _STARTDIR$ + "/sss_settings.ini" For Output As #sfH
-    Print #sfH, "music="     + LTrim$(Str$(volMusic))
-    Print #sfH, "sfx="       + LTrim$(Str$(volSfx))
-    Print #sfH, "speech="    + LTrim$(Str$(volSpeech))
-    Print #sfH, "narration="   + LTrim$(Str$(settingNarration))
-    Print #sfH, "fullscreen="  + LTrim$(Str$(settingFullscreen))
+    Print #sfH, "music="      + LTrim$(Str$(volMusic))
+    Print #sfH, "sfx="        + LTrim$(Str$(volSfx))
+    Print #sfH, "speech="     + LTrim$(Str$(volSpeech))
+    Print #sfH, "narration="  + LTrim$(Str$(settingNarration))
+    Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
+    If camAngleLocked Then
+        Print #sfH, "cam_theta=" + LTrim$(Str$(camOrbitTheta))
+        Print #sfH, "cam_phi="   + LTrim$(Str$(camOrbitPhi))
+        Print #sfH, "cam_r="     + LTrim$(Str$(camOrbitR))
+        If debugMode Then DBG_Print "[settings] saved  cam_phi=" + LTrim$(Str$(camOrbitPhi)) + "  cam_r=" + LTrim$(Str$(camOrbitR))
+    Else
+        If debugMode Then DBG_Print "[settings] saved"
+    End If
     Close #sfH
 End Sub
 
@@ -23,17 +31,37 @@ Sub SETTINGS_Load ()
         If sfEq > 0 Then
             sfKey = Left$(sfLine, sfEq - 1)
             sfVal = Val(Mid$(sfLine, sfEq + 1))
-            If sfVal < 0 Then sfVal = 0
-            If sfVal > 1 Then sfVal = 1
             Select Case sfKey
-                Case "music"     : volMusic          = sfVal
-                Case "sfx"       : volSfx            = sfVal
-                Case "speech"    : volSpeech          = sfVal
-                Case "narration"   : settingNarration   = Int(sfVal + 0.5)
-                Case "fullscreen"  : settingFullscreen  = Int(sfVal + 0.5)
+                Case "cam_theta"
+                    camOrbitTheta = sfVal
+                    camAngleLocked = -1
+                Case "cam_phi"
+                    If sfVal < -1.5 Then sfVal = -1.5
+                    If sfVal >  1.5 Then sfVal =  1.5
+                    camOrbitPhi = sfVal
+                Case "cam_r"
+                    If sfVal < 0.5 Then sfVal = 0.5
+                    camOrbitR = sfVal
+                Case Else
+                    If sfVal < 0 Then sfVal = 0
+                    If sfVal > 1 Then sfVal = 1
+                    Select Case sfKey
+                        Case "music"      : volMusic          = sfVal
+                        Case "sfx"        : volSfx            = sfVal
+                        Case "speech"     : volSpeech         = sfVal
+                        Case "narration"  : settingNarration  = Int(sfVal + 0.5)
+                        Case "fullscreen" : settingFullscreen = Int(sfVal + 0.5)
+                    End Select
             End Select
         End If
     Loop
+    If debugMode Then
+        If camAngleLocked Then
+            DBG_Print "[settings] loaded  cam_phi=" + LTrim$(Str$(camOrbitPhi)) + "  cam_r=" + LTrim$(Str$(camOrbitR))
+        Else
+            DBG_Print "[settings] loaded"
+        End If
+    End If
     Close #sfH
 End Sub
 
