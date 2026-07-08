@@ -224,6 +224,8 @@ DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED godMode    AS INTEGER
 DIM SHARED settingNerf AS INTEGER
 DIM SHARED debugMode  AS INTEGER
+DIM SHARED held(0 TO 32767) AS INTEGER
+DIM SHARED fireTimer  AS SINGLE
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -329,9 +331,6 @@ planetNames(4) = GTEXT_Var$("planet4")
 planetNames(5) = GTEXT_Var$("planet5")
 planetNames(6) = GTEXT_Var$("planet6")
 
-' --- input ---
-DIM SHARED held(0 TO 32767) AS INTEGER
-
 ' --- camera ---
 DIM SHARED cam AS E3D_Camera
 E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
@@ -383,7 +382,6 @@ StarfieldReset cam.POS.x, cam.POS.y, cam.POS.z
 
 ' scratch vars
 DIM SHARED gameOver AS INTEGER
-DIM fireTimer  AS SINGLE
 DIM hit        AS INTEGER
 DIM i AS INTEGER, j AS INTEGER
 DIM objMat AS E3D_Matrix4
