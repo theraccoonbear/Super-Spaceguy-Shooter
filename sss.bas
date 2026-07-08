@@ -171,6 +171,11 @@ DIM SHARED tt AS SINGLE
 DIM SHARED spawnTimer AS SINGLE
 DIM SHARED camLagY AS SINGLE, camLagZ AS SINGLE
 DIM SHARED camFwdY AS SINGLE, camFwdZ AS SINGLE
+DIM SHARED camOrbitMode   AS INTEGER
+DIM SHARED camAngleLocked AS INTEGER
+DIM SHARED camOrbitTheta  AS SINGLE
+DIM SHARED camOrbitPhi    AS SINGLE
+DIM SHARED camOrbitR      AS SINGLE
 DIM SHARED playerVY AS SINGLE, playerVZ AS SINGLE
 DIM SHARED isManeuver AS INTEGER
 DIM SHARED laserEnergy AS SINGLE : laserEnergy = 100.0
@@ -330,13 +335,6 @@ E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 
 DIM SHARED projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
 E3D_MatPerspective cam, scrW / scrH, projMat
-
-' --- camera orbit mode ---
-DIM SHARED camOrbitMode   AS INTEGER  ' -1 while adjusting (physics paused)
-DIM SHARED camAngleLocked AS INTEGER  ' -1 once user has set an angle; holds it during play
-DIM SHARED camOrbitTheta  AS SINGLE
-DIM SHARED camOrbitPhi    AS SINGLE
-DIM SHARED camOrbitR      AS SINGLE
 
 ' --- light (coming from upper-left-front) ---
 DIM lightDir AS E3D_Coord
