@@ -64,7 +64,7 @@ Sub LEADIN_Update()
         liCard = liCard + 1
         If liCard > 3 Then
             liCard = 0
-            _FREEIMAGE liImg(1) : _FREEIMAGE liImg(2) : _FREEIMAGE liImg(2)
+            _FREEIMAGE liImg(1) : _FREEIMAGE liImg(2) : _FREEIMAGE liImg(3)
             SEQ_Advance
         Else
             liTimer = 0
