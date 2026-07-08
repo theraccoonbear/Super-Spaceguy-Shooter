@@ -607,7 +607,7 @@ END IF
 
             ' --- player thruster trail ---
             IF (INT(tt * 40)) MOD 2 = 0 THEN
-                FX_SpawnBurst player.px - 1.1, player.py, player.pz, 1, 0.007, 18, 6, _RGB(80, 140, 255)
+                FX_SpawnTrail player.px - 1.1, player.py, player.pz, 2, 0.005, 24, 10, _RGB(80, 140, 255), -0.035, playerVY * 0.3 - 0.008, playerVZ * 0.3
             END IF
 
             ' --- spawning ---

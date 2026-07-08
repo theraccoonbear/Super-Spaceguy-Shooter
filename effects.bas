@@ -34,6 +34,25 @@ Sub FX_SpawnBurst(cx As Single, cy As Single, cz As Single, n As Integer, spd As
     Next i
 End Sub
 
+Sub FX_SpawnTrail(cx As Single, cy As Single, cz As Single, n As Integer, spd As Single, lifBase As Integer, lifVar As Integer, clr As Long, bvx As Single, bvy As Single, bvz As Single)
+    Dim fsti As Integer, fstFound As Integer
+    fstFound = 0
+    For fsti = 1 To FX_MAX_PARTICLES
+        If fxPartActive(fsti) = 0 And fstFound < n Then
+            fxPartActive(fsti) = -1
+            fxPartPX(fsti)     = cx
+            fxPartPY(fsti)     = cy
+            fxPartPZ(fsti)     = cz
+            fxPartVX(fsti)     = bvx + (Rnd - 0.5) * spd
+            fxPartVY(fsti)     = bvy + (Rnd - 0.5) * spd
+            fxPartVZ(fsti)     = bvz + (Rnd - 0.5) * spd
+            fxPartLife(fsti)   = lifBase + Int(Rnd * lifVar)
+            fxPartClr(fsti)    = clr
+            fstFound = fstFound + 1
+        End If
+    Next fsti
+End Sub
+
 Sub FX_Update()
     Dim i As Integer
     For i = 1 To FX_MAX_PARTICLES
