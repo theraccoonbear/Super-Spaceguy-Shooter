@@ -63,8 +63,8 @@ Sub PLAYER_Fire
     Dim plfAaDX As Single, plfAaDY As Single, plfAaDZ As Single, plfAaDist As Single
     Dim plfAaBest As Single, plfAaNY As Single, plfAaNZ As Single
 
-    If Not (held(E3D_KEY_SPACE) And invTimer = 0 And gameState = GS_PLAYING) Then Exit Sub
-    If Not (fireTimer <= 0 And laserEnergy >= LASER_COST) Then Exit Sub
+    If held(E3D_KEY_SPACE) = 0 Or invTimer > 0 Or gameState <> GS_PLAYING Then Exit Sub
+    If fireTimer > 0 Or laserEnergy < LASER_COST Then Exit Sub
 
     For plfI = 1 To MAX_BULLETS
         If bullets(plfI).active = 0 Then
