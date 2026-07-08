@@ -449,6 +449,7 @@ END IF
     ' ============================================================
     DIM fsKeyWas AS INTEGER
     DIM tabWas   AS INTEGER
+    DIM rWas     AS INTEGER
     DO
         dbgT0 = TIMER
         ' --- input ---
@@ -538,13 +539,23 @@ END IF
                 END IF
                 tabWas = held(E3D_KEY_TAB)
                 IF camOrbitMode THEN
-                    IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
-                    IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
-                    IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
-                    IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
-                    IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
-                    IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
-                    GOTO camRender
+                    IF held(E3D_KEY_R) AND NOT rWas THEN
+                        camOrbitTheta = _PI(1.0)
+                        camOrbitPhi   = _ATAN2(CAM_OFFSET_Y, CAM_OFFSET_X)
+                        camOrbitR     = SQR(CAM_OFFSET_X * CAM_OFFSET_X + CAM_OFFSET_Y * CAM_OFFSET_Y)
+                        camOrbitMode  = 0 : camAngleLocked = 0
+                        SETTINGS_Save
+                    END IF
+                    rWas = held(E3D_KEY_R)
+                    IF camOrbitMode THEN
+                        IF held(E3D_KEY_LEFT)  THEN camOrbitTheta = camOrbitTheta - 0.03
+                        IF held(E3D_KEY_RIGHT) THEN camOrbitTheta = camOrbitTheta + 0.03
+                        IF held(E3D_KEY_UP)    THEN camOrbitPhi   = camOrbitPhi   + 0.03
+                        IF held(E3D_KEY_DOWN)  THEN camOrbitPhi   = camOrbitPhi   - 0.03
+                        IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
+                        IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
+                        GOTO camRender
+                    END IF
                 END IF
             END IF
 
