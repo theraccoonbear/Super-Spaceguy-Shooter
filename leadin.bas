@@ -8,7 +8,7 @@
 
 Dim Shared liCard  As Integer    ' 1=ctut, 2=cogikel, 0=done
 Dim Shared liTimer As Integer
-Dim Shared liImg(1 To 2) As Long ' loaded PNG handles
+Dim Shared liImg(1 To 3) As Long ' loaded PNG handles
 
 Const LI_ENABLED = 1             ' set to 0 to skip lead-ins entirely
 Const LI_HOLD    = 200           ' frames to hold each card (~3s at 60fps)
@@ -16,13 +16,15 @@ Const LI_FADE    = 35            ' fade-in / fade-out window in frames
 
 Sub LEADIN_Init()
     If LI_ENABLED = 0 Then SEQ_Advance : Exit Sub
-    Dim liCtutData As String, liCogData As String
+    Dim liCtutData As String, liCogData As String, liJJData As String
     liCtutData = _EMBEDDED$("CTUTPNG")
     liCogData  = _EMBEDDED$("COGIKELPNG")
-    DBG_Print "[leadin] ctut embed len=" + LTrim$(Str$(Len(liCtutData))) + "  cogikel embed len=" + LTrim$(Str$(Len(liCogData)))
+    liJJData  = _EMBEDDED$("JUSTJULIAING")
+    DBG_Print "[leadin] ctut embed len=" + LTrim$(Str$(Len(liCtutData))) + "  cogikel embed len=" + LTrim$(Str$(Len(liCogData))) + "  JJ embed len=" + LTrim$(Str$(Len(liJJData)))
     liImg(1) = _LOADIMAGE(liCtutData, 32, "memory")
     liImg(2) = _LOADIMAGE(liCogData,  32, "memory")
-    DBG_Print "[leadin] img(1)=" + LTrim$(Str$(liImg(1))) + "  img(2)=" + LTrim$(Str$(liImg(2)))
+    liImg(3) = _LOADIMAGE(liJJData,  32, "memory")
+    DBG_Print "[leadin] img(1)=" + LTrim$(Str$(liImg(1))) + "  img(2)=" + LTrim$(Str$(liImg(2))) + "  img(3)=" + LTrim$(Str$(liImg(3)))
     liCard = 1 : liTimer = 0
 End Sub
 
@@ -60,9 +62,9 @@ Sub LEADIN_Update()
     liKey = _KEYHIT
     If liTimer >= LI_HOLD Or liKey > 0 Then
         liCard = liCard + 1
-        If liCard > 2 Then
+        If liCard > 3 Then
             liCard = 0
-            _FREEIMAGE liImg(1) : _FREEIMAGE liImg(2)
+            _FREEIMAGE liImg(1) : _FREEIMAGE liImg(2) : _FREEIMAGE liImg(3)
             SEQ_Advance
         Else
             liTimer = 0
