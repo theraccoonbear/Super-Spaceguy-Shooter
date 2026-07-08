@@ -1064,12 +1064,9 @@ END IF
                 cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
             END IF
             IF camOrbitMode OR camAngleLocked THEN
-                cam.POS.x    = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
-                cam.POS.y    = player.py + camOrbitR * SIN(camOrbitPhi)
-                cam.POS.z    = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
-                cam.target.x = player.px
-                cam.target.y = player.py
-                cam.target.z = player.pz
+                cam.POS.x = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
+                cam.POS.y = player.py + camOrbitR * SIN(camOrbitPhi)
+                cam.POS.z = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
             END IF
             E3D_MatLookAt cam, viewMat
             E3D_MatMul projMat, viewMat, vpMat
@@ -1250,7 +1247,7 @@ END IF
             IF camOrbitMode THEN
                 _DEST backBuffer
                 FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4, 160
-                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:EXIT  ARROWS:ROTATE", 4, 4 + FONT_CHAR_H + 1, 120
+                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  ARROWS:ROTATE  R:REVERT", 4, 4 + FONT_CHAR_H + 1, 120
             END IF
 
             FX_Flash scrW, scrH
