@@ -450,6 +450,8 @@ END IF
     DIM fsKeyWas AS INTEGER
     DIM tabWas   AS INTEGER
     DIM rWas     AS INTEGER
+    DIM camUpWas AS INTEGER
+    DIM camDnWas AS INTEGER
     DO
         dbgT0 = TIMER
         ' --- input ---
@@ -552,6 +554,11 @@ END IF
                         IF held(E3D_KEY_DOWN) THEN camOrbitPhi = camOrbitPhi - 0.008
                         IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
                         IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
+                        IF (camUpWas AND held(E3D_KEY_UP) = 0) OR (camDnWas AND held(E3D_KEY_DOWN) = 0) THEN
+                            camAngleLocked = -1
+                            SETTINGS_Save
+                        END IF
+                        camUpWas = held(E3D_KEY_UP) : camDnWas = held(E3D_KEY_DOWN)
                         GOTO camRender
                     END IF
                 END IF
