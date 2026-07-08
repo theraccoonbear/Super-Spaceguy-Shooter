@@ -225,7 +225,10 @@ DIM SHARED godMode    AS INTEGER
 DIM SHARED settingNerf AS INTEGER
 DIM SHARED debugMode  AS INTEGER
 DIM SHARED held(0 TO 32767) AS INTEGER
-DIM SHARED fireTimer  AS SINGLE
+DIM SHARED fireTimer      AS SINGLE
+DIM SHARED bossFireTimer  AS SINGLE
+DIM SHARED bossShots      AS INTEGER
+DIM SHARED bossAngle      AS SINGLE
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -401,9 +404,6 @@ DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
 DIM pjFade AS SINGLE
-DIM bossFireTimer AS SINGLE
-DIM bossShots AS INTEGER
-DIM bossAngle AS SINGLE
 DIM highScore AS LONG
 DIM gameOverDelay AS INTEGER
 DIM escConfirm AS INTEGER
@@ -493,6 +493,7 @@ END IF
             ' ESC during planet/cinematic: skip straight to title (no confirm needed)
             IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
                 IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN
+                    SEQ_RewindToTitle
                     gameState = GS_TITLE
                     planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
                     MUS_SetCue "title"
@@ -725,7 +726,7 @@ END IF
                 cam.target.y = player.py + camFwdY * CAM_LEAD_X
                 cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
             END IF
-            IF camOrbitMode OR camAngleLocked THEN
+            IF (camOrbitMode OR camAngleLocked) AND gameState <> GS_CINEMATIC THEN
                 cam.POS.x = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
                 cam.POS.y = player.py + camOrbitR * SIN(camOrbitPhi)
                 cam.POS.z = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
