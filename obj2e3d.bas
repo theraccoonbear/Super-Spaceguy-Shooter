@@ -5,8 +5,8 @@
 '   slot_name: e.g. PLAYER
 ' Output: <slot_name>.e3d in the same directory as the binary.
 
-'$INCLUDE:'engine3d.bi'
-'$INCLUDE:'obj.bas'
+'$INCLUDE:'src/engine3d.bi'
+'$INCLUDE:'src/obj.bas'
 
 DIM cmdStr   AS STRING  : cmdStr   = LTRIM$(RTRIM$(COMMAND$))
 DIM objPath  AS STRING

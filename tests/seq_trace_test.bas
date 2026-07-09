@@ -42,7 +42,7 @@ Sub CRAWL_Prep(cpKey As String, cpStartY As Single)
 End Sub
 
 ' ── real sequencer logic ─────────────────────────────────────────────────────
-'$INCLUDE:'../sequence.bas'
+'$INCLUDE:'../src/sequence.bas'
 
 ' ── test helpers ────────────────────────────────────────────────────────────
 Dim Shared stPassed As Integer, stFailed As Integer
