@@ -512,9 +512,9 @@ END IF
                     END IF
                     IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
                     _DEST backBuffer
-                    UI_DrawPanel scrW\2 - 76, scrH\2 - 28, scrW\2 + 76, scrH\2 + 28, "ABORT MISSION"
-                    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 9, scrW, 255
-                    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 5, scrW, 255
+                    UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 42, "ABORT MISSION"
+                    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 2, scrW, 255
+                    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 18, scrW, 255
                     _DEST 0
                     _PUTIMAGE , backBuffer, 0
                     EXIT SELECT
@@ -942,11 +942,11 @@ END IF
             FONT_PrintAlpha fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H, 255
             FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
             IF titleEscConfirm THEN
-                UI_DrawPanel scrW\2 - 76, scrH\2 - 48, scrW\2 + 76, scrH\2 + 48, "COMMAND CONSOLE"
-                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "A   ABOUT",       scrH\2 - 30, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 - 16, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 -  2, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 12, scrW, 255
+                UI_DrawPanel scrW\2 - 76, scrH\2 - 52, scrW\2 + 76, scrH\2 + 52, "COMMAND CONSOLE"
+                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "A   ABOUT",       scrH\2 - 26, scrW, 255
+                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 -  6, scrW, 255
+                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 + 14, scrW, 255
+                FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 34, scrW, 255
             END IF
             _DEST 0
             _PUTIMAGE , backBuffer, 0
@@ -1220,16 +1220,16 @@ CASE GS_GAMEOVER
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
     E3D_StarfieldDraw vpMat, scrW, scrH
     gameOverDelay = gameOverDelay - 1
-    UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 38, scrW \ 2 + 88, scrH \ 2 + 20, "GAME OVER"
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 8, scrW, 255
+    UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 44, scrW \ 2 + 88, scrH \ 2 + 44, "GAME OVER"
+    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 18, scrW, 255
     IF score >= highScore THEN
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 8, scrW, 255
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 2, scrW, 255
     ELSE
-        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 8, scrW, 255
+        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 2, scrW, 255
     END IF
     IF gameOverDelay <= 0 THEN
         throbBright = INT(170 + 85 * SIN(tt * 5))
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", scrH \ 2 + 28, scrW, throbBright
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", scrH \ 2 + 22, scrW, throbBright
         IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)

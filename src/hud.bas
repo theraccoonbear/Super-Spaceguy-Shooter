@@ -195,7 +195,7 @@ Sub HUD_Draw
     ' invincibility lead-in
     If invTimer > 0 And gameState = GS_PLAYING Then
         hdThrobBright = INT(160 + 95 * SIN(tt * 10))
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GET READY", scrH / 2 - 8, scrW, hdThrobBright
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GET READY", scrH * 2 \ 3, scrW, hdThrobBright
     End If
 
 End Sub
