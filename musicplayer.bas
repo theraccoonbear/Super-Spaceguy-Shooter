@@ -1,6 +1,6 @@
-' tools/musicplayer.bas -- standalone preview tool for music.mus cues
+' musicplayer.bas -- standalone preview tool for music.mus cues
 '
-' Build: from repo root — <qb64pe-dir>/qb64pe -x tools/musicplayer.bas -o builds/musicplayer
+' Build: from repo root — <qb64pe-dir>/qb64pe -x musicplayer.bas -o builds/musicplayer
 '
 ' Controls: up/down to select, space/enter to play, ESC to quit
 $EMBED:'assets/music.mus':'MUSICDATA'
@@ -12,8 +12,8 @@ Dim Shared volSfx    As Single : volSfx    = 0.9
 Dim Shared volSpeech As Single : volSpeech = 0.0
 Dim Shared spkSampleOut As Single
 
-'$INCLUDE:'../snd.bas'
-'$INCLUDE:'../music.bas'
+'$INCLUDE:'src/snd.bas'
+'$INCLUDE:'src/music.bas'
 
 ' ---- main ----
 
