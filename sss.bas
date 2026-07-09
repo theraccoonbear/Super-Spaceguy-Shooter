@@ -230,7 +230,13 @@ DIM SHARED fireTimer      AS SINGLE
 DIM SHARED bossFireTimer  AS SINGLE
 DIM SHARED bossShots      AS INTEGER
 DIM SHARED bossAngle      AS SINGLE
-DIM SHARED dbgTtyOK       AS INTEGER
+DIM SHARED dbgTtyOK          AS INTEGER
+DIM SHARED telemOn           AS INTEGER : telemOn = 1
+DIM SHARED telemKills        AS LONG
+DIM SHARED telemBossReached  AS INTEGER
+DIM SHARED telemBossPhaseLog AS INTEGER
+DIM SHARED telemDeathCause$
+DIM SHARED telemSession$
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -256,6 +262,7 @@ DIM SHARED boxLib(1 TO MESH_COUNT) AS E3D_AABB
 '$INCLUDE:'player.bas'
 '$INCLUDE:'enemy.bas'
 '$INCLUDE:'boss.bas'
+'$INCLUDE:'telemetry.bas'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
@@ -445,6 +452,7 @@ fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 SND_Init
 SPK_Init
 SETTINGS_Load
+TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 SEQ_Init
 IF ssCmdScene <> "" THEN
@@ -1383,10 +1391,13 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit
+    TELEM_PlayerDamaged
     IF lives <= 0 THEN
         shipLives = shipLives - 1
         IF shipLives <= 0 THEN
             gameOver = -1
+            TELEM_PlayerDeath
+            TELEM_SessionEnd
         ELSE
             lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
         END IF
