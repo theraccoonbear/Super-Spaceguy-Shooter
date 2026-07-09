@@ -20,11 +20,11 @@ Sub LEADIN_Init()
     liCtutData = _EMBEDDED$("CTUTPNG")
     liCogData  = _EMBEDDED$("COGIKELPNG")
     liJJData  = _EMBEDDED$("JUSTJULIAING")
-    DBG_Print "[leadin] ctut embed len=" + LTrim$(Str$(Len(liCtutData))) + "  cogikel embed len=" + LTrim$(Str$(Len(liCogData))) + "  JJ embed len=" + LTrim$(Str$(Len(liJJData)))
+    If debugMode Then DBG_Print "[leadin] ctut embed len=" + LTrim$(Str$(Len(liCtutData))) + "  cogikel embed len=" + LTrim$(Str$(Len(liCogData))) + "  JJ embed len=" + LTrim$(Str$(Len(liJJData)))
     liImg(1) = _LOADIMAGE(liCtutData, 32, "memory")
     liImg(2) = _LOADIMAGE(liCogData,  32, "memory")
     liImg(3) = _LOADIMAGE(liJJData,  32, "memory")
-    DBG_Print "[leadin] img(1)=" + LTrim$(Str$(liImg(1))) + "  img(2)=" + LTrim$(Str$(liImg(2))) + "  img(3)=" + LTrim$(Str$(liImg(3)))
+    If debugMode Then DBG_Print "[leadin] img(1)=" + LTrim$(Str$(liImg(1))) + "  img(2)=" + LTrim$(Str$(liImg(2))) + "  img(3)=" + LTrim$(Str$(liImg(3)))
     liCard = 1 : liTimer = 0
 End Sub
 
