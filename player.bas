@@ -56,6 +56,65 @@ Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrR
     player.rz = player.rz + (plrTgtRz - player.rz) * ATTITUDE_LERP
 End Sub
 
+Sub PLAYER_Fire
+    Dim plfI As Integer, plfAaI As Integer
+    Dim plfRx As Single, plfRy As Single, plfRz As Single
+    Dim plfNx As Single, plfNy As Single, plfNz As Single
+    Dim plfAaDX As Single, plfAaDY As Single, plfAaDZ As Single, plfAaDist As Single
+    Dim plfAaBest As Single, plfAaNY As Single, plfAaNZ As Single
+
+    If held(E3D_KEY_SPACE) = 0 Or invTimer > 0 Or gameState <> GS_PLAYING Then Exit Sub
+    If fireTimer > 0 Or laserEnergy < LASER_COST Then Exit Sub
+
+    For plfI = 1 To MAX_BULLETS
+        If bullets(plfI).active = 0 Then
+            bullets(plfI).active  = -1
+            bullets(plfI).meshIdx = MESH_BULLET
+            plfRx = player.rx * _PI / 180.0
+            plfRy = player.ry * _PI / 180.0
+            plfRz = player.rz * _PI / 180.0
+            plfNx = COS(plfRz) * COS(plfRy)
+            plfNy = COS(plfRx)*SIN(plfRz)*COS(plfRy) + SIN(plfRx)*SIN(plfRy)
+            plfNz = SIN(plfRx)*SIN(plfRz)*COS(plfRy) - COS(plfRx)*SIN(plfRy)
+            bullets(plfI).px = player.px + plfNx * (BULLET_TRAIL_LEN + 1.0)
+            bullets(plfI).py = player.py + plfNy * (BULLET_TRAIL_LEN + 1.0)
+            bullets(plfI).pz = player.pz + plfNz * (BULLET_TRAIL_LEN + 1.0)
+            ' aim assist: nudge toward nearest enemy within ~20 deg forward cone
+            plfAaBest = 1e9
+            For plfAaI = 1 To MAX_ENEMIES
+                If enemies(plfAaI).active Then
+                    plfAaDX = enemies(plfAaI).px - player.px
+                    plfAaDY = enemies(plfAaI).py - player.py
+                    plfAaDZ = enemies(plfAaI).pz - player.pz
+                    plfAaDist = SQR(plfAaDX*plfAaDX + plfAaDY*plfAaDY + plfAaDZ*plfAaDZ)
+                    If plfAaDist > 0.1 And plfAaDX > 0 Then
+                        If (plfAaDX / plfAaDist) > 0.94 Then  ' cos(20°) ≈ 0.94
+                            If plfAaDist < plfAaBest Then
+                                plfAaBest = plfAaDist
+                                plfAaNY = plfAaDY / plfAaDist
+                                plfAaNZ = plfAaDZ / plfAaDist
+                            End If
+                        End If
+                    End If
+                End If
+            Next plfAaI
+            If plfAaBest < 1e9 Then
+                plfNy = plfNy + (plfAaNY - plfNy) * AIM_ASSIST
+                plfNz = plfNz + (plfAaNZ - plfNz) * AIM_ASSIST
+            End If
+            bullets(plfI).vx   = plfNx * BULLET_SPEED
+            bullets(plfI).vy   = plfNy * BULLET_SPEED
+            bullets(plfI).vz   = plfNz * BULLET_SPEED
+            bullets(plfI).life = BULLET_RANGE / BULLET_SPEED
+            bullets(plfI).scl  = 1.0
+            fireTimer   = FIRE_COOLDOWN
+            laserEnergy = laserEnergy - LASER_COST
+            SND_Shoot
+            Exit For
+        End If
+    Next plfI
+End Sub
+
 Sub PLAYER_CamUpdate
     Dim plcFwdTgtY As Single, plcFwdTgtZ As Single
 
