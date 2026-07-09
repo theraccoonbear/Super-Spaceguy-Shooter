@@ -3,13 +3,7 @@
 ' Each sphere has a unique randomized color palette.
 ' Controls: = add sphere   - remove sphere   arrows orbit camera   ESC/Q quit
 
-'$INCLUDE:'types.bi'
-'$INCLUDE:'poly.bas'
-'$INCLUDE:'matrix.bas'
-'$INCLUDE:'camera.bas'
-'$INCLUDE:'mesh.bas'
-'$INCLUDE:'object.bas'
-'$INCLUDE:'scene.bas'
+'$INCLUDE:'src/engine3d.bi'
 
 Const SCR_W    = 320
 Const SCR_H    = 240
