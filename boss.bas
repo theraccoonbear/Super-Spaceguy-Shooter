@@ -148,6 +148,7 @@ Sub BOSS_Update
             bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, boxLib(MESH_BULLET), bssHit
             If bssHit Then
                 bullets(bssJ).active = 0
+                telemShotsHit = telemShotsHit + 1
                 bossHP = bossHP - 1
                 fxShakeTimer = 2
                 SND_Boom

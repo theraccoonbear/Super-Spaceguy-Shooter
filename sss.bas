@@ -237,6 +237,9 @@ DIM SHARED telemBossReached  AS INTEGER
 DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause$
 DIM SHARED telemSession$
+DIM SHARED telemShotsFired   AS LONG
+DIM SHARED telemShotsHit     AS LONG
+DIM SHARED telemEscapes      AS LONG
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -604,7 +607,11 @@ END IF
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
                 IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
-                IF fuelLevel <= 0 THEN fuelLevel = 0 : fuelStranded = -1
+                IF fuelLevel <= 0 THEN
+                    fuelLevel = 0
+                    IF fuelStranded = 0 THEN TELEM_FuelExhausted
+                    fuelStranded = -1
+                END IF
             END IF
             IF godMode THEN
                 lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
@@ -701,6 +708,7 @@ END IF
                         IF lives > 100 THEN lives = 100
                         score = score + SCORE_POWERUP
                         SND_Pup
+                        TELEM_PowerupCollected
                     END IF
                 END IF
             NEXT i
