@@ -15,8 +15,8 @@ Dim Shared sssBlkStore$
 Dim Shared sssRawBlocks$
 
 Sub GTEXT_Log(glgMsg As String)
+    If dbgTtyOK = 0 Then Exit Sub
     Dim glgF As Integer
-    If Environ$("TERM") = "" Then Exit Sub
     glgF = FreeFile
     Open "/dev/tty" For Append As #glgF
     Print #glgF, "[gtext] " + glgMsg

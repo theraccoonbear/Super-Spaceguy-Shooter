@@ -12,13 +12,14 @@ $Resize:stretch
 $EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
 $EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
 $EMBED:'assets/sss-title-final.png':'TITLEIMG'
+$EMBED:'assets/just_juliaing.png':'JUSTJULIAING'
 $EMBED:'assets/planet-01-clean.png':'PLANET01'
 $EMBED:'assets/planet-02-clean.png':'PLANET02'
 $EMBED:'assets/planet-03-clean.png':'PLANET03'
 $EMBED:'assets/planet-04-clean.png':'PLANET04'
 $EMBED:'assets/planet-05-clean.png':'PLANET05'
 $EMBED:'assets/planet-06-clean.png':'PLANET06'
-$EMBED:'assets/grotuk2.png':'EMPERORIMG'
+$EMBED:'assets/grotuk.png':'EMPERORIMG'
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
@@ -229,6 +230,7 @@ DIM SHARED fireTimer      AS SINGLE
 DIM SHARED bossFireTimer  AS SINGLE
 DIM SHARED bossShots      AS INTEGER
 DIM SHARED bossAngle      AS SINGLE
+DIM SHARED dbgTtyOK       AS INTEGER
 '$INCLUDE:'version.bas'
 '$INCLUDE:'engine3d.bi'
 '$INCLUDE:'obj.bas'
@@ -277,6 +279,19 @@ END IF
 godMode    = (INSTR(ssCmdLine, "--god")   > 0)
 settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
 debugMode   = (INSTR(ssCmdLine, "--debug") > 0)
+
+' Probe /dev/tty once at startup; DBG_Print and GTEXT_Log check this flag.
+' Silently skips terminal output when launched without a controlling terminal
+' (e.g. double-click from a GUI file manager) instead of popping error dialogs.
+DIM dbgTtyProbe AS INTEGER : dbgTtyProbe = FREEFILE
+ON ERROR GOTO dbgTtyFail
+OPEN "/dev/tty" FOR APPEND AS #dbgTtyProbe : CLOSE #dbgTtyProbe
+ON ERROR GOTO 0
+dbgTtyOK = -1
+GOTO dbgTtyDone
+dbgTtyFail:
+ON ERROR GOTO 0
+dbgTtyDone:
 
 DIM ssCmdScene AS STRING
 DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
@@ -1379,6 +1394,7 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
 END SUB
 
 SUB DBG_Print(dbgMsg AS STRING)
+    IF dbgTtyOK = 0 THEN EXIT SUB
     DIM dbgF AS INTEGER
     dbgF = FreeFile
     OPEN "/dev/tty" FOR APPEND AS #dbgF
