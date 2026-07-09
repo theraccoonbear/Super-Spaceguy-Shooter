@@ -37,6 +37,7 @@ End Sub
 
 Sub GAME_NewGame
     GAME_ResetState
+    TELEM_SessionStart
     If seqIdx >= 0 And seqIdx < seqCount And seqKind(seqIdx) = SEQ_TITLE Then
         SEQ_Advance
     Else

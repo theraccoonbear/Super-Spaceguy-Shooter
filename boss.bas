@@ -37,6 +37,8 @@ Sub BOSS_Update
             bossTargetZ  = player.pz
             bossState    = 0
             MUS_SetCue "boss"
+            telemBossPhaseLog = 0
+            TELEM_BossReached
         End If
     End If
 
@@ -49,6 +51,10 @@ Sub BOSS_Update
         bossPhase = 2
     Else
         bossPhase = 3
+    End If
+    If bossPhase <> telemBossPhaseLog Then
+        TELEM_BossPhase bossPhase
+        telemBossPhaseLog = bossPhase
     End If
 
     ' X approach: close to combat range, speed scales with phase
@@ -130,7 +136,10 @@ Sub BOSS_Update
     ' player vs boss body
     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
     boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), bssHit
-    If bssHit And invTimer = 0 Then PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+    If bssHit And invTimer = 0 Then
+        telemDeathCause$ = "boss_col"
+        PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+    End If
 
     ' player bullets vs boss
     For bssJ = 1 To MAX_BULLETS
@@ -144,6 +153,7 @@ Sub BOSS_Update
                 SND_Boom
                 If bossHP <= 0 Then
                     If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
+                    TELEM_BossDefeated
                     boss.active  = 0
                     gameState    = GS_PLANET
                     planetTimer  = 1
