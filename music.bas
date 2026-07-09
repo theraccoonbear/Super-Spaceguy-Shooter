@@ -327,7 +327,7 @@ End Sub
 
 Sub MUS_Fill(musFdoSfx As Integer)
     Dim musFillCnt As Integer, musFk As Integer
-    Dim musFsample As Single, musFefx As Single
+    Dim musFsample As Single, musFefx As Single, musFnarBlip As Single
     Dim musFvi As Integer, musFph As Single
     Dim musFnIdx As Integer, musFdbits As Integer
 
@@ -400,7 +400,7 @@ Sub MUS_Fill(musFdoSfx As Integer)
             If sndHihatPos >= SND_HIHAT_LEN Then sndHihatPos = -1
         End If
 
-        musFefx = 0
+        musFefx = 0 : musFnarBlip = 0
         If sndPupPos >= 0 Then
             musFefx = musFefx + sndPup(sndPupPos)
             sndPupPos = sndPupPos + 1
@@ -418,11 +418,11 @@ Sub MUS_Fill(musFdoSfx As Integer)
             End If
             If blpEnv < 0 Then blpEnv = 0
             If blpPos < sndBlipPlosLen Then
-                musFefx = musFefx + (Rnd * 2.0 - 1.0) * blpEnv * 0.22
+                musFnarBlip = (Rnd * 2.0 - 1.0) * blpEnv * 0.22
             Else
                 sndBlipPhase = sndBlipPhase + 6.2832 * sndBlipFreq / SAMPLE_RATE
                 If sndBlipPhase > 6.2832 Then sndBlipPhase = sndBlipPhase - 6.2832
-                musFefx = musFefx + (Sin(sndBlipPhase) + Sin(sndBlipPhase * 2.0) * 0.35) * blpEnv * 0.26
+                musFnarBlip = (Sin(sndBlipPhase) + Sin(sndBlipPhase * 2.0) * 0.35) * blpEnv * 0.26
             End If
             sndBlipTimer = sndBlipTimer - 1
         End If
@@ -450,10 +450,10 @@ Sub MUS_Fill(musFdoSfx As Integer)
             End If
             SPK_Advance
             _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musFefx) * volSfx _
-                  + musFsample * volMusic + spkSampleOut * volSpeech
+                  + musFsample * volMusic + (spkSampleOut + musFnarBlip) * volSpeech
         Else
             SPK_Advance
-            _SNDRAW musFsample * volMusic + musFefx * volSfx + spkSampleOut * volSpeech
+            _SNDRAW musFsample * volMusic + musFefx * volSfx + (spkSampleOut + musFnarBlip) * volSpeech
         End If
     Next musFk
 End Sub
