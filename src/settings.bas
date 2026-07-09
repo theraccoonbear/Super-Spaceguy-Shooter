@@ -201,7 +201,7 @@ Sub OPTS_Update ()
         Else
             oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
         End If
-        FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY + 4, 255
+        FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
     Next oI
 
     FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255

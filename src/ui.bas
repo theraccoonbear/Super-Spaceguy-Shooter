@@ -7,7 +7,7 @@
 Sub UI_DrawPanel(uiX1 As Integer, uiY1 As Integer, uiX2 As Integer, uiY2 As Integer, uiTitle As String)
     Dim uiSy As Integer
     Const UI_CORNER = 7
-    Const UI_TITLE_H = 12
+    Const UI_TITLE_H = 20
 
     ' dark fill
     LINE (uiX1, uiY1)-(uiX2, uiY2), _RGBA(2, 4, 18, 242), BF
