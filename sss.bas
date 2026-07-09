@@ -924,8 +924,8 @@ END IF
 
             IF camOrbitMode THEN
                 _DEST backBuffer
-                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4, 160
-                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H + 1, 120
+                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4 + FONT_CHAR_H + 2, 160
+                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H * 2 + 3, 120
             END IF
 
             FX_Flash scrW, scrH
@@ -954,8 +954,7 @@ END IF
             ' translucent footer so text reads over the image art
             LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
             throbBright = INT(170 + 85 * SIN(tt * 5))
-            COLOR _RGB(throbBright, throbBright, throbBright)
-            _PRINTSTRING (scrW / 2 - 80, 200), "PRESS SPACE TO START"
+            FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO START", 200, scrW, throbBright
             IF highScore > 0 THEN
                 FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 218, scrW, 255
             END IF
@@ -1006,8 +1005,7 @@ CASE GS_INTRO
     FONT_PrintCenteredAlpha fontPalette(14), backBuffer, emperorName, scrH - 34, scrW, 255
     IF introTimer > 60 THEN
         throbBright = INT(160 + 95 * SIN(tt * 5))
-        COLOR _RGB(throbBright, throbBright, throbBright)
-        _PRINTSTRING (scrW\2 - 44, scrH - 14), "PRESS SPACE"
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE", scrH - 14, scrW, throbBright
     END IF
     ' fade in from black
     IF introTimer < 40 THEN
@@ -1241,18 +1239,16 @@ CASE GS_GAMEOVER
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
     E3D_StarfieldDraw vpMat, scrW, scrH
     gameOverDelay = gameOverDelay - 1
-    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GAME OVER", scrH \ 2 - 28, scrW, 255
-    FONT_PrintCenteredAlpha fontPalette(9), backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 8, scrW, 255
+    UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 38, scrW \ 2 + 88, scrH \ 2 + 20, "GAME OVER"
+    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 8, scrW, 255
     IF score >= highScore THEN
-        COLOR _RGB(255, 220, 60)
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 8, scrW, 255
     ELSE
-        COLOR _RGB(170, 170, 170)
+        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 8, scrW, 255
     END IF
-    _PRINTSTRING (scrW / 2 - 48, scrH / 2 +  8), "BEST:   " + LTRIM$(STR$(highScore))
     IF gameOverDelay <= 0 THEN
         throbBright = INT(170 + 85 * SIN(tt * 5))
-        COLOR _RGB(throbBright, throbBright, throbBright)
-        _PRINTSTRING (scrW / 2 - 80, scrH / 2 + 28), "PRESS SPACE TO PLAY"
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", scrH \ 2 + 28, scrW, throbBright
         IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)
