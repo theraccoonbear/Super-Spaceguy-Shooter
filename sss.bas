@@ -240,32 +240,12 @@ DIM SHARED telemSession$
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
-'$INCLUDE:'version.bas'
-'$INCLUDE:'engine3d.bi'
-'$INCLUDE:'obj.bas'
+'$INCLUDE:'src/version.bas'
+'$INCLUDE:'src/engine3d.bi'
+'$INCLUDE:'src/obj.bas'
 DIM SHARED vpMat AS E3D_Matrix4
 DIM SHARED boxLib(1 TO MESH_COUNT) AS E3D_AABB
-'$INCLUDE:'speech.bas'
-'$INCLUDE:'effects.bas'
-'$INCLUDE:'snd.bas'
-'$INCLUDE:'music.bas'
-'$INCLUDE:'behavior.bas'
-'$INCLUDE:'font.bas'
-'$INCLUDE:'gametext.bas'
-'$INCLUDE:'crawl.bas'
-'$INCLUDE:'about.bas'
-'$INCLUDE:'sequence.bas'
-'$INCLUDE:'hud.bas'
-'$INCLUDE:'wave.bas'
-'$INCLUDE:'stage.bas'
-'$INCLUDE:'game.bas'
-'$INCLUDE:'settings.bas'
-'$INCLUDE:'ui.bas'
-'$INCLUDE:'leadin.bas'
-'$INCLUDE:'player.bas'
-'$INCLUDE:'enemy.bas'
-'$INCLUDE:'boss.bas'
-'$INCLUDE:'telemetry.bas'
+'$INCLUDE:'src/game.bi'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
