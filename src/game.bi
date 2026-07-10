@@ -18,3 +18,4 @@
 '$INCLUDE:'player.bas'
 '$INCLUDE:'enemy.bas'
 '$INCLUDE:'boss.bas'
+'$INCLUDE:'telemetry.bas'

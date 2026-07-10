@@ -81,7 +81,7 @@ Sub ENEMY_Update
                 enemyFireTimer(enI) = EFIRE_COOL_MIN + RND * EFIRE_COOL_VAR
             End If
 
-            If enemies(enI).px < -5 Then enemies(enI).active = 0
+            If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped
 
             ' bullet vs enemy
             For enJ = 1 To MAX_BULLETS
@@ -91,8 +91,10 @@ Sub ENEMY_Update
                     If enHit Then
                         enemies(enI).active = 0
                         bullets(enJ).active = 0
+                        telemShotsHit = telemShotsHit + 1
                         score = score + SCORE_ENEMY
                         If debugMode Then DBG_Print "[kill] enemy  score=" + LTrim$(Str$(score))
+                        TELEM_EnemyKilled
                         SND_Boom
                         scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
                         Select Case enemies(enI).meshIdx
@@ -123,6 +125,7 @@ Sub ENEMY_Update
                 End Select
                 SND_Boom
                 FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
+                telemDeathCause$ = "enemy_col"
                 PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
             End If
         End If
@@ -145,6 +148,7 @@ Sub EBULLET_Update
             ebullets(ebI).px, ebullets(ebI).py, ebullets(ebI).pz, boxLib(MESH_EBULLET), ebHit
             If ebHit And invTimer = 0 Then
                 ebullets(ebI).active = 0
+                telemDeathCause$ = "ebullet"
                 PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
             ElseIf Not ebHit Then
                 ' near-miss: fired past player's X plane within a tight lateral window
