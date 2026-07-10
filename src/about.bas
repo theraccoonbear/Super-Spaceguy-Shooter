@@ -94,7 +94,7 @@ Sub ABOUT_Prep()
         aboutLineCount = aboutLineCount + 3
     End If
 
-    aboutScroll = scrH - 22    ' first line appears at bottom of content area
+    aboutScroll = scrH - 40    ' first line enters bottom fade zone immediately
     aboutUpWas = _KEYDOWN(18432) : aboutDnWas = _KEYDOWN(20480) : aboutEscWas = _KEYDOWN(27)
 End Sub
 
@@ -134,7 +134,7 @@ Sub ABOUT_Update()
     ' draw scrolling lines clipped to panel content area (y 22 .. scrH-20)
     For abI = 0 To aboutLineCount - 1
         abY = Int(aboutScroll + abI * ABOUT_LINE_H)
-        If abY > 20 And abY < scrH - 20 Then
+        If abY >= 30 And abY < scrH - 36 Then
             If Len(aboutLines$(abI)) > 0 Then
                 FONT_PrintCenteredRichAlpha fontPalette(), backBuffer, aboutLines$(abI), abY, scrW, 255
             End If
@@ -142,8 +142,8 @@ Sub ABOUT_Update()
     Next abI
 
     ' top fade — masks text emerging from under the title bar
-    Line (17, 21)-(scrW - 18, 38), _RGBA(2, 4, 18, 220), BF
-    Line (17, 38)-(scrW - 18, 50), _RGBA(2, 4, 18, 100), BF
+    Line (17, 29)-(scrW - 18, 44), _RGBA(2, 4, 18, 200), BF
+    Line (17, 44)-(scrW - 18, 56), _RGBA(2, 4, 18, 80), BF
 
     ' bottom fade — masks text near the footer
     Line (17, scrH - 36)-(scrW - 18, scrH - 28), _RGBA(2, 4, 18, 100), BF

@@ -165,6 +165,7 @@ DIM SHARED enemyFireTimer(1 TO MAX_ENEMIES) AS SINGLE
 
 ' --- game state ---
 DIM SHARED score AS LONG
+DIM SHARED highScore AS LONG
 DIM SHARED stageScore AS LONG  : stageScore = BOSS_TRIGGER
 DIM SHARED lives AS INTEGER : lives = 100
 DIM SHARED shipLives AS INTEGER : shipLives = 3
@@ -410,7 +411,6 @@ DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
 DIM pjFade AS SINGLE
-DIM highScore AS LONG
 DIM gameOverDelay AS INTEGER
 DIM escConfirm AS INTEGER
 DIM escWas AS INTEGER
@@ -523,9 +523,9 @@ END IF
                     END IF
                     IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
                     _DEST backBuffer
-                    UI_DrawPanel scrW\2 - 76, scrH\2 - 28, scrW\2 + 76, scrH\2 + 28, "ABORT MISSION"
-                    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 9, scrW, 255
-                    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 5, scrW, 255
+                    UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 42, "ABORT MISSION"
+                    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 2, scrW, 255
+                    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 18, scrW, 255
                     _DEST 0
                     _PUTIMAGE , backBuffer, 0
                     EXIT SELECT
@@ -921,8 +921,8 @@ END IF
 
             IF camOrbitMode THEN
                 _DEST backBuffer
-                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4, 160
-                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H + 1, 120
+                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4 + FONT_CHAR_H + 2, 160
+                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H * 2 + 3, 120
             END IF
 
             FX_Flash scrW, scrH
@@ -951,19 +951,15 @@ END IF
             ' translucent footer so text reads over the image art
             LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
             throbBright = INT(170 + 85 * SIN(tt * 5))
-            COLOR _RGB(throbBright, throbBright, throbBright)
-            _PRINTSTRING (scrW / 2 - 80, 200), "PRESS SPACE TO START"
-            IF highScore > 0 THEN
-                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 218, scrW, 255
-            END IF
+            FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO START", 200, scrW, throbBright
             FONT_PrintAlpha fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H, 255
             FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
             IF titleEscConfirm THEN
-                UI_DrawPanel scrW\2 - 76, scrH\2 - 48, scrW\2 + 76, scrH\2 + 48, "COMMAND CONSOLE"
-                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "A   ABOUT",       scrH\2 - 30, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 - 16, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 -  2, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 12, scrW, 255
+                UI_DrawPanel scrW\2 - 76, scrH\2 - 52, scrW\2 + 76, scrH\2 + 52, "COMMAND CONSOLE"
+                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "A   ABOUT",       scrH\2 - 26, scrW, 255
+                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 -  6, scrW, 255
+                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 + 14, scrW, 255
+                FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 34, scrW, 255
             END IF
             _DEST 0
             _PUTIMAGE , backBuffer, 0
@@ -1003,8 +999,7 @@ CASE GS_INTRO
     FONT_PrintCenteredAlpha fontPalette(14), backBuffer, emperorName, scrH - 34, scrW, 255
     IF introTimer > 60 THEN
         throbBright = INT(160 + 95 * SIN(tt * 5))
-        COLOR _RGB(throbBright, throbBright, throbBright)
-        _PRINTSTRING (scrW\2 - 44, scrH - 14), "PRESS SPACE"
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE", scrH - 14, scrW, throbBright
     END IF
     ' fade in from black
     IF introTimer < 40 THEN
@@ -1238,18 +1233,16 @@ CASE GS_GAMEOVER
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
     E3D_StarfieldDraw vpMat, scrW, scrH
     gameOverDelay = gameOverDelay - 1
-    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GAME OVER", scrH \ 2 - 28, scrW, 255
-    FONT_PrintCenteredAlpha fontPalette(9), backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 8, scrW, 255
+    UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 44, scrW \ 2 + 88, scrH \ 2 + 44, "GAME OVER"
+    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 18, scrW, 255
     IF score >= highScore THEN
-        COLOR _RGB(255, 220, 60)
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 2, scrW, 255
     ELSE
-        COLOR _RGB(170, 170, 170)
+        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 2, scrW, 255
     END IF
-    _PRINTSTRING (scrW / 2 - 48, scrH / 2 +  8), "BEST:   " + LTRIM$(STR$(highScore))
     IF gameOverDelay <= 0 THEN
         throbBright = INT(170 + 85 * SIN(tt * 5))
-        COLOR _RGB(throbBright, throbBright, throbBright)
-        _PRINTSTRING (scrW / 2 - 80, scrH / 2 + 28), "PRESS SPACE TO PLAY"
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", scrH \ 2 + 22, scrW, throbBright
         IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)
