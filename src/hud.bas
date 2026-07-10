@@ -17,6 +17,7 @@ Sub HUD_Draw
     Dim hdBossHPBar As Integer
     Dim hdPartFade As Single
     Dim hdThrobBright As Integer
+    Dim hdHiStr As String
 
     _DEST backBuffer
 
@@ -184,17 +185,22 @@ Sub HUD_Draw
     ' score pop — floats upward, fades
     If scorePopTimer > 0 Then
         hdPartFade = scorePopTimer / 30.0
-        COLOR _RGB(INT(255 * hdPartFade), INT(255 * hdPartFade), INT(80 * hdPartFade))
-        _PRINTSTRING (scrW / 2 - 10, scorePopY), "+" + LTRIM$(STR$(scorePopVal))
+        Dim hdPopAlpha As Integer
+        hdPopAlpha = INT(hdPartFade * 255)
+        If hdPopAlpha > 255 Then hdPopAlpha = 255
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "+" + LTRIM$(STR$(scorePopVal)), INT(scorePopY), scrW, hdPopAlpha
         scorePopY = scorePopY - 0.5
         scorePopTimer = scorePopTimer - 1
     End If
 
+    ' hi score — lower-right, always visible during play
+    hdHiStr = "HI: " + LTRIM$(STR$(highScore))
+    FONT_PrintAlpha fontPalette(8), backBuffer, hdHiStr, scrW - LEN(hdHiStr) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
+
     ' invincibility lead-in
     If invTimer > 0 And gameState = GS_PLAYING Then
         hdThrobBright = INT(160 + 95 * SIN(tt * 10))
-        COLOR _RGB(hdThrobBright, hdThrobBright, 80)
-        _PRINTSTRING (scrW / 2 - 32, scrH / 2 - 8), "GET READY"
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GET READY", scrH * 2 \ 3, scrW, hdThrobBright
     End If
 
 End Sub
