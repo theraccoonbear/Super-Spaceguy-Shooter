@@ -231,7 +231,7 @@ DIM SHARED bossFireTimer  AS SINGLE
 DIM SHARED bossShots      AS INTEGER
 DIM SHARED bossAngle      AS SINGLE
 DIM SHARED dbgTtyOK          AS INTEGER
-DIM SHARED telemOn           AS INTEGER : telemOn = 1
+DIM SHARED telemOn           AS INTEGER : telemOn = 0
 DIM SHARED telemKills        AS LONG
 DIM SHARED telemBossReached  AS INTEGER
 DIM SHARED telemBossPhaseLog AS INTEGER
@@ -269,6 +269,7 @@ END IF
 godMode    = (INSTR(ssCmdLine, "--god")   > 0)
 settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
 debugMode   = (INSTR(ssCmdLine, "--debug") > 0)
+telemOn     = (INSTR(ssCmdLine, "--telem") > 0)
 
 ' Probe /dev/tty once at startup; DBG_Print and GTEXT_Log check this flag.
 ' Silently skips terminal output when launched without a controlling terminal
@@ -1423,6 +1424,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
     PRINT #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
     PRINT #guFH, "  --debug                Enable debug overlay and stdout event logging"
+    PRINT #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
