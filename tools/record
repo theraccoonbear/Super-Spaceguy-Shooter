@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# tools/record — capture SSS gameplay video + audio to MP4
+#
+# Usage:
+#   tools/record [output.mp4]
+#
+# Output defaults to recordings/sss_YYYYMMDD_HHMMSS.mp4 in the repo root.
+# Press Ctrl+C to stop recording. Encoding begins immediately on exit.
+#
+# Dependencies: ffmpeg, xdotool, pactl
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUTPUT="${1:-$REPO_ROOT/recordings/sss_$(date +%Y%m%d_%H%M%S).mp4}"
+mkdir -p "$(dirname "$OUTPUT")"
+
+# --- dependency check ---
+missing=()
+for cmd in ffmpeg xdotool pactl; do
+    command -v "$cmd" &>/dev/null || missing+=("$cmd")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "error: missing dependencies: ${missing[*]}" >&2
+    echo "  Install with: sudo dnf install ${missing[*]}" >&2
+    exit 1
+fi
+
+# --- find game window by process ---
+PID=$(pgrep -x sss 2>/dev/null | head -1 || true)
+if [[ -z "$PID" ]]; then
+    echo "error: sss is not running — launch the game first" >&2
+    exit 1
+fi
+
+WINDOW_ID=$(xdotool search --pid "$PID" 2>/dev/null | head -1 || true)
+if [[ -z "$WINDOW_ID" ]]; then
+    echo "error: found sss process ($PID) but no window — is it fully started?" >&2
+    exit 1
+fi
+
+eval "$(xdotool getwindowgeometry --shell "$WINDOW_ID")"
+echo "Window: ${WIDTH}x${HEIGHT} at ${X},${Y} (pid $PID)"
+
+# --- find audio monitor ---
+MONITOR=$(pactl list sources short 2>/dev/null | awk '/monitor/ {print $2; exit}' || true)
+if [[ -z "$MONITOR" ]]; then
+    echo "warning: no PulseAudio/PipeWire monitor source found — recording video only"
+    AUDIO_FLAGS=()
+else
+    echo "Audio:  $MONITOR"
+    AUDIO_FLAGS=(-f pulse -i "$MONITOR")
+fi
+
+echo "Output: $OUTPUT"
+echo "Press Ctrl+C to stop."
+echo ""
+
+# Upscale to 4x native (1280x960) with nearest-neighbor for crisp pixels.
+# If the window is already larger than 320x240 (e.g. fullscreen), this still
+# produces consistent output resolution for the trailer.
+ffmpeg -y \
+    -f x11grab -r 60 -video_size "${WIDTH}x${HEIGHT}" -i ":0.0+${X},${Y}" \
+    "${AUDIO_FLAGS[@]}" \
+    -vf "scale=1280:960:flags=neighbor" \
+    -c:v libx264 -preset fast -crf 18 \
+    -c:a aac -b:a 192k \
+    -pix_fmt yuv420p \
+    "$OUTPUT"
+
+echo ""
+echo "Saved: $OUTPUT"
