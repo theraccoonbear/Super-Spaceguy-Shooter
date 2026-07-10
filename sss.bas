@@ -936,9 +936,6 @@ END IF
             LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
             throbBright = INT(170 + 85 * SIN(tt * 5))
             FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO START", 200, scrW, throbBright
-            IF highScore > 0 THEN
-                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST: " + LTRIM$(STR$(highScore)), 218, scrW, 255
-            END IF
             FONT_PrintAlpha fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H, 255
             FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
             IF titleEscConfirm THEN
