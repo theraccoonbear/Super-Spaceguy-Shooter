@@ -33,9 +33,14 @@ if [[ -z "$PID" ]]; then
     exit 1
 fi
 
-WINDOW_ID=$(xdotool search --pid "$PID" 2>/dev/null | head -1 || true)
+# QB64-PE (SDL2) doesn't set _NET_WM_PID, so --pid lookup fails.
+# Fall back to WM_CLASS and window name, both of which SDL2 sets to the binary name.
+WINDOW_ID=$(xdotool search --pid "$PID" 2>/dev/null | head -1 \
+         || xdotool search --classname sss 2>/dev/null | head -1 \
+         || xdotool search --name sss 2>/dev/null | head -1 \
+         || true)
 if [[ -z "$WINDOW_ID" ]]; then
-    echo "error: found sss process ($PID) but no window — is it fully started?" >&2
+    echo "error: could not find sss window — is it fully started?" >&2
     exit 1
 fi
 
