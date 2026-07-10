@@ -33,7 +33,7 @@ Sub TELEM_SessionStart()
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause$ = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0
-    TELEM_Row "session_start", "version=" + VERSION$ + "|nerf=" + LTrim$(Str$(Abs(settingNerf)))
+    TELEM_Row "session_start", "version=" + VERSION$ + "|nerf=" + LTrim$(Str$(settingNerf))
 End Sub
 
 Sub TELEM_EnemyKilled()
@@ -70,7 +70,7 @@ Sub TELEM_PlayerDeath()
 End Sub
 
 Sub TELEM_BossReached()
-    telemBossReached = 1
+    telemBossReached = -1
     TELEM_Row "boss_reached", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills))
 End Sub
 
