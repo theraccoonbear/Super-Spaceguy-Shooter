@@ -32,24 +32,20 @@ fi
 # Wayland path — wl-screenrec via PipeWire
 # ============================================================
 if [[ "$SESSION" == "wayland" ]]; then
-    if ! command -v wl-screenrec &>/dev/null; then
-        echo "error: Wayland session detected but wl-screenrec not found" >&2
-        echo "  Install:  sudo dnf install wl-screenrec" >&2
-        echo "  Or force X11 mode: SDL_VIDEODRIVER=x11 ./builds/sss" >&2
-        exit 1
+    if command -v wl-screenrec &>/dev/null; then
+        echo "Wayland session — a screen/window picker will appear"
+        echo "Output: $OUTPUT"
+        echo "Press Ctrl+C to stop."
+        echo ""
+        wl-screenrec --audio -f "$OUTPUT"
+        echo ""
+        echo "Saved: $OUTPUT"
+        exit 0
     fi
-
-    echo "Wayland session — a screen/window picker will appear"
-    echo "Output: $OUTPUT"
-    echo "Press Ctrl+C to stop."
+    # wl-screenrec not available — fall through to X11 path via XWayland.
+    # The game must be launched with: SDL_VIDEODRIVER=x11 ./builds/sss
+    echo "note: Wayland session; using XWayland capture (SDL_VIDEODRIVER=x11 required for game)"
     echo ""
-
-    # --audio captures the default PipeWire sink monitor automatically
-    wl-screenrec --audio -f "$OUTPUT"
-
-    echo ""
-    echo "Saved: $OUTPUT"
-    exit 0
 fi
 
 # ============================================================
