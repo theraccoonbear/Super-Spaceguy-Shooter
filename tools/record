@@ -5,9 +5,15 @@
 #   tools/record [output.mp4]
 #
 # Output defaults to recordings/sss_YYYYMMDD_HHMMSS.mp4 in the repo root.
-# Press Ctrl+C to stop recording. Encoding begins immediately on exit.
+# Press Ctrl+C to stop recording.
 #
-# Dependencies: ffmpeg, xdotool, pactl
+# Wayland (KDE Plasma): uses wl-screenrec via PipeWire.
+#   A screen/window picker will appear when you start recording.
+#   Requires: wl-screenrec  (sudo dnf install wl-screenrec)
+#
+# X11 / XWayland: uses ffmpeg x11grab. Launch the game first.
+#   Requires: ffmpeg xdotool pactl
+#   To force X11 mode on a Wayland session: SDL_VIDEODRIVER=x11 ./builds/sss
 
 set -euo pipefail
 
@@ -15,7 +21,40 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT="${1:-$REPO_ROOT/recordings/sss_$(date +%Y%m%d_%H%M%S).mp4}"
 mkdir -p "$(dirname "$OUTPUT")"
 
-# --- dependency check ---
+# --- detect display server ---
+if [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]] || [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    SESSION=wayland
+else
+    SESSION=x11
+fi
+
+# ============================================================
+# Wayland path — wl-screenrec via PipeWire
+# ============================================================
+if [[ "$SESSION" == "wayland" ]]; then
+    if ! command -v wl-screenrec &>/dev/null; then
+        echo "error: Wayland session detected but wl-screenrec not found" >&2
+        echo "  Install:  sudo dnf install wl-screenrec" >&2
+        echo "  Or force X11 mode: SDL_VIDEODRIVER=x11 ./builds/sss" >&2
+        exit 1
+    fi
+
+    echo "Wayland session — a screen/window picker will appear"
+    echo "Output: $OUTPUT"
+    echo "Press Ctrl+C to stop."
+    echo ""
+
+    # --audio captures the default PipeWire sink monitor automatically
+    wl-screenrec --audio -f "$OUTPUT"
+
+    echo ""
+    echo "Saved: $OUTPUT"
+    exit 0
+fi
+
+# ============================================================
+# X11 path — ffmpeg x11grab
+# ============================================================
 missing=()
 for cmd in ffmpeg xdotool pactl; do
     command -v "$cmd" &>/dev/null || missing+=("$cmd")
@@ -26,31 +65,31 @@ if [[ ${#missing[@]} -gt 0 ]]; then
     exit 1
 fi
 
-# --- find game window by process ---
+# Find game process
 PID=$(pgrep -x sss 2>/dev/null | head -1 || true)
 if [[ -z "$PID" ]]; then
     echo "error: sss is not running — launch the game first" >&2
     exit 1
 fi
 
-# QB64-PE (SDL2) doesn't set _NET_WM_PID, so --pid lookup fails.
-# Fall back to WM_CLASS and window name, both of which SDL2 sets to the binary name.
+# QB64-PE (SDL2) doesn't set _NET_WM_PID; fall back to class/name search
 WINDOW_ID=$(xdotool search --pid "$PID" 2>/dev/null | head -1 \
          || xdotool search --classname sss 2>/dev/null | head -1 \
          || xdotool search --name sss 2>/dev/null | head -1 \
          || true)
 if [[ -z "$WINDOW_ID" ]]; then
-    echo "error: could not find sss window — is it fully started?" >&2
+    echo "error: could not find sss window" >&2
+    echo "  If you're on Wayland, try: SDL_VIDEODRIVER=x11 ./builds/sss" >&2
     exit 1
 fi
 
 eval "$(xdotool getwindowgeometry --shell "$WINDOW_ID")"
 echo "Window: ${WIDTH}x${HEIGHT} at ${X},${Y} (pid $PID)"
 
-# --- find audio monitor ---
+# Find audio monitor
 MONITOR=$(pactl list sources short 2>/dev/null | awk '/monitor/ {print $2; exit}' || true)
 if [[ -z "$MONITOR" ]]; then
-    echo "warning: no PulseAudio/PipeWire monitor source found — recording video only"
+    echo "warning: no audio monitor source found — recording video only"
     AUDIO_FLAGS=()
 else
     echo "Audio:  $MONITOR"
@@ -61,9 +100,7 @@ echo "Output: $OUTPUT"
 echo "Press Ctrl+C to stop."
 echo ""
 
-# Upscale to 4x native (1280x960) with nearest-neighbor for crisp pixels.
-# If the window is already larger than 320x240 (e.g. fullscreen), this still
-# produces consistent output resolution for the trailer.
+# Upscale to 4x native (1280x960) with nearest-neighbor for crisp pixels
 ffmpeg -y \
     -f x11grab -r 60 -video_size "${WIDTH}x${HEIGHT}" -i ":0.0+${X},${Y}" \
     "${AUDIO_FLAGS[@]}" \
