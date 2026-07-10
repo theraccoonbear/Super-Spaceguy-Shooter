@@ -17,6 +17,7 @@ Sub HUD_Draw
     Dim hdBossHPBar As Integer
     Dim hdPartFade As Single
     Dim hdThrobBright As Integer
+    Dim hdHiStr As String
 
     _DEST backBuffer
 
@@ -191,6 +192,10 @@ Sub HUD_Draw
         scorePopY = scorePopY - 0.5
         scorePopTimer = scorePopTimer - 1
     End If
+
+    ' hi score — lower-right, always visible during play
+    hdHiStr = "HI: " + LTRIM$(STR$(highScore))
+    FONT_PrintAlpha fontPalette(8), backBuffer, hdHiStr, scrW - LEN(hdHiStr) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
 
     ' invincibility lead-in
     If invTimer > 0 And gameState = GS_PLAYING Then
