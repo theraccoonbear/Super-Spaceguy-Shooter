@@ -110,6 +110,7 @@ Sub PLAYER_Fire
             fireTimer   = FIRE_COOLDOWN
             laserEnergy = laserEnergy - LASER_COST
             SND_Shoot
+            telemShotsFired = telemShotsFired + 1
             Exit For
         End If
     Next plfI

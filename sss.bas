@@ -231,7 +231,16 @@ DIM SHARED fireTimer      AS SINGLE
 DIM SHARED bossFireTimer  AS SINGLE
 DIM SHARED bossShots      AS INTEGER
 DIM SHARED bossAngle      AS SINGLE
-DIM SHARED dbgTtyOK       AS INTEGER
+DIM SHARED dbgTtyOK          AS INTEGER
+DIM SHARED telemOn           AS INTEGER : telemOn = 0
+DIM SHARED telemKills        AS LONG
+DIM SHARED telemBossReached  AS INTEGER
+DIM SHARED telemBossPhaseLog AS INTEGER
+DIM SHARED telemDeathCause$
+DIM SHARED telemSession$
+DIM SHARED telemShotsFired   AS LONG
+DIM SHARED telemShotsHit     AS LONG
+DIM SHARED telemEscapes      AS LONG
 '$INCLUDE:'src/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/obj.bas'
@@ -261,6 +270,7 @@ END IF
 godMode    = (INSTR(ssCmdLine, "--god")   > 0)
 settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
 debugMode   = (INSTR(ssCmdLine, "--debug") > 0)
+telemOn     = (INSTR(ssCmdLine, "--telem") > 0)
 
 ' Probe /dev/tty once at startup; DBG_Print and GTEXT_Log check this flag.
 ' Silently skips terminal output when launched without a controlling terminal
@@ -426,6 +436,7 @@ fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 SND_Init
 SPK_Init
 SETTINGS_Load
+TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 SEQ_Init
 IF ssCmdScene <> "" THEN
@@ -577,7 +588,11 @@ END IF
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
                 IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
-                IF fuelLevel <= 0 THEN fuelLevel = 0 : fuelStranded = -1
+                IF fuelLevel <= 0 THEN
+                    fuelLevel = 0
+                    IF fuelStranded = 0 THEN TELEM_FuelExhausted
+                    fuelStranded = -1
+                END IF
             END IF
             IF godMode THEN
                 lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
@@ -674,6 +689,7 @@ END IF
                         IF lives > 100 THEN lives = 100
                         score = score + SCORE_POWERUP
                         SND_Pup
+                        TELEM_PowerupCollected
                     END IF
                 END IF
             NEXT i
@@ -1357,10 +1373,13 @@ SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit
+    TELEM_PlayerDamaged
     IF lives <= 0 THEN
         shipLives = shipLives - 1
         IF shipLives <= 0 THEN
             gameOver = -1
+            TELEM_PlayerDeath
+            TELEM_SessionEnd
         ELSE
             lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
         END IF
@@ -1398,6 +1417,7 @@ SUB GAME_Usage(guErr AS STRING)
     PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
     PRINT #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
     PRINT #guFH, "  --debug                Enable debug overlay and stdout event logging"
+    PRINT #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
     PRINT #guFH, ""
     PRINT #guFH, "Scene names:"
     PRINT #guFH, "  title                  Title screen (default)"
