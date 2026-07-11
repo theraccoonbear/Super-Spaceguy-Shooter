@@ -699,7 +699,7 @@ END IF
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
 
             IF gameOver THEN
-                IF score > highScore THEN highScore = score
+                IF score > highScore THEN highScore = score : SETTINGS_Save
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
                 StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
