@@ -1022,7 +1022,7 @@ CASE GS_INTRO
     ' TEXT CRAWL — stage narrative scroll
     ' ============================================================
 CASE GS_CRAWL
-    IF crawlLineCount = 0 THEN SEQ_Advance : EXIT SELECT
+    IF crawlLineCount = 0 THEN escWas = held(E3D_KEY_ESCAPE) : SEQ_Advance : EXIT SELECT
     ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
     IF crawlTimer = 0 THEN
         StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
@@ -1144,6 +1144,7 @@ CASE GS_CRAWL
     IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
         crawlParaIdx = crawlParaCount : SPK_Say ""
         fxVCRActive = 0 : IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
+        escWas = held(E3D_KEY_ESCAPE)  ' consume held ESC so next state's rising-edge check isn't fooled
         SEQ_Advance
         EXIT SELECT
     END IF
