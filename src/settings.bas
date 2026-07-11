@@ -9,6 +9,7 @@ Sub SETTINGS_Save ()
     Print #sfH, "speech="     + LTrim$(Str$(volSpeech))
     Print #sfH, "narration="  + LTrim$(Str$(settingNarration))
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
+    Print #sfH, "highscore=" + LTrim$(Str$(highScore))
     If camAngleLocked Then
         Print #sfH, "cam_theta=" + LTrim$(Str$(camOrbitTheta))
         Print #sfH, "cam_phi="   + LTrim$(Str$(camOrbitPhi))
@@ -42,6 +43,8 @@ Sub SETTINGS_Load ()
                 Case "cam_r"
                     If sfVal < 0.5 Then sfVal = 0.5
                     camOrbitR = sfVal
+                Case "highscore"
+                    If sfVal >= 0 Then highScore = CLng(sfVal)
                 Case Else
                     If sfVal < 0 Then sfVal = 0
                     If sfVal > 1 Then sfVal = 1
