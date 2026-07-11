@@ -105,7 +105,7 @@ Sub FX_Flash(scrW As Single, scrH As Single)
     End If
 End Sub
 
-Sub FX_Shake(buf As Long, scrW As Single, scrH As Single)
+Sub FX_Shake(buf As Long)
     If fxShakeTimer > 0 Then
         fxShakeX = Int(Rnd * 9) - 4
         fxShakeY = Int(Rnd * 9) - 4
