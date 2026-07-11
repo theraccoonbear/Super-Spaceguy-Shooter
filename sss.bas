@@ -217,7 +217,6 @@ DIM SHARED optLfRpt  AS INTEGER
 DIM SHARED optRtRpt  AS INTEGER
 DIM SHARED optEscWas   AS INTEGER
 DIM SHARED optAboutWas AS INTEGER
-DIM SHARED crawlNextState AS INTEGER
 DIM SHARED invTimer AS INTEGER
 DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE
@@ -229,8 +228,6 @@ DIM SHARED debugMode  AS INTEGER
 DIM SHARED held(0 TO 32767) AS INTEGER
 DIM SHARED fireTimer      AS SINGLE
 DIM SHARED bossFireTimer  AS SINGLE
-DIM SHARED bossShots      AS INTEGER
-DIM SHARED bossAngle      AS SINGLE
 DIM SHARED dbgTtyOK          AS INTEGER
 DIM SHARED telemOn           AS INTEGER : telemOn = 0
 DIM SHARED telemKills        AS LONG
@@ -402,11 +399,8 @@ DIM thrusterLight AS E3D_Coord
 DIM thrusterScale AS SINGLE
 DIM eLitDir AS E3D_Coord
 DIM eDimF AS SINGLE, eDist AS SINGLE
-DIM p AS INTEGER, pk AS INTEGER  ' used for boss death particle loop
-DIM ej AS INTEGER
-DIM eDX AS SINGLE, eDY AS SINGLE, eDZ AS SINGLE, eMag AS SINGLE
 DIM ebClr AS LONG
-DIM partR AS INTEGER, partG AS INTEGER, partB AS INTEGER
+DIM partR AS INTEGER
 DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
@@ -933,7 +927,7 @@ END IF
                 LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, cinematicFade), BF
             END IF
 
-            FX_Shake backBuffer, scrW, scrH
+            FX_Shake backBuffer
 
             IF gameState = GS_PLAYING THEN
                 SND_GameFill isManeuver
@@ -1364,7 +1358,7 @@ _DISPLAY
 LOOP
 
 SUB StarfieldReset(srX AS SINGLE, srY AS SINGLE, srZ AS SINGLE)
-    E3D_StarfieldInit srX, srY, srZ
+    E3D_StarfieldInit srY, srZ
     E3D_StarfieldAddLayer srX, srY, srZ, 200, 50, 50, 40, 0.010, 0.020, 0
     E3D_StarfieldAddLayer srX, srY, srZ,  60, 40, 30, 25, 0.035, 0.070, 1
     E3D_StarfieldAddLayer srX, srY, srZ,  15, 25, 15, 12, 0.100, 0.180, 2

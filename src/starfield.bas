@@ -12,7 +12,7 @@ Dim Shared E3D_sfLastCamY As Single
 Dim Shared E3D_sfLastCamZ As Single
 
 ' Reset the starfield and record the starting camera position.
-Sub E3D_StarfieldInit (camX As Single, camY As Single, camZ As Single)
+Sub E3D_StarfieldInit (camY As Single, camZ As Single)
     E3D_sfCount    = 0
     E3D_sfLastCamY = camY
     E3D_sfLastCamZ = camZ

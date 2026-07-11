@@ -42,8 +42,8 @@ END SUB
 
 SUB E3D_SceneFlush (vpMat AS E3D_Matrix4, scrW AS SINGLE, scrH AS SINGLE)
     E3D_ZBufClear CINT(scrW), CINT(scrH)
-    DIM didSwap AS INTEGER, scI AS INTEGER
-    DIM oi1 AS INTEGER, oi2 AS INTEGER, oiTmp AS INTEGER
+    DIM scI AS INTEGER
+    DIM oi1 AS INTEGER, oiTmp AS INTEGER
     DIM facePoly AS E3D_Polygon, screenPoly AS E3D_Polygon
     DIM di AS INTEGER, v AS INTEGER, vc AS INTEGER
     DIM c AS E3D_Coord
