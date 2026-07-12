@@ -13,14 +13,14 @@ Sub BOSS_Update
     Dim bssHit As Integer
 
     ' trigger warning when score threshold reached
-    If gameState = GS_PLAYING And boss.active = 0 And bossWarnTimer = 0 And score >= stageScore Then
-        bossWarnTimer = BOSS_WARN_FRAMES
+    If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore Then
+        boss.warnTimer = BOSS_WARN_FRAMES
         SPK_Say GTEXT_Get$("speech_boss_warning")
     End If
 
-    If bossWarnTimer > 0 Then
-        bossWarnTimer = bossWarnTimer - 1
-        If bossWarnTimer = 0 And gameState = GS_PLAYING Then
+    If boss.warnTimer > 0 Then
+        boss.warnTimer = boss.warnTimer - 1
+        If boss.warnTimer = 0 And gameState = GS_PLAYING Then
             If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score))
             boss.active  = -1
             boss.meshIdx = MESH_BOSS
@@ -29,13 +29,13 @@ Sub BOSS_Update
             boss.pz = player.pz
             boss.vx = -0.05
             boss.scl = BOSS_SCALE
-            If settingNerf Then bossHP = BOSS_MAX_HP_NERF Else bossHP = BOSS_MAX_HP
-            bossPhase    = 1
-            bossFireTimer = BOSS_FIRE_INIT
-            bossMoveTimer = 0
-            bossTargetY  = player.py
-            bossTargetZ  = player.pz
-            bossState    = 0
+            If settingNerf Then boss.hp = BOSS_MAX_HP_NERF Else boss.hp = BOSS_MAX_HP
+            boss.phase    = 1
+            boss.fireTimer = BOSS_FIRE_INIT
+            boss.moveTimer = 0
+            boss.targetY  = player.py
+            boss.targetZ  = player.pz
+            boss.state    = 0
             MUS_SetCue "boss"
             telemBossPhaseLog = 0
             TELEM_BossReached
@@ -45,36 +45,36 @@ Sub BOSS_Update
     If Not boss.active Then Exit Sub
 
     ' phase thresholds
-    If bossHP > 20 Then
-        bossPhase = 1
-    ElseIf bossHP > 10 Then
-        bossPhase = 2
+    If boss.hp > 20 Then
+        boss.phase = 1
+    ElseIf boss.hp > 10 Then
+        boss.phase = 2
     Else
-        bossPhase = 3
+        boss.phase = 3
     End If
-    If bossPhase <> telemBossPhaseLog Then
-        TELEM_BossPhase bossPhase
-        telemBossPhaseLog = bossPhase
+    If boss.phase <> telemBossPhaseLog Then
+        TELEM_BossPhase boss.phase
+        telemBossPhaseLog = boss.phase
     End If
 
     ' X approach: close to combat range, speed scales with phase
     If boss.px > player.px + BOSS_COMBAT_DIST Then
-        boss.px = boss.px + boss.vx * (1.0 + (bossPhase - 1) * 0.4)
+        boss.px = boss.px + boss.vx * (1.0 + (boss.phase - 1) * 0.4)
     End If
 
     ' intent-driven lateral movement (behavior.bas)
     BOSS_UpdateMovement
 
     ' fire patterns
-    bossFireTimer = bossFireTimer - 0.025
-    If bossFireTimer <= 0 Then
+    boss.fireTimer = boss.fireTimer - 0.025
+    If boss.fireTimer <= 0 Then
         bssDX = player.px - boss.px
         bssDY = player.py - boss.py
         bssDZ = player.pz - boss.pz
         bssDMag = SQR(bssDX * bssDX + bssDY * bssDY + bssDZ * bssDZ)
         If bssDMag > 0.1 Then bssDX = bssDX/bssDMag : bssDY = bssDY/bssDMag : bssDZ = bssDZ/bssDMag
 
-        Select Case bossPhase
+        Select Case boss.phase
         Case 1  ' 3-shot Y fan
             bssShots = 0
             For bssEJ = 1 To MAX_EBULLETS
@@ -89,8 +89,8 @@ Sub BOSS_Update
                     bssShots = bssShots + 1
                 End If
             Next bssEJ
-            bossFireTimer = BOSS_FIRE1
-            BOSS_SetEvasion bossPhase
+            boss.fireTimer = BOSS_FIRE1
+            BOSS_SetEvasion boss.phase
 
         Case 2  ' 5-shot aimed cross
             bssShots = 0
@@ -111,8 +111,8 @@ Sub BOSS_Update
                     bssShots = bssShots + 1
                 End If
             Next bssEJ
-            bossFireTimer = BOSS_FIRE2
-            BOSS_SetEvasion bossPhase
+            boss.fireTimer = BOSS_FIRE2
+            BOSS_SetEvasion boss.phase
 
         Case 3  ' 7-shot diagonal fan, fast
             bssShots = 0
@@ -128,8 +128,8 @@ Sub BOSS_Update
                     bssShots = bssShots + 1
                 End If
             Next bssEJ
-            bossFireTimer = BOSS_FIRE3
-            BOSS_SetEvasion bossPhase
+            boss.fireTimer = BOSS_FIRE3
+            BOSS_SetEvasion boss.phase
         End Select
     End If
 
@@ -149,10 +149,10 @@ Sub BOSS_Update
             If bssHit Then
                 bullets(bssJ).active = 0
                 telemShotsHit = telemShotsHit + 1
-                bossHP = bossHP - 1
+                boss.hp = boss.hp - 1
                 fxShakeTimer = 2
                 SND_Boom
-                If bossHP <= 0 Then
+                If boss.hp <= 0 Then
                     If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
                     TELEM_BossDefeated
                     boss.active  = 0

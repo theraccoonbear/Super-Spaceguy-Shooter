@@ -57,9 +57,40 @@ TYPE GameObj
     life AS SINGLE
 END TYPE
 
+TYPE BossObj
+    active  AS INTEGER
+    meshIdx AS INTEGER
+    px AS SINGLE : py AS SINGLE : pz AS SINGLE
+    vx AS SINGLE : vy AS SINGLE : vz AS SINGLE
+    rx AS SINGLE : ry AS SINGLE : rz AS SINGLE
+    drx AS SINGLE : dry AS SINGLE : drz AS SINGLE
+    scl AS SINGLE
+    life AS SINGLE
+    hp        AS INTEGER
+    phase     AS INTEGER
+    fireTimer AS SINGLE
+    moveTimer AS SINGLE
+    targetY   AS SINGLE
+    targetZ   AS SINGLE
+    state     AS INTEGER
+    warnTimer AS INTEGER
+END TYPE
+
+TYPE CamFollow
+    lagY        AS SINGLE
+    lagZ        AS SINGLE
+    fwdY        AS SINGLE
+    fwdZ        AS SINGLE
+    orbitMode   AS INTEGER
+    angleLocked AS INTEGER
+    orbitTheta  AS SINGLE
+    orbitPhi    AS SINGLE
+    orbitR      AS SINGLE
+END TYPE
+
 DIM SHARED player   AS GameObj
 DIM SHARED enemies(1 TO MAX_ENEMIES) AS GameObj
-DIM SHARED boss     AS GameObj
+DIM SHARED boss     AS BossObj
 
 ' --- tuning constants ---
 CONST PLAYER_ACCEL        = 0.14    ' velocity lerp rate (controls both accel and drag)
@@ -174,13 +205,7 @@ DIM SHARED lives AS INTEGER : lives = 100
 DIM SHARED shipLives AS INTEGER : shipLives = 3
 DIM SHARED tt AS SINGLE
 DIM SHARED spawnTimer AS SINGLE
-DIM SHARED camLagY AS SINGLE, camLagZ AS SINGLE
-DIM SHARED camFwdY AS SINGLE, camFwdZ AS SINGLE
-DIM SHARED camOrbitMode   AS INTEGER
-DIM SHARED camAngleLocked AS INTEGER
-DIM SHARED camOrbitTheta  AS SINGLE
-DIM SHARED camOrbitPhi    AS SINGLE
-DIM SHARED camOrbitR      AS SINGLE
+DIM SHARED camF AS CamFollow
 DIM SHARED playerVY AS SINGLE, playerVZ AS SINGLE
 DIM SHARED isManeuver AS INTEGER
 DIM SHARED laserEnergy AS SINGLE : laserEnergy = 100.0
@@ -189,12 +214,6 @@ DIM SHARED fuelStranded AS INTEGER
 DIM SHARED scorePopTimer AS INTEGER, scorePopY AS SINGLE, scorePopVal AS LONG
 DIM SHARED spawnFlashTimer AS INTEGER
 DIM SHARED spawnFlashPX AS SINGLE, spawnFlashPY AS SINGLE, spawnFlashPZ AS SINGLE
-DIM SHARED bossHP AS INTEGER
-DIM SHARED bossPhase AS INTEGER
-DIM SHARED bossMoveTimer AS SINGLE
-DIM SHARED bossTargetY AS SINGLE, bossTargetZ AS SINGLE
-DIM SHARED bossState AS INTEGER
-DIM SHARED bossWarnTimer AS INTEGER
 DIM SHARED planetTimer AS INTEGER
 DIM SHARED planetSeq AS INTEGER
 DIM SHARED planetTick AS INTEGER
@@ -230,7 +249,6 @@ DIM SHARED settingNerf AS INTEGER
 DIM SHARED debugMode  AS INTEGER
 DIM SHARED held(0 TO 32767) AS INTEGER
 DIM SHARED fireTimer      AS SINGLE
-DIM SHARED bossFireTimer  AS SINGLE
 DIM SHARED dbgTtyOK          AS INTEGER
 DIM SHARED telemOn           AS INTEGER : telemOn = 0
 DIM SHARED telemKills        AS LONG

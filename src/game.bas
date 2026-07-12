@@ -15,10 +15,10 @@ Sub GAME_ResetState
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
     thrusterScale = 0.30 : invTimer = 120 : escConfirm = 0 : titleEscConfirm = 0
-    camLagY = 0 : camLagZ = 0 : camFwdY = 0 : camFwdZ = 0
-    camOrbitMode = 0
+    camF.lagY = 0 : camF.lagZ = 0 : camF.fwdY = 0 : camF.fwdZ = 0
+    camF.orbitMode = 0
     playerVY = 0 : playerVZ = 0
-    boss.active = 0 : bossHP = 0 : bossWarnTimer = 0 : bossMoveTimer = 0 : bossState = 0
+    boss.active = 0 : boss.hp = 0 : boss.warnTimer = 0 : boss.moveTimer = 0 : boss.state = 0
     planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0 : planetCurrent = PLANET_COUNT : planetNameIdx = PLANET_COUNT
     cinematicCamX = 0 : shipCinVX = 0 : cinematicFade = 0
     player.px = 0 : player.py = 0 : player.pz = 0

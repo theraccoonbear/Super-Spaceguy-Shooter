@@ -5,7 +5,7 @@
 '
 ' Reads:  held(), gameState, fuelStranded, cinPhase, player, cam, projMat
 ' Writes: player, playerVY, playerVZ, isManeuver,
-'         camLagY, camLagZ, camFwdY, camFwdZ, cam, viewMat, vpMat
+'         camF.lagY, camF.lagZ, camF.fwdY, camF.fwdZ, cam, viewMat, vpMat
 '
 ' Local variable prefix: plr* (physics)  plc* (camera)
 
@@ -121,15 +121,15 @@ Sub PLAYER_CamUpdate
 
     ' positional lag: camera position tracks player Y/Z with smoothing
     If gameState <> GS_CINEMATIC Then
-        camLagY = camLagY + (player.py - camLagY) * CAM_LAG_RATE
-        camLagZ = camLagZ + (player.pz - camLagZ) * CAM_LAG_RATE
+        camF.lagY = camF.lagY + (player.py - camF.lagY) * CAM_LAG_RATE
+        camF.lagZ = camF.lagZ + (player.pz - camF.lagZ) * CAM_LAG_RATE
     End If
 
     ' orientation lag: smooth forward direction from velocity (slower than position lag)
     plcFwdTgtY = playerVY / PLAYER_MAX_VEL
     plcFwdTgtZ = playerVZ / PLAYER_MAX_VEL
-    camFwdY = camFwdY + (plcFwdTgtY - camFwdY) * CAM_FWD_RATE
-    camFwdZ = camFwdZ + (plcFwdTgtZ - camFwdZ) * CAM_FWD_RATE
+    camF.fwdY = camF.fwdY + (plcFwdTgtY - camF.fwdY) * CAM_FWD_RATE
+    camF.fwdZ = camF.fwdZ + (plcFwdTgtZ - camF.fwdZ) * CAM_FWD_RATE
 
     ' cam.POS and cam.target are set in sss.bas after this call — nested UDT field
     ' writes from included-file Subs don't update the global, same as UDT array gotcha.
