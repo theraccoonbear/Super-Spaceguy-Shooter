@@ -142,6 +142,7 @@ Sub SEQ_Advance()
             gameState = GS_PLAYING
             MUS_SetCue "game"
         Case SEQ_TITLE
+            If score > highScore Then highScore = score : SETTINGS_Save
             gameState = GS_TITLE
             MUS_SetCue "title"
     End Select
