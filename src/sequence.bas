@@ -124,6 +124,7 @@ End Function
 Sub SEQ_Advance()
     seqIdx = seqIdx + 1
     If seqIdx >= seqCount Then
+        SEQ_RewindToTitle
         gameState = GS_TITLE
         MUS_SetCue "title"
         Exit Sub
@@ -143,6 +144,7 @@ Sub SEQ_Advance()
             MUS_SetCue "game"
         Case SEQ_TITLE
             If score > highScore Then highScore = score : SETTINGS_Save
+            SEQ_RewindToTitle
             gameState = GS_TITLE
             MUS_SetCue "title"
     End Select

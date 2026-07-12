@@ -148,6 +148,8 @@ ST_Assert seqIdx > 2,                                         "7a  last SEQ_TITL
 Dim st7PrevIdx As Integer : st7PrevIdx = seqIdx
 ST_NewGame
 ST_Assert seqIdx <> st7PrevIdx,                               "7b  NewGame moved seqIdx away from final title"
+ST_Assert gameState = GS_CRAWL,                               "7c  NewGame from final title → chapter-1 crawl (not prologue)"
+ST_Assert seqIdx = 3,                                         "7d  seqIdx=3 (stage1 crawl), not 0 (prologue)"
 
 ' 8. Beating the game updates and saves highScore via SEQ_TITLE transition
 Print ""
@@ -171,6 +173,31 @@ Next st8I
 score = 1000 : highScore = 5000
 SEQ_Advance
 ST_Assert highScore = 5000,        "8c  highScore unchanged when score is lower"
+
+' 9. Prologue never replays after being seen once in a session
+Print ""
+Print "--- scenario 9: prologue never replays after game beaten ---"
+' Simulate full boot: prologue → emperor → title
+SEQ_Init
+SEQ_Advance   ' prologue crawl (seqIdx=0)
+SEQ_Advance   ' emperor (seqIdx=1)
+SEQ_Advance   ' first title (seqIdx→2, SEQ_RewindToTitle→2, parked at 2)
+ST_Assert seqIdx = 2 And gameState = GS_TITLE,                "9a  parked at first SEQ_TITLE after boot"
+' New game → chapter 1
+ST_NewGame
+ST_Assert seqIdx = 3 And gameState = GS_CRAWL,                "9b  NewGame → chapter-1 crawl"
+' Simulate playing through all 6 stages to the final SEQ_TITLE
+' Jump seqIdx to just before the final SEQ_TITLE (the outro crawl)
+Dim st9I As Integer
+For st9I = seqCount - 1 To 0 Step -1
+    If seqKind(st9I) = SEQ_TITLE Then seqIdx = st9I - 1 : Exit For
+Next st9I
+SEQ_Advance   ' outro → final SEQ_TITLE → SEQ_RewindToTitle → seqIdx=2
+ST_Assert seqIdx = 2 And gameState = GS_TITLE,                "9c  parked at seqIdx=2 after game beaten"
+' New game from title must go to chapter 1, not prologue
+ST_NewGame
+ST_Assert gameState = GS_CRAWL,                               "9d  NewGame after beating → chapter-1 crawl"
+ST_Assert seqIdx = 3,                                         "9e  seqIdx=3, confirming prologue (0) was NOT replayed"
 
 ' ── summary ─────────────────────────────────────────────────────────────────
 Print ""
