@@ -1,11 +1,12 @@
 ' sequence.bas — linear game-flow sequencer
 '
-' Define the complete scene order once in SEQ_Init; call SEQ_Advance to move
-' to the next step.  To reorder the game, change the SEQ_Add calls in SEQ_Init.
+' Production: sss.bas calls SEQ_Load(_EMBEDDED$("SEQTXT")) at startup.
+' Tests: call SEQ_Init() which uses the hardcoded fallback below.
 ' To add a new scene type, add a Const and a Case in SEQ_Advance.
 '
 ' All callers:
-'   game.bas GAME_NewGame      : SEQ_Init : SEQ_Advance
+'   sss.bas  startup           : SEQ_Load _EMBEDDED$("SEQTXT")
+'   game.bas GAME_NewGame      : SEQ_Load _EMBEDDED$("SEQTXT") : SEQ_Advance
 '   sss.bas  GS_INTRO SPACE    : SEQ_Advance
 '   sss.bas  GS_CRAWL ends     : SEQ_Advance
 '   stage.bas cinematic done   : SEQ_Advance
@@ -28,7 +29,40 @@ Sub SEQ_Add(seqaKind As Integer, seqaSval As String)
     seqCount = seqCount + 1
 End Sub
 
-' Populate the complete game sequence.  Call once at game start.
+' Parse the embedded sequence.txt text and populate the sequence table.
+' Production callers pass _EMBEDDED$("SEQTXT"); tests call SEQ_Init() instead.
+Sub SEQ_Load(seqlData As String)
+    Dim seqlI As Integer, seqlNL As Integer
+    Dim seqlLine As String, seqlKind As String, seqlSval As String
+    Dim seqlSp As Integer
+    seqCount = 0 : seqIdx = -1
+    seqlI = 1
+    Do While seqlI <= Len(seqlData)
+        seqlNL = InStr(seqlI, seqlData, Chr$(10))
+        If seqlNL = 0 Then seqlNL = Len(seqlData) + 1
+        seqlLine = LTrim$(RTrim$(Mid$(seqlData, seqlI, seqlNL - seqlI)))
+        If Right$(seqlLine, 1) = Chr$(13) Then seqlLine = Left$(seqlLine, Len(seqlLine) - 1)
+        seqlI = seqlNL + 1
+        If Len(seqlLine) > 0 And Left$(seqlLine, 1) <> ";" Then
+            seqlSp = InStr(seqlLine, " ")
+            If seqlSp > 0 Then
+                seqlKind = UCase$(Left$(seqlLine, seqlSp - 1))
+                seqlSval = Mid$(seqlLine, seqlSp + 1)
+            Else
+                seqlKind = UCase$(seqlLine)
+                seqlSval = ""
+            End If
+            Select Case seqlKind
+                Case "CRAWL"   : SEQ_Add SEQ_CRAWL,   seqlSval
+                Case "EMPEROR" : SEQ_Add SEQ_EMPEROR,  ""
+                Case "TITLE"   : SEQ_Add SEQ_TITLE,    ""
+                Case "PLAY"    : SEQ_Add SEQ_PLAY,      ""
+            End Select
+        End If
+    Loop
+End Sub
+
+' Hardcoded fallback used by headless tests (no $EMBED available).
 Sub SEQ_Init()
     seqCount = 0 : seqIdx = -1
     SEQ_Add SEQ_CRAWL,   "intro"   ' prologue

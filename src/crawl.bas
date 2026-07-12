@@ -29,9 +29,6 @@ DIM SHARED crawlParaIdx AS INTEGER
 DIM SHARED crawlPrevRate AS SINGLE
 DIM SHARED crawlRateScale AS SINGLE  ' uniform rate for whole crawl; computed in CRAWL_Prep
 
-DIM crawlIdx AS INTEGER
-DIM crawlLY AS INTEGER
-DIM crawlFY AS INTEGER
 DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
 DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
 DIM SHARED crawlFFActive AS INTEGER    ' -1 while FF is active; tracks vol save/restore independent of spaceWas

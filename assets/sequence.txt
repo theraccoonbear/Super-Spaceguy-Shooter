@@ -1,0 +1,21 @@
+; sequence.txt — game scene order
+; Format: KIND [sval]    KIND: CRAWL EMPEROR TITLE PLAY
+; Adding a mission: insert a CRAWL line + a PLAY line before the outro CRAWL.
+
+CRAWL intro
+EMPEROR
+TITLE
+CRAWL stage1
+PLAY
+CRAWL stage2
+PLAY
+CRAWL stage3
+PLAY
+CRAWL stage4
+PLAY
+CRAWL stage5
+PLAY
+CRAWL stage6
+PLAY
+CRAWL outro
+TITLE
