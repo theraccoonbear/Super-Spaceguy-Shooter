@@ -45,3 +45,37 @@ Sub GAME_NewGame
         SEQ_Advance
     End If
 End Sub
+
+Sub GAME_Usage(guErr As String)
+    Dim guFH As Integer : guFH = FreeFile
+    If InStr(_OS$, "WIN") Then
+        Open "CON:" For Output As #guFH
+    Else
+        Open "/dev/stdout" For Output As #guFH
+    End If
+    If guErr <> "" Then
+        Print #guFH, "Error: " + guErr
+        Print #guFH, ""
+    End If
+    Print #guFH, "Super Spaceguy Shooter " + VERSION$
+    Print #guFH, ""
+    Print #guFH, "Usage: sss [options]"
+    Print #guFH, ""
+    Print #guFH, "Options:"
+    Print #guFH, "  -v, --version          Print version and exit"
+    Print #guFH, "  -h, --help             Show this help and exit"
+    Print #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
+    Print #guFH, "  --god                  God mode: shields, health, and laser never deplete"
+    Print #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
+    Print #guFH, "  --debug                Enable debug overlay and stdout event logging"
+    Print #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
+    Print #guFH, ""
+    Print #guFH, "Scene names:"
+    Print #guFH, "  title                  Title screen (default)"
+    Print #guFH, "  crawl0                 Intro crawl"
+    Print #guFH, "  crawl1..6              Chapter crawls"
+    Print #guFH, "  playing1..6            Gameplay stages"
+    Print #guFH, "  boss1..6               Stage with boss pre-triggered on frame 1"
+    Close #guFH
+    System
+End Sub

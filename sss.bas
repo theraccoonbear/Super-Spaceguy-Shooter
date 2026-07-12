@@ -277,6 +277,9 @@ DIM SHARED tabWas      AS INTEGER
 DIM SHARED rWas        AS INTEGER
 DIM SHARED camUpWas    AS INTEGER
 DIM SHARED camDnWas    AS INTEGER
+DIM SHARED dbgOverlay  AS INTEGER
+DIM SHARED dbgGraveWas AS INTEGER
+DIM SHARED dbgT0       AS DOUBLE
 '$INCLUDE:'src/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/obj.bas'
@@ -444,10 +447,7 @@ DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
 DIM pjFade AS SINGLE
 ' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
-DIM dbgOverlay AS INTEGER : IF debugMode THEN dbgOverlay = 1
-DIM dbgGraveWas AS INTEGER
-DIM dbgT0 AS DOUBLE
-DIM dbgFrameMs AS SINGLE
+IF debugMode THEN dbgOverlay = 1
 
 ' --- formation → mesh lookup ---
 wavePrev = -1 : thrusterScale = 0.30
@@ -566,143 +566,9 @@ CASE GS_LEADIN
 
 END SELECT
 
-' --- debug overlay toggle: ` (backtick) ---
-IF _KEYDOWN(96) AND NOT dbgGraveWas THEN dbgOverlay = 1 - dbgOverlay
-dbgGraveWas = _KEYDOWN(96)
-
-dbgFrameMs = (TIMER - dbgT0) * 1000
-
-IF dbgOverlay THEN
-    DIM dbgPolyClr AS LONG, dbgFpsClr AS LONG, dbgFps AS SINGLE
-    IF E3D_scnCount > 350 THEN
-        dbgPolyClr = _RGB(255, 80, 60)
-    ELSEIF E3D_scnCount > 200 THEN
-        dbgPolyClr = _RGB(255, 210, 50)
-    ELSE
-        dbgPolyClr = _RGB(80, 210, 80)
-    END IF
-    IF dbgFrameMs > 0.0001 THEN dbgFps = 1000 / dbgFrameMs ELSE dbgFps = 999
-    IF dbgFps < 30 THEN
-        dbgFpsClr = _RGB(255, 80, 60)
-    ELSEIF dbgFps < 50 THEN
-        dbgFpsClr = _RGB(255, 210, 50)
-    ELSE
-        dbgFpsClr = _RGB(80, 210, 80)
-    END IF
-    _DEST 0
-    LINE (0, 0)-(105, 76), _RGBA(0, 0, 0, 190), BF
-    COLOR dbgPolyClr
-    _PRINTSTRING (2,  2),  "POLY " + LTRIM$(STR$(E3D_scnCount)) + "/450"
-    COLOR dbgFpsClr
-    _PRINTSTRING (2, 12), "FPS  " + LTRIM$(STR$(CINT(dbgFps)))
-    COLOR _RGB(140, 140, 160)
-    _PRINTSTRING (2, 22), "ms   " + LEFT$(STR$(dbgFrameMs + 1000), 6)
-    COLOR _RGB(120, 200, 255)
-    _PRINTSTRING (2, 34), "RY   " + LEFT$(STR$(player.ry + 1000), 7)
-    _PRINTSTRING (2, 44), "RZ   " + LEFT$(STR$(player.rz + 1000), 7)
-    COLOR _RGB(180, 255, 180)
-    _PRINTSTRING (2, 54), "VY   " + LEFT$(STR$(playerVY + 1000), 7)
-    _PRINTSTRING (2, 64), "VZ   " + LEFT$(STR$(playerVZ + 1000), 7)
-
-    ' enemy AABB wireframes
-    IF gameState = GS_PLAYING THEN
-        DIM dbgBi  AS INTEGER
-        DIM dbgBwx AS SINGLE, dbgBwy AS SINGLE, dbgBwz AS SINGLE
-        DIM dbgBhx AS SINGLE, dbgBhy AS SINGLE, dbgBhz AS SINGLE
-        DIM dbgBtx AS SINGLE, dbgBty AS SINGLE, dbgBtz AS SINGLE
-        DIM dbgBpx AS SINGLE, dbgBpy AS SINGLE, dbgBpw AS SINGLE
-        DIM dbgBsx(0 TO 7) AS SINGLE, dbgBsy(0 TO 7) AS SINGLE, dbgBsw(0 TO 7) AS SINGLE
-        DIM dbgBci AS INTEGER, dbgBa AS INTEGER, dbgBb AS INTEGER, dbgBdiff AS INTEGER
-        DIM dbgBclr AS LONG : dbgBclr = _RGB(0, 255, 120)
-        FOR dbgBi = 1 TO MAX_ENEMIES
-            IF enemies(dbgBi).active THEN
-                dbgBwx = enemies(dbgBi).px
-                dbgBwy = enemies(dbgBi).py
-                dbgBwz = enemies(dbgBi).pz
-                dbgBhx = boxLib(enemies(dbgBi).meshIdx).hx
-                dbgBhy = boxLib(enemies(dbgBi).meshIdx).hy
-                dbgBhz = boxLib(enemies(dbgBi).meshIdx).hz
-                FOR dbgBci = 0 TO 7
-                    IF (dbgBci AND 4) THEN dbgBtx = dbgBwx + dbgBhx ELSE dbgBtx = dbgBwx - dbgBhx
-                    IF (dbgBci AND 2) THEN dbgBty = dbgBwy + dbgBhy ELSE dbgBty = dbgBwy - dbgBhy
-                    IF (dbgBci AND 1) THEN dbgBtz = dbgBwz + dbgBhz ELSE dbgBtz = dbgBwz - dbgBhz
-                    dbgBpx  = dbgBtx * vpMat.m(0,0) + dbgBty * vpMat.m(0,1) + dbgBtz * vpMat.m(0,2) + vpMat.m(0,3)
-                    dbgBpy  = dbgBtx * vpMat.m(1,0) + dbgBty * vpMat.m(1,1) + dbgBtz * vpMat.m(1,2) + vpMat.m(1,3)
-                    dbgBpw  = dbgBtx * vpMat.m(3,0) + dbgBty * vpMat.m(3,1) + dbgBtz * vpMat.m(3,2) + vpMat.m(3,3)
-                    dbgBsw(dbgBci) = dbgBpw
-                    IF dbgBpw > 0 THEN
-                        dbgBsx(dbgBci) = (dbgBpx / dbgBpw + 1.0) * scrW * 0.5
-                        dbgBsy(dbgBci) = (1.0 - dbgBpy / dbgBpw) * scrH * 0.5
-                    END IF
-                NEXT dbgBci
-                FOR dbgBa = 0 TO 6
-                    FOR dbgBb = dbgBa + 1 TO 7
-                        dbgBdiff = dbgBa XOR dbgBb
-                        IF dbgBdiff = 1 OR dbgBdiff = 2 OR dbgBdiff = 4 THEN
-                            IF dbgBsw(dbgBa) > 0 THEN
-                                IF dbgBsw(dbgBb) > 0 THEN
-                                    LINE (dbgBsx(dbgBa), dbgBsy(dbgBa))-(dbgBsx(dbgBb), dbgBsy(dbgBb)), dbgBclr
-                                END IF
-                            END IF
-                        END IF
-                    NEXT dbgBb
-                NEXT dbgBa
-            END IF
-        NEXT dbgBi
-    END IF
-END IF
+DBG_Overlay
 
 _LIMIT 60
 _DISPLAY
 LOOP
 
-SUB StarfieldReset(srX AS SINGLE, srY AS SINGLE, srZ AS SINGLE)
-    E3D_StarfieldInit srY, srZ
-    E3D_StarfieldAddLayer srX, srY, srZ, 200, 50, 50, 40, 0.010, 0.020, 0
-    E3D_StarfieldAddLayer srX, srY, srZ,  60, 40, 30, 25, 0.035, 0.070, 1
-    E3D_StarfieldAddLayer srX, srY, srZ,  15, 25, 15, 12, 0.100, 0.180, 2
-END SUB
-
-
-SUB DBG_Print(dbgMsg AS STRING)
-    IF dbgTtyOK = 0 THEN EXIT SUB
-    DIM dbgF AS INTEGER
-    dbgF = FreeFile
-    OPEN "/dev/tty" FOR APPEND AS #dbgF
-    PRINT #dbgF, dbgMsg
-    CLOSE #dbgF
-END SUB
-
-SUB GAME_Usage(guErr AS STRING)
-    DIM guFH AS INTEGER : guFH = FREEFILE
-    IF INSTR(_OS$, "WIN") THEN
-        OPEN "CON:" FOR OUTPUT AS #guFH
-    ELSE
-        OPEN "/dev/stdout" FOR OUTPUT AS #guFH
-    END IF
-    IF guErr <> "" THEN
-        PRINT #guFH, "Error: " + guErr
-        PRINT #guFH, ""
-    END IF
-    PRINT #guFH, "Super Spaceguy Shooter " + VERSION$
-    PRINT #guFH, ""
-    PRINT #guFH, "Usage: sss [options]"
-    PRINT #guFH, ""
-    PRINT #guFH, "Options:"
-    PRINT #guFH, "  -v, --version          Print version and exit"
-    PRINT #guFH, "  -h, --help             Show this help and exit"
-    PRINT #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
-    PRINT #guFH, "  --god                  God mode: shields, health, and laser never deplete"
-    PRINT #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
-    PRINT #guFH, "  --debug                Enable debug overlay and stdout event logging"
-    PRINT #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
-    PRINT #guFH, ""
-    PRINT #guFH, "Scene names:"
-    PRINT #guFH, "  title                  Title screen (default)"
-    PRINT #guFH, "  crawl0                 Intro crawl"
-    PRINT #guFH, "  crawl1..6              Chapter crawls"
-    PRINT #guFH, "  playing1..6            Gameplay stages"
-    PRINT #guFH, "  boss1..6               Stage with boss pre-triggered on frame 1"
-    CLOSE #guFH
-    SYSTEM
-END SUB
