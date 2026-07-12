@@ -96,3 +96,10 @@ Sub E3D_StarfieldDraw (vpMat As E3D_Matrix4, scrW As Single, scrH As Single)
         End If
     Next i
 End Sub
+
+Sub StarfieldReset(srX As Single, srY As Single, srZ As Single)
+    E3D_StarfieldInit srY, srZ
+    E3D_StarfieldAddLayer srX, srY, srZ, 200, 50, 50, 40, 0.010, 0.020, 0
+    E3D_StarfieldAddLayer srX, srY, srZ,  60, 40, 30, 25, 0.035, 0.070, 1
+    E3D_StarfieldAddLayer srX, srY, srZ,  15, 25, 15, 12, 0.100, 0.180, 2
+End Sub
