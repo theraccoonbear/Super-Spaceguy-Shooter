@@ -41,7 +41,7 @@ Sub GAME_NewGame
     If seqIdx >= 0 And seqIdx < seqCount And seqKind(seqIdx) = SEQ_TITLE Then
         SEQ_Advance
     Else
-        SEQ_Init
+        SEQ_Load _EMBEDDED$("SEQTXT")
         SEQ_Advance
     End If
 End Sub
