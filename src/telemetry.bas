@@ -76,7 +76,7 @@ End Sub
 
 Sub TELEM_BossPhase(tlPhase As Integer)
     TELEM_Row "boss_phase", "phase=" + LTrim$(Str$(tlPhase)) + "|score=" + LTrim$(Str$(score)) _
-            + "|boss_hp=" + LTrim$(Str$(bossHP))
+            + "|boss_hp=" + LTrim$(Str$(boss.hp))
 End Sub
 
 Sub TELEM_BossDefeated()

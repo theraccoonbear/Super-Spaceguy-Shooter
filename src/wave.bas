@@ -20,7 +20,7 @@ Sub WAVE_Spawn
     diffScale = diffTime / DIFF_RAMP_DURATION
     If diffScale > 1.0 Then diffScale = 1.0
 
-    wvOK = (gameState = GS_PLAYING And boss.active = 0 And bossWarnTimer = 0)
+    wvOK = (gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0)
     If spawnTimer > (SPAWN_INTERVAL_BASE - diffScale * SPAWN_INTERVAL_MIN) And wvOK Then
         spawnTimer = 0
 
