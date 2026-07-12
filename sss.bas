@@ -250,6 +250,13 @@ DIM SHARED escWas          AS INTEGER
 DIM SHARED spaceWas        AS INTEGER
 DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
+DIM SHARED escConfirm  AS INTEGER
+DIM SHARED escYWas     AS INTEGER
+DIM SHARED escNWas     AS INTEGER
+DIM SHARED tabWas      AS INTEGER
+DIM SHARED rWas        AS INTEGER
+DIM SHARED camUpWas    AS INTEGER
+DIM SHARED camDnWas    AS INTEGER
 '$INCLUDE:'src/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/obj.bas'
@@ -417,7 +424,6 @@ DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
 DIM pjFade AS SINGLE
-DIM escConfirm AS INTEGER
 ' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
 DIM dbgOverlay AS INTEGER : IF debugMode THEN dbgOverlay = 1
 DIM dbgGraveWas AS INTEGER
@@ -453,10 +459,6 @@ END IF
     ' MAIN LOOP
     ' ============================================================
     DIM fsKeyWas AS INTEGER
-    DIM tabWas   AS INTEGER
-    DIM rWas     AS INTEGER
-    DIM camUpWas AS INTEGER
-    DIM camDnWas AS INTEGER
     DO
         dbgT0 = TIMER
         ' --- input ---
