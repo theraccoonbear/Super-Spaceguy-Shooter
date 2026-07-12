@@ -16,15 +16,23 @@ Sub GS_PLAYING_Update ()
 
     ' ESC confirm dialog (playing only)
     IF gameState = GS_PLAYING THEN
-        IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN escConfirm = 1 - escConfirm
+        IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
+            escConfirm = 1 - escConfirm
+            IF escConfirm THEN
+                escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
+                escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
+            END IF
+        END IF
         escWas = held(E3D_KEY_ESCAPE)
         IF escConfirm THEN
-            IF _KEYDOWN(89) OR _KEYDOWN(121) THEN
+            IF (_KEYDOWN(89) OR _KEYDOWN(121)) AND escYWas = 0 THEN
                 escConfirm = 0 : gameState = GS_TITLE
                 SEQ_RewindToTitle
                 MUS_SetCue "title"
             END IF
-            IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
+            escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
+            IF (_KEYDOWN(78) OR _KEYDOWN(110)) AND escNWas = 0 THEN escConfirm = 0
+            escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
             _DEST backBuffer
             UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 42, "ABORT MISSION"
             FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 2, scrW, 255
