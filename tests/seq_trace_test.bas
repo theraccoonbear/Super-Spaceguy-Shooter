@@ -27,6 +27,7 @@ Const CAM_OFFSET_Y = 2.0
 ' ── shared vars referenced by sequence.bas ──────────────────────────────────
 Dim Shared gameState  As Integer
 Dim Shared score      As Long
+Dim Shared highScore  As Long
 Dim Shared stageScore As Long
 Dim Shared scrH       As Single
 Dim introTimer        As Integer   ' module-scope in sss.bas; not Shared
@@ -39,6 +40,9 @@ Sub StarfieldReset(srX As Single, srY As Single, srZ As Single)
 End Sub
 
 Sub CRAWL_Prep(cpKey As String, cpStartY As Single)
+End Sub
+
+Sub SETTINGS_Save()
 End Sub
 
 ' ── real sequencer logic ─────────────────────────────────────────────────────
