@@ -136,20 +136,21 @@ Dim st6Before As Integer : st6Before = seqIdx
 SEQ_RewindToTitle
 ST_Assert seqIdx = st6Before And seqKind(seqIdx) = SEQ_TITLE, "6   RewindToTitle from title leaves seqIdx=2"
 
-' 7. End-of-game title: NewGame transitions away rather than looping
+' 7. End-of-game: outro crawl completes via SEQ_Advance (not GAME_NewGame),
+'    parks seqIdx at first SEQ_TITLE so the next GAME_NewGame → chapter 1.
 Print ""
-Print "--- scenario 7: end-of-game title (last SEQ_TITLE) ---"
+Print "--- scenario 7: outro crawl completes → title parked at seqIdx=2 ---"
 SEQ_Init
+' Jump seqIdx to the outro crawl (one before the final SEQ_TITLE)
 Dim st7I As Integer
 For st7I = seqCount - 1 To 0 Step -1
-    If seqKind(st7I) = SEQ_TITLE Then seqIdx = st7I : Exit For
+    If seqKind(st7I) = SEQ_TITLE Then seqIdx = st7I - 1 : Exit For
 Next st7I
-ST_Assert seqIdx > 2,                                         "7a  last SEQ_TITLE is past index 2"
-Dim st7PrevIdx As Integer : st7PrevIdx = seqIdx
+ST_Assert seqKind(seqIdx) = SEQ_CRAWL,                       "7a  seqIdx is on the outro crawl"
+SEQ_Advance   ' crawl ends → final SEQ_TITLE → SEQ_RewindToTitle → seqIdx=2
+ST_Assert seqIdx = 2 And gameState = GS_TITLE,               "7b  outro advance parks at seqIdx=2 (first SEQ_TITLE)"
 ST_NewGame
-ST_Assert seqIdx <> st7PrevIdx,                               "7b  NewGame moved seqIdx away from final title"
-ST_Assert gameState = GS_CRAWL,                               "7c  NewGame from final title → chapter-1 crawl (not prologue)"
-ST_Assert seqIdx = 3,                                         "7d  seqIdx=3 (stage1 crawl), not 0 (prologue)"
+ST_Assert seqIdx = 3 And gameState = GS_CRAWL,               "7c  NewGame from parked title → chapter-1 crawl"
 
 ' 8. Beating the game updates and saves highScore via SEQ_TITLE transition
 Print ""
