@@ -136,18 +136,21 @@ Dim st6Before As Integer : st6Before = seqIdx
 SEQ_RewindToTitle
 ST_Assert seqIdx = st6Before And seqKind(seqIdx) = SEQ_TITLE, "6   RewindToTitle from title leaves seqIdx=2"
 
-' 7. End-of-game title: NewGame transitions away rather than looping
+' 7. End-of-game: outro crawl completes via SEQ_Advance (not GAME_NewGame),
+'    parks seqIdx at first SEQ_TITLE so the next GAME_NewGame → chapter 1.
 Print ""
-Print "--- scenario 7: end-of-game title (last SEQ_TITLE) ---"
+Print "--- scenario 7: outro crawl completes → title parked at seqIdx=2 ---"
 SEQ_Init
+' Jump seqIdx to the outro crawl (one before the final SEQ_TITLE)
 Dim st7I As Integer
 For st7I = seqCount - 1 To 0 Step -1
-    If seqKind(st7I) = SEQ_TITLE Then seqIdx = st7I : Exit For
+    If seqKind(st7I) = SEQ_TITLE Then seqIdx = st7I - 1 : Exit For
 Next st7I
-ST_Assert seqIdx > 2,                                         "7a  last SEQ_TITLE is past index 2"
-Dim st7PrevIdx As Integer : st7PrevIdx = seqIdx
+ST_Assert seqKind(seqIdx) = SEQ_CRAWL,                       "7a  seqIdx is on the outro crawl"
+SEQ_Advance   ' crawl ends → final SEQ_TITLE → SEQ_RewindToTitle → seqIdx=2
+ST_Assert seqIdx = 2 And gameState = GS_TITLE,               "7b  outro advance parks at seqIdx=2 (first SEQ_TITLE)"
 ST_NewGame
-ST_Assert seqIdx <> st7PrevIdx,                               "7b  NewGame moved seqIdx away from final title"
+ST_Assert seqIdx = 3 And gameState = GS_CRAWL,               "7c  NewGame from parked title → chapter-1 crawl"
 
 ' 8. Beating the game updates and saves highScore via SEQ_TITLE transition
 Print ""
@@ -171,6 +174,31 @@ Next st8I
 score = 1000 : highScore = 5000
 SEQ_Advance
 ST_Assert highScore = 5000,        "8c  highScore unchanged when score is lower"
+
+' 9. Prologue never replays after being seen once in a session
+Print ""
+Print "--- scenario 9: prologue never replays after game beaten ---"
+' Simulate full boot: prologue → emperor → title
+SEQ_Init
+SEQ_Advance   ' prologue crawl (seqIdx=0)
+SEQ_Advance   ' emperor (seqIdx=1)
+SEQ_Advance   ' first title (seqIdx→2, SEQ_RewindToTitle→2, parked at 2)
+ST_Assert seqIdx = 2 And gameState = GS_TITLE,                "9a  parked at first SEQ_TITLE after boot"
+' New game → chapter 1
+ST_NewGame
+ST_Assert seqIdx = 3 And gameState = GS_CRAWL,                "9b  NewGame → chapter-1 crawl"
+' Simulate playing through all 6 stages to the final SEQ_TITLE
+' Jump seqIdx to just before the final SEQ_TITLE (the outro crawl)
+Dim st9I As Integer
+For st9I = seqCount - 1 To 0 Step -1
+    If seqKind(st9I) = SEQ_TITLE Then seqIdx = st9I - 1 : Exit For
+Next st9I
+SEQ_Advance   ' outro → final SEQ_TITLE → SEQ_RewindToTitle → seqIdx=2
+ST_Assert seqIdx = 2 And gameState = GS_TITLE,                "9c  parked at seqIdx=2 after game beaten"
+' New game from title must go to chapter 1, not prologue
+ST_NewGame
+ST_Assert gameState = GS_CRAWL,                               "9d  NewGame after beating → chapter-1 crawl"
+ST_Assert seqIdx = 3,                                         "9e  seqIdx=3, confirming prologue (0) was NOT replayed"
 
 ' ── summary ─────────────────────────────────────────────────────────────────
 Print ""
