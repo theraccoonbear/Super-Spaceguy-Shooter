@@ -25,6 +25,7 @@ $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
+$EMBED:'assets/sequence.txt':'SEQTXT'
 ' --- constants needed by included files ---
 CONST SAMPLE_RATE = 44100  ' audio sample rate; used by snd.bas and speech.bas
 CONST GS_TITLE     = 0
@@ -238,6 +239,24 @@ DIM SHARED telemSession$
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
+' --- state sub shared vars (must precede $INCLUDE of state files) ---
+DIM SHARED titleImg        AS LONG
+DIM SHARED emperorImg      AS LONG
+DIM SHARED introTimer      AS INTEGER
+DIM SHARED emperorName     AS STRING
+DIM SHARED empireName      AS STRING
+DIM SHARED gameOverDelay   AS INTEGER
+DIM SHARED escWas          AS INTEGER
+DIM SHARED spaceWas        AS INTEGER
+DIM SHARED crawlFFVolSave  AS SINGLE
+DIM SHARED titleEscConfirm AS INTEGER
+DIM SHARED escConfirm  AS INTEGER
+DIM SHARED escYWas     AS INTEGER
+DIM SHARED escNWas     AS INTEGER
+DIM SHARED tabWas      AS INTEGER
+DIM SHARED rWas        AS INTEGER
+DIM SHARED camUpWas    AS INTEGER
+DIM SHARED camDnWas    AS INTEGER
 '$INCLUDE:'src/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/obj.bas'
@@ -308,10 +327,6 @@ END IF
 scrW = 320 : scrH = 240
 SCREEN _NEWIMAGE(scrW, scrH, 32)
 backBuffer = _NEWIMAGE(scrW, scrH, 32)
-DIM titleImg AS LONG
-DIM emperorImg AS LONG
-DIM introTimer AS INTEGER
-DIM emperorName AS STRING, empireName AS STRING
 titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 FONT_BuildPalette fontPalette()
@@ -343,14 +358,23 @@ DIM SHARED cam AS E3D_Camera
 E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 
 DIM SHARED projMat AS E3D_Matrix4, viewMat AS E3D_Matrix4
+DIM SHARED objMat AS E3D_Matrix4
+DIM SHARED pPos AS E3D_Coord, pRot AS E3D_Coord
+DIM SHARED thrusterLight AS E3D_Coord
+DIM SHARED eLitDir AS E3D_Coord
+DIM SHARED lightDir AS E3D_Coord
+DIM SHARED meshLib(1 TO MESH_COUNT) AS E3D_Mesh
+'$INCLUDE:'src/state/title.bas'
+'$INCLUDE:'src/state/intro.bas'
+'$INCLUDE:'src/state/gameover.bas'
+'$INCLUDE:'src/state/crawl.bas'
+'$INCLUDE:'src/state/playing.bas'
 E3D_MatPerspective cam, scrW / scrH, projMat
 
 ' --- light (coming from upper-left-front) ---
-DIM lightDir AS E3D_Coord
 lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
 
 ' --- mesh library ---
-DIM meshLib(1 TO MESH_COUNT) AS E3D_Mesh
 DIM mdl AS STRING
 mdl = _EMBEDDED$("MODELS")
 E3D_LoadMesh mdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
@@ -391,13 +415,8 @@ StarfieldReset cam.POS.x, cam.POS.y, cam.POS.z
 DIM SHARED gameOver AS INTEGER
 DIM hit        AS INTEGER
 DIM i AS INTEGER, j AS INTEGER
-DIM objMat AS E3D_Matrix4
-' tgtRx/Ry/Rz moved into PLAYER_Update in player.bas
-DIM pPos AS E3D_Coord, pRot AS E3D_Coord
 DIM noLight AS E3D_Coord : noLight.x = 0 : noLight.y = 0 : noLight.z = -1
-DIM thrusterLight AS E3D_Coord
 DIM thrusterScale AS SINGLE
-DIM eLitDir AS E3D_Coord
 DIM eDimF AS SINGLE, eDist AS SINGLE
 DIM ebClr AS LONG
 DIM partR AS INTEGER
@@ -405,13 +424,6 @@ DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
 DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
 DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
 DIM pjFade AS SINGLE
-DIM gameOverDelay AS INTEGER
-DIM escConfirm AS INTEGER
-DIM escWas AS INTEGER
-DIM spaceWas       AS INTEGER
-DIM crawlFFVolSave AS SINGLE
-DIM titleEscConfirm AS INTEGER
-DIM throbBright AS INTEGER
 ' isManeuver declared DIM SHARED above (read by fuel/thruster logic; written by PLAYER_Update)
 DIM dbgOverlay AS INTEGER : IF debugMode THEN dbgOverlay = 1
 DIM dbgGraveWas AS INTEGER
@@ -432,7 +444,7 @@ SPK_Init
 SETTINGS_Load
 TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
-SEQ_Init
+SEQ_Load _EMBEDDED$("SEQTXT")
 IF ssCmdScene <> "" THEN
     IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
     IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
@@ -447,10 +459,6 @@ END IF
     ' MAIN LOOP
     ' ============================================================
     DIM fsKeyWas AS INTEGER
-    DIM tabWas   AS INTEGER
-    DIM rWas     AS INTEGER
-    DIM camUpWas AS INTEGER
-    DIM camDnWas AS INTEGER
     DO
         dbgT0 = TIMER
         ' --- input ---
@@ -491,759 +499,31 @@ END IF
             ' PLAYING / PLANET / CINEMATIC
             ' ============================================================
         CASE GS_PLAYING, GS_PLANET, GS_CINEMATIC
-            ' ESC during planet/cinematic: skip straight to title (no confirm needed)
-            IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
-                IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN
-                    SEQ_RewindToTitle
-                    gameState = GS_TITLE
-                    planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
-                    MUS_SetCue "title"
-                    escWas = held(E3D_KEY_ESCAPE)
-                    EXIT SELECT
-                END IF
-                escWas = held(E3D_KEY_ESCAPE)
-            END IF
-
-            ' ESC: rising edge toggles confirm dialog (game only); Y returns to title, Esc/N cancels
-            ' Processed before orbit block so GOTO camRender can't swallow it.
-            IF gameState = GS_PLAYING THEN
-                IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN escConfirm = 1 - escConfirm
-                escWas = held(E3D_KEY_ESCAPE)
-                IF escConfirm THEN
-                    IF _KEYDOWN(89) OR _KEYDOWN(121) THEN
-                        escConfirm = 0 : gameState = GS_TITLE
-                        SEQ_RewindToTitle
-                        MUS_SetCue "title"
-                    END IF
-                    IF _KEYDOWN(78) OR _KEYDOWN(110) THEN escConfirm = 0
-                    _DEST backBuffer
-                    UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 42, "ABORT MISSION"
-                    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 2, scrW, 255
-                    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 18, scrW, 255
-                    _DEST 0
-                    _PUTIMAGE , backBuffer, 0
-                    EXIT SELECT
-                END IF
-            END IF
-
-            ' camera orbit: Tab toggles; arrows set angle; physics paused while active
-            IF gameState = GS_PLAYING THEN
-                IF held(E3D_KEY_TAB) AND NOT tabWas THEN
-                    camOrbitMode = 1 - camOrbitMode
-                    IF camOrbitMode THEN
-                        camOrbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
-                        camOrbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
-                        camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
-                    ELSE
-                        camAngleLocked = -1
-                        SETTINGS_Save
-                    END IF
-                END IF
-                tabWas = held(E3D_KEY_TAB)
-                IF camOrbitMode THEN
-                    IF held(E3D_KEY_R) AND NOT rWas THEN
-                        camOrbitTheta = _PI(1.0)
-                        camOrbitPhi   = _ATAN2(CAM_OFFSET_Y, CAM_OFFSET_X)
-                        camOrbitR     = SQR(CAM_OFFSET_X * CAM_OFFSET_X + CAM_OFFSET_Y * CAM_OFFSET_Y)
-                        camOrbitMode  = 0 : camAngleLocked = 0
-                        SETTINGS_Save
-                    END IF
-                    rWas = held(E3D_KEY_R)
-                    IF camOrbitMode THEN
-                        IF held(E3D_KEY_UP)   THEN camOrbitPhi = camOrbitPhi + 0.008
-                        IF held(E3D_KEY_DOWN) THEN camOrbitPhi = camOrbitPhi - 0.008
-                        IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
-                        IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
-                        IF (camUpWas AND held(E3D_KEY_UP) = 0) OR (camDnWas AND held(E3D_KEY_DOWN) = 0) THEN
-                            camAngleLocked = -1
-                            IF debugMode THEN DBG_Print "[cam] phi=" + LTRIM$(STR$(camOrbitPhi)) + "  r=" + LTRIM$(STR$(camOrbitR))
-                            SETTINGS_Save
-                        END IF
-                        camUpWas = held(E3D_KEY_UP) : camDnWas = held(E3D_KEY_DOWN)
-                        GOTO camRender
-                    END IF
-                END IF
-            END IF
-
-            ' --- timers ---
-            tt = tt + 0.025
-            spawnTimer = spawnTimer + 0.025
-            IF fireTimer > 0 THEN fireTimer = fireTimer - 0.025
-            IF invTimer > 0 THEN invTimer = invTimer - 1
-            IF laserEnergy < 100.0 THEN
-                laserEnergy = laserEnergy + LASER_REGEN
-                IF laserEnergy > 100.0 THEN laserEnergy = 100.0
-            END IF
-            STAGE_Update
-
-            ' --- player movement, velocity physics, attitude ---
-            PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
-
-            IF gameState = GS_PLAYING THEN
-                fuelLevel = fuelLevel - FUEL_DRAIN
-                IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
-                IF fuelLevel <= 0 THEN
-                    fuelLevel = 0
-                    IF fuelStranded = 0 THEN TELEM_FuelExhausted
-                    fuelStranded = -1
-                END IF
-            END IF
-            IF godMode THEN
-                lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
-            END IF
-
-            IF isManeuver THEN
-                thrusterScale = thrusterScale + (0.88 - thrusterScale) * 0.14
-            ELSEIF fuelStranded THEN
-                thrusterScale = thrusterScale * 0.92
-            ELSE
-                thrusterScale = thrusterScale + (0.28 - thrusterScale) * 0.06
-            END IF
-
-
-            ' --- fire ---
-            PLAYER_Fire
-
-            ' --- player thruster trail ---
-            IF (INT(tt * 40)) MOD 2 = 0 THEN
-                FX_SpawnTrail player.px - 1.1, player.py, player.pz, 2, 0.005, 24, 10, _RGB(80, 140, 255), -0.035, playerVY * 0.3 - 0.008, playerVZ * 0.3
-            END IF
-
-            ' --- spawning ---
-            WAVE_Spawn
-
-            ' --- update bullets ---
-            FOR i = 1 TO MAX_BULLETS
-                IF bullets(i).active THEN
-                    bullets(i).px = bullets(i).px + bullets(i).vx
-                    bullets(i).py = bullets(i).py + bullets(i).vy
-                    bullets(i).pz = bullets(i).pz + bullets(i).vz
-                    bullets(i).life = bullets(i).life - 1
-                    IF bullets(i).life <= 0 THEN bullets(i).active = 0
-                END IF
-            NEXT i
-
-            ' --- update enemies ---
-            ENEMY_Update
-
-            ' --- update asteroids ---
-            FOR i = 1 TO MAX_ASTEROIDS
-                IF asteroids(i).active THEN
-                    asteroids(i).px  = asteroids(i).px  + asteroids(i).vx
-                    asteroids(i).rx  = asteroids(i).rx  + asteroids(i).drx
-                    asteroids(i).ry  = asteroids(i).ry  + asteroids(i).dry
-                    asteroids(i).rz  = asteroids(i).rz  + asteroids(i).drz
-                    IF asteroids(i).px < player.px + 25 THEN
-                        asteroids(i).py = asteroids(i).py + (player.py - asteroids(i).py) * 0.004
-                        asteroids(i).pz = asteroids(i).pz + (player.pz - asteroids(i).pz) * 0.004
-                    END IF
-                    IF asteroids(i).px < -5 THEN asteroids(i).active = 0
-
-                    ' bullet vs asteroid
-                    FOR j = 1 TO MAX_BULLETS
-                        IF bullets(j).active THEN
-                            E3D_AABBOverlap asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), _
-                            bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
-                            IF hit THEN
-                                asteroids(i).active = 0
-                                bullets(j).active = 0
-                                score = score + SCORE_ASTEROID
-                                SND_Boom
-                                scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ASTEROID
-                                FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
-                            END IF
-                        END IF
-                    NEXT j
-
-                    ' player vs asteroid
-                    E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), hit
-                    IF hit AND invTimer = 0 THEN
-                        asteroids(i).active = 0
-                        SND_Boom
-                        FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
-                        PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
-                    END IF
-                END IF
-            NEXT i
-
-            ' --- update powerups ---
-            FOR i = 1 TO MAX_POWERUPS
-                IF powerups(i).active THEN
-                    powerups(i).px  = powerups(i).px  + powerups(i).vx
-                    powerups(i).ry  = powerups(i).ry  + powerups(i).dry
-                    powerups(i).rz  = powerups(i).rz  + powerups(i).drz
-                    IF powerups(i).px < -5 THEN powerups(i).active = 0
-
-                    E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    powerups(i).px, powerups(i).py, powerups(i).pz, boxLib(MESH_POWERUP), hit
-                    IF hit THEN
-                        powerups(i).active = 0
-                        lives = lives + SHIELD_RESTORE
-                        IF lives > 100 THEN lives = 100
-                        score = score + SCORE_POWERUP
-                        SND_Pup
-                        TELEM_PowerupCollected
-                    END IF
-                END IF
-            NEXT i
-
-            ' --- boss ---
-            BOSS_Update
-
-            ' --- update enemy bullets ---
-            EBULLET_Update
-
-            FX_Update
-
-            E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
-
-            IF gameOver THEN
-                IF score > highScore THEN highScore = score : SETTINGS_Save
-                gameOverDelay = 90
-                gameState = GS_GAMEOVER
-                StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-                MUS_SetCue "gameover"
-                SPK_Say sSpkGameOver
-                gameOver = 0
-            END IF
-
-            camRender:
-            ' --------------------------------------------------------
-            ' RENDER
-            ' --------------------------------------------------------
-            ' camera: nose-following, velocity-oriented (see player.bas)
-            ' PLAYER_CamUpdate updates camLagY/Z and camFwdY/Z; cam fields set here
-            ' because nested UDT field writes from included Subs don't update globals.
-            PLAYER_CamUpdate
-            IF gameState = GS_CINEMATIC THEN
-                cam.POS.x = cinematicCamX
-            ELSE
-                cam.POS.x = player.px - CAM_OFFSET_X
-            END IF
-            cam.POS.y = camLagY + CAM_OFFSET_Y - camFwdY * CAM_FWD_SCALE
-            cam.POS.z = camLagZ               - camFwdZ * CAM_FWD_SCALE
-            IF gameState = GS_CINEMATIC THEN
-                cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
-                cam.target.y = camLagY
-                cam.target.z = camLagZ
-            ELSE
-                cam.target.x = player.px + CAM_LEAD_X
-                cam.target.y = player.py + camFwdY * CAM_LEAD_X
-                cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
-            END IF
-            IF (camOrbitMode OR camAngleLocked) AND gameState <> GS_CINEMATIC THEN
-                cam.POS.x = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
-                cam.POS.y = player.py + camOrbitR * SIN(camOrbitPhi)
-                cam.POS.z = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
-            END IF
-            E3D_MatLookAt cam, viewMat
-            E3D_MatMul projMat, viewMat, vpMat
-
-            _DEST backBuffer
-            LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 5, 185), BF
-
-            E3D_StarfieldDraw vpMat, scrW, scrH
-
-            ' planet: fades in and grows after boss defeat
-            STAGE_DrawPlanet
-
-            ' --- build and draw scene ---
-            E3D_SceneBegin
-
-            pPos.x = player.px : pPos.y = player.py : pPos.z = player.pz
-            pRot.x = player.rx : pRot.y = player.ry : pRot.z = player.rz
-            E3D_BuildObjectMat pPos, pRot, player.scl, objMat
-            ' flash ship during invincibility (skip draw on alternating frames)
-            IF invTimer = 0 OR (invTimer MOD 6) < 3 THEN
-                E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.POS, tt, lightDir
-            END IF
-
-            ' thruster glow at engine nozzle — brightness scales with thrusterScale
-            thrusterLight.x = -(0.28 + thrusterScale * 0.85)
-            thrusterLight.y = 0.0 : thrusterLight.z = 0.0
-            pPos.x = player.px - 0.92 : pPos.y = player.py : pPos.z = player.pz
-            E3D_BuildObjectMat pPos, pRot, thrusterScale, objMat
-            IF invTimer = 0 OR (invTimer MOD 6) < 3 THEN
-                E3D_SceneAddMeshLit meshLib(MESH_THRUSTER), objMat, cam.POS, tt, thrusterLight
-            END IF
-
-            FOR j = 1 TO MAX_ENEMIES
-                IF enemies(j).active THEN
-                    IF enemies(j).px > cam.POS.x THEN
-                        pPos.x = enemies(j).px : pPos.y = enemies(j).py : pPos.z = enemies(j).pz
-                        pRot.x = enemies(j).rx : pRot.y = enemies(j).ry : pRot.z = enemies(j).rz
-                        E3D_BuildObjectMat pPos, pRot, enemies(j).scl, objMat
-                        ' distance dimming: enemies far ahead appear darker
-                        eDist = enemies(j).px - player.px
-                        IF eDist > DIM_FAR THEN
-                            eDimF = DIM_AMBIENT
-                        ELSEIF eDist > DIM_NEAR THEN
-                            eDimF = DIM_AMBIENT + (eDist - DIM_NEAR) * ((1.0 - DIM_AMBIENT) / (DIM_FAR - DIM_NEAR))
-                        ELSE
-                            eDimF = 1.0
-                        END IF
-                        eLitDir.x = lightDir.x * eDimF
-                        eLitDir.y = lightDir.y * eDimF
-                        eLitDir.z = lightDir.z * eDimF
-                        E3D_SceneAddMeshLit meshLib(enemies(j).meshIdx), objMat, cam.POS, tt, eLitDir
-                    END IF
-                END IF
-            NEXT j
-
-            FOR j = 1 TO MAX_ASTEROIDS
-                IF asteroids(j).active THEN
-                    IF asteroids(j).px > cam.POS.x THEN
-                        pPos.x = asteroids(j).px : pPos.y = asteroids(j).py : pPos.z = asteroids(j).pz
-                        pRot.x = asteroids(j).rx : pRot.y = asteroids(j).ry : pRot.z = asteroids(j).rz
-                        E3D_BuildObjectMat pPos, pRot, asteroids(j).scl, objMat
-                        E3D_SceneAddMeshLit meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir
-                    END IF
-                END IF
-            NEXT j
-
-            IF boss.active THEN
-                pPos.x = boss.px : pPos.y = boss.py : pPos.z = boss.pz
-                pRot.x = boss.rx : pRot.y = boss.ry : pRot.z = boss.rz
-                E3D_BuildObjectMat pPos, pRot, boss.scl, objMat
-                eDist = boss.px - player.px
-                IF eDist > DIM_FAR THEN
-                    eDimF = 0.35
-                ELSEIF eDist > DIM_NEAR THEN
-                    eDimF = 0.35 + (eDist - DIM_NEAR) * (0.65 / (DIM_FAR - DIM_NEAR))
-                ELSE
-                    eDimF = 1.0
-                END IF
-                eLitDir.x = lightDir.x * eDimF
-                eLitDir.y = lightDir.y * eDimF
-                eLitDir.z = lightDir.z * eDimF
-                E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.POS, tt, eLitDir
-            END IF
-
-            FOR j = 1 TO MAX_POWERUPS
-                IF powerups(j).active THEN
-                    IF powerups(j).px > cam.POS.x THEN
-                        pPos.x = powerups(j).px : pPos.y = powerups(j).py : pPos.z = powerups(j).pz
-                        pRot.x = powerups(j).rx : pRot.y = powerups(j).ry : pRot.z = powerups(j).rz
-                        E3D_BuildObjectMat pPos, pRot, powerups(j).scl, objMat
-                        E3D_SceneAddMeshLit meshLib(MESH_POWERUP), objMat, cam.POS, tt, lightDir
-                    END IF
-                END IF
-            NEXT j
-
-            E3D_SceneFlush vpMat, scrW, scrH
-
-            ' --- player bullets: depth-perspective laser lines ---
-            _DEST backBuffer
-            FOR j = 1 TO MAX_BULLETS
-                IF bullets(j).active THEN
-                    ' project bolt tip (current pos)
-                    pjX  = bullets(j).px * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-                    pjY  = bullets(j).px * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-                    pjW  = bullets(j).px * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-                    ' project bolt rear (BULLET_TRAIL_LEN world-units behind tip along velocity axis)
-                    pjBX = bullets(j).px - bullets(j).vx * (BULLET_TRAIL_LEN / BULLET_SPEED)
-                    pjBY = bullets(j).py - bullets(j).vy * (BULLET_TRAIL_LEN / BULLET_SPEED)
-                    pjBZ = bullets(j).pz - bullets(j).vz * (BULLET_TRAIL_LEN / BULLET_SPEED)
-                    pjX2 = pjBX * vpMat.m(0,0) + pjBY * vpMat.m(0,1) + pjBZ * vpMat.m(0,2) + vpMat.m(0,3)
-                    pjY2 = pjBX * vpMat.m(1,0) + pjBY * vpMat.m(1,1) + pjBZ * vpMat.m(1,2) + vpMat.m(1,3)
-                    pjW2 = pjBX * vpMat.m(3,0) + pjBY * vpMat.m(3,1) + pjBZ * vpMat.m(3,2) + vpMat.m(3,3)
-                    IF pjW > 0.0001 AND pjW2 > 0.0001 THEN
-                        pjX  = (pjX  / pjW  + 1.0) * scrW * 0.5
-                        pjY  = (1.0 - pjY  / pjW)  * scrH * 0.5
-                        pjX2 = (pjX2 / pjW2 + 1.0) * scrW * 0.5
-                        pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
-                        IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
-                            pjFade = bullets(j).life / (BULLET_RANGE / BULLET_SPEED)
-                            IF pjFade > 1.0 THEN pjFade = 1.0
-                            LINE (INT(pjX2), INT(pjY2))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
-                            PSET (INT(pjX), INT(pjY)), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
-                        END IF
-                    END IF
-                END IF
-            NEXT j
-
-            ' --- enemy bullets: cross in ship-type color ---
-            FOR j = 1 TO MAX_EBULLETS
-                IF ebullets(j).active THEN
-                    pjX = ebullets(j).px * vpMat.m(0,0) + ebullets(j).py * vpMat.m(0,1) + ebullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-                    pjY = ebullets(j).px * vpMat.m(1,0) + ebullets(j).py * vpMat.m(1,1) + ebullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-                    pjW = ebullets(j).px * vpMat.m(3,0) + ebullets(j).py * vpMat.m(3,1) + ebullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-                    IF pjW > 0.0001 THEN
-                        pjX = (pjX / pjW + 1.0) * scrW * 0.5
-                        pjY = (1.0 - pjY / pjW) * scrH * 0.5
-                        IF pjX >= 4 AND pjX < scrW - 4 AND pjY >= 3 AND pjY < scrH - 3 THEN
-                            SELECT CASE ebullets(j).meshIdx
-                            CASE MESH_BOSS         : ebClr = _RGB(255, 200,   0)
-                            CASE MESH_ENEMY        : ebClr = _RGB(255,  80,  60)
-                            CASE MESH_ENEMY_ARROW  : ebClr = _RGB(220,  35,  65)
-                            CASE MESH_ENEMY_HLINE  : ebClr = _RGB( 80, 140, 255)
-                            CASE MESH_ENEMY_VCOL   : ebClr = _RGB(180,  65, 255)
-                            CASE MESH_ENEMY_PINCER : ebClr = _RGB(255,  45, 190)
-                            CASE ELSE              : ebClr = _RGB(185,  80, 255)
-                            END SELECT
-                            LINE (pjX - 4, pjY)-(pjX + 4, pjY), ebClr
-                            LINE (pjX, pjY - 2)-(pjX, pjY + 2), ebClr
-                            PSET (pjX, pjY), _RGB(255, 255, 255)
-                        END IF
-                    END IF
-                END IF
-            NEXT j
-
-            ' --- spawn entry flash ---
-            _DEST backBuffer
-            IF spawnFlashTimer > 0 THEN
-                pjX = spawnFlashPX * vpMat.m(0,0) + spawnFlashPY * vpMat.m(0,1) + spawnFlashPZ * vpMat.m(0,2) + vpMat.m(0,3)
-                pjY = spawnFlashPX * vpMat.m(1,0) + spawnFlashPY * vpMat.m(1,1) + spawnFlashPZ * vpMat.m(1,2) + vpMat.m(1,3)
-                pjW = spawnFlashPX * vpMat.m(3,0) + spawnFlashPY * vpMat.m(3,1) + spawnFlashPZ * vpMat.m(3,2) + vpMat.m(3,3)
-                IF pjW > 0.0001 THEN
-                    pjX = (pjX / pjW + 1.0) * scrW * 0.5
-                    pjY = (1.0 - pjY / pjW) * scrH * 0.5
-                    IF pjX >= 3 AND pjX < scrW - 3 AND pjY >= 3 AND pjY < scrH - 3 THEN
-                        partR = spawnFlashTimer * 26
-                        LINE (pjX - 4, pjY)-(pjX + 4, pjY), _RGB(partR, partR, partR)
-                        LINE (pjX, pjY - 4)-(pjX, pjY + 4), _RGB(partR, partR, partR)
-                    END IF
-                END IF
-                spawnFlashTimer = spawnFlashTimer - 1
-            END IF
-
-            FX_Draw vpMat, scrW, scrH
-
-            ' --- HUD ---
-            HUD_Draw
-
-            IF camOrbitMode THEN
-                _DEST backBuffer
-                FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4 + FONT_CHAR_H + 2, 160
-                FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H * 2 + 3, 120
-            END IF
-
-            FX_Flash scrW, scrH
-
-            ' cinematic fade-to-black — must be before FX_Shake which presents backBuffer
-            IF cinematicFade > 0 THEN
-                _DEST backBuffer
-                LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, cinematicFade), BF
-            END IF
-
-            FX_Shake backBuffer
-
-            IF gameState = GS_PLAYING THEN
-                SND_GameFill isManeuver
-            ELSE
-                MUS_Fill 0
-            END IF
+            GS_PLAYING_Update
 
             ' ============================================================
             ' TITLE SCREEN
             ' ============================================================
         CASE GS_TITLE
-            tt = tt + 0.025
-            _DEST backBuffer
-            _PUTIMAGE (0, 0)-(scrW - 1, scrH - 1), titleImg, backBuffer
-            ' translucent footer so text reads over the image art
-            LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
-            throbBright = INT(170 + 85 * SIN(tt * 5))
-            FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO START", 200, scrW, throbBright
-            FONT_PrintAlpha fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H, 255
-            FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
-            IF titleEscConfirm THEN
-                UI_DrawPanel scrW\2 - 76, scrH\2 - 52, scrW\2 + 76, scrH\2 + 52, "COMMAND CONSOLE"
-                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "A   ABOUT",       scrH\2 - 26, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 -  6, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 + 14, scrW, 255
-                FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 34, scrW, 255
-            END IF
-            _DEST 0
-            _PUTIMAGE , backBuffer, 0
-            ' ESC: rising edge toggles quit-confirm; Y exits, N/ESC cancels
-            IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN titleEscConfirm = 1 - titleEscConfirm
-            escWas = held(E3D_KEY_ESCAPE)
-            IF titleEscConfirm THEN
-                IF _KEYDOWN(65) OR _KEYDOWN(97) THEN  ' A — about
-                ABOUT_Prep : gameState = GS_ABOUT : titleEscConfirm = 0
-            END IF
-            IF _KEYDOWN(83) OR _KEYDOWN(115) THEN  ' S — settings
-            gameState = GS_OPTIONS : titleEscConfirm = 0
-            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
-        END IF
-        IF _KEYDOWN(89) OR _KEYDOWN(121) THEN EXIT DO
-        IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
-        MUS_Fill 0
-        EXIT SELECT
-    END IF
-    MUS_Fill 0
-    IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN GAME_NewGame
-    spaceWas = held(E3D_KEY_SPACE)
+            GS_TITLE_Update
 
     ' ============================================================
     ' INTRO SCREEN — emperor reveal
     ' ============================================================
 CASE GS_INTRO
-    tt = tt + 0.025
-    introTimer = introTimer + 1
-    _DEST backBuffer
-    LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    IF emperorImg <> 0 THEN
-        _PUTIMAGE (10, 0)-(309, scrH - 1), emperorImg, backBuffer
-    END IF
-    ' emperor name + prompt footer bar
-    LINE (0, scrH - 38)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 210), BF
-    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, emperorName, scrH - 34, scrW, 255
-    IF introTimer > 60 THEN
-        throbBright = INT(160 + 95 * SIN(tt * 5))
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE", scrH - 14, scrW, throbBright
-    END IF
-    ' fade in from black
-    IF introTimer < 40 THEN
-        LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, 255 - introTimer * 6), BF
-    END IF
-    _DEST 0
-    _PUTIMAGE , backBuffer, 0
-    IF held(E3D_KEY_ESCAPE) AND NOT escWas THEN
-        SEQ_RewindToTitle
-        gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
-    END IF
-    escWas = held(E3D_KEY_ESCAPE)
-    IF held(E3D_KEY_SPACE) AND NOT spaceWas AND introTimer > 45 THEN
-        introTimer = 0 : SEQ_Advance
-    END IF
-    spaceWas = held(E3D_KEY_SPACE)
-    MUS_Fill 0
+    GS_INTRO_Update
 
     ' ============================================================
     ' TEXT CRAWL — stage narrative scroll
     ' ============================================================
 CASE GS_CRAWL
-    IF crawlLineCount = 0 THEN escWas = held(E3D_KEY_ESCAPE) : SEQ_Advance : EXIT SELECT
-    ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
-    IF crawlTimer = 0 THEN
-        StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-        MUS_SetCue "crawl"
-    END IF
-    tt = tt + 0.025
-    crawlTimer = crawlTimer + 1
-    IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
-        crawlScroll = crawlScroll - CRAWL_SPEED * 5
-    ELSE
-        crawlScroll = crawlScroll - CRAWL_SPEED
-    END IF
-    ' Fire each paragraph's speech when its first line scrolls near the bottom.
-    ' All paragraphs use the same crawlRateScale (computed in CRAWL_Prep) so the
-    ' entire narration fills the crawl window at a consistent pace.
-    IF settingNarration AND NOT (held(E3D_KEY_SPACE) AND crawlTimer > 60) THEN
-        DO WHILE crawlParaIdx < crawlParaCount
-            IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN EXIT DO
-            IF crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
-            SPK_Say crawlParaText$(crawlParaIdx)
-            spkRateScale = crawlRateScale
-            crawlParaIdx = crawlParaIdx + 1
-        LOOP
-    ELSE
-        crawlParaIdx = crawlParaCount  ' narration off: mark all paragraphs done
-    END IF
-
-    cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
-    cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
-    E3D_MatLookAt cam, viewMat
-    E3D_MatMul projMat, viewMat, vpMat
-    E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
-
-    _DEST backBuffer
-    LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    E3D_StarfieldDraw vpMat, scrW, scrH
-
-    ' Fetch current spoken word once; used in both the line loop and bottom indicator
-    DIM crawlSpkW AS STRING
-    DIM crawlHiVis AS STRING, crawlHiViU AS STRING, crawlHiPos AS INTEGER, crawlHiX AS INTEGER
-    DIM crawlSpkOcc AS INTEGER, crawlHiPara AS INTEGER
-    DIM crawlScanI AS INTEGER, crawlScanV AS STRING, crawlScanP AS INTEGER
-    DIM crawlPriorOcc AS INTEGER, crawlLineOcc AS INTEGER, crawlHiLB AS INTEGER, crawlHiRB AS INTEGER
-    crawlSpkW = SPK_CurWord$
-    crawlSpkOcc = SPK_CurWordOcc%
-    crawlHiPara = crawlParaIdx - 1 : IF crawlHiPara < 0 THEN crawlHiPara = 0
-
-    FOR crawlIdx = 0 TO crawlLineCount - 1
-        crawlLY = INT(crawlScroll + crawlIdx * CRAWL_LINE_H)
-        IF crawlLY > -CRAWL_LINE_H AND crawlLY < scrH THEN
-            IF LEN(crawlLines$(crawlIdx)) > 0 THEN
-                FONT_PrintCenteredRichAlpha fontPalette(), backBuffer, crawlLines$(crawlIdx), crawlLY, scrW, 255
-                ' Inline highlight: redraw the exact spoken word occurrence in cyan.
-                ' Restricted to the active paragraph's lines; uses whole-word matching
-                ' and occurrence index so only one instance lights up at a time.
-                IF LEN(crawlSpkW) > 0 AND crawlIdx >= crawlParaLine(crawlHiPara) AND crawlIdx <= crawlParaLastLine(crawlHiPara) THEN
-                    crawlHiVis = CRAWL_VisText$(crawlLines$(crawlIdx))
-                    crawlHiViU = UCASE$(crawlHiVis)
-                    ' count whole-word occurrences in earlier lines of this paragraph
-                    crawlPriorOcc = 0
-                    FOR crawlScanI = crawlParaLine(crawlHiPara) TO crawlIdx - 1
-                        crawlScanV = UCASE$(CRAWL_VisText$(crawlLines$(crawlScanI)))
-                        crawlScanP = 1
-                        DO
-                            crawlScanP = INSTR(crawlScanP, crawlScanV, crawlSpkW)
-                            IF crawlScanP = 0 THEN EXIT DO
-                            crawlHiLB = 0 : IF crawlScanP > 1 THEN crawlHiLB = ASC(MID$(crawlScanV, crawlScanP - 1, 1))
-                            crawlHiRB = 0 : IF crawlScanP + LEN(crawlSpkW) <= LEN(crawlScanV) THEN crawlHiRB = ASC(MID$(crawlScanV, crawlScanP + LEN(crawlSpkW), 1))
-                            IF (crawlHiLB < 65 OR crawlHiLB > 90) AND (crawlHiRB < 65 OR crawlHiRB > 90) THEN crawlPriorOcc = crawlPriorOcc + 1
-                            crawlScanP = crawlScanP + LEN(crawlSpkW)
-                        LOOP
-                    NEXT crawlScanI
-                    ' find the target occurrence on this line
-                    crawlHiPos = 1 : crawlLineOcc = 0
-                    DO
-                        crawlHiPos = INSTR(crawlHiPos, crawlHiViU, crawlSpkW)
-                        IF crawlHiPos = 0 THEN EXIT DO
-                        crawlHiLB = 0 : IF crawlHiPos > 1 THEN crawlHiLB = ASC(MID$(crawlHiViU, crawlHiPos - 1, 1))
-                        crawlHiRB = 0 : IF crawlHiPos + LEN(crawlSpkW) <= LEN(crawlHiViU) THEN crawlHiRB = ASC(MID$(crawlHiViU, crawlHiPos + LEN(crawlSpkW), 1))
-                        IF (crawlHiLB < 65 OR crawlHiLB > 90) AND (crawlHiRB < 65 OR crawlHiRB > 90) THEN
-                            IF crawlPriorOcc + crawlLineOcc = crawlSpkOcc THEN
-                                crawlHiX = (scrW - CRAWL_VisLen%(crawlLines$(crawlIdx)) * FONT_CHAR_W) \ 2
-                                crawlHiX = crawlHiX + (crawlHiPos - 1) * FONT_CHAR_W
-                                FONT_PrintAlpha fontPalette(11), backBuffer, MID$(crawlHiVis, crawlHiPos, LEN(crawlSpkW)), crawlHiX, crawlLY, 255
-                                EXIT DO
-                            END IF
-                            crawlLineOcc = crawlLineOcc + 1
-                        END IF
-                        crawlHiPos = crawlHiPos + LEN(crawlSpkW)
-                    LOOP
-                END IF
-            END IF
-        END IF
-    NEXT crawlIdx
-
-    ' fade band at top — text fades out as it approaches the vanishing point
-    FOR crawlFY = 0 TO 47
-        LINE (0, crawlFY)-(scrW - 1, crawlFY), _RGBA(0, 0, 5, 255 - crawlFY * 5), BF
-    NEXT crawlFY
-    ' fade band at bottom — new text fades in from below
-    FOR crawlFY = 0 TO 31
-        LINE (0, scrH - 1 - crawlFY)-(scrW - 1, scrH - 1 - crawlFY), _RGBA(0, 0, 5, 200 - crawlFY * 6), BF
-    NEXT crawlFY
-
-    ' Bottom-left word chip (` toggles both this and the inline highlight)
-    IF crawlSpkOverlay AND LEN(crawlSpkW) > 0 THEN
-        LINE (0, scrH - FONT_CHAR_H - 3)-(LEN(crawlSpkW) * FONT_CHAR_W + 7, scrH - 1), _RGB(0, 20, 60), BF
-        FONT_PrintAlpha fontPalette(10), backBuffer, crawlSpkW, 4, scrH - FONT_CHAR_H - 1, 255
-    END IF
-    ' FFWD lozenge hint — always visible after lock-out period
-    IF crawlTimer > 60 AND held(E3D_KEY_SPACE) THEN
-        DIM crawlFFHint AS STRING : crawlFFHint = ">> FAST FORWARD <<"
-        DIM crawlFFHX AS INTEGER : crawlFFHX = (scrW - LEN(crawlFFHint) * FONT_CHAR_W) \ 2
-        LINE (crawlFFHX - 5, scrH - FONT_CHAR_H - 5)-(crawlFFHX + LEN(crawlFFHint) * FONT_CHAR_W + 4, scrH - 1), _RGBA(0, 8, 24, 210), BF
-        FONT_PrintAlpha fontPalette(14), backBuffer, crawlFFHint, crawlFFHX, scrH - FONT_CHAR_H - 2, 255
-    END IF
-
-    ' auto-advance when last line has cleared the top fade band
-    IF crawlScroll + crawlLineCount * CRAWL_LINE_H < -20 THEN
-        crawlParaIdx = crawlParaCount : SPK_Say ""
-        fxVCRActive = 0 : IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
-        escWas = held(E3D_KEY_ESCAPE)  ' consume held ESC so next state's rising-edge check isn't fooled
-        SEQ_Advance
-        EXIT SELECT
-    END IF
-    ' SPACE held = fast-forward (locked 1 sec to prevent accidental carry-through from intro)
-    IF crawlTimer > 60 THEN
-        IF held(E3D_KEY_SPACE) THEN
-            IF NOT crawlFFActive THEN
-                crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
-            END IF
-            IF held(E3D_KEY_ESCAPE) THEN
-                fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
-                escWas = -1  ' consume ESC so next state doesn't see it as a fresh keypress
-                SEQ_Advance : EXIT SELECT
-            END IF
-            fxVCRActive = -1
-            IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
-        ELSE
-            IF crawlFFActive THEN
-                volMusic = crawlFFVolSave : crawlFFActive = 0
-                IF settingNarration THEN
-                    ' Find highest-indexed paragraph whose trigger scroll has been passed
-                    DIM crawlResI AS INTEGER : crawlResI = -1
-                    DIM crawlResP AS INTEGER
-                    FOR crawlResP = crawlParaCount - 1 TO 0 STEP -1
-                        IF crawlScroll + crawlParaLine(crawlResP) * CRAWL_LINE_H <= scrH - CRAWL_LINE_H THEN
-                            crawlResI = crawlResP : EXIT FOR
-                        END IF
-                    NEXT crawlResP
-                    IF crawlResI < 0 THEN
-                        crawlParaIdx = 0  ' nothing triggered yet; let trigger loop handle entry
-                    ELSE
-                        ' Build phoneme queue then skip past the portion that would already have played
-                        SPK_Say crawlParaText$(crawlResI)
-                        spkRateScale = crawlRateScale
-                        DIM crawlSyncS AS SINGLE
-                        crawlSyncS = (scrH - CRAWL_LINE_H) - crawlParaLine(crawlResI) * CRAWL_LINE_H
-                        DIM crawlSyncEla AS LONG
-                        crawlSyncEla = CLNG((crawlSyncS - crawlScroll) / CRAWL_SPEED / 60.0 * SAMPLE_RATE)
-                        DIM crawlSyncJ AS INTEGER : crawlSyncJ = 0
-                        DIM crawlSyncDur AS LONG : crawlSyncDur = 0
-                        DO WHILE crawlSyncJ < spkPhoneCount
-                            DIM crawlSyncPD AS LONG
-                            crawlSyncPD = CLNG(spkDur(spkPhones(crawlSyncJ), spkStress(crawlSyncJ)) * crawlRateScale)
-                            IF crawlSyncDur + crawlSyncPD > crawlSyncEla THEN EXIT DO
-                            crawlSyncDur = crawlSyncDur + crawlSyncPD
-                            crawlSyncJ = crawlSyncJ + 1
-                        LOOP
-                        IF crawlSyncJ >= spkPhoneCount THEN
-                            ' Paragraph fully elapsed; silence queue and advance to next
-                            spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
-                        ELSE
-                            spkPhoneIdx = crawlSyncJ : spkSamplePos = 0
-                        END IF
-                        crawlParaIdx = crawlResI + 1
-                    END IF
-                ELSE
-                    crawlParaIdx = crawlParaCount
-                END IF
-            END IF
-            fxVCRActive = 0
-        END IF
-    END IF
-    spaceWas = held(E3D_KEY_SPACE)
-    ' ` toggles speech word overlay (inline highlight + bottom chip)
-    IF _KEYDOWN(96) THEN
-        IF NOT crawlBtWas THEN crawlSpkOverlay = 1 - crawlSpkOverlay
-        crawlBtWas = -1
-    ELSE
-        crawlBtWas = 0
-    END IF
-
-    _DEST 0 : _PUTIMAGE , backBuffer, 0
-    FX_VCRNoise scrW, scrH
-    MUS_Fill 0
+    GS_CRAWL_Update
 
     ' ============================================================
     ' GAME OVER SCREEN
     ' ============================================================
 CASE GS_GAMEOVER
-    tt = tt + 0.025
-    cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
-    cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
-    E3D_MatLookAt cam, viewMat
-    E3D_MatMul projMat, viewMat, vpMat
-    E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
-    _DEST backBuffer
-    LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    E3D_StarfieldDraw vpMat, scrW, scrH
-    gameOverDelay = gameOverDelay - 1
-    UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 44, scrW \ 2 + 88, scrH \ 2 + 44, "GAME OVER"
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 18, scrW, 255
-    IF score >= highScore THEN
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 2, scrW, 255
-    ELSE
-        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 + 2, scrW, 255
-    END IF
-    IF gameOverDelay <= 0 THEN
-        throbBright = INT(170 + 85 * SIN(tt * 5))
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", scrH \ 2 + 22, scrW, throbBright
-        IF held(E3D_KEY_SPACE) AND NOT spaceWas THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
-    END IF
-    spaceWas = held(E3D_KEY_SPACE)
-    _DEST 0
-    _PUTIMAGE , backBuffer, 0
-    MUS_Fill 0
+    GS_GAMEOVER_Update
 
     ' ============================================================
     ' SETTINGS / VOLUME CONFIG
@@ -1364,22 +644,6 @@ SUB StarfieldReset(srX AS SINGLE, srY AS SINGLE, srZ AS SINGLE)
     E3D_StarfieldAddLayer srX, srY, srZ,  15, 25, 15, 12, 0.100, 0.180, 2
 END SUB
 
-SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
-    lives = lives - ptDmg
-    fxShakeTimer = ptShake : fxFlashTimer = ptFlash
-    SND_Hit
-    TELEM_PlayerDamaged
-    IF lives <= 0 THEN
-        shipLives = shipLives - 1
-        IF shipLives <= 0 THEN
-            gameOver = -1
-            TELEM_PlayerDeath
-            TELEM_SessionEnd
-        ELSE
-            lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
-        END IF
-    END IF
-END SUB
 
 SUB DBG_Print(dbgMsg AS STRING)
     IF dbgTtyOK = 0 THEN EXIT SUB

@@ -24,6 +24,7 @@
 
 ## Pull requests
 - Every PR body must include `Closes #N` (or `Fixes #N`) for each GitHub issue the PR resolves. Without it the issue will not auto-close on merge.
+- After every commit on a PR branch, push immediately. The user tests from a separate working copy and cannot see local commits.
 
 ## Tackling a task
 - Regardless of how enthusiastic the user is to get started, make a plan that is shared first.
