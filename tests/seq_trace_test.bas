@@ -27,6 +27,7 @@ Const CAM_OFFSET_Y = 2.0
 ' ── shared vars referenced by sequence.bas ──────────────────────────────────
 Dim Shared gameState  As Integer
 Dim Shared score      As Long
+Dim Shared highScore  As Long
 Dim Shared stageScore As Long
 Dim Shared scrH       As Single
 Dim introTimer        As Integer   ' module-scope in sss.bas; not Shared
@@ -39,6 +40,9 @@ Sub StarfieldReset(srX As Single, srY As Single, srZ As Single)
 End Sub
 
 Sub CRAWL_Prep(cpKey As String, cpStartY As Single)
+End Sub
+
+Sub SETTINGS_Save()
 End Sub
 
 ' ── real sequencer logic ─────────────────────────────────────────────────────
@@ -144,6 +148,29 @@ ST_Assert seqIdx > 2,                                         "7a  last SEQ_TITL
 Dim st7PrevIdx As Integer : st7PrevIdx = seqIdx
 ST_NewGame
 ST_Assert seqIdx <> st7PrevIdx,                               "7b  NewGame moved seqIdx away from final title"
+
+' 8. Beating the game updates and saves highScore via SEQ_TITLE transition
+Print ""
+Print "--- scenario 8: highScore saved when game is beaten ---"
+SEQ_Init
+' Jump to the outro crawl (one step before the final SEQ_TITLE)
+Dim st8I As Integer
+For st8I = seqCount - 1 To 0 Step -1
+    If seqKind(st8I) = SEQ_TITLE Then seqIdx = st8I - 1 : Exit For
+Next st8I
+score = 5000 : highScore = 0
+SEQ_Advance   ' outro crawl → final SEQ_TITLE
+ST_Assert gameState = GS_TITLE,   "8a  lands on GS_TITLE after outro"
+ST_Assert highScore = 5000,        "8b  highScore updated when score beats it"
+
+' new high score only: score below existing highScore must not overwrite
+SEQ_Init
+For st8I = seqCount - 1 To 0 Step -1
+    If seqKind(st8I) = SEQ_TITLE Then seqIdx = st8I - 1 : Exit For
+Next st8I
+score = 1000 : highScore = 5000
+SEQ_Advance
+ST_Assert highScore = 5000,        "8c  highScore unchanged when score is lower"
 
 ' ── summary ─────────────────────────────────────────────────────────────────
 Print ""
