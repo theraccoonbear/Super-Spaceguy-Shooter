@@ -134,3 +134,20 @@ Sub PLAYER_CamUpdate
     ' cam.POS and cam.target are set in sss.bas after this call — nested UDT field
     ' writes from included-file Subs don't update the global, same as UDT array gotcha.
 End Sub
+
+Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
+    lives = lives - ptDmg
+    fxShakeTimer = ptShake : fxFlashTimer = ptFlash
+    SND_Hit
+    TELEM_PlayerDamaged
+    If lives <= 0 Then
+        shipLives = shipLives - 1
+        If shipLives <= 0 Then
+            gameOver = -1
+            TELEM_PlayerDeath
+            TELEM_SessionEnd
+        Else
+            lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
+        End If
+    End If
+End Sub

@@ -642,22 +642,6 @@ SUB StarfieldReset(srX AS SINGLE, srY AS SINGLE, srZ AS SINGLE)
     E3D_StarfieldAddLayer srX, srY, srZ,  15, 25, 15, 12, 0.100, 0.180, 2
 END SUB
 
-SUB PLAYER_TakeDamage(ptDmg AS INTEGER, ptShake AS INTEGER, ptFlash AS INTEGER)
-    lives = lives - ptDmg
-    fxShakeTimer = ptShake : fxFlashTimer = ptFlash
-    SND_Hit
-    TELEM_PlayerDamaged
-    IF lives <= 0 THEN
-        shipLives = shipLives - 1
-        IF shipLives <= 0 THEN
-            gameOver = -1
-            TELEM_PlayerDeath
-            TELEM_SessionEnd
-        ELSE
-            lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
-        END IF
-    END IF
-END SUB
 
 SUB DBG_Print(dbgMsg AS STRING)
     IF dbgTtyOK = 0 THEN EXIT SUB
