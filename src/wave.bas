@@ -18,9 +18,10 @@ Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
 
 Sub WAVE_Spawn
-    Dim wvOK     As Integer
-    Dim wvCount  As Integer, wvMember As Integer
-    Dim wvType   As Integer
+    Dim wvOK       As Integer
+    Dim wvCount    As Integer, wvMember As Integer
+    Dim wvType     As Integer
+    Dim wvPoolSize As Integer
     Dim wvCX As Single, wvCY As Single, wvCZ As Single, wvVX As Single
     Dim wvDX(0 To 4) As Single, wvDY(0 To 4) As Single, wvDZ(0 To 4) As Single
     Dim wvI As Integer
@@ -34,34 +35,33 @@ Sub WAVE_Spawn
     If spawnTimer > (SPAWN_INTERVAL_BASE - diffScale * SPAWN_INTERVAL_MIN) And wvOK Then
         spawnTimer = 0
 
+        ' formation type pool grows each level: harder types unlock as stages progress
+        Select Case levelNum
+        Case 1   : wvPoolSize = 4  ' solo, arrow, hline, vcol
+        Case 2   : wvPoolSize = 5  ' + pincer
+        Case Else: wvPoolSize = 6  ' + vwedge
+        End Select
+
         ' run 1-2 of the same formation type, then switch
         If waveCount <= 0 Then
             Do
-                waveType = Int(RND * 6)
+                waveType = Int(RND * wvPoolSize)
             Loop While waveType = wavePrev
             wavePrev  = waveType
             waveCount = 1
         End If
         wvType    = waveType
         waveCount = waveCount - 1
+
+        ' per-type size and level threshold for 3rd member
         Select Case wvType
         Case 0 : wvCount = 1 : wvTypeName = "solo"
-        Case 1 : wvCount = 2 : wvTypeName = "arrow"
-        Case 2 : wvCount = 2 : wvTypeName = "hline"
-        Case 3 : wvCount = 2 : wvTypeName = "vcol"
-        Case 4 : wvCount = 2 : wvTypeName = "pincer"
-        Case Else : wvCount = 2 : wvTypeName = "vwedge"
+        Case 1 : wvCount = 2 : wvTypeName = "arrow"  : If levelNum >= 3 Then wvCount = 3
+        Case 2 : wvCount = 2 : wvTypeName = "hline"  : If levelNum >= 2 Then wvCount = 3
+        Case 3 : wvCount = 2 : wvTypeName = "vcol"   : If levelNum >= 3 Then wvCount = 3
+        Case 4 : wvCount = 2 : wvTypeName = "pincer" : If levelNum >= 5 Then wvCount = 3 : wvDX(2) = 0 : wvDY(2) = 0 : wvDZ(2) = 0
+        Case Else : wvCount = 2 : wvTypeName = "vwedge" : If levelNum >= 4 Then wvCount = 3
         End Select
-        ' level progression: bump formation size (3rd slot pre-defined for 1/2/3/5; add for 4)
-        If levelNum >= 3 Then
-            Select Case wvType
-            Case 1, 2, 3, 5 : wvCount = 3
-            End Select
-        End If
-        If levelNum >= 5 And wvType = 4 Then
-            wvCount = 3
-            wvDX(2) = 0 : wvDY(2) = 0 : wvDZ(2) = 0
-        End If
         If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
         wvCX = player.px + SPAWN_DIST_MIN + RND * SPAWN_DIST_VAR
