@@ -165,7 +165,7 @@ Sub HUD_Draw
     ' boss HP bar
     If boss.active Then
         FONT_PrintAlpha fontPalette(14), backBuffer, "BOSS", scrW\2 - 88, scrH - 18, 255
-        hdBossHPBar = INT((bossHP / BOSS_MAX_HP) * 100)
+        hdBossHPBar = INT((boss.hp / BOSS_MAX_HP) * 100)
         LINE (scrW/2 - 52, scrH - 14)-(scrW/2 + 52, scrH - 5), _RGB(15, 20, 30), BF
         If hdBossHPBar > 0 Then
             LINE (scrW/2 - 51, scrH - 13)-(scrW/2 - 51 + hdBossHPBar, scrH - 6), _RGB(220, 40, 40), BF
@@ -175,8 +175,8 @@ Sub HUD_Draw
     End If
 
     ' boss warning flash
-    If bossWarnTimer > 0 And boss.active = 0 Then
-        If (bossWarnTimer Mod 18) < 9 Then
+    If boss.warnTimer > 0 And boss.active = 0 Then
+        If (boss.warnTimer Mod 18) < 9 Then
             FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "! WARNING !", scrH\2 - 10, scrW, 255
             FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BOSS INCOMING", scrH\2 + 8, scrW, 255
         End If

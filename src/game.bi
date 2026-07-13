@@ -1,3 +1,4 @@
+'$INCLUDE:'cli.bas'
 '$INCLUDE:'speech.bas'
 '$INCLUDE:'effects.bas'
 '$INCLUDE:'snd.bas'
@@ -11,6 +12,7 @@
 '$INCLUDE:'hud.bas'
 '$INCLUDE:'wave.bas'
 '$INCLUDE:'stage.bas'
+'$INCLUDE:'debug.bas'
 '$INCLUDE:'game.bas'
 '$INCLUDE:'settings.bas'
 '$INCLUDE:'ui.bas'

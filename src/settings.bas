@@ -10,11 +10,11 @@ Sub SETTINGS_Save ()
     Print #sfH, "narration="  + LTrim$(Str$(settingNarration))
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "highscore=" + LTrim$(Str$(highScore))
-    If camAngleLocked Then
-        Print #sfH, "cam_theta=" + LTrim$(Str$(camOrbitTheta))
-        Print #sfH, "cam_phi="   + LTrim$(Str$(camOrbitPhi))
-        Print #sfH, "cam_r="     + LTrim$(Str$(camOrbitR))
-        If debugMode Then DBG_Print "[settings] saved  cam_phi=" + LTrim$(Str$(camOrbitPhi)) + "  cam_r=" + LTrim$(Str$(camOrbitR))
+    If camF.angleLocked Then
+        Print #sfH, "cam_theta=" + LTrim$(Str$(camF.orbitTheta))
+        Print #sfH, "cam_phi="   + LTrim$(Str$(camF.orbitPhi))
+        Print #sfH, "cam_r="     + LTrim$(Str$(camF.orbitR))
+        If debugMode Then DBG_Print "[settings] saved  cam_phi=" + LTrim$(Str$(camF.orbitPhi)) + "  cam_r=" + LTrim$(Str$(camF.orbitR))
     Else
         If debugMode Then DBG_Print "[settings] saved"
     End If
@@ -34,15 +34,15 @@ Sub SETTINGS_Load ()
             sfVal = Val(Mid$(sfLine, sfEq + 1))
             Select Case sfKey
                 Case "cam_theta"
-                    camOrbitTheta = sfVal
-                    camAngleLocked = -1
+                    camF.orbitTheta = sfVal
+                    camF.angleLocked = -1
                 Case "cam_phi"
                     If sfVal < -1.5 Then sfVal = -1.5
                     If sfVal >  1.5 Then sfVal =  1.5
-                    camOrbitPhi = sfVal
+                    camF.orbitPhi = sfVal
                 Case "cam_r"
                     If sfVal < 0.5 Then sfVal = 0.5
-                    camOrbitR = sfVal
+                    camF.orbitR = sfVal
                 Case "highscore"
                     If sfVal >= 0 Then highScore = CLng(sfVal)
                 Case Else
@@ -59,8 +59,8 @@ Sub SETTINGS_Load ()
         End If
     Loop
     If debugMode Then
-        If camAngleLocked Then
-            DBG_Print "[settings] loaded  cam_phi=" + LTrim$(Str$(camOrbitPhi)) + "  cam_r=" + LTrim$(Str$(camOrbitR))
+        If camF.angleLocked Then
+            DBG_Print "[settings] loaded  cam_phi=" + LTrim$(Str$(camF.orbitPhi)) + "  cam_r=" + LTrim$(Str$(camF.orbitR))
         Else
             DBG_Print "[settings] loaded"
         End If
