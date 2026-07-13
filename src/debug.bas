@@ -1,3 +1,23 @@
+Sub DBG_LogStateChange()
+    If debugMode = 0 Then Exit Sub
+    If gameState = prevGameState Then Exit Sub
+    Dim dbgStateName As String
+    Select Case gameState
+        Case GS_TITLE    : dbgStateName = "GS_TITLE"
+        Case GS_PLAYING  : dbgStateName = "GS_PLAYING"
+        Case GS_GAMEOVER : dbgStateName = "GS_GAMEOVER"
+        Case GS_PLANET   : dbgStateName = "GS_PLANET"
+        Case GS_CINEMATIC: dbgStateName = "GS_CINEMATIC"
+        Case GS_INTRO    : dbgStateName = "GS_INTRO"
+        Case GS_CRAWL    : dbgStateName = "GS_CRAWL"
+        Case GS_OPTIONS  : dbgStateName = "GS_OPTIONS"
+        Case GS_ABOUT    : dbgStateName = "GS_ABOUT"
+        Case GS_LEADIN   : dbgStateName = "GS_LEADIN"
+        Case Else        : dbgStateName = "GS_?" + LTrim$(Str$(gameState))
+    End Select
+    DBG_Print "[state] " + dbgStateName
+End Sub
+
 Sub DBG_Print(dbgMsg As String)
     If dbgTtyOK = 0 Then Exit Sub
     Dim dbgF As Integer
