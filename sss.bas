@@ -308,85 +308,61 @@ ELSE
     LEADIN_Init
 END IF
 
-    ' ============================================================
-    ' MAIN LOOP
-    ' ============================================================
-    DIM fsKeyWas AS INTEGER
-    DO
-        dbgT0 = TIMER
-        ' --- input ---
-        E3D_InputUpdate held()
-        IF _KEYDOWN(34048) AND NOT fsKeyWas THEN
-            settingFullscreen = 1 - settingFullscreen
-            IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
-            SETTINGS_Save
-        END IF
-        fsKeyWas = _KEYDOWN(34048)
+' ============================================================
+' MAIN LOOP
+' ============================================================
+DIM fsKeyWas AS INTEGER
+DO
+    dbgT0 = TIMER
+    ' --- input ---
+    E3D_InputUpdate held()
+    IF _KEYDOWN(34048) AND NOT fsKeyWas THEN
+        settingFullscreen = 1 - settingFullscreen
+        IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
+        SETTINGS_Save
+    END IF
+    fsKeyWas = _KEYDOWN(34048)
 
-        ' Detect state transitions for speech triggers
-        IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
-            SPK_Say sSpkTitle
-        END IF
-        DBG_LogStateChange
-        prevGameState = gameState
+    ' Detect state transitions for speech triggers
+    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
+        SPK_Say sSpkTitle
+    END IF
+    DBG_LogStateChange
+    prevGameState = gameState
 
-        SELECT CASE gameState
+    SELECT CASE gameState
 
-            ' ============================================================
-            ' PLAYING / PLANET / CINEMATIC
-            ' ============================================================
-        CASE GS_PLAYING, GS_PLANET, GS_CINEMATIC
-            GS_PLAYING_Update
+    CASE GS_PLAYING, GS_PLANET, GS_CINEMATIC
+        GS_PLAYING_Update
 
-            ' ============================================================
-            ' TITLE SCREEN
-            ' ============================================================
-        CASE GS_TITLE
-            GS_TITLE_Update
+    CASE GS_TITLE
+        GS_TITLE_Update
 
-    ' ============================================================
-    ' INTRO SCREEN — emperor reveal
-    ' ============================================================
-CASE GS_INTRO
-    GS_INTRO_Update
+    CASE GS_INTRO
+        GS_INTRO_Update
 
-    ' ============================================================
-    ' TEXT CRAWL — stage narrative scroll
-    ' ============================================================
-CASE GS_CRAWL
-    GS_CRAWL_Update
+    CASE GS_CRAWL
+        GS_CRAWL_Update
 
-    ' ============================================================
-    ' GAME OVER SCREEN
-    ' ============================================================
-CASE GS_GAMEOVER
-    GS_GAMEOVER_Update
+    CASE GS_GAMEOVER
+        GS_GAMEOVER_Update
 
-    ' ============================================================
-    ' SETTINGS / VOLUME CONFIG
-    ' ============================================================
-CASE GS_OPTIONS
-    OPTS_Update
-    MUS_Fill 0
+    CASE GS_OPTIONS
+        OPTS_Update
+        MUS_Fill 0
 
-    ' ============================================================
-    ' ABOUT / CREDITS SCROLL
-    ' ============================================================
-CASE GS_ABOUT
-    ABOUT_Update
-    MUS_Fill 0
+    CASE GS_ABOUT
+        ABOUT_Update
+        MUS_Fill 0
 
-    ' ============================================================
-    ' STUDIO / PRODUCER LEAD-IN CARDS
-    ' ============================================================
-CASE GS_LEADIN
-    LEADIN_Update
+    CASE GS_LEADIN
+        LEADIN_Update
 
-END SELECT
+    END SELECT
 
-DBG_Overlay
+    DBG_Overlay
 
-_LIMIT 60
-_DISPLAY
+    _LIMIT 60
+    _DISPLAY
 LOOP
 
