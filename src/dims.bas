@@ -52,6 +52,18 @@ CONST CAM_FWD_RATE  = 0.04
 CONST CAM_FWD_SCALE = 1.0
 CONST GAME_FOV      = 72
 
+' --- difficulty ramp (used by sequence.bas before wave.bas is included) ---
+CONST DIFF_RAMP_DURATION = 600.0   ' play-seconds to reach max difficulty
+CONST DIFF_STAGE_COUNT   = 6.0     ' number of SEQ_PLAY stages; each opens at its floor
+
+' --- enemy behavior (ENEMY_STRAFE_COOL used by wave.bas before enemy.bas is included) ---
+CONST ENEMY_HOMING_SCALE  = 0.016  ' homing lerp rate at diffScale = 1.0
+CONST ENEMY_HOMING_REXT   = 20     ' extra homing range at diffScale = 1.0
+CONST ENEMY_STRAFE_MAG    = 0.018  ' lateral strafe impulse per unit of diffScale
+CONST ENEMY_STRAFE_COOL   = 60     ' base frames between strafe bursts
+CONST ENEMY_NEAR_MISS_RAD = 3.5    ' Y/Z radius for near-miss break detection
+CONST ENEMY_BREAK_VEL     = 0.032  ' lateral velocity kick magnitude on break
+
 ' --- game object types ---
 TYPE GameObj
     active  AS INTEGER
@@ -62,6 +74,7 @@ TYPE GameObj
     drx AS SINGLE : dry AS SINGLE : drz AS SINGLE
     scl AS SINGLE
     life AS SINGLE
+    strafeCool AS INTEGER
 END TYPE
 
 TYPE BossObj
@@ -170,6 +183,7 @@ DIM SHARED optAboutWas AS INTEGER
 DIM SHARED thrusterScale AS SINGLE
 
 ' --- gameplay timers / misc ---
+DIM SHARED levelNum   AS INTEGER
 DIM SHARED invTimer AS INTEGER
 DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE

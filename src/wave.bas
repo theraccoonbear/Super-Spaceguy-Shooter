@@ -13,7 +13,6 @@ Const SPAWN_DIST_MIN      = 70     ' spawn ahead of player: min distance
 Const SPAWN_DIST_VAR      = 30     ' spawn ahead of player: variance
 Const SPAWN_SPREAD_Y      = 18     ' ±Y spawn spread
 Const SPAWN_SPREAD_Z      = 22     ' ±Z spawn spread
-Const DIFF_RAMP_DURATION  = 600.0  ' play-seconds to reach max difficulty
 Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
@@ -53,6 +52,16 @@ Sub WAVE_Spawn
         Case 4 : wvCount = 2 : wvTypeName = "pincer"
         Case Else : wvCount = 2 : wvTypeName = "vwedge"
         End Select
+        ' level progression: bump formation size (3rd slot pre-defined for 1/2/3/5; add for 4)
+        If levelNum >= 3 Then
+            Select Case wvType
+            Case 1, 2, 3, 5 : wvCount = 3
+            End Select
+        End If
+        If levelNum >= 5 And wvType = 4 Then
+            wvCount = 3
+            wvDX(2) = 0 : wvDY(2) = 0 : wvDZ(2) = 0
+        End If
         If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
         wvCX = player.px + SPAWN_DIST_MIN + RND * SPAWN_DIST_VAR
@@ -104,8 +113,11 @@ Sub WAVE_Spawn
                     enemies(wvI).py = wvCY + wvDY(wvMember)
                     enemies(wvI).pz = wvCZ + wvDZ(wvMember)
                     enemies(wvI).vx = wvVX
+                    enemies(wvI).vy = 0
+                    enemies(wvI).vz = 0
                     enemies(wvI).dry = 0
                     enemies(wvI).scl = 0.9 + RND * 0.4
+                    enemies(wvI).strafeCool = ENEMY_STRAFE_COOL + Int(RND * 60)
                     enemyFireTimer(wvI) = EFIRE_INIT_MIN + RND * EFIRE_INIT_VAR
                     Exit For
                 End If

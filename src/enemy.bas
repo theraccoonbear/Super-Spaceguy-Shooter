@@ -11,7 +11,7 @@ Const EFIRE_COOL_MIN = 3.5    ' post-shot cooldown min
 Const EFIRE_COOL_VAR = 2.2    ' post-shot cooldown variance
 Const EFIRE_RANGE    = 40     ' X-range at which enemies fire
 Const EFIRE_LEAD     = 0.65   ' fraction of perfect lead applied to enemy shots (0=dumb, 1=perfect)
-Const SCORE_ENEMY    = 100    ' points per enemy kill
+Const SCORE_ENEMY         = 100    ' points per enemy kill
 
 Sub ENEMY_Update
     Dim enI As Integer, enJ As Integer, enEJ As Integer
@@ -22,6 +22,8 @@ Sub ENEMY_Update
     Dim enTrlR As Integer, enTrlG As Integer, enTrlB As Integer
     Dim enPartR As Integer, enPartG As Integer, enPartB As Integer
     Dim enHit As Integer
+    Dim enHomingLerp As Single, enHomingRange As Single
+    Dim enBDY As Single, enBDZ As Single
 
     For enI = 1 To MAX_ENEMIES
         If enemies(enI).active Then
@@ -31,12 +33,23 @@ Sub ENEMY_Update
             ' sinusoidal drift far out; home on player when close
             enOldPY = enemies(enI).py
             enOldPZ = enemies(enI).pz
-            If enemies(enI).px < player.px + 30 Then
-                enemies(enI).py = enemies(enI).py + (player.py - enemies(enI).py) * 0.008
-                enemies(enI).pz = enemies(enI).pz + (player.pz - enemies(enI).pz) * 0.008
+            enHomingLerp  = 0.008 + diffScale * (ENEMY_HOMING_SCALE - 0.008)
+            enHomingRange = 30 + diffScale * ENEMY_HOMING_REXT
+            If enemies(enI).px < player.px + enHomingRange Then
+                enemies(enI).py = enemies(enI).py + (player.py - enemies(enI).py) * enHomingLerp + enemies(enI).vy
+                enemies(enI).pz = enemies(enI).pz + (player.pz - enemies(enI).pz) * enHomingLerp + enemies(enI).vz
             Else
-                enemies(enI).py = enemies(enI).py + Sin(tt * 1.5 + enI * 1.3) * 0.015
-                enemies(enI).pz = enemies(enI).pz + Cos(tt * 1.1 + enI * 2.1) * 0.015
+                enemies(enI).py = enemies(enI).py + Sin(tt * 1.5 + enI * 1.3) * 0.015 + enemies(enI).vy
+                enemies(enI).pz = enemies(enI).pz + Cos(tt * 1.1 + enI * 2.1) * 0.015 + enemies(enI).vz
+            End If
+            enemies(enI).vy = enemies(enI).vy * 0.88
+            enemies(enI).vz = enemies(enI).vz * 0.88
+            ' strafe burst
+            enemies(enI).strafeCool = enemies(enI).strafeCool - 1
+            If enemies(enI).strafeCool <= 0 And diffScale > 0.05 Then
+                enemies(enI).vy = (RND - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).vz = (RND - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).strafeCool = ENEMY_STRAFE_COOL + Int(RND * 60)
             End If
 
             ' attitude: bank/pitch from frame-to-frame lateral delta
@@ -86,7 +99,7 @@ Sub ENEMY_Update
                         End If
                     Next enEJ
                 End If
-                enemyFireTimer(enI) = EFIRE_COOL_MIN + RND * EFIRE_COOL_VAR
+                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RND * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4)
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped
@@ -97,6 +110,7 @@ Sub ENEMY_Update
                     E3D_AABBOverlap enemies(enI).px, enemies(enI).py, enemies(enI).pz, boxLib(enemies(enI).meshIdx), _
                     bullets(enJ).px, bullets(enJ).py, bullets(enJ).pz, boxLib(MESH_BULLET), enHit
                     If enHit Then
+                        enemies(enI).vy = 0 : enemies(enI).vz = 0
                         enemies(enI).active = 0
                         bullets(enJ).active = 0
                         telemShotsHit = telemShotsHit + 1
@@ -114,6 +128,16 @@ Sub ENEMY_Update
                         Case Else              : enPartR = 185 : enPartG =  80 : enPartB = 255
                         End Select
                         FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
+                    ElseIf diffScale > 0.1 Then
+                        ' near-miss break: bullet passed close without hitting
+                        If Abs(bullets(enJ).px - enemies(enI).px) < 3.0 Then
+                            enBDY = enemies(enI).py - bullets(enJ).py
+                            enBDZ = enemies(enI).pz - bullets(enJ).pz
+                            If Abs(enBDY) < ENEMY_NEAR_MISS_RAD And Abs(enBDZ) < ENEMY_NEAR_MISS_RAD Then
+                                enemies(enI).vy = enBDY * ENEMY_BREAK_VEL
+                                enemies(enI).vz = enBDZ * ENEMY_BREAK_VEL
+                            End If
+                        End If
                     End If
                 End If
             Next enJ
