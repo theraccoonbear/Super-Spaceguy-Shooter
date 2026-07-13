@@ -24,14 +24,14 @@ Sub TELEM_Row(tlEvent As String, tlData As String)
     If telemOn = 0 Then Exit Sub
     Dim tlF As Integer : tlF = FreeFile
     Open _StartDir$ + "/sss_telemetry.csv" For Append As #tlF
-    Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession$ + "," + tlEvent + "," + tlData
+    Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData
     Close #tlF
 End Sub
 
 Sub TELEM_SessionStart()
-    telemSession$ = Mid$(Date$, 7, 4) + Mid$(Date$, 1, 2) + Mid$(Date$, 4, 2) _
+    telemSession = Mid$(Date$, 7, 4) + Mid$(Date$, 1, 2) + Mid$(Date$, 4, 2) _
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
-    telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause$ = ""
+    telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0
     TELEM_Row "session_start", "version=" + VERSION$ + "|nerf=" + LTrim$(Str$(settingNerf))
 End Sub
@@ -58,7 +58,7 @@ Sub TELEM_FuelExhausted()
 End Sub
 
 Sub TELEM_PlayerDamaged()
-    TELEM_Row "player_damaged", "cause=" + telemDeathCause$ + "|score=" + LTrim$(Str$(score)) _
+    TELEM_Row "player_damaged", "cause=" + telemDeathCause + "|score=" + LTrim$(Str$(score)) _
             + "|shield=" + LTrim$(Str$(lives)) + "|fuel=" + LTrim$(Str$(Int(fuelLevel))) _
             + "|laser=" + LTrim$(Str$(Int(laserEnergy)))
 End Sub
@@ -66,7 +66,7 @@ End Sub
 Sub TELEM_PlayerDeath()
     TELEM_Row "player_death", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
             + "|wave=" + LTrim$(Str$(waveType)) + "|boss=" + LTrim$(Str$(telemBossReached)) _
-            + "|cause=" + telemDeathCause$
+            + "|cause=" + telemDeathCause
 End Sub
 
 Sub TELEM_BossReached()
@@ -76,7 +76,7 @@ End Sub
 
 Sub TELEM_BossPhase(tlPhase As Integer)
     TELEM_Row "boss_phase", "phase=" + LTrim$(Str$(tlPhase)) + "|score=" + LTrim$(Str$(score)) _
-            + "|boss_hp=" + LTrim$(Str$(bossHP))
+            + "|boss_hp=" + LTrim$(Str$(boss.hp))
 End Sub
 
 Sub TELEM_BossDefeated()
@@ -89,5 +89,5 @@ Sub TELEM_SessionEnd()
             + "|boss=" + LTrim$(Str$(telemBossReached)) _
             + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
             + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
-    telemSession$ = ""
+    telemSession = ""
 End Sub

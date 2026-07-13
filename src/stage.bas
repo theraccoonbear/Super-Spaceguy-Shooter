@@ -70,7 +70,7 @@ Sub STAGE_Update
             fuelLevel = 100.0 : fuelStranded = 0
             IF settingNerf THEN stageScore = score + BOSS_TRIGGER_NERF ELSE stageScore = score + BOSS_TRIGGER
             player.py = player.py * 0.25 : player.pz = player.pz * 0.25
-            camLagY = 0 : camLagZ = 0 : camFwdY = 0 : camFwdZ = 0
+            camF.lagY = 0 : camF.lagZ = 0 : camF.fwdY = 0 : camF.fwdZ = 0
             playerVY = 0 : playerVZ = 0
             For stI = 1 To MAX_ENEMIES   : enemies(stI).active = 0 : enemyFireTimer(stI) = 0 : Next stI
             For stI = 1 To MAX_BULLETS   : bullets(stI).active = 0  : Next stI
@@ -78,7 +78,7 @@ Sub STAGE_Update
             For stI = 1 To MAX_EBULLETS  : ebullets(stI).active = 0  : Next stI
             FX_Clear
             spawnTimer = 0
-            bossWarnTimer = 0 : boss.active = 0 : bossHP = 0 : bossMoveTimer = 0 : bossState = 0
+            boss.warnTimer = 0 : boss.active = 0 : boss.hp = 0 : boss.moveTimer = 0 : boss.state = 0
             planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0
             cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
             _DEST backBuffer

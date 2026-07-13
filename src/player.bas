@@ -5,9 +5,28 @@
 '
 ' Reads:  held(), gameState, fuelStranded, cinPhase, player, cam, projMat
 ' Writes: player, playerVY, playerVZ, isManeuver,
-'         camLagY, camLagZ, camFwdY, camFwdZ, cam, viewMat, vpMat
+'         camF.lagY, camF.lagZ, camF.fwdY, camF.fwdZ, cam, viewMat, vpMat
 '
 ' Local variable prefix: plr* (physics)  plc* (camera)
+
+Const PLAYER_ACCEL     = 0.14    ' velocity lerp rate (controls both accel and drag)
+Const PLAYER_MAX_VEL   = 0.12    ' max lateral velocity per frame
+Const ATTITUDE_LERP    = 0.09    ' ship tilt/roll settle rate
+Const BULLET_SPEED     = 0.35    ' player bullet X velocity
+Const FIRE_COOLDOWN    = 0.18    ' seconds between shots
+Const LASER_COST       = 5.0     ' laser energy drained per shot (%)
+Const AIM_ASSIST       = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
+Const LASER_REGEN      = 0.167   ' laser energy per frame (~10%/sec at 60fps)
+Const FUEL_DRAIN       = 0.0185  ' base drain per frame (~90 sec at 60fps)
+Const FUEL_DRAIN_BOOST = 0.006   ' extra drain per frame when thrusting
+Const BULLET_RANGE     = 110     ' cull player bullet beyond player.px + this
+Const BULLET_TRAIL_LEN = 2.0     ' world-unit length of bolt body (rear to tip along nose)
+Const DMG_COLLISION    = 17      ' shield damage from collision
+Const DMG_LASER        = 5       ' shield damage from enemy bullet
+Const SHAKE_COLLISION  = 7       ' shakeTimer on collision
+Const FLASH_COLLISION  = 4       ' flashTimer on collision
+Const SHAKE_LASER      = 2       ' shakeTimer on laser hit
+Const FLASH_LASER      = 1       ' flashTimer on laser hit
 
 Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrRight As Integer)
     Dim plrTgtVY As Single, plrTgtVZ As Single
@@ -121,15 +140,15 @@ Sub PLAYER_CamUpdate
 
     ' positional lag: camera position tracks player Y/Z with smoothing
     If gameState <> GS_CINEMATIC Then
-        camLagY = camLagY + (player.py - camLagY) * CAM_LAG_RATE
-        camLagZ = camLagZ + (player.pz - camLagZ) * CAM_LAG_RATE
+        camF.lagY = camF.lagY + (player.py - camF.lagY) * CAM_LAG_RATE
+        camF.lagZ = camF.lagZ + (player.pz - camF.lagZ) * CAM_LAG_RATE
     End If
 
     ' orientation lag: smooth forward direction from velocity (slower than position lag)
     plcFwdTgtY = playerVY / PLAYER_MAX_VEL
     plcFwdTgtZ = playerVZ / PLAYER_MAX_VEL
-    camFwdY = camFwdY + (plcFwdTgtY - camFwdY) * CAM_FWD_RATE
-    camFwdZ = camFwdZ + (plcFwdTgtZ - camFwdZ) * CAM_FWD_RATE
+    camF.fwdY = camF.fwdY + (plcFwdTgtY - camF.fwdY) * CAM_FWD_RATE
+    camF.fwdZ = camF.fwdZ + (plcFwdTgtZ - camF.fwdZ) * CAM_FWD_RATE
 
     ' cam.POS and cam.target are set in sss.bas after this call — nested UDT field
     ' writes from included-file Subs don't update the global, same as UDT array gotcha.

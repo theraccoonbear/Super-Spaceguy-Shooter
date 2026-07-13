@@ -1,5 +1,21 @@
+Const DIM_FAR        = 55      ' distance dimming far threshold
+Const DIM_NEAR       = 28      ' distance dimming near threshold
+Const DIM_AMBIENT    = 0.22    ' minimum brightness at far distance
+Const SCORE_ASTEROID = 50      ' points per asteroid kill
+Const SCORE_POWERUP  = 500     ' points for powerup collect
+Const SHIELD_RESTORE = 30      ' shield added by powerup
+
 Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
+    Dim hit As Integer
+    Dim i As Integer, j As Integer
+    Dim eDimF As Single, eDist As Single
+    Dim ebClr As Long
+    Dim partR As Integer
+    Dim pjX As Single, pjY As Single, pjW As Single
+    Dim pjX2 As Single, pjY2 As Single, pjW2 As Single
+    Dim pjBX As Single, pjBY As Single, pjBZ As Single
+    Dim pjFade As Single
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -47,34 +63,34 @@ Sub GS_PLAYING_Update ()
     gspSkipPhysics = 0
     IF gameState = GS_PLAYING THEN
         IF held(E3D_KEY_TAB) AND tabWas = 0 THEN
-            camOrbitMode = 1 - camOrbitMode
-            IF camOrbitMode THEN
-                camOrbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
-                camOrbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
-                camOrbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
+            camF.orbitMode = 1 - camF.orbitMode
+            IF camF.orbitMode THEN
+                camF.orbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
+                camF.orbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
+                camF.orbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
             ELSE
-                camAngleLocked = -1
+                camF.angleLocked = -1
                 SETTINGS_Save
             END IF
         END IF
         tabWas = held(E3D_KEY_TAB)
-        IF camOrbitMode THEN
+        IF camF.orbitMode THEN
             IF held(E3D_KEY_R) AND rWas = 0 THEN
-                camOrbitTheta = _PI(1.0)
-                camOrbitPhi   = _ATAN2(CAM_OFFSET_Y, CAM_OFFSET_X)
-                camOrbitR     = SQR(CAM_OFFSET_X * CAM_OFFSET_X + CAM_OFFSET_Y * CAM_OFFSET_Y)
-                camOrbitMode  = 0 : camAngleLocked = 0
+                camF.orbitTheta = _PI(1.0)
+                camF.orbitPhi   = _ATAN2(CAM_OFFSET_Y, CAM_OFFSET_X)
+                camF.orbitR     = SQR(CAM_OFFSET_X * CAM_OFFSET_X + CAM_OFFSET_Y * CAM_OFFSET_Y)
+                camF.orbitMode  = 0 : camF.angleLocked = 0
                 SETTINGS_Save
             END IF
             rWas = held(E3D_KEY_R)
-            IF camOrbitMode THEN
-                IF held(E3D_KEY_UP)   THEN camOrbitPhi = camOrbitPhi + 0.008
-                IF held(E3D_KEY_DOWN) THEN camOrbitPhi = camOrbitPhi - 0.008
-                IF camOrbitPhi >  1.5 THEN camOrbitPhi =  1.5
-                IF camOrbitPhi < -1.5 THEN camOrbitPhi = -1.5
+            IF camF.orbitMode THEN
+                IF held(E3D_KEY_UP)   THEN camF.orbitPhi = camF.orbitPhi + 0.008
+                IF held(E3D_KEY_DOWN) THEN camF.orbitPhi = camF.orbitPhi - 0.008
+                IF camF.orbitPhi >  1.5 THEN camF.orbitPhi =  1.5
+                IF camF.orbitPhi < -1.5 THEN camF.orbitPhi = -1.5
                 IF (camUpWas AND held(E3D_KEY_UP) = 0) OR (camDnWas AND held(E3D_KEY_DOWN) = 0) THEN
-                    camAngleLocked = -1
-                    IF debugMode THEN DBG_Print "[cam] phi=" + LTRIM$(STR$(camOrbitPhi)) + "  r=" + LTRIM$(STR$(camOrbitR))
+                    camF.angleLocked = -1
+                    IF debugMode THEN DBG_Print "[cam] phi=" + LTRIM$(STR$(camF.orbitPhi)) + "  r=" + LTRIM$(STR$(camF.orbitR))
                     SETTINGS_Save
                 END IF
                 camUpWas = held(E3D_KEY_UP) : camDnWas = held(E3D_KEY_DOWN)
@@ -207,7 +223,7 @@ Sub GS_PLAYING_Update ()
             gameState = GS_GAMEOVER
             StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
             MUS_SetCue "gameover"
-            SPK_Say sSpkGameOver$
+            SPK_Say sSpkGameOver
             gameOver = 0
         END IF
     END IF
@@ -219,21 +235,21 @@ Sub GS_PLAYING_Update ()
     ELSE
         cam.POS.x = player.px - CAM_OFFSET_X
     END IF
-    cam.POS.y = camLagY + CAM_OFFSET_Y - camFwdY * CAM_FWD_SCALE
-    cam.POS.z = camLagZ               - camFwdZ * CAM_FWD_SCALE
+    cam.POS.y = camF.lagY + CAM_OFFSET_Y - camF.fwdY * CAM_FWD_SCALE
+    cam.POS.z = camF.lagZ               - camF.fwdZ * CAM_FWD_SCALE
     IF gameState = GS_CINEMATIC THEN
         cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
-        cam.target.y = camLagY
-        cam.target.z = camLagZ
+        cam.target.y = camF.lagY
+        cam.target.z = camF.lagZ
     ELSE
         cam.target.x = player.px + CAM_LEAD_X
-        cam.target.y = player.py + camFwdY * CAM_LEAD_X
-        cam.target.z = player.pz + camFwdZ * CAM_LEAD_X
+        cam.target.y = player.py + camF.fwdY * CAM_LEAD_X
+        cam.target.z = player.pz + camF.fwdZ * CAM_LEAD_X
     END IF
-    IF (camOrbitMode OR camAngleLocked) AND gameState <> GS_CINEMATIC THEN
-        cam.POS.x = player.px + camOrbitR * COS(camOrbitPhi) * COS(camOrbitTheta)
-        cam.POS.y = player.py + camOrbitR * SIN(camOrbitPhi)
-        cam.POS.z = player.pz + camOrbitR * COS(camOrbitPhi) * SIN(camOrbitTheta)
+    IF (camF.orbitMode OR camF.angleLocked) AND gameState <> GS_CINEMATIC THEN
+        cam.POS.x = player.px + camF.orbitR * COS(camF.orbitPhi) * COS(camF.orbitTheta)
+        cam.POS.y = player.py + camF.orbitR * SIN(camF.orbitPhi)
+        cam.POS.z = player.pz + camF.orbitR * COS(camF.orbitPhi) * SIN(camF.orbitTheta)
     END IF
     E3D_MatLookAt cam, viewMat
     E3D_MatMul projMat, viewMat, vpMat
@@ -397,7 +413,7 @@ Sub GS_PLAYING_Update ()
     FX_Draw vpMat, scrW, scrH
     HUD_Draw
 
-    IF camOrbitMode THEN
+    IF camF.orbitMode THEN
         _DEST backBuffer
         FONT_PrintAlpha fontPalette(11), backBuffer, "CAMERA MODE", 4, 4 + FONT_CHAR_H + 2, 160
         FONT_PrintAlpha fontPalette(8),  backBuffer, "TAB:CONFIRM  UP/DN:TILT  R:REVERT", 4, 4 + FONT_CHAR_H * 2 + 3, 120

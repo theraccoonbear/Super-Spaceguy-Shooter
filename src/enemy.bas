@@ -5,6 +5,14 @@
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: en*
 
+Const EBULLET_SPEED  = 0.16   ' regular enemy bullet speed
+Const EBULLET_CULL   = 8      ' cull when px < player.px - this
+Const EFIRE_COOL_MIN = 3.5    ' post-shot cooldown min
+Const EFIRE_COOL_VAR = 2.2    ' post-shot cooldown variance
+Const EFIRE_RANGE    = 40     ' X-range at which enemies fire
+Const EFIRE_LEAD     = 0.65   ' fraction of perfect lead applied to enemy shots (0=dumb, 1=perfect)
+Const SCORE_ENEMY    = 100    ' points per enemy kill
+
 Sub ENEMY_Update
     Dim enI As Integer, enJ As Integer, enEJ As Integer
     Dim enOldPY As Single, enOldPZ As Single
@@ -125,7 +133,7 @@ Sub ENEMY_Update
                 End Select
                 SND_Boom
                 FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
-                telemDeathCause$ = "enemy_col"
+                telemDeathCause = "enemy_col"
                 PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
             End If
         End If
@@ -148,7 +156,7 @@ Sub EBULLET_Update
             ebullets(ebI).px, ebullets(ebI).py, ebullets(ebI).pz, boxLib(MESH_EBULLET), ebHit
             If ebHit And invTimer = 0 Then
                 ebullets(ebI).active = 0
-                telemDeathCause$ = "ebullet"
+                telemDeathCause = "ebullet"
                 PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
             ElseIf Not ebHit Then
                 ' near-miss: fired past player's X plane within a tight lateral window

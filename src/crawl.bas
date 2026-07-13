@@ -18,7 +18,6 @@ DIM SHARED crawlLines$(0 TO 63)
 DIM SHARED crawlLineCount AS INTEGER
 DIM SHARED crawlScroll AS SINGLE
 DIM SHARED crawlTimer AS INTEGER
-DIM SHARED crawlSpeechDone AS INTEGER
 
 CONST CRAWL_MAX_PARAS = 16
 DIM SHARED crawlParaCount AS INTEGER
@@ -247,7 +246,6 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
         End If
         spkPhoneCount = 0 : spkPhoneIdx = 0  ' reset dry-run queue; no audio plays yet
     End If
-    crawlSpeechDone = 0
     crawlBtWas = 0
     crawlFFActive = 0
 END SUB

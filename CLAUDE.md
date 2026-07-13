@@ -8,10 +8,11 @@
 ## Build requirement
 - Always do a test build after any code change. Fix all errors before reporting back.
 - Build command: from the repo root, run `./tools/buildqb sss.bas`  (script auto-creates `qb64pe-dir/assets → repo/assets` symlink so `$EMBED:'assets/...'` resolves correctly from QB64-PE's binary dir)
+- After building, always smoke-test: run `builds/sss --version` and confirm it prints the version and exits cleanly. This catches launch crashes without needing a display.
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
-- `Dim x As String` inside `$INCLUDE` files is ignored at module scope — use `$` suffix (`x$`) instead
+- Plain `Dim x` (non-Shared) at module scope in `$INCLUDE` files is invisible to Subs — use `Dim Shared`. `Dim Shared x As String` works correctly; no `$` suffix needed.
 - `_COMMAND$(n)` subscript form is not supported in QB64-PE v4.5.0 — use `COMMAND$` (full string)
 - All `Dim` inside Subs are module-scope in QB64-PE; variable names must be unique across all Subs in a compilation unit
 - Short names like `pos`, `val` are built-in keywords — prefix vars with context (e.g. `objPos`, `sndVal`)

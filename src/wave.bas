@@ -7,6 +7,17 @@
 ' Local variable prefix: wv*  (QB64-PE hoists Sub locals to module scope;
 ' all names must be unique across the compilation unit.)
 
+Const SPAWN_INTERVAL_BASE = 7.0    ' base spawn interval (seconds)
+Const SPAWN_INTERVAL_MIN  = 2.0    ' difficulty reduces interval by up to this
+Const SPAWN_DIST_MIN      = 70     ' spawn ahead of player: min distance
+Const SPAWN_DIST_VAR      = 30     ' spawn ahead of player: variance
+Const SPAWN_SPREAD_Y      = 18     ' ±Y spawn spread
+Const SPAWN_SPREAD_Z      = 22     ' ±Z spawn spread
+Const DIFF_RAMP_DURATION  = 600.0  ' play-seconds to reach max difficulty
+Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
+Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
+Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
+
 Sub WAVE_Spawn
     Dim wvOK     As Integer
     Dim wvCount  As Integer, wvMember As Integer
@@ -20,7 +31,7 @@ Sub WAVE_Spawn
     diffScale = diffTime / DIFF_RAMP_DURATION
     If diffScale > 1.0 Then diffScale = 1.0
 
-    wvOK = (gameState = GS_PLAYING And boss.active = 0 And bossWarnTimer = 0)
+    wvOK = (gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0)
     If spawnTimer > (SPAWN_INTERVAL_BASE - diffScale * SPAWN_INTERVAL_MIN) And wvOK Then
         spawnTimer = 0
 
