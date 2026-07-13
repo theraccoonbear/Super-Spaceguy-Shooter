@@ -1,3 +1,4 @@
+'$INCLUDE:'cli.bas'
 '$INCLUDE:'speech.bas'
 '$INCLUDE:'effects.bas'
 '$INCLUDE:'snd.bas'

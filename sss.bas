@@ -280,6 +280,8 @@ DIM SHARED camDnWas    AS INTEGER
 DIM SHARED dbgOverlay  AS INTEGER
 DIM SHARED dbgGraveWas AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
+DIM SHARED cliScene$
+DIM SHARED cliSceneType$
 '$INCLUDE:'src/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/obj.bas'
@@ -288,28 +290,7 @@ DIM SHARED boxLib(1 TO MESH_COUNT) AS E3D_AABB
 '$INCLUDE:'src/game.bi'
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
-DIM ssCmdLine AS STRING : ssCmdLine = COMMAND$
-
-IF INSTR(ssCmdLine, "--version") > 0 OR ssCmdLine = "-v" OR LEFT$(ssCmdLine, 3) = "-v " THEN
-    DIM ssVFH AS INTEGER : ssVFH = FREEFILE
-    IF INSTR(_OS$, "WIN") THEN
-        OPEN "CON:" FOR OUTPUT AS #ssVFH
-    ELSE
-        OPEN "/dev/stdout" FOR OUTPUT AS #ssVFH
-    END IF
-    PRINT #ssVFH, "Super Spaceguy Shooter " + VERSION$
-    CLOSE #ssVFH
-    SYSTEM
-END IF
-
-IF INSTR(ssCmdLine, "--help") > 0 OR ssCmdLine = "-h" OR LEFT$(ssCmdLine, 3) = "-h " THEN
-    GAME_Usage("")
-END IF
-
-godMode    = (INSTR(ssCmdLine, "--god")   > 0)
-settingNerf = (INSTR(ssCmdLine, "--nerf") > 0)
-debugMode   = (INSTR(ssCmdLine, "--debug") > 0)
-telemOn     = (INSTR(ssCmdLine, "--telem") > 0)
+CLI_Parse
 
 ' Probe /dev/tty once at startup; DBG_Print and GTEXT_Log check this flag.
 ' Silently skips terminal output when launched without a controlling terminal
@@ -323,28 +304,6 @@ GOTO dbgTtyDone
 dbgTtyFail:
 ON ERROR GOTO 0
 dbgTtyDone:
-
-DIM ssCmdScene AS STRING
-DIM ssCmdScnPos AS INTEGER : ssCmdScnPos = INSTR(ssCmdLine, "--scene ")
-IF ssCmdScnPos > 0 THEN
-    ssCmdScene = MID$(ssCmdLine, ssCmdScnPos + 8)
-    ssCmdScnPos = INSTR(ssCmdScene, " ")
-    IF ssCmdScnPos > 0 THEN ssCmdScene = LEFT$(ssCmdScene, ssCmdScnPos - 1)
-    ssCmdScene = LTRIM$(RTRIM$(ssCmdScene))
-END IF
-
-' validate --scene type prefix before opening the game window
-DIM ssSCnI AS INTEGER, ssSCnType AS STRING
-IF ssCmdScene <> "" THEN
-    ssSCnI = LEN(ssCmdScene)
-    DO WHILE ssSCnI > 0
-        IF MID$(ssCmdScene, ssSCnI, 1) >= "0" AND MID$(ssCmdScene, ssSCnI, 1) <= "9" THEN ssSCnI = ssSCnI - 1 ELSE EXIT DO
-    LOOP
-    ssSCnType = LCASE$(LEFT$(ssCmdScene, ssSCnI))
-    IF ssSCnType <> "title" AND ssSCnType <> "crawl" AND ssSCnType <> "playing" AND ssSCnType <> "boss" THEN
-        GAME_Usage("unknown scene type '" + ssSCnType + "'")
-    END IF
-END IF
 
 ' --- screen ---
 scrW = 320 : scrH = 240
@@ -464,10 +423,10 @@ SETTINGS_Load
 TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 SEQ_Load _EMBEDDED$("SEQTXT")
-IF ssCmdScene <> "" THEN
-    IF SEQ_JumpToScene(ssCmdScene) < 0 THEN GAME_Usage("scene '" + ssCmdScene + "' not found")
-    IF ssSCnType = "playing" OR ssSCnType = "boss" THEN GAME_ResetState
-    IF ssSCnType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
+IF cliScene$ <> "" THEN
+    IF SEQ_JumpToScene(cliScene$) < 0 THEN GAME_Usage("scene '" + cliScene$ + "' not found")
+    IF cliSceneType$ = "playing" OR cliSceneType$ = "boss" THEN GAME_ResetState
+    IF cliSceneType$ = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
 ELSE
     gameState = GS_LEADIN
