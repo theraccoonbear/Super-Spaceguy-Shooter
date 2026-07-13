@@ -137,7 +137,7 @@ Sub BOSS_Update
     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
     boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), bssHit
     If bssHit And invTimer = 0 Then
-        telemDeathCause$ = "boss_col"
+        telemDeathCause = "boss_col"
         PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
     End If
 

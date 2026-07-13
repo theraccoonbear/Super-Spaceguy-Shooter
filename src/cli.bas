@@ -26,20 +26,20 @@ Sub CLI_Parse()
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then
-        cliScene$ = Mid$(cliLine, cliPos + 8)
-        cliPos = InStr(cliScene$, " ")
-        If cliPos > 0 Then cliScene$ = Left$(cliScene$, cliPos - 1)
-        cliScene$ = LTrim$(RTrim$(cliScene$))
+        cliScene = Mid$(cliLine, cliPos + 8)
+        cliPos = InStr(cliScene, " ")
+        If cliPos > 0 Then cliScene = Left$(cliScene, cliPos - 1)
+        cliScene = LTrim$(RTrim$(cliScene))
     End If
 
-    If cliScene$ <> "" Then
-        cliI = Len(cliScene$)
+    If cliScene <> "" Then
+        cliI = Len(cliScene)
         Do While cliI > 0
-            If Mid$(cliScene$, cliI, 1) >= "0" And Mid$(cliScene$, cliI, 1) <= "9" Then cliI = cliI - 1 Else Exit Do
+            If Mid$(cliScene, cliI, 1) >= "0" And Mid$(cliScene, cliI, 1) <= "9" Then cliI = cliI - 1 Else Exit Do
         Loop
-        cliSceneType$ = LCase$(Left$(cliScene$, cliI))
-        If cliSceneType$ <> "title" And cliSceneType$ <> "crawl" And cliSceneType$ <> "playing" And cliSceneType$ <> "boss" Then
-            GAME_Usage("unknown scene type '" + cliSceneType$ + "'")
+        cliSceneType = LCase$(Left$(cliScene, cliI))
+        If cliSceneType <> "title" And cliSceneType <> "crawl" And cliSceneType <> "playing" And cliSceneType <> "boss" Then
+            GAME_Usage("unknown scene type '" + cliSceneType + "'")
         End If
     End If
 End Sub
