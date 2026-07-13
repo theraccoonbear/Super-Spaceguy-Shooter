@@ -41,6 +41,7 @@ CONST BOSS_MAX_HP_NERF = 10
 CONST BOSS_TRIGGER     = 1000
 CONST BOSS_TRIGGER_NERF = 100
 CONST PLANET_COUNT     = 6
+CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (visual stays unchanged)
 
 ' --- camera ---
 CONST CAM_OFFSET_X  = 6.5
