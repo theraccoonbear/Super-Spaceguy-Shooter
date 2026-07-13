@@ -62,6 +62,16 @@ Sub WAVE_Spawn
         Case 4 : wvCount = 2 : wvTypeName = "pincer" : If levelNum >= 5 Then wvCount = 3 : wvDX(2) = 0 : wvDY(2) = 0 : wvDZ(2) = 0
         Case Else : wvCount = 2 : wvTypeName = "vwedge" : If levelNum >= 4 Then wvCount = 3
         End Select
+        ' level progression: bump formation size (3rd slot pre-defined for 1/2/3/5; add for 4)
+        If levelNum >= 3 Then
+            Select Case wvType
+            Case 1, 2, 3, 5 : wvCount = 3
+            End Select
+        End If
+        If levelNum >= 5 And wvType = 4 Then
+            wvCount = 3
+            wvDX(2) = 0 : wvDY(2) = 0 : wvDZ(2) = 0
+        End If
         If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
         wvCX = player.px + SPAWN_DIST_MIN + RND * SPAWN_DIST_VAR
