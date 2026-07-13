@@ -493,23 +493,7 @@ END IF
         IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
             SPK_Say sSpkTitle
         END IF
-        IF debugMode AND gameState <> prevGameState THEN
-            DIM dbgStateName AS STRING
-            SELECT CASE gameState
-                CASE GS_TITLE    : dbgStateName = "GS_TITLE"
-                CASE GS_PLAYING  : dbgStateName = "GS_PLAYING"
-                CASE GS_GAMEOVER : dbgStateName = "GS_GAMEOVER"
-                CASE GS_PLANET   : dbgStateName = "GS_PLANET"
-                CASE GS_CINEMATIC: dbgStateName = "GS_CINEMATIC"
-                CASE GS_INTRO    : dbgStateName = "GS_INTRO"
-                CASE GS_CRAWL    : dbgStateName = "GS_CRAWL"
-                CASE GS_OPTIONS  : dbgStateName = "GS_OPTIONS"
-                CASE GS_ABOUT    : dbgStateName = "GS_ABOUT"
-                CASE GS_LEADIN   : dbgStateName = "GS_LEADIN"
-                CASE ELSE        : dbgStateName = "GS_?" + LTRIM$(STR$(gameState))
-            END SELECT
-            DBG_Print "[state] " + dbgStateName
-        END IF
+        DBG_LogStateChange
         prevGameState = gameState
 
         SELECT CASE gameState
