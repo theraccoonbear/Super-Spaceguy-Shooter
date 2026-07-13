@@ -1,3 +1,10 @@
+Const DIM_FAR        = 55      ' distance dimming far threshold
+Const DIM_NEAR       = 28      ' distance dimming near threshold
+Const DIM_AMBIENT    = 0.22    ' minimum brightness at far distance
+Const SCORE_ASTEROID = 50      ' points per asteroid kill
+Const SCORE_POWERUP  = 500     ' points for powerup collect
+Const SHIELD_RESTORE = 30      ' shield added by powerup
+
 Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
     Dim hit As Integer

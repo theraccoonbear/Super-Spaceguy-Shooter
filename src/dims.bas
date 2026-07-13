@@ -1,3 +1,99 @@
+CONST SAMPLE_RATE = 44100  ' audio sample rate; used by speech.bas and snd.bas
+
+' --- game state constants ---
+CONST GS_TITLE     = 0
+CONST GS_PLAYING   = 1
+CONST GS_GAMEOVER  = 2
+CONST GS_PLANET    = 3
+CONST GS_CINEMATIC = 4
+CONST GS_INTRO     = 5
+CONST GS_CRAWL     = 6
+CONST GS_OPTIONS   = 7
+CONST GS_ABOUT     = 8
+CONST GS_LEADIN    = 9
+
+' --- object pool limits ---
+CONST MAX_ENEMIES   = 35
+CONST MAX_BULLETS   = 30
+CONST MAX_ASTEROIDS = 15
+CONST MAX_POWERUPS  = 5
+CONST MAX_EBULLETS  = 24
+
+' --- mesh indices and pool limits ---
+CONST MESH_PLAYER       = 1
+CONST MESH_ENEMY        = 2
+CONST MESH_ASTEROID     = 3
+CONST MESH_BULLET       = 4
+CONST MESH_POWERUP      = 5
+CONST MESH_ENEMY_ARROW  = 6
+CONST MESH_ENEMY_HLINE  = 7
+CONST MESH_ENEMY_VCOL   = 8
+CONST MESH_ENEMY_PINCER = 9
+CONST MESH_ENEMY_VWEDGE = 10
+CONST MESH_THRUSTER     = 11
+CONST MESH_EBULLET      = 12
+CONST MESH_BOSS         = 13
+CONST MESH_COUNT        = 13
+
+' --- boss / stage globals ---
+CONST BOSS_MAX_HP      = 30
+CONST BOSS_MAX_HP_NERF = 10
+CONST BOSS_TRIGGER     = 1000
+CONST BOSS_TRIGGER_NERF = 100
+CONST PLANET_COUNT     = 6
+
+' --- camera ---
+CONST CAM_OFFSET_X  = 6.5
+CONST CAM_OFFSET_Y  = 2.0
+CONST CAM_LEAD_X    = 8
+CONST CAM_LAG_RATE  = 0.08
+CONST CAM_FWD_RATE  = 0.04
+CONST CAM_FWD_SCALE = 1.0
+CONST GAME_FOV      = 72
+
+' --- game object types ---
+TYPE GameObj
+    active  AS INTEGER
+    meshIdx AS INTEGER
+    px AS SINGLE : py AS SINGLE : pz AS SINGLE
+    vx AS SINGLE : vy AS SINGLE : vz AS SINGLE
+    rx AS SINGLE : ry AS SINGLE : rz AS SINGLE
+    drx AS SINGLE : dry AS SINGLE : drz AS SINGLE
+    scl AS SINGLE
+    life AS SINGLE
+END TYPE
+
+TYPE BossObj
+    active  AS INTEGER
+    meshIdx AS INTEGER
+    px AS SINGLE : py AS SINGLE : pz AS SINGLE
+    vx AS SINGLE : vy AS SINGLE : vz AS SINGLE
+    rx AS SINGLE : ry AS SINGLE : rz AS SINGLE
+    drx AS SINGLE : dry AS SINGLE : drz AS SINGLE
+    scl AS SINGLE
+    life AS SINGLE
+    hp        AS INTEGER
+    phase     AS INTEGER
+    fireTimer AS SINGLE
+    moveTimer AS SINGLE
+    targetY   AS SINGLE
+    targetZ   AS SINGLE
+    state     AS INTEGER
+    warnTimer AS INTEGER
+END TYPE
+
+TYPE CamFollow
+    lagY        AS SINGLE
+    lagZ        AS SINGLE
+    fwdY        AS SINGLE
+    fwdZ        AS SINGLE
+    orbitMode   AS INTEGER
+    angleLocked AS INTEGER
+    orbitTheta  AS SINGLE
+    orbitPhi    AS SINGLE
+    orbitR      AS SINGLE
+END TYPE
+
 ' --- game objects ---
 DIM SHARED player   AS GameObj
 DIM SHARED enemies(1 TO MAX_ENEMIES) AS GameObj

@@ -6,6 +6,17 @@
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: bss*
 
+Const BOSS_SCALE       = 3.5    ' boss mesh scale
+Const BOSS_SPAWN_DIST  = 55     ' boss spawns this far ahead of player
+Const BOSS_COMBAT_DIST = 45     ' boss holds at this X distance
+Const BOSS_WARN_FRAMES = 120    ' warning frames before boss spawns
+Const BOSS_FIRE_INIT   = 2.5    ' fire interval at boss spawn (before phase lock-in)
+Const BOSS_FIRE1       = 2.2    ' phase 1 fire interval
+Const BOSS_FIRE2       = 1.5    ' phase 2 fire interval
+Const BOSS_FIRE3       = 0.9    ' phase 3 fire interval
+Const BOSS_DIM_FLOOR   = 0.35   ' minimum lighting factor for boss (keeps it visible at range)
+Const BOSS_DEATH_PARTS = 35     ' particle count on boss death
+
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssDMag As Single
     Dim bssEJ As Integer, bssJ As Integer, bssP As Integer, bssPK As Integer
