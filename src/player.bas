@@ -16,7 +16,6 @@ Const BULLET_SPEED     = 0.35    ' player bullet X velocity
 Const FIRE_COOLDOWN    = 0.18    ' seconds between shots
 Const LASER_COST       = 5.0     ' laser energy drained per shot (%)
 Const AIM_ASSIST       = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
-Const HIT_SCALE        = 1.5     ' enemy AABB scale factor for hit detection (visual stays unchanged)
 Const LASER_REGEN      = 0.167   ' laser energy per frame (~10%/sec at 60fps)
 Const FUEL_DRAIN       = 0.0185  ' base drain per frame (~90 sec at 60fps)
 Const FUEL_DRAIN_BOOST = 0.006   ' extra drain per frame when thrusting

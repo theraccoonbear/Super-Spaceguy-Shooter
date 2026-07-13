@@ -46,6 +46,45 @@ Sub GAME_NewGame
     End If
 End Sub
 
+Sub GAME_InitMeshes
+    Dim gmiMdl As String
+    Dim gmiI   As Integer
+    gmiMdl = _EMBEDDED$("MODELS")
+    E3D_LoadMesh gmiMdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
+    E3D_LoadMesh gmiMdl, "ENEMY",        meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
+    E3D_LoadMesh gmiMdl, "ASTEROID",     meshLib(MESH_ASTEROID),     boxLib(MESH_ASTEROID)
+    E3D_LoadMesh gmiMdl, "BULLET",       meshLib(MESH_BULLET),       boxLib(MESH_BULLET)
+    E3D_LoadMesh gmiMdl, "POWERUP",      meshLib(MESH_POWERUP),      boxLib(MESH_POWERUP)
+    E3D_LoadMesh gmiMdl, "ENEMY_ARROW",  meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
+    E3D_LoadMesh gmiMdl, "ENEMY_HLINE",  meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
+    E3D_LoadMesh gmiMdl, "ENEMY_VCOL",   meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
+    E3D_LoadMesh gmiMdl, "ENEMY_PINCER", meshLib(MESH_ENEMY_PINCER), boxLib(MESH_ENEMY_PINCER)
+    E3D_LoadMesh gmiMdl, "ENEMY_VWEDGE", meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_VWEDGE)
+    E3D_LoadMesh gmiMdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
+    E3D_LoadMesh gmiMdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
+    E3D_LoadMesh gmiMdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
+    For gmiI = 1 To MESH_COUNT
+        E3D_BakeMeshNormals meshLib(gmiI)
+    Next gmiI
+    For gmiI = MESH_ENEMY To MESH_ENEMY_VWEDGE
+        boxLib(gmiI).hx = boxLib(gmiI).hx * HIT_SCALE
+        boxLib(gmiI).hy = boxLib(gmiI).hy * HIT_SCALE
+        boxLib(gmiI).hz = boxLib(gmiI).hz * HIT_SCALE
+    Next gmiI
+    lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
+    player.active  = -1
+    player.meshIdx = MESH_PLAYER
+    player.scl     = 1.0
+    fTypeToMesh(0) = MESH_ENEMY
+    fTypeToMesh(1) = MESH_ENEMY_ARROW
+    fTypeToMesh(2) = MESH_ENEMY_HLINE
+    fTypeToMesh(3) = MESH_ENEMY_VCOL
+    fTypeToMesh(4) = MESH_ENEMY_PINCER
+    fTypeToMesh(5) = MESH_ENEMY_VWEDGE
+    RANDOMIZE TIMER
+    StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
+End Sub
+
 Sub GAME_Usage(guErr As String)
     Dim guFH As Integer : guFH = FreeFile
     If InStr(_OS$, "WIN") Then

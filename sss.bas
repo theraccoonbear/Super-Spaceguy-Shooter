@@ -86,60 +86,8 @@ E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 '$INCLUDE:'src/state/crawl.bas'
 '$INCLUDE:'src/state/playing.bas'
 E3D_MatPerspective cam, scrW / scrH, projMat
-
-' --- light (coming from upper-left-front) ---
-lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
-
-' --- mesh library ---
-DIM mdl AS STRING
-mdl = _EMBEDDED$("MODELS")
-E3D_LoadMesh mdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
-E3D_LoadMesh mdl, "ENEMY",        meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
-E3D_LoadMesh mdl, "ASTEROID",     meshLib(MESH_ASTEROID),     boxLib(MESH_ASTEROID)
-E3D_LoadMesh mdl, "BULLET",       meshLib(MESH_BULLET),       boxLib(MESH_BULLET)
-E3D_LoadMesh mdl, "POWERUP",      meshLib(MESH_POWERUP),      boxLib(MESH_POWERUP)
-E3D_LoadMesh mdl, "ENEMY_ARROW",  meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
-E3D_LoadMesh mdl, "ENEMY_HLINE",  meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
-E3D_LoadMesh mdl, "ENEMY_VCOL",   meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
-E3D_LoadMesh mdl, "ENEMY_PINCER", meshLib(MESH_ENEMY_PINCER), boxLib(MESH_ENEMY_PINCER)
-E3D_LoadMesh mdl, "ENEMY_VWEDGE", meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_VWEDGE)
-E3D_LoadMesh mdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
-E3D_LoadMesh mdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
-E3D_LoadMesh mdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
-DIM mlI AS INTEGER
-FOR mlI = 1 TO MESH_COUNT
-    E3D_BakeMeshNormals meshLib(mlI)
-NEXT mlI
-DIM hsI AS INTEGER
-FOR hsI = MESH_ENEMY TO MESH_ENEMY_VWEDGE
-    boxLib(hsI).hx = boxLib(hsI).hx * HIT_SCALE
-    boxLib(hsI).hy = boxLib(hsI).hy * HIT_SCALE
-    boxLib(hsI).hz = boxLib(hsI).hz * HIT_SCALE
-NEXT hsI
-
-' --- init player ---
-player.active  = -1
-player.meshIdx = MESH_PLAYER
-player.px = 0 : player.py = 0 : player.pz = 0
-player.scl = 1.0
-
-' --- starfield ---
-RANDOMIZE TIMER
-StarfieldReset cam.POS.x, cam.POS.y, cam.POS.z
-
-' scratch vars
-DIM hit        AS INTEGER
-DIM i AS INTEGER, j AS INTEGER
+GAME_InitMeshes
 IF debugMode THEN dbgOverlay = 1
-
-' --- formation → mesh lookup ---
-wavePrev = -1
-fTypeToMesh(0) = MESH_ENEMY
-fTypeToMesh(1) = MESH_ENEMY_ARROW
-fTypeToMesh(2) = MESH_ENEMY_HLINE
-fTypeToMesh(3) = MESH_ENEMY_VCOL
-fTypeToMesh(4) = MESH_ENEMY_PINCER
-fTypeToMesh(5) = MESH_ENEMY_VWEDGE
 
 SND_Init
 SPK_Init
