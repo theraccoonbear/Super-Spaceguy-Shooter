@@ -9,6 +9,26 @@
 '
 ' Local variable prefix: plr* (physics)  plc* (camera)
 
+Const PLAYER_ACCEL     = 0.14    ' velocity lerp rate (controls both accel and drag)
+Const PLAYER_MAX_VEL   = 0.12    ' max lateral velocity per frame
+Const ATTITUDE_LERP    = 0.09    ' ship tilt/roll settle rate
+Const BULLET_SPEED     = 0.35    ' player bullet X velocity
+Const FIRE_COOLDOWN    = 0.18    ' seconds between shots
+Const LASER_COST       = 5.0     ' laser energy drained per shot (%)
+Const AIM_ASSIST       = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
+Const HIT_SCALE        = 1.5     ' enemy AABB scale factor for hit detection (visual stays unchanged)
+Const LASER_REGEN      = 0.167   ' laser energy per frame (~10%/sec at 60fps)
+Const FUEL_DRAIN       = 0.0185  ' base drain per frame (~90 sec at 60fps)
+Const FUEL_DRAIN_BOOST = 0.006   ' extra drain per frame when thrusting
+Const BULLET_RANGE     = 110     ' cull player bullet beyond player.px + this
+Const BULLET_TRAIL_LEN = 2.0     ' world-unit length of bolt body (rear to tip along nose)
+Const DMG_COLLISION    = 17      ' shield damage from collision
+Const DMG_LASER        = 5       ' shield damage from enemy bullet
+Const SHAKE_COLLISION  = 7       ' shakeTimer on collision
+Const FLASH_COLLISION  = 4       ' flashTimer on collision
+Const SHAKE_LASER      = 2       ' shakeTimer on laser hit
+Const FLASH_LASER      = 1       ' flashTimer on laser hit
+
 Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrRight As Integer)
     Dim plrTgtVY As Single, plrTgtVZ As Single
     Dim plrTgtRx As Single, plrTgtRy As Single, plrTgtRz As Single
