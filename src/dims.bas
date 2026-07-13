@@ -70,6 +70,8 @@ DIM SHARED optRtRpt    AS INTEGER
 DIM SHARED optEscWas   AS INTEGER
 DIM SHARED optAboutWas AS INTEGER
 
+DIM SHARED thrusterScale AS SINGLE
+
 ' --- gameplay timers / misc ---
 DIM SHARED invTimer AS INTEGER
 DIM SHARED diffTime AS SINGLE
@@ -90,6 +92,10 @@ DIM SHARED telemSession      AS STRING
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
+
+' --- speech cues ---
+DIM SHARED sSpkTitle    AS STRING
+DIM SHARED sSpkGameOver AS STRING
 
 ' --- state-sub vars ---
 DIM SHARED titleImg        AS LONG

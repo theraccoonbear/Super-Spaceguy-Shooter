@@ -11,7 +11,7 @@
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
-- `Dim x As String` inside `$INCLUDE` files is ignored at module scope — use `$` suffix (`x$`) instead
+- Plain `Dim x` (non-Shared) at module scope in `$INCLUDE` files is invisible to Subs — use `Dim Shared`. `Dim Shared x As String` works correctly; no `$` suffix needed.
 - `_COMMAND$(n)` subscript form is not supported in QB64-PE v4.5.0 — use `COMMAND$` (full string)
 - All `Dim` inside Subs are module-scope in QB64-PE; variable names must be unique across all Subs in a compilation unit
 - Short names like `pos`, `val` are built-in keywords — prefix vars with context (e.g. `objPos`, `sndVal`)

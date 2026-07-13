@@ -9,7 +9,6 @@
 ' sssBlkStore$ format:  key + Chr$(3) + text + Chr$(4) + ...
 ' sssRawBlocks$ holds pre-render block text for unused-token detection.
 '
-' Dim Shared with $ suffix: visible to all Subs (QB64-PE include scoping rule).
 Dim Shared sssTokStore$
 Dim Shared sssBlkStore$
 Dim Shared sssRawBlocks$
