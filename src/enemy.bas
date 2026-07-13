@@ -125,7 +125,7 @@ Sub ENEMY_Update
                 End Select
                 SND_Boom
                 FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
-                telemDeathCause$ = "enemy_col"
+                telemDeathCause = "enemy_col"
                 PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
             End If
         End If
@@ -148,7 +148,7 @@ Sub EBULLET_Update
             ebullets(ebI).px, ebullets(ebI).py, ebullets(ebI).pz, boxLib(MESH_EBULLET), ebHit
             If ebHit And invTimer = 0 Then
                 ebullets(ebI).active = 0
-                telemDeathCause$ = "ebullet"
+                telemDeathCause = "ebullet"
                 PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
             ElseIf Not ebHit Then
                 ' near-miss: fired past player's X plane within a tight lateral window
