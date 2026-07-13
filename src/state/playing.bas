@@ -1,5 +1,14 @@
 Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
+    Dim hit As Integer
+    Dim i As Integer, j As Integer
+    Dim eDimF As Single, eDist As Single
+    Dim ebClr As Long
+    Dim partR As Integer
+    Dim pjX As Single, pjY As Single, pjW As Single
+    Dim pjX2 As Single, pjY2 As Single, pjW2 As Single
+    Dim pjBX As Single, pjBY As Single, pjBZ As Single
+    Dim pjFade As Single
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -207,7 +216,7 @@ Sub GS_PLAYING_Update ()
             gameState = GS_GAMEOVER
             StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
             MUS_SetCue "gameover"
-            SPK_Say sSpkGameOver$
+            SPK_Say sSpkGameOver
             gameOver = 0
         END IF
     END IF

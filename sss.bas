@@ -8,6 +8,7 @@
 ' Player moves freely in Y/Z (up/down, left/right)
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
+OPTION _EXPLICIT
 $Resize:stretch
 $EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
 $EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
@@ -210,9 +211,8 @@ FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
 GTEXT_Load _EMBEDDED$("GAMETEXT")
 GTEXT_Diag
-DIM sSpkTitle    AS STRING : sSpkTitle    = GTEXT_Get$("speech_title")
-DIM sSpkBossWarn AS STRING : sSpkBossWarn = GTEXT_Get$("speech_boss_warning")
-DIM sSpkGameOver AS STRING : sSpkGameOver = GTEXT_Get$("speech_game_over")
+sSpkTitle    = GTEXT_Get$("speech_title")
+sSpkGameOver = GTEXT_Get$("speech_game_over")
 planetImages(1) = _LOADIMAGE(_EMBEDDED$("PLANET01"), 32, "memory")
 planetImages(2) = _LOADIMAGE(_EMBEDDED$("PLANET02"), 32, "memory")
 planetImages(3) = _LOADIMAGE(_EMBEDDED$("PLANET03"), 32, "memory")
@@ -281,19 +281,10 @@ StarfieldReset cam.POS.x, cam.POS.y, cam.POS.z
 ' scratch vars
 DIM hit        AS INTEGER
 DIM i AS INTEGER, j AS INTEGER
-DIM noLight AS E3D_Coord : noLight.x = 0 : noLight.y = 0 : noLight.z = -1
-DIM thrusterScale AS SINGLE
-DIM eDimF AS SINGLE, eDist AS SINGLE
-DIM ebClr AS LONG
-DIM partR AS INTEGER
-DIM pjX AS SINGLE, pjY AS SINGLE, pjW AS SINGLE
-DIM pjX2 AS SINGLE, pjY2 AS SINGLE, pjW2 AS SINGLE
-DIM pjBX AS SINGLE, pjBY AS SINGLE, pjBZ AS SINGLE
-DIM pjFade AS SINGLE
 IF debugMode THEN dbgOverlay = 1
 
 ' --- formation → mesh lookup ---
-wavePrev = -1 : thrusterScale = 0.30
+wavePrev = -1
 fTypeToMesh(0) = MESH_ENEMY
 fTypeToMesh(1) = MESH_ENEMY_ARROW
 fTypeToMesh(2) = MESH_ENEMY_HLINE
