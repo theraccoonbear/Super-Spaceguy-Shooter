@@ -6,7 +6,6 @@
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: bss*
 
-Const BOSS_SCALE       = 1.0    ' boss mesh scale — size lives in the model
 Const BOSS_SPAWN_DIST  = 55     ' boss spawns this far ahead of player
 Const BOSS_COMBAT_DIST = 45     ' boss holds at this X distance
 Const BOSS_WARN_FRAMES = 120    ' warning frames before boss spawns
@@ -39,7 +38,7 @@ Sub BOSS_Update
             boss.py = player.py
             boss.pz = player.pz
             boss.vx = -0.05
-            boss.scl = BOSS_SCALE
+            boss.scl = 1.0
             If settingNerf Then boss.hp = BOSS_MAX_HP_NERF Else boss.hp = BOSS_MAX_HP
             boss.phase    = 1
             boss.fireTimer = BOSS_FIRE_INIT
