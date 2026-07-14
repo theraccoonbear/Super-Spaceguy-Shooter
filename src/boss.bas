@@ -7,7 +7,7 @@
 ' Local variable prefix: bss*
 
 Const BOSS_SPAWN_DIST  = 55     ' boss spawns this far ahead of player
-Const BOSS_COMBAT_DIST = 45     ' boss holds at this X distance
+Const BOSS_COMBAT_DIST = 20     ' boss holds at this X distance
 Const BOSS_WARN_FRAMES = 120    ' warning frames before boss spawns
 Const BOSS_FIRE_INIT   = 2.5    ' fire interval at boss spawn (before phase lock-in)
 Const BOSS_FIRE1       = 2.2    ' phase 1 fire interval
