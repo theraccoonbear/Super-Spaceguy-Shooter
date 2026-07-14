@@ -6,7 +6,7 @@
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: bss*
 
-Const BOSS_SCALE       = 7.0    ' boss mesh scale
+Const BOSS_SCALE       = 1.0    ' boss mesh scale — size lives in the model
 Const BOSS_SPAWN_DIST  = 55     ' boss spawns this far ahead of player
 Const BOSS_COMBAT_DIST = 45     ' boss holds at this X distance
 Const BOSS_WARN_FRAMES = 120    ' warning frames before boss spawns
