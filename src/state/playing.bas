@@ -16,6 +16,14 @@ Sub GS_PLAYING_Update ()
     Dim pjX2 As Single, pjY2 As Single, pjW2 As Single
     Dim pjBX As Single, pjBY As Single, pjBZ As Single
     Dim pjFade As Single
+    Static gspBossDbgLogged As Integer
+    Dim gspBossScnBefore As Integer
+    Dim gspBdbVx As Single, gspBdbVy As Single, gspBdbVz As Single, gspBdbW As Single
+    Dim gspBdbSx(1 To 8) As Single, gspBdbSy(1 To 8) As Single
+    Dim gspBdbAllFwd As Integer, gspBdbI As Integer
+    Dim gspBdbMinX As Single, gspBdbMaxX As Single
+    Dim gspBdbMinY As Single, gspBdbMaxY As Single
+    Dim gspBdbHx As Single, gspBdbHy As Single, gspBdbHz As Single
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -324,7 +332,12 @@ Sub GS_PLAYING_Update ()
         eLitDir.x = lightDir.x * eDimF
         eLitDir.y = lightDir.y * eDimF
         eLitDir.z = lightDir.z * eDimF
+        gspBossScnBefore = E3D_scnCount
         E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.POS, tt, eLitDir
+        If debugMode And gspBossDbgLogged = 0 Then
+            DBG_Print "[boss-rend] faces_rendered=" + LTrim$(Str$(E3D_scnCount - gspBossScnBefore)) + "  dist=" + LTrim$(Str$(boss.px - cam.POS.x))
+            gspBossDbgLogged = -1
+        End If
     END IF
 
     FOR j = 1 TO MAX_POWERUPS
@@ -339,6 +352,38 @@ Sub GS_PLAYING_Update ()
     NEXT j
 
     E3D_SceneFlush vpMat, scrW, scrH
+
+    ' [DEBUG] yellow AABB box overlay around boss when debug mode active
+    If debugMode And boss.active Then
+        gspBdbHx = boxLib(MESH_BOSS).hx
+        gspBdbHy = boxLib(MESH_BOSS).hy
+        gspBdbHz = boxLib(MESH_BOSS).hz
+        gspBdbAllFwd = -1
+        For gspBdbI = 1 To 8
+            If (gspBdbI And 1) Then gspBdbVx = boss.px + gspBdbHx Else gspBdbVx = boss.px - gspBdbHx
+            If (gspBdbI And 2) Then gspBdbVy = boss.py + gspBdbHy Else gspBdbVy = boss.py - gspBdbHy
+            If (gspBdbI And 4) Then gspBdbVz = boss.pz + gspBdbHz Else gspBdbVz = boss.pz - gspBdbHz
+            gspBdbW = gspBdbVx * vpMat.m(3,0) + gspBdbVy * vpMat.m(3,1) + gspBdbVz * vpMat.m(3,2) + vpMat.m(3,3)
+            If gspBdbW > 0.0001 Then
+                gspBdbSx(gspBdbI) = ((gspBdbVx * vpMat.m(0,0) + gspBdbVy * vpMat.m(0,1) + gspBdbVz * vpMat.m(0,2) + vpMat.m(0,3)) / gspBdbW + 1.0) * scrW * 0.5
+                gspBdbSy(gspBdbI) = (1.0 - (gspBdbVx * vpMat.m(1,0) + gspBdbVy * vpMat.m(1,1) + gspBdbVz * vpMat.m(1,2) + vpMat.m(1,3)) / gspBdbW) * scrH * 0.5
+            Else
+                gspBdbAllFwd = 0
+            End If
+        Next gspBdbI
+        If gspBdbAllFwd Then
+            gspBdbMinX = gspBdbSx(1) : gspBdbMaxX = gspBdbSx(1)
+            gspBdbMinY = gspBdbSy(1) : gspBdbMaxY = gspBdbSy(1)
+            For gspBdbI = 2 To 8
+                If gspBdbSx(gspBdbI) < gspBdbMinX Then gspBdbMinX = gspBdbSx(gspBdbI)
+                If gspBdbSx(gspBdbI) > gspBdbMaxX Then gspBdbMaxX = gspBdbSx(gspBdbI)
+                If gspBdbSy(gspBdbI) < gspBdbMinY Then gspBdbMinY = gspBdbSy(gspBdbI)
+                If gspBdbSy(gspBdbI) > gspBdbMaxY Then gspBdbMaxY = gspBdbSy(gspBdbI)
+            Next gspBdbI
+            _Dest backBuffer
+            LINE (gspBdbMinX, gspBdbMinY)-(gspBdbMaxX, gspBdbMaxY), _RGB(255, 255, 0), B
+        End If
+    End If
 
     _DEST backBuffer
     FOR j = 1 TO MAX_BULLETS
