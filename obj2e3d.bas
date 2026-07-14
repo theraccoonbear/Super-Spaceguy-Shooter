@@ -5,6 +5,9 @@
 '   slot_name: e.g. PLAYER
 ' Output: <slot_name>.e3d in the same directory as the binary.
 
+' Defer GL window until _ScreenShow — lets the tool run without a display
+$SCREENHIDE
+
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/obj.bas'
 
@@ -13,6 +16,7 @@ DIM objPath  AS STRING
 DIM remapArg AS INTEGER
 DIM scaleArg AS SINGLE
 DIM slotName AS STRING
+DIM ttyF     AS INTEGER
 CmdTok cmdStr, objPath
 DIM remapStr AS STRING : CmdTok cmdStr, remapStr
 DIM scaleStr AS STRING : CmdTok cmdStr, scaleStr
@@ -21,7 +25,10 @@ remapArg = CInt(Val(remapStr))
 scaleArg = CSng(Val(scaleStr))
 
 IF LEN(objPath) = 0 OR LEN(slotName) = 0 THEN
-    PRINT "Usage: obj2e3d <obj_path> <remap> <scale> <slot_name>"
+    ttyF = FREEFILE
+    OPEN "/dev/stdout" FOR APPEND AS #ttyF
+    PRINT #ttyF, "Usage: obj2e3d <obj_path> <remap> <scale> <slot_name>"
+    CLOSE #ttyF
     SYSTEM
 END IF
 IF scaleArg = 0.0 THEN scaleArg = 1.0
@@ -29,7 +36,10 @@ IF LEFT$(objPath, 1) <> "/" AND LEFT$(objPath, 1) <> "\" THEN
     objPath = _STARTDIR$ + "/" + objPath
 END IF
 IF NOT _FILEEXISTS(objPath) THEN
-    PRINT "File not found: " + objPath
+    ttyF = FREEFILE
+    OPEN "/dev/stdout" FOR APPEND AS #ttyF
+    PRINT #ttyF, "File not found: " + objPath
+    CLOSE #ttyF
     SYSTEM
 END IF
 
@@ -85,10 +95,12 @@ NEXT fi
 PRINT #outF, "end"
 CLOSE #outF
 
-PRINT "Written: " + outPath
-PRINT "  " + LTRIM$(STR$(mesh.vCount)) + " verts, " + LTRIM$(STR$(mesh.fCount)) + " faces"
-PRINT "  aabb " + FmtF$(box.hx) + " x " + FmtF$(box.hy) + " x " + FmtF$(box.hz)
-SLEEP 3
+ttyF = FREEFILE
+OPEN "/dev/stdout" FOR APPEND AS #ttyF
+PRINT #ttyF, "Written: " + outPath
+PRINT #ttyF, "  " + LTRIM$(STR$(mesh.vCount)) + " verts, " + LTRIM$(STR$(mesh.fCount)) + " faces"
+PRINT #ttyF, "  aabb " + FmtF$(box.hx) + " x " + FmtF$(box.hy) + " x " + FmtF$(box.hz)
+CLOSE #ttyF
 SYSTEM
 
 Sub CmdTok (s As String, tok As String)
