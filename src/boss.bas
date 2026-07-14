@@ -31,7 +31,7 @@ Sub BOSS_Update
     If boss.warnTimer > 0 Then
         boss.warnTimer = boss.warnTimer - 1
         If boss.warnTimer = 0 And gameState = GS_PLAYING Then
-            If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score))
+            If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score)) + "  aabb=" + LTrim$(Str$(boxLib(MESH_BOSS).hx)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hy)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hz)) + "  verts=" + LTrim$(Str$(meshLib(MESH_BOSS).vCount))
             boss.active  = -1
             boss.meshIdx = MESH_BOSS
             boss.px = player.px + BOSS_SPAWN_DIST
