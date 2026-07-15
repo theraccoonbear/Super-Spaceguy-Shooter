@@ -135,10 +135,10 @@ Sub BELT_Init(bliW As Single, bliH As Single)
         bltAngle(bliI) = RND * _PI(2)
         bltDepth(bliI) = RND * bltMaxD     ' scatter so they don't all flash from center at once
         Select Case bltSz(bliI)
-        Case 0 : bltDSpd(bliI) = 0.7 + RND * 0.9
-        Case 1 : bltDSpd(bliI) = 1.6 + RND * 1.2
-        Case 2 : bltDSpd(bliI) = 3.0 + RND * 1.8
-        Case Else : bltDSpd(bliI) = 5.0 + RND * 3.0
+        Case 0 : bltDSpd(bliI) = 0.3 + RND * 0.4
+        Case 1 : bltDSpd(bliI) = 0.6 + RND * 0.5
+        Case 2 : bltDSpd(bliI) = 1.1 + RND * 0.7
+        Case Else : bltDSpd(bliI) = 2.0 + RND * 1.2
         End Select
         bltClr(bliI) = bliColors(Int(RND * 5))
         bltCount     = bltCount + 1
