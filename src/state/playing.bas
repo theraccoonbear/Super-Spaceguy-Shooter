@@ -199,6 +199,13 @@ Sub GS_PLAYING_Update ()
                     FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
                     telemDeathCause = "asteroid"
                     PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
+                ELSEIF fxShakeTimer = 0 AND levelType = LEVEL_ASTEROID THEN
+                    IF Abs(asteroids(i).py - player.py) < 7 AND Abs(asteroids(i).pz - player.pz) < 7 THEN
+                        IF asteroids(i).px < player.px + 5 AND asteroids(i).px > player.px - 4 THEN
+                            fxShakeTimer = 3
+                            SND_Whoosh
+                        END IF
+                    END IF
                 END IF
             END IF
         NEXT i

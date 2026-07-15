@@ -17,7 +17,7 @@ Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
 Const ASTFIELD_DURATION   = 200.0  ' tt-ticks to survive (≈80s at 40fps / 55s at 60fps)
-Const ASTFIELD_INTERVAL   = 0.5    ' tt-ticks between asteroid patterns
+Const ASTFIELD_INTERVAL   = 0.9    ' tt-ticks between asteroid patterns
 Const ASTFIELD_LIFE       = 220    ' frames each asteroid lives; long enough to cross from far spawn
 
 Sub WAVE_Spawn
@@ -253,14 +253,18 @@ Sub WAVE_SpawnAsteroidField
 
     For wvafJ = 0 To wvafN - 1
         ' per-asteroid trajectory: most drift slightly, 1-in-5 are erratic cross-cutters
-        If Int(RND * 5) = 0 Then
+        If Int(RND * 3) = 0 Then
             wvafVY = (RND - 0.5) * 0.50
             wvafVZ = (RND - 0.5) * 0.50
         Else
             wvafVY = (RND - 0.5) * 0.06
             wvafVZ = (RND - 0.5) * 0.06
         End If
-        wvafScl  = 0.4 + RND * 2.0
+        If Int(RND * 5) = 0 Then
+            wvafScl = 3.0 + RND * 1.5
+        Else
+            wvafScl = 0.5 + RND * 1.6
+        End If
         wvafTint = Int(RND * 6)
         For wvafI = 1 To MAX_ASTEROIDS
             If asteroids(wvafI).active = 0 Then
@@ -269,7 +273,11 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).px         = wvafCX + wvafXO(wvafJ)
                 asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
                 asteroids(wvafI).pz         = wvafCZ + wvafZO(wvafJ)
-                asteroids(wvafI).vx         = -(0.45 + RND * 0.25)
+                If Int(RND * 6) = 0 Then
+                    asteroids(wvafI).vx = -(1.2 + RND * 0.3)
+                Else
+                    asteroids(wvafI).vx = -(0.45 + RND * 0.25)
+                End If
                 asteroids(wvafI).vy         = wvafVY
                 asteroids(wvafI).vz         = wvafVZ
                 asteroids(wvafI).drx        = (RND - 0.5) * 2
