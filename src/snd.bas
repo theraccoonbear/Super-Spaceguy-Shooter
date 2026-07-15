@@ -3,7 +3,7 @@ Const SND_SHOOT_LEN  = 2205
 Const SND_BOOM_LEN   = 11025
 Const SND_HIT_LEN    = 8820
 Const SND_PUP_LEN    = 4410
-Const SND_WHOOSH_LEN = 6615
+Const SND_WHOOSH_LEN = 44100
 Const SND_KICK_LEN   = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN  = 4410   ' 100ms snare
 Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
@@ -63,9 +63,14 @@ Sub SND_Init()
         sndPup(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) + Sin(6.2832 * sndF * 2.0 * sndK / SAMPLE_RATE) * 0.3) * sndFade * 0.25
     Next sndK
     For sndK = 0 To SND_WHOOSH_LEN - 1
-        sndF    = 580.0 - 500.0 * sndK / SND_WHOOSH_LEN
-        sndFade = (1.0 - sndK / SND_WHOOSH_LEN) ^ 0.5
-        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35 + (Rnd * 2.0 - 1.0) * 0.25) * sndFade * 0.32
+        sndGenT = sndK / SND_WHOOSH_LEN
+        If sndGenT < 0.06 Then
+            sndFade = sndGenT / 0.06
+        Else
+            sndFade = 1.0 - ((sndGenT - 0.06) / 0.94) ^ 0.7
+        End If
+        sndF = 180.0 - 130.0 * sndGenT
+        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.30 + (Rnd * 2.0 - 1.0) * 0.70) * sndFade * 0.38
     Next sndK
 
     ' kick drum: exponential frequency sweep 160->45 Hz over 250ms

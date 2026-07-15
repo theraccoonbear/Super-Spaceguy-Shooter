@@ -25,6 +25,7 @@ Sub GS_PLAYING_Update ()
     Dim gspBdbMinX As Single, gspBdbMaxX As Single
     Dim gspBdbMinY As Single, gspBdbMaxY As Single
     Dim gspBdbHx As Single, gspBdbHy As Single, gspBdbHz As Single
+    Dim gspAstNear As Integer, gspAstI As Integer
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -149,6 +150,26 @@ Sub GS_PLAYING_Update ()
             FX_SpawnTrail player.px - 1.1, player.py, player.pz, 2, 0.005, 24, 10, _RGB(80, 140, 255), -0.035, playerVY * 0.3 - 0.008, playerVZ * 0.3
         END IF
 
+        IF levelType = LEVEL_ASTEROID THEN
+            IF isManeuver THEN
+                astIdleTimer = 0
+            ELSEIF astIdleTimer < 9999 THEN
+                astIdleTimer = astIdleTimer + 1
+            END IF
+            IF astIdleTimer > 40 THEN
+                gspAstNear = 0
+                FOR gspAstI = 1 TO MAX_ASTEROIDS
+                    IF asteroids(gspAstI).active THEN
+                        IF asteroids(gspAstI).px > player.px AND asteroids(gspAstI).px < player.px + 35 THEN
+                            IF Abs(asteroids(gspAstI).py - player.py) < 5 AND Abs(asteroids(gspAstI).pz - player.pz) < 5 THEN
+                                gspAstNear = -1
+                            END IF
+                        END IF
+                    END IF
+                NEXT gspAstI
+                IF gspAstNear = 0 THEN astForceTarget = -1
+            END IF
+        END IF
         WAVE_Spawn
 
         FOR i = 1 TO MAX_BULLETS
@@ -204,7 +225,7 @@ Sub GS_PLAYING_Update ()
                     IF Abs(asteroids(i).py - player.py) < 7 AND Abs(asteroids(i).pz - player.pz) < 7 THEN
                         IF asteroids(i).px < player.px + 5 AND asteroids(i).px > player.px - 4 THEN
                             fxShakeTimer = 3
-                            astNmSndCool = 45
+                            astNmSndCool = 50
                             SND_Whoosh
                         END IF
                     END IF
