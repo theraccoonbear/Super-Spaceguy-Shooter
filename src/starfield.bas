@@ -159,30 +159,27 @@ End Sub
 Sub BELT_Draw(bldW As Single, bldH As Single)
     Dim bldI As Integer, bldX As Integer, bldY As Integer
     Dim bldCX As Single, bldCY As Single, bldC As Long
+    Dim bldDF As Single, bldR As Integer
     bldCX = bldW * 0.5
     bldCY = bldH * 0.5
     For bldI = 1 To bltCount
         bldX = Int(bldCX + COS(bltAngle(bldI)) * bltDepth(bldI))
         bldY = Int(bldCY + SIN(bltAngle(bldI)) * bltDepth(bldI))
         If bldX >= 0 And bldX < bldW And bldY >= 0 And bldY < bldH Then
-            bldC = bltClr(bldI)
-            Select Case bltSz(bldI)
+            bldC  = bltClr(bldI)
+            ' radius scales with depth: 0 at center vanishing point, max at screen edge
+            bldDF = bltDepth(bldI) / bltMaxD
+            bldR  = Int(bltSz(bldI) * bldDF * 1.8 + 0.1)
+            Select Case bldR
             Case 0
                 PSet (bldX, bldY), bldC
             Case 1
-                ' circle r≈1: center + 4 cardinal neighbors
                 PSet (bldX, bldY), bldC
                 PSet (bldX + 1, bldY), bldC : PSet (bldX - 1, bldY), bldC
                 PSet (bldX, bldY + 1), bldC : PSet (bldX, bldY - 1), bldC
-            Case 2
-                ' filled circle r≈2: two overlapping rects
-                Line (bldX - 2, bldY - 1)-(bldX + 2, bldY + 1), bldC, BF
-                Line (bldX - 1, bldY - 2)-(bldX + 1, bldY + 2), bldC, BF
             Case Else
-                ' filled circle r≈3: three overlapping rects
-                Line (bldX - 3, bldY - 1)-(bldX + 3, bldY + 1), bldC, BF
-                Line (bldX - 2, bldY - 2)-(bldX + 2, bldY + 2), bldC, BF
-                Line (bldX - 1, bldY - 3)-(bldX + 1, bldY + 3), bldC, BF
+                Circle (bldX, bldY), bldR, bldC
+                Paint (bldX, bldY), bldC, bldC
             End Select
         End If
     Next bldI
