@@ -16,6 +16,7 @@ Sub GS_PLAYING_Update ()
     Dim pjX2 As Single, pjY2 As Single, pjW2 As Single
     Dim pjBX As Single, pjBY As Single, pjBZ As Single
     Dim pjFade As Single
+    Dim gspAstTR As Single, gspAstTG As Single, gspAstTB As Single
     Static gspBossDbgLogged As Integer
     Dim gspBossScnBefore As Integer
     Dim gspBdbVx As Single, gspBdbVy As Single, gspBdbVz As Single, gspBdbW As Single
@@ -165,6 +166,8 @@ Sub GS_PLAYING_Update ()
         FOR i = 1 TO MAX_ASTEROIDS
             IF asteroids(i).active THEN
                 asteroids(i).px  = asteroids(i).px  + asteroids(i).vx
+                asteroids(i).py  = asteroids(i).py  + asteroids(i).vy
+                asteroids(i).pz  = asteroids(i).pz  + asteroids(i).vz
                 asteroids(i).rx  = asteroids(i).rx  + asteroids(i).drx
                 asteroids(i).ry  = asteroids(i).ry  + asteroids(i).dry
                 asteroids(i).rz  = asteroids(i).rz  + asteroids(i).drz
@@ -312,7 +315,15 @@ Sub GS_PLAYING_Update ()
                 pPos.x = asteroids(j).px : pPos.y = asteroids(j).py : pPos.z = asteroids(j).pz
                 pRot.x = asteroids(j).rx : pRot.y = asteroids(j).ry : pRot.z = asteroids(j).rz
                 E3D_BuildObjectMat pPos, pRot, asteroids(j).scl, objMat
-                E3D_SceneAddMeshLit meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir
+                SELECT CASE asteroids(j).strafeCool
+                CASE 0 : gspAstTR = 1.00 : gspAstTG = 0.84 : gspAstTB = 0.54  ' tan
+                CASE 1 : gspAstTR = 1.00 : gspAstTG = 0.62 : gspAstTB = 0.38  ' brown
+                CASE 2 : gspAstTR = 0.72 : gspAstTG = 0.44 : gspAstTB = 0.26  ' dark brown
+                CASE 3 : gspAstTR = 0.82 : gspAstTG = 0.82 : gspAstTB = 0.82  ' light gray
+                CASE 4 : gspAstTR = 0.56 : gspAstTG = 0.56 : gspAstTB = 0.62  ' blue-gray
+                CASE ELSE : gspAstTR = 1.00 : gspAstTG = 0.50 : gspAstTB = 0.32 ' rust
+                END SELECT
+                E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, gspAstTR, gspAstTG, gspAstTB
             END IF
         END IF
     NEXT j
