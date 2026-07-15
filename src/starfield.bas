@@ -9,6 +9,8 @@ Dim Shared bltDSpd(1 To BELT_MAX)      As Single   ' depth growth per frame
 Dim Shared bltSz(1 To BELT_MAX)        As Integer  ' size tier 0-3 (also controls speed)
 Dim Shared bltClr(1 To BELT_MAX)       As Long
 Dim Shared bltMaxD                     As Single   ' screen half-diagonal
+Dim Shared bltCtrX                     As Single   ' belt vanishing point screen X (set by playing.bas)
+Dim Shared bltCtrY                     As Single   ' belt vanishing point screen Y
 
 Dim Shared E3D_sfCount As Integer
 Dim Shared E3D_sfX(1 To E3D_SF_MAX)   As Single
@@ -119,6 +121,8 @@ Sub BELT_Init(bliW As Single, bliH As Single)
     bliColors(3) = _RGB( 78,  42,  28)
     bliColors(4) = _RGB( 45,  45,  50)
     bltMaxD   = SQR(bliW * bliW * 0.25 + bliH * bliH * 0.25)
+    bltCtrX   = bliW * 0.5
+    bltCtrY   = bliH * 0.5
     bltCount  = 0
     bltActive = -1
     For bliI = 1 To BELT_MAX
@@ -160,8 +164,8 @@ Sub BELT_Draw(bldW As Single, bldH As Single)
     Dim bldI As Integer, bldX As Integer, bldY As Integer
     Dim bldCX As Single, bldCY As Single, bldC As Long
     Dim bldDF As Single, bldR As Integer
-    bldCX = bldW * 0.5
-    bldCY = bldH * 0.5
+    bldCX = bltCtrX
+    bldCY = bltCtrY
     For bldI = 1 To bltCount
         bldX = Int(bldCX + COS(bltAngle(bldI)) * bltDepth(bldI))
         bldY = Int(bldCY + SIN(bltAngle(bldI)) * bltDepth(bldI))

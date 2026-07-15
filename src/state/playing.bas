@@ -163,6 +163,7 @@ Sub GS_PLAYING_Update ()
 
         ENEMY_Update
 
+        IF astNmSndCool > 0 THEN astNmSndCool = astNmSndCool - 1
         FOR i = 1 TO MAX_ASTEROIDS
             IF asteroids(i).active THEN
                 asteroids(i).px  = asteroids(i).px  + asteroids(i).vx
@@ -199,10 +200,11 @@ Sub GS_PLAYING_Update ()
                     FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
                     telemDeathCause = "asteroid"
                     PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
-                ELSEIF fxShakeTimer = 0 AND levelType = LEVEL_ASTEROID THEN
+                ELSEIF astNmSndCool = 0 AND levelType = LEVEL_ASTEROID THEN
                     IF Abs(asteroids(i).py - player.py) < 7 AND Abs(asteroids(i).pz - player.pz) < 7 THEN
                         IF asteroids(i).px < player.px + 5 AND asteroids(i).px > player.px - 4 THEN
                             fxShakeTimer = 3
+                            astNmSndCool = 45
                             SND_Whoosh
                         END IF
                     END IF
@@ -276,7 +278,18 @@ Sub GS_PLAYING_Update ()
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 5, 185), BF
     E3D_StarfieldDraw vpMat, scrW, scrH
-    IF bltActive THEN BELT_Draw scrW, scrH
+    IF bltActive THEN
+        Dim gspBltVpX As Single, gspBltVpY As Single, gspBltVpW As Single, gspBltFwd As Single
+        gspBltFwd = cam.POS.x + 500.0
+        gspBltVpX = gspBltFwd * vpMat.m(0,0) + cam.POS.y * vpMat.m(0,1) + cam.POS.z * vpMat.m(0,2) + vpMat.m(0,3)
+        gspBltVpY = gspBltFwd * vpMat.m(1,0) + cam.POS.y * vpMat.m(1,1) + cam.POS.z * vpMat.m(1,2) + vpMat.m(1,3)
+        gspBltVpW = gspBltFwd * vpMat.m(3,0) + cam.POS.y * vpMat.m(3,1) + cam.POS.z * vpMat.m(3,2) + vpMat.m(3,3)
+        IF gspBltVpW > 0.00001 THEN
+            bltCtrX = (gspBltVpX / gspBltVpW + 1.0) * (scrW * 0.5)
+            bltCtrY = (1.0 - gspBltVpY / gspBltVpW) * (scrH * 0.5)
+        END IF
+        BELT_Draw scrW, scrH
+    END IF
     STAGE_DrawPlanet
 
     E3D_SceneBegin
