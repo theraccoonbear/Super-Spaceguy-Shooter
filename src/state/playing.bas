@@ -227,6 +227,7 @@ Sub GS_PLAYING_Update ()
         EBULLET_Update
         FX_Update
         E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
+        IF bltActive THEN BELT_Update scrW, scrH
 
         IF gameOver THEN
             IF score > highScore THEN highScore = score : SETTINGS_Save
@@ -268,6 +269,7 @@ Sub GS_PLAYING_Update ()
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 5, 185), BF
     E3D_StarfieldDraw vpMat, scrW, scrH
+    IF bltActive THEN BELT_Draw scrW, scrH
     STAGE_DrawPlanet
 
     E3D_SceneBegin
