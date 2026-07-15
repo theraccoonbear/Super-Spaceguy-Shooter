@@ -196,8 +196,15 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer
 
     wvafCX = player.px + 55 + RND * 25
-    wvafCY = player.py + (RND * 10) - 5
-    wvafCZ = player.pz + (RND * 12) - 6
+    If astForceTarget Then
+        wvafCY    = player.py + (RND * 4) - 2
+        wvafCZ    = player.pz + (RND * 4) - 2
+        astForceTarget = 0
+        astIdleTimer   = 0
+    Else
+        wvafCY = player.py + (RND * 10) - 5
+        wvafCZ = player.pz + (RND * 12) - 6
+    End If
     wvafN  = 0
 
     Select Case wvafPat
