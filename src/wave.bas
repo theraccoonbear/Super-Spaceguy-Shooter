@@ -17,8 +17,8 @@ Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
 Const ASTFIELD_DURATION   = 200.0  ' tt-ticks to survive (≈80s at 40fps / 55s at 60fps)
-Const ASTFIELD_INTERVAL   = 1.8    ' tt-ticks between asteroid patterns
-Const ASTFIELD_LIFE       = 250    ' frames each asteroid lives; fast enough to cycle pool cleanly
+Const ASTFIELD_INTERVAL   = 0.7    ' tt-ticks between asteroid patterns
+Const ASTFIELD_LIFE       = 130    ' frames each asteroid lives; fast enough to cycle pool cleanly
 
 Sub WAVE_Spawn
     Dim wvOK       As Integer
@@ -195,7 +195,7 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
     Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer
 
-    wvafCX = player.px + 45 + RND * 15
+    wvafCX = player.px + 28 + RND * 12
     wvafCY = player.py + (RND * 10) - 5
     wvafCZ = player.pz + (RND * 12) - 6
     wvafN  = 0
@@ -243,11 +243,11 @@ Sub WAVE_SpawnAsteroidField
     For wvafJ = 0 To wvafN - 1
         ' per-asteroid trajectory: most drift slightly, 1-in-5 are erratic cross-cutters
         If Int(RND * 5) = 0 Then
-            wvafVY = (RND - 0.5) * 0.32
-            wvafVZ = (RND - 0.5) * 0.32
+            wvafVY = (RND - 0.5) * 0.50
+            wvafVZ = (RND - 0.5) * 0.50
         Else
-            wvafVY = (RND - 0.5) * 0.04
-            wvafVZ = (RND - 0.5) * 0.04
+            wvafVY = (RND - 0.5) * 0.06
+            wvafVZ = (RND - 0.5) * 0.06
         End If
         wvafScl  = 0.4 + RND * 2.0
         wvafTint = Int(RND * 6)
@@ -258,7 +258,7 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).px         = wvafCX + wvafXO(wvafJ)
                 asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
                 asteroids(wvafI).pz         = wvafCZ + wvafZO(wvafJ)
-                asteroids(wvafI).vx         = -(0.25 + RND * 0.15)
+                asteroids(wvafI).vx         = -(0.45 + RND * 0.25)
                 asteroids(wvafI).vy         = wvafVY
                 asteroids(wvafI).vz         = wvafVZ
                 asteroids(wvafI).drx        = (RND - 0.5) * 2

@@ -1,14 +1,14 @@
 Const E3D_SF_MAX  = 400
-Const BELT_MAX    = 70
+Const BELT_MAX    = 100
 
-Dim Shared bltCount                   As Integer
-Dim Shared bltActive                  As Integer
-Dim Shared bltSX(1 To BELT_MAX)       As Single
-Dim Shared bltSY(1 To BELT_MAX)       As Single
-Dim Shared bltVX(1 To BELT_MAX)       As Single
-Dim Shared bltVY(1 To BELT_MAX)       As Single
-Dim Shared bltSz(1 To BELT_MAX)       As Integer
-Dim Shared bltClr(1 To BELT_MAX)      As Long
+Dim Shared bltCount                    As Integer
+Dim Shared bltActive                   As Integer
+Dim Shared bltAngle(1 To BELT_MAX)     As Single   ' radial direction from screen center
+Dim Shared bltDepth(1 To BELT_MAX)     As Single   ' current radius from center (pixels)
+Dim Shared bltDSpd(1 To BELT_MAX)      As Single   ' depth growth per frame
+Dim Shared bltSz(1 To BELT_MAX)        As Integer  ' size tier 0-3 (also controls speed)
+Dim Shared bltClr(1 To BELT_MAX)       As Long
+Dim Shared bltMaxD                     As Single   ' screen half-diagonal
 
 Dim Shared E3D_sfCount As Integer
 Dim Shared E3D_sfX(1 To E3D_SF_MAX)   As Single
@@ -107,8 +107,9 @@ Sub E3D_StarfieldDraw (vpMat As E3D_Matrix4, scrW As Single, scrH As Single)
     Next i
 End Sub
 
-' Scatter belt pebbles across the screen for the asteroid field level.
-' Sizes 0-3 control both visual scale and speed (bigger = faster = closer).
+' Belt parallax: earthen pebbles that radiate outward from the screen center,
+' exactly like the starfield but in the 2D projection plane.
+' Bigger size tier = faster speed = closer debris.
 Sub BELT_Init(bliW As Single, bliH As Single)
     Dim bliI As Integer, bliR As Single
     Dim bliColors(0 To 4) As Long
@@ -117,6 +118,7 @@ Sub BELT_Init(bliW As Single, bliH As Single)
     bliColors(2) = _RGB( 60,  60,  60)
     bliColors(3) = _RGB( 78,  42,  28)
     bliColors(4) = _RGB( 45,  45,  50)
+    bltMaxD   = SQR(bliW * bliW * 0.25 + bliH * bliH * 0.25)
     bltCount  = 0
     bltActive = -1
     For bliI = 1 To BELT_MAX
@@ -130,10 +132,14 @@ Sub BELT_Init(bliW As Single, bliH As Single)
         Else
             bltSz(bliI) = 3
         End If
-        bltSX(bliI)  = RND * bliW
-        bltSY(bliI)  = RND * bliH
-        bltVX(bliI)  = -(4 + bltSz(bliI) * 6 + RND * 5)
-        bltVY(bliI)  = (RND - 0.5) * 0.7
+        bltAngle(bliI) = RND * _PI(2)
+        bltDepth(bliI) = RND * bltMaxD     ' scatter so they don't all flash from center at once
+        Select Case bltSz(bliI)
+        Case 0 : bltDSpd(bliI) = 0.7 + RND * 0.9
+        Case 1 : bltDSpd(bliI) = 1.6 + RND * 1.2
+        Case 2 : bltDSpd(bliI) = 3.0 + RND * 1.8
+        Case Else : bltDSpd(bliI) = 5.0 + RND * 3.0
+        End Select
         bltClr(bliI) = bliColors(Int(RND * 5))
         bltCount     = bltCount + 1
     Next bliI
@@ -142,32 +148,32 @@ End Sub
 Sub BELT_Update(bluW As Single, bluH As Single)
     Dim bluI As Integer
     For bluI = 1 To bltCount
-        bltSX(bluI) = bltSX(bluI) + bltVX(bluI)
-        bltSY(bluI) = bltSY(bluI) + bltVY(bluI)
-        If bltSY(bluI) < 0     Then bltSY(bluI) = bluH
-        If bltSY(bluI) > bluH  Then bltSY(bluI) = 0
-        If bltSX(bluI) < -4   Then
-            bltSX(bluI) = bluW + RND * 30
-            bltSY(bluI) = RND * bluH
+        bltDepth(bluI) = bltDepth(bluI) + bltDSpd(bluI)
+        If bltDepth(bluI) > bltMaxD * 1.05 Then
+            bltAngle(bluI) = RND * _PI(2)
+            bltDepth(bluI) = RND * 4
         End If
     Next bluI
 End Sub
 
 Sub BELT_Draw(bldW As Single, bldH As Single)
     Dim bldI As Integer, bldX As Integer, bldY As Integer
+    Dim bldCX As Single, bldCY As Single
+    bldCX = bldW * 0.5
+    bldCY = bldH * 0.5
     For bldI = 1 To bltCount
-        bldX = Int(bltSX(bldI))
-        bldY = Int(bltSY(bldI))
+        bldX = Int(bldCX + COS(bltAngle(bldI)) * bltDepth(bldI))
+        bldY = Int(bldCY + SIN(bltAngle(bldI)) * bltDepth(bldI))
         If bldX >= 0 And bldX < bldW And bldY >= 0 And bldY < bldH Then
             Select Case bltSz(bldI)
             Case 0
                 PSet (bldX, bldY), bltClr(bldI)
             Case 1
-                Line (bldX, bldY)-(bldX + 2, bldY), bltClr(bldI)
+                Line (bldX, bldY)-(bldX + 1, bldY + 1), bltClr(bldI), BF
             Case 2
-                Line (bldX, bldY)-(bldX + 3, bldY + 1), bltClr(bldI), BF
-            Case Else
                 Line (bldX - 1, bldY - 1)-(bldX + 2, bldY + 2), bltClr(bldI), BF
+            Case Else
+                Line (bldX - 2, bldY - 2)-(bldX + 3, bldY + 3), bltClr(bldI), BF
             End Select
         End If
     Next bldI
