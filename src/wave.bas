@@ -17,8 +17,8 @@ Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
 Const ASTFIELD_DURATION   = 200.0  ' tt-ticks to survive (≈80s at 40fps / 55s at 60fps)
-Const ASTFIELD_INTERVAL   = 0.7    ' tt-ticks between asteroid patterns
-Const ASTFIELD_LIFE       = 130    ' frames each asteroid lives; fast enough to cycle pool cleanly
+Const ASTFIELD_INTERVAL   = 0.5    ' tt-ticks between asteroid patterns
+Const ASTFIELD_LIFE       = 220    ' frames each asteroid lives; long enough to cross from far spawn
 
 Sub WAVE_Spawn
     Dim wvOK       As Integer
@@ -195,7 +195,7 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
     Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer
 
-    wvafCX = player.px + 28 + RND * 12
+    wvafCX = player.px + 55 + RND * 25
     wvafCY = player.py + (RND * 10) - 5
     wvafCZ = player.pz + (RND * 12) - 6
     wvafN  = 0
@@ -209,7 +209,8 @@ Sub WAVE_SpawnAsteroidField
         wvafXO(4) = 10 : wvafYO(4) = -4 : wvafZO(4) =  7
         wvafXO(5) = 15 : wvafYO(5) = -2 : wvafZO(5) =  9
         wvafXO(6) =  3 : wvafYO(6) =  6 : wvafZO(6) = -9
-        wvafN = 7
+        wvafXO(7) =  8 : wvafYO(7) = -5 : wvafZO(7) =  3
+        wvafN = 8
 
     Case 1  ' Y corridor: two walls above/below a random gap, 2 stragglers in the gap
         wvafGap = player.py + (RND * 18) - 9
@@ -235,7 +236,8 @@ Sub WAVE_SpawnAsteroidField
         wvafXO(4) = 28 : wvafYO(4) =  13 : wvafZO(4) =  22
         wvafXO(5) = 35 : wvafYO(5) = -13 : wvafZO(5) = -22
         wvafXO(6) = 42 : wvafYO(6) =  13 : wvafZO(6) =  11
-        wvafN = 7
+        wvafXO(7) = 14 : wvafYO(7) =  13 : wvafZO(7) = -11
+        wvafN = 8
 
     Case 3  ' cluster pack: 4 pairs spread across Z, each pair offset in Y
         wvafXO(0) =  0 : wvafYO(0) =  7 : wvafZO(0) = -22
