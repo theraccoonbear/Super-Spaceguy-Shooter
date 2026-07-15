@@ -15,7 +15,7 @@ Const BOSS_FIRE2       = 1.5    ' phase 2 fire interval
 Const BOSS_FIRE3       = 0.9    ' phase 3 fire interval
 Const BOSS_DIM_FLOOR   = 0.35   ' minimum lighting factor for boss (keeps it visible at range)
 Const BOSS_DEATH_PARTS = 35     ' particle count on boss death
-Const BOSS_ATTITUDE_LERP = 0.055  ' attitude settle rate (< player 0.09 = heavier feel)
+Const BOSS_ATTITUDE_LERP = 0.07   ' attitude settle rate (< player 0.09 = heavier feel)
 
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssDMag As Single
@@ -82,9 +82,9 @@ Sub BOSS_Update
     ' attitude: roll/yaw from Z velocity, pitch from Y velocity
     bssVY = boss.py - bssPrevY
     bssVZ = boss.pz - bssPrevZ
-    bssTgtRx = bssVZ * 50 : If bssTgtRx > 40 Then bssTgtRx = 40 : If bssTgtRx < -40 Then bssTgtRx = -40
-    bssTgtRy = -bssVZ * 20 : If bssTgtRy > 18 Then bssTgtRy = 18 : If bssTgtRy < -18 Then bssTgtRy = -18
-    bssTgtRz = bssVY * 35 : If bssTgtRz > 28 Then bssTgtRz = 28 : If bssTgtRz < -28 Then bssTgtRz = -28
+    bssTgtRx = bssVZ * 90 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
+    bssTgtRy = -bssVZ * 35 : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
+    bssTgtRz = bssVY * 60 : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
