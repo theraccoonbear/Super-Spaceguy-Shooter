@@ -112,6 +112,7 @@ The codebase is split across ~30 `$INCLUDE` modules, each owning a vertical slic
 |---|---|---|
 | Enemy ship models | Liz Reddington | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) via poly.pizza |
 | Speedship model | Herminio Nieves | CC BY 3.0 via poly.pizza |
+| Boss ship model ("Bob") | [@Quaternius](https://quaternius.com) — Ultimate Spaceships (2021) | CC0 — public domain |
 | Planet imagery | [Voidweaver.space](https://voidweaver.space) | CC0 — public domain |
 | Title and emperor art | OpenAI / ChatGPT (modified in GIMP by theraccoonbear) | See [OpenAI usage policy](https://openai.com/policies/usage-policies) |
 | CMU Pronouncing Dictionary | Carnegie Mellon University | © 1993–2015 CMU, all rights reserved |

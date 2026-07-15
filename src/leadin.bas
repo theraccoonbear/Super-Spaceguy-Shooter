@@ -2,7 +2,7 @@
 ' PNGs are baked into the binary via $EMBED; no external files needed at runtime.
 ' Renders directly into backBuffer with a fade-in / hold / fade-out envelope.
 '
-' Card order: 1 = CTUT Game Studios, 2 = Cogikel Heavy Industries
+' Card order: 1 = CTUT Game Studios, 2 = Cogikel Heavy Industries, 3 = Just Juliaing
 ' Game boots into GS_LEADIN; transitions to GS_TITLE when both cards complete.
 ' Does not replay (liDone session flag).  Any keypress skips the current card.
 
