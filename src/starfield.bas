@@ -135,10 +135,10 @@ Sub BELT_Init(bliW As Single, bliH As Single)
         bltAngle(bliI) = RND * _PI(2)
         bltDepth(bliI) = RND * bltMaxD     ' scatter so they don't all flash from center at once
         Select Case bltSz(bliI)
-        Case 0 : bltDSpd(bliI) = 0.3 + RND * 0.4
-        Case 1 : bltDSpd(bliI) = 0.6 + RND * 0.5
-        Case 2 : bltDSpd(bliI) = 1.1 + RND * 0.7
-        Case Else : bltDSpd(bliI) = 2.0 + RND * 1.2
+        Case 0 : bltDSpd(bliI) = 0.15 + RND * 0.20
+        Case 1 : bltDSpd(bliI) = 0.30 + RND * 0.25
+        Case 2 : bltDSpd(bliI) = 0.55 + RND * 0.35
+        Case Else : bltDSpd(bliI) = 1.0 + RND * 0.6
         End Select
         bltClr(bliI) = bliColors(Int(RND * 5))
         bltCount     = bltCount + 1
@@ -158,22 +158,31 @@ End Sub
 
 Sub BELT_Draw(bldW As Single, bldH As Single)
     Dim bldI As Integer, bldX As Integer, bldY As Integer
-    Dim bldCX As Single, bldCY As Single
+    Dim bldCX As Single, bldCY As Single, bldC As Long
     bldCX = bldW * 0.5
     bldCY = bldH * 0.5
     For bldI = 1 To bltCount
         bldX = Int(bldCX + COS(bltAngle(bldI)) * bltDepth(bldI))
         bldY = Int(bldCY + SIN(bltAngle(bldI)) * bltDepth(bldI))
         If bldX >= 0 And bldX < bldW And bldY >= 0 And bldY < bldH Then
+            bldC = bltClr(bldI)
             Select Case bltSz(bldI)
             Case 0
-                PSet (bldX, bldY), bltClr(bldI)
+                PSet (bldX, bldY), bldC
             Case 1
-                Line (bldX, bldY)-(bldX + 1, bldY + 1), bltClr(bldI), BF
+                ' circle r≈1: center + 4 cardinal neighbors
+                PSet (bldX, bldY), bldC
+                PSet (bldX + 1, bldY), bldC : PSet (bldX - 1, bldY), bldC
+                PSet (bldX, bldY + 1), bldC : PSet (bldX, bldY - 1), bldC
             Case 2
-                Line (bldX - 1, bldY - 1)-(bldX + 2, bldY + 2), bltClr(bldI), BF
+                ' filled circle r≈2: two overlapping rects
+                Line (bldX - 2, bldY - 1)-(bldX + 2, bldY + 1), bldC, BF
+                Line (bldX - 1, bldY - 2)-(bldX + 1, bldY + 2), bldC, BF
             Case Else
-                Line (bldX - 2, bldY - 2)-(bldX + 3, bldY + 3), bltClr(bldI), BF
+                ' filled circle r≈3: three overlapping rects
+                Line (bldX - 3, bldY - 1)-(bldX + 3, bldY + 1), bldC, BF
+                Line (bldX - 2, bldY - 2)-(bldX + 2, bldY + 2), bldC, BF
+                Line (bldX - 1, bldY - 3)-(bldX + 1, bldY + 3), bldC, BF
             End Select
         End If
     Next bldI
