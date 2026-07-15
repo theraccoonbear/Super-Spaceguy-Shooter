@@ -47,10 +47,23 @@ ST_Assert SND_SNARE_LEN  <= SND_INT_MAX, "SND_SNARE_LEN <= 32767"
 ST_Assert SND_HIHAT_LEN  <= SND_INT_MAX, "SND_HIHAT_LEN <= 32767"
 
 Print ""
-Print "--- SND_Init runs without overflow ---"
+Print "--- SND_Init runs without runtime error ---"
+
+' Wrap SND_Init in an error handler so a runtime error (Integer overflow,
+' illegal function call from negative fractional exponent, subscript out of
+' range, etc.) is caught and reported as a test failure instead of silently
+' continuing or crashing the process with a non-zero exit.
+Dim sndTRtErr As Integer
+ON ERROR GOTO sndTErrHandler
 SND_Init
-' Reaching this line means no Integer overflow crashed the generation loops
-ST_Assert -1, "SND_Init completed without runtime error"
+GOTO sndTAfterInit
+sndTErrHandler:
+    sndTRtErr = -1
+    RESUME NEXT
+sndTAfterInit:
+ON ERROR GOTO 0
+
+ST_Assert sndTRtErr = 0, "SND_Init completed without runtime error"
 
 ' Playback positions must remain at their sentinel -1 after init; only
 ' SND_Whoosh() / SND_Shoot() etc. arm them by setting to 0.
@@ -60,9 +73,15 @@ ST_Assert sndShootPos  = -1, "sndShootPos = -1 after SND_Init"
 ' Verify array is accessible at both bounds; a subscript error here means the
 ' buffer was declared with the wrong size constant.
 Dim sndTFirst As Single, sndTLast As Single
+ON ERROR GOTO sndTBoundsErr
 sndTFirst = sndWhoosh(0)
 sndTLast  = sndWhoosh(SND_WHOOSH_LEN - 1)
-ST_Assert -1, "sndWhoosh index 0 and SND_WHOOSH_LEN-1 are valid"
+GOTO sndTAfterBounds
+sndTBoundsErr:
+    sndTFirst = 0 : sndTLast = 0 : sndTRtErr = -1 : RESUME NEXT
+sndTAfterBounds:
+ON ERROR GOTO 0
+ST_Assert sndTRtErr = 0, "sndWhoosh index 0 and SND_WHOOSH_LEN-1 are valid"
 
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
