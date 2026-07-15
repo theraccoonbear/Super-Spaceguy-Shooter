@@ -16,8 +16,8 @@ Const SPAWN_SPREAD_Z      = 22     ' ±Z spawn spread
 Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
-Const ASTFIELD_DURATION   = 90.0   ' seconds to survive the asteroid field
-Const ASTFIELD_INTERVAL   = 2.5    ' seconds between asteroid patterns
+Const ASTFIELD_DURATION   = 200.0  ' tt-ticks to survive (≈80s at 40fps / 55s at 60fps)
+Const ASTFIELD_INTERVAL   = 2.5    ' tt-ticks between asteroid patterns
 Const ASTFIELD_LIFE       = 350    ' frames each asteroid lives; enough to rush past player and expire behind
 
 Sub WAVE_Spawn
@@ -151,12 +151,15 @@ Sub WAVE_Spawn
                 asteroids(wvI).px  = player.px + 45 + RND * 20
                 asteroids(wvI).py  = player.py + (RND * 140) - 70
                 asteroids(wvI).pz  = player.pz + (RND * 180) - 90
-                asteroids(wvI).vx  = -(0.04 + RND * 0.05)
-                asteroids(wvI).drx = (RND - 0.5) * 2
-                asteroids(wvI).dry = (RND - 0.5) * 2
-                asteroids(wvI).drz = (RND - 0.5) * 2
-                asteroids(wvI).scl = 0.7 + RND * 0.9
-                asteroids(wvI).life = 0  ' combat: expire by px < -5 only
+                asteroids(wvI).vx         = -(0.04 + RND * 0.05)
+                asteroids(wvI).vy         = 0
+                asteroids(wvI).vz         = 0
+                asteroids(wvI).drx        = (RND - 0.5) * 2
+                asteroids(wvI).dry        = (RND - 0.5) * 2
+                asteroids(wvI).drz        = (RND - 0.5) * 2
+                asteroids(wvI).scl        = 0.7 + RND * 0.9
+                asteroids(wvI).life       = 0  ' combat: expire by px < -5 only
+                asteroids(wvI).strafeCool = Int(RND * 6)
                 Exit For
             End If
         Next wvI
@@ -190,10 +193,11 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafCX As Single, wvafCY As Single, wvafCZ As Single
     Dim wvafGap As Single
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
+    Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer
 
     wvafCX = player.px + 45 + RND * 15
-    wvafCY = player.py + (RND * 18) - 9
-    wvafCZ = player.pz + (RND * 22) - 11
+    wvafCY = player.py + (RND * 10) - 5
+    wvafCZ = player.pz + (RND * 12) - 6
     wvafN  = 0
 
     Select Case wvafPat
@@ -237,19 +241,32 @@ Sub WAVE_SpawnAsteroidField
     End Select
 
     For wvafJ = 0 To wvafN - 1
+        ' per-asteroid trajectory: most drift slightly, 1-in-5 are erratic cross-cutters
+        If Int(RND * 5) = 0 Then
+            wvafVY = (RND - 0.5) * 0.32
+            wvafVZ = (RND - 0.5) * 0.32
+        Else
+            wvafVY = (RND - 0.5) * 0.04
+            wvafVZ = (RND - 0.5) * 0.04
+        End If
+        wvafScl  = 0.4 + RND * 2.0
+        wvafTint = Int(RND * 6)
         For wvafI = 1 To MAX_ASTEROIDS
             If asteroids(wvafI).active = 0 Then
-                asteroids(wvafI).active  = -1
-                asteroids(wvafI).meshIdx = MESH_ASTEROID
-                asteroids(wvafI).px  = wvafCX + wvafXO(wvafJ)
-                asteroids(wvafI).py  = wvafCY + wvafYO(wvafJ)
-                asteroids(wvafI).pz  = wvafCZ + wvafZO(wvafJ)
-                asteroids(wvafI).vx  = -(0.18 + RND * 0.10)
-                asteroids(wvafI).drx = (RND - 0.5) * 2
-                asteroids(wvafI).dry = (RND - 0.5) * 2
-                asteroids(wvafI).drz = (RND - 0.5) * 2
-                asteroids(wvafI).scl = 0.8 + RND * 0.6
-                asteroids(wvafI).life = ASTFIELD_LIFE
+                asteroids(wvafI).active     = -1
+                asteroids(wvafI).meshIdx    = MESH_ASTEROID
+                asteroids(wvafI).px         = wvafCX + wvafXO(wvafJ)
+                asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
+                asteroids(wvafI).pz         = wvafCZ + wvafZO(wvafJ)
+                asteroids(wvafI).vx         = -(0.18 + RND * 0.10)
+                asteroids(wvafI).vy         = wvafVY
+                asteroids(wvafI).vz         = wvafVZ
+                asteroids(wvafI).drx        = (RND - 0.5) * 2
+                asteroids(wvafI).dry        = (RND - 0.5) * 2
+                asteroids(wvafI).drz        = (RND - 0.5) * 2
+                asteroids(wvafI).scl        = wvafScl
+                asteroids(wvafI).life       = ASTFIELD_LIFE
+                asteroids(wvafI).strafeCool = wvafTint
                 Exit For
             End If
         Next wvafI
