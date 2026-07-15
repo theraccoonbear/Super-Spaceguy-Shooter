@@ -10,7 +10,7 @@ old_exe="./builds/$base"
 
 if [ "$1" == "sss.bas" ]; then
     echo ">>> Baking in-game spoken text..."
-    "$(dirname "$0")/bake_speech_dict"
+    "$(dirname "$0")/bake_speech_dict" || exit 1
     echo ">>> ...done!"
 fi
 

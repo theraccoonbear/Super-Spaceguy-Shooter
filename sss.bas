@@ -97,7 +97,11 @@ IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 SEQ_Load _EMBEDDED$("SEQTXT")
 IF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage("scene '" + cliScene + "' not found")
-    IF cliSceneType = "playing" OR cliSceneType = "boss" THEN GAME_ResetState
+    IF cliSceneType = "playing" OR cliSceneType = "boss" THEN
+        GAME_ResetState
+        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1
+        IF levelNum < 0 THEN levelNum = 0
+    END IF
     IF cliSceneType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
 ELSE

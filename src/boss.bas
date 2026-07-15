@@ -6,9 +6,8 @@
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: bss*
 
-Const BOSS_SCALE       = 3.5    ' boss mesh scale
 Const BOSS_SPAWN_DIST  = 55     ' boss spawns this far ahead of player
-Const BOSS_COMBAT_DIST = 45     ' boss holds at this X distance
+Const BOSS_COMBAT_DIST = 20     ' boss holds at this X distance
 Const BOSS_WARN_FRAMES = 120    ' warning frames before boss spawns
 Const BOSS_FIRE_INIT   = 2.5    ' fire interval at boss spawn (before phase lock-in)
 Const BOSS_FIRE1       = 2.2    ' phase 1 fire interval
@@ -16,12 +15,16 @@ Const BOSS_FIRE2       = 1.5    ' phase 2 fire interval
 Const BOSS_FIRE3       = 0.9    ' phase 3 fire interval
 Const BOSS_DIM_FLOOR   = 0.35   ' minimum lighting factor for boss (keeps it visible at range)
 Const BOSS_DEATH_PARTS = 35     ' particle count on boss death
+Const BOSS_ATTITUDE_LERP = 0.07   ' attitude settle rate (< player 0.09 = heavier feel)
 
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssDMag As Single
     Dim bssEJ As Integer, bssJ As Integer, bssP As Integer, bssPK As Integer
     Dim bssShots As Integer
     Dim bssHit As Integer
+    Dim bssPrevY As Single, bssPrevZ As Single
+    Dim bssVY As Single, bssVZ As Single
+    Dim bssTgtRx As Single, bssTgtRy As Single, bssTgtRz As Single
 
     ' trigger warning when score threshold reached
     If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore Then
@@ -32,14 +35,14 @@ Sub BOSS_Update
     If boss.warnTimer > 0 Then
         boss.warnTimer = boss.warnTimer - 1
         If boss.warnTimer = 0 And gameState = GS_PLAYING Then
-            If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score))
+            If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score)) + "  aabb=" + LTrim$(Str$(boxLib(MESH_BOSS).hx)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hy)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hz)) + "  verts=" + LTrim$(Str$(meshLib(MESH_BOSS).vCount))
             boss.active  = -1
             boss.meshIdx = MESH_BOSS
             boss.px = player.px + BOSS_SPAWN_DIST
             boss.py = player.py
             boss.pz = player.pz
             boss.vx = -0.05
-            boss.scl = BOSS_SCALE
+            boss.scl = 1.0
             If settingNerf Then boss.hp = BOSS_MAX_HP_NERF Else boss.hp = BOSS_MAX_HP
             boss.phase    = 1
             boss.fireTimer = BOSS_FIRE_INIT
@@ -74,7 +77,17 @@ Sub BOSS_Update
     End If
 
     ' intent-driven lateral movement (behavior.bas)
+    bssPrevY = boss.py : bssPrevZ = boss.pz
     BOSS_UpdateMovement
+    ' attitude: roll/yaw from Z velocity, pitch from Y velocity
+    bssVY = boss.py - bssPrevY
+    bssVZ = boss.pz - bssPrevZ
+    bssTgtRx = bssVZ * 90 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
+    bssTgtRy = -bssVZ * 35 : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
+    bssTgtRz = bssVY * 60 : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
+    boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
+    boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
+    boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
 
     ' fire patterns
     boss.fireTimer = boss.fireTimer - 0.025

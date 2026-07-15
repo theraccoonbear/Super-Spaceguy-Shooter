@@ -173,6 +173,12 @@ Sub SEQ_Advance()
             gameState = GS_INTRO
             MUS_SetCue "emperor"
         Case SEQ_PLAY
+            levelNum = levelNum + 1
+            If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
+                diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
+            End If
+            diffScale = diffTime / DIFF_RAMP_DURATION
+            If diffScale > 1.0 Then diffScale = 1.0
             StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
             gameState = GS_PLAYING
             MUS_SetCue "game"
