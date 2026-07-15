@@ -175,11 +175,13 @@ Sub SEQ_Advance()
         Case SEQ_PLAY
             levelNum = levelNum + 1
             If seqSval$(seqIdx) = "asteroid" Then
-                levelType    = LEVEL_ASTEROID
-                stageScore   = 2147483647   ' boss never triggers on asteroid level
+                levelType     = LEVEL_ASTEROID
+                stageScore    = 2147483647   ' boss never triggers on asteroid level
                 astFieldStart = tt
+                BELT_Init scrW, scrH
             Else
                 levelType = LEVEL_COMBAT
+                bltActive = 0
             End If
             If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                 diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
