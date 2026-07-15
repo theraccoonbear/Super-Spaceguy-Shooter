@@ -18,19 +18,28 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
-TESTBIN="$REPODIR/tests/seq_trace_test"
+run_test() {
+  local name="$1"
+  local src="$REPODIR/tests/${name}.bas"
+  local bin="$REPODIR/tests/${name}"
 
-echo "==> Building tests/seq_trace_test.bas..."
-if command -v xvfb-run &>/dev/null; then
-  xvfb-run "$QB64" -x "$REPODIR/tests/seq_trace_test.bas" -o "$TESTBIN"
-else
-  "$QB64" -x "$REPODIR/tests/seq_trace_test.bas" -o "$TESTBIN"
-fi
+  echo "==> Building tests/${name}.bas..."
+  if command -v xvfb-run &>/dev/null; then
+    xvfb-run "$QB64" -x "$src" -o "$bin"
+  else
+    "$QB64" -x "$src" -o "$bin"
+  fi
 
-echo "==> Running seq_trace_test..."
-if "$TESTBIN"; then
-  echo "==> All tests passed"
-else
-  echo "==> TESTS FAILED — see output above"
-  exit 1
-fi
+  echo "==> Running ${name}..."
+  if "$bin"; then
+    echo "==> ${name} passed"
+  else
+    echo "==> TESTS FAILED — ${name} — see output above"
+    exit 1
+  fi
+}
+
+run_test seq_trace_test
+run_test snd_init_test
+
+echo "==> All tests passed"

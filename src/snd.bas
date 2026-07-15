@@ -3,7 +3,7 @@ Const SND_SHOOT_LEN  = 2205
 Const SND_BOOM_LEN   = 11025
 Const SND_HIT_LEN    = 8820
 Const SND_PUP_LEN    = 4410
-Const SND_WHOOSH_LEN = 44100
+Const SND_WHOOSH_LEN = 22050
 Const SND_KICK_LEN   = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN  = 4410   ' 100ms snare
 Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
@@ -37,7 +37,7 @@ Dim Shared sndBlipLen     As Integer
 Dim Shared sndBlipPlosLen As Integer
 
 Sub SND_Init()
-    Dim sndK As Integer, sndF As Single, sndFade As Single
+    Dim sndK As Long, sndF As Single, sndFade As Single
     Dim sndGenPh As Single, sndGenT As Single
     Dim sndGenNz As Single, sndGenHP As Single, sndGenPX As Single
 
@@ -67,7 +67,9 @@ Sub SND_Init()
         If sndGenT < 0.06 Then
             sndFade = sndGenT / 0.06
         Else
-            sndFade = 1.0 - ((sndGenT - 0.06) / 0.94) ^ 0.7
+            sndGenPX = (sndGenT - 0.06) / 0.94
+            If sndGenPX < 0.0 Then sndGenPX = 0.0  ' guard: float cancellation near boundary
+            sndFade = 1.0 - sndGenPX ^ 0.7
         End If
         sndF = 180.0 - 130.0 * sndGenT
         sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.30 + (Rnd * 2.0 - 1.0) * 0.70) * sndFade * 0.38
