@@ -56,11 +56,13 @@ This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage4]
 ~4-~E=~7[ ~3CHAPTER 4 ~7]~E=~4-
 
-~6The Empire's bounty boards now carry a face, a price, and the word ~4TRAITOR~6 stamped beneath it.
+~6The data core is on board. The destination is ~2{{planet4}}~6. The route is dead.
 
-~6There is no pretending neutrality anymore. ~5{{resistance}}~6 offers what little it has left: trust, and a data core too dangerous to transmit. It must fly in the hold of a ship bound for ~2{{planet4}}~6, past eyes that are now actively hunting it.
+~6Between here and there: the ~4Kethara Belt~6, a graveyard of moons crushed by ~4{{the_empire}}'s~6 mass-driver tests. Millions of tons of rock, no nav beacons, and a debris field thick enough to swallow a frigate.
 
-~6The pilot carries war secrets now, not grain.
+~6{{the_empire}}'s~6 blockade ends at the belt's edge. Nothing they send in comes back.
+
+~6Neither do most pilots.
 
 [BLOCK:stage5]
 ~4-~E=~7[ ~3CHAPTER 5 ~7]~E=~4-

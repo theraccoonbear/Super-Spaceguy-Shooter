@@ -168,23 +168,23 @@ Sub GS_PLAYING_Update ()
                 asteroids(i).rx  = asteroids(i).rx  + asteroids(i).drx
                 asteroids(i).ry  = asteroids(i).ry  + asteroids(i).dry
                 asteroids(i).rz  = asteroids(i).rz  + asteroids(i).drz
-                IF asteroids(i).px < player.px + 25 THEN
+                IF levelType = LEVEL_COMBAT AND asteroids(i).px < player.px + 25 THEN
                     asteroids(i).py = asteroids(i).py + (player.py - asteroids(i).py) * 0.004
                     asteroids(i).pz = asteroids(i).pz + (player.pz - asteroids(i).pz) * 0.004
                 END IF
                 IF asteroids(i).px < -5 THEN asteroids(i).active = 0
+                IF asteroids(i).life > 0 THEN
+                    asteroids(i).life = asteroids(i).life - 1
+                    IF asteroids(i).life <= 0 THEN asteroids(i).active = 0
+                END IF
 
                 FOR j = 1 TO MAX_BULLETS
                     IF bullets(j).active THEN
                         E3D_AABBOverlap asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), _
                         bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
                         IF hit THEN
-                            asteroids(i).active = 0
                             bullets(j).active = 0
-                            score = score + SCORE_ASTEROID
                             SND_Boom
-                            scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ASTEROID
-                            FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
                         END IF
                     END IF
                 NEXT j
@@ -192,10 +192,10 @@ Sub GS_PLAYING_Update ()
                 E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
                 asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), hit
                 IF hit AND invTimer = 0 THEN
-                    asteroids(i).active = 0
                     SND_Boom
                     FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
-                    PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+                    telemDeathCause = "asteroid"
+                    PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
                 END IF
             END IF
         NEXT i

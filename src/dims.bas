@@ -15,7 +15,7 @@ CONST GS_LEADIN    = 9
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
 CONST MAX_BULLETS   = 30
-CONST MAX_ASTEROIDS = 15
+CONST MAX_ASTEROIDS = 25
 CONST MAX_POWERUPS  = 5
 CONST MAX_EBULLETS  = 24
 
@@ -42,6 +42,10 @@ CONST BOSS_TRIGGER     = 1000
 CONST BOSS_TRIGGER_NERF = 100
 CONST PLANET_COUNT     = 6
 CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (visual stays unchanged)
+
+' --- level types ---
+CONST LEVEL_COMBAT   = 0
+CONST LEVEL_ASTEROID = 1
 
 ' --- camera ---
 CONST CAM_OFFSET_X  = 6.5
@@ -183,7 +187,9 @@ DIM SHARED optAboutWas AS INTEGER
 DIM SHARED thrusterScale AS SINGLE
 
 ' --- gameplay timers / misc ---
-DIM SHARED levelNum   AS INTEGER
+DIM SHARED levelNum      AS INTEGER
+DIM SHARED levelType     AS INTEGER
+DIM SHARED astFieldStart AS SINGLE
 DIM SHARED invTimer AS INTEGER
 DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE
