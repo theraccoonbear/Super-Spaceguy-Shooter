@@ -15,12 +15,16 @@ Const BOSS_FIRE2       = 1.5    ' phase 2 fire interval
 Const BOSS_FIRE3       = 0.9    ' phase 3 fire interval
 Const BOSS_DIM_FLOOR   = 0.35   ' minimum lighting factor for boss (keeps it visible at range)
 Const BOSS_DEATH_PARTS = 35     ' particle count on boss death
+Const BOSS_ATTITUDE_LERP = 0.055  ' attitude settle rate (< player 0.09 = heavier feel)
 
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssDMag As Single
     Dim bssEJ As Integer, bssJ As Integer, bssP As Integer, bssPK As Integer
     Dim bssShots As Integer
     Dim bssHit As Integer
+    Dim bssPrevY As Single, bssPrevZ As Single
+    Dim bssVY As Single, bssVZ As Single
+    Dim bssTgtRx As Single, bssTgtRy As Single, bssTgtRz As Single
 
     ' trigger warning when score threshold reached
     If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore Then
@@ -73,7 +77,17 @@ Sub BOSS_Update
     End If
 
     ' intent-driven lateral movement (behavior.bas)
+    bssPrevY = boss.py : bssPrevZ = boss.pz
     BOSS_UpdateMovement
+    ' attitude: roll/yaw from Z velocity, pitch from Y velocity
+    bssVY = boss.py - bssPrevY
+    bssVZ = boss.pz - bssPrevZ
+    bssTgtRx = bssVZ * 50 : If bssTgtRx > 40 Then bssTgtRx = 40 : If bssTgtRx < -40 Then bssTgtRx = -40
+    bssTgtRy = -bssVZ * 20 : If bssTgtRy > 18 Then bssTgtRy = 18 : If bssTgtRy < -18 Then bssTgtRy = -18
+    bssTgtRz = bssVY * 35 : If bssTgtRz > 28 Then bssTgtRz = 28 : If bssTgtRz < -28 Then bssTgtRz = -28
+    boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
+    boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
+    boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
 
     ' fire patterns
     boss.fireTimer = boss.fireTimer - 0.025
