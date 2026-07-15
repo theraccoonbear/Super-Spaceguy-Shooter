@@ -17,8 +17,8 @@ Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
 Const ASTFIELD_DURATION   = 90.0   ' seconds to survive the asteroid field
-Const ASTFIELD_INTERVAL   = 4.0    ' seconds between asteroid patterns
-Const ASTFIELD_LIFE       = 480    ' frames each asteroid lives (~12s at 40fps)
+Const ASTFIELD_INTERVAL   = 2.5    ' seconds between asteroid patterns
+Const ASTFIELD_LIFE       = 350    ' frames each asteroid lives; enough to rush past player and expire behind
 
 Sub WAVE_Spawn
     Dim wvOK       As Integer
@@ -191,7 +191,7 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafGap As Single
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
 
-    wvafCX = player.px + 65 + RND * 25
+    wvafCX = player.px + 45 + RND * 15
     wvafCY = player.py + (RND * 18) - 9
     wvafCZ = player.pz + (RND * 22) - 11
     wvafN  = 0
@@ -244,7 +244,7 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).px  = wvafCX + wvafXO(wvafJ)
                 asteroids(wvafI).py  = wvafCY + wvafYO(wvafJ)
                 asteroids(wvafI).pz  = wvafCZ + wvafZO(wvafJ)
-                asteroids(wvafI).vx  = -(0.06 + RND * 0.04)
+                asteroids(wvafI).vx  = -(0.18 + RND * 0.10)
                 asteroids(wvafI).drx = (RND - 0.5) * 2
                 asteroids(wvafI).dry = (RND - 0.5) * 2
                 asteroids(wvafI).drz = (RND - 0.5) * 2
