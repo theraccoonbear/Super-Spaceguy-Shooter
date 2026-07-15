@@ -12,7 +12,7 @@ PLAY
 CRAWL stage3
 PLAY
 CRAWL stage4
-PLAY
+PLAY asteroid
 CRAWL stage5
 PLAY
 CRAWL stage6

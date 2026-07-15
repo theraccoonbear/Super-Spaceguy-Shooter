@@ -22,6 +22,7 @@ Const FUEL_DRAIN_BOOST = 0.006   ' extra drain per frame when thrusting
 Const BULLET_RANGE     = 110     ' cull player bullet beyond player.px + this
 Const BULLET_TRAIL_LEN = 2.0     ' world-unit length of bolt body (rear to tip along nose)
 Const DMG_COLLISION    = 17      ' shield damage from collision
+Const DMG_ASTEROID     = 100     ' asteroid collision: always fatal
 Const DMG_LASER        = 5       ' shield damage from enemy bullet
 Const SHAKE_COLLISION  = 7       ' shakeTimer on collision
 Const FLASH_COLLISION  = 4       ' flashTimer on collision

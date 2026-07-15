@@ -56,7 +56,7 @@ Sub SEQ_Load(seqlData As String)
                 Case "CRAWL"   : SEQ_Add SEQ_CRAWL,   seqlSval
                 Case "EMPEROR" : SEQ_Add SEQ_EMPEROR,  ""
                 Case "TITLE"   : SEQ_Add SEQ_TITLE,    ""
-                Case "PLAY"    : SEQ_Add SEQ_PLAY,      ""
+                Case "PLAY"    : SEQ_Add SEQ_PLAY,   seqlSval
             End Select
         End If
     Loop
@@ -74,8 +74,8 @@ Sub SEQ_Init()
     SEQ_Add SEQ_PLAY,    ""        ' stage 2
     SEQ_Add SEQ_CRAWL,   "stage3"  ' chapter 3
     SEQ_Add SEQ_PLAY,    ""        ' stage 3
-    SEQ_Add SEQ_CRAWL,   "stage4"  ' chapter 4
-    SEQ_Add SEQ_PLAY,    ""        ' stage 4
+    SEQ_Add SEQ_CRAWL,   "stage4"     ' asteroid field
+    SEQ_Add SEQ_PLAY,    "asteroid"  ' stage 4: asteroid field
     SEQ_Add SEQ_CRAWL,   "stage5"  ' chapter 5
     SEQ_Add SEQ_PLAY,    ""        ' stage 5
     SEQ_Add SEQ_CRAWL,   "stage6"  ' chapter 6
@@ -174,6 +174,13 @@ Sub SEQ_Advance()
             MUS_SetCue "emperor"
         Case SEQ_PLAY
             levelNum = levelNum + 1
+            If seqSval$(seqIdx) = "asteroid" Then
+                levelType    = LEVEL_ASTEROID
+                stageScore   = 2147483647   ' boss never triggers on asteroid level
+                astFieldStart = tt
+            Else
+                levelType = LEVEL_COMBAT
+            End If
             If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                 diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
             End If
