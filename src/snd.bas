@@ -64,15 +64,17 @@ Sub SND_Init()
     Next sndK
     For sndK = 0 To SND_WHOOSH_LEN - 1
         sndGenT = sndK / SND_WHOOSH_LEN
-        If sndGenT < 0.06 Then
-            sndFade = sndGenT / 0.06
+        ' linear rise to peak at 30%, then exponential decay (passing-object shape)
+        If sndGenT < 0.30 Then
+            sndFade = sndGenT / 0.30
         Else
-            sndGenPX = (sndGenT - 0.06) / 0.94
-            If sndGenPX < 0.0 Then sndGenPX = 0.0  ' guard: float cancellation near boundary
-            sndFade = 1.0 - sndGenPX ^ 0.7
+            sndGenPX = (sndGenT - 0.30) / 0.70
+            If sndGenPX < 0.0 Then sndGenPX = 0.0
+            sndFade = Exp(-sndGenPX * 3.5)
         End If
-        sndF = 180.0 - 130.0 * sndGenT
-        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.30 + (Rnd * 2.0 - 1.0) * 0.70) * sndFade * 0.38
+        ' slight Doppler: higher pitch approaching, drops as it passes
+        sndF = 400.0 - 240.0 * sndGenT
+        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.42
     Next sndK
 
     ' kick drum: exponential frequency sweep 160->45 Hz over 250ms
