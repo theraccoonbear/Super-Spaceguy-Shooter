@@ -16,12 +16,16 @@ Dim Shared sndShoot(0 To SND_SHOOT_LEN - 1)  As Single
 Dim Shared sndBoom(0 To SND_BOOM_LEN - 1)    As Single
 Dim Shared sndHit(0 To SND_HIT_LEN - 1)      As Single
 Dim Shared sndPup(0 To SND_PUP_LEN - 1)      As Single
-Dim Shared sndWhoosh(0 To SND_WHOOSH_LEN - 1) As Single
-Dim Shared sndShootPos  As Integer : sndShootPos  = -1
-Dim Shared sndBoomPos   As Integer : sndBoomPos   = -1
-Dim Shared sndHitPos    As Integer : sndHitPos    = -1
-Dim Shared sndPupPos    As Integer : sndPupPos    = -1
-Dim Shared sndWhooshPos As Integer : sndWhooshPos = -1
+Dim Shared sndWhoosh(0 To SND_WHOOSH_LEN - 1)   As Single  ' small asteroid
+Dim Shared sndWhooshMd(0 To SND_WHOOSH_LEN - 1) As Single  ' medium asteroid
+Dim Shared sndWhooshLg(0 To SND_WHOOSH_LEN - 1) As Single  ' large asteroid
+Dim Shared sndShootPos    As Integer : sndShootPos    = -1
+Dim Shared sndBoomPos     As Integer : sndBoomPos     = -1
+Dim Shared sndHitPos      As Integer : sndHitPos      = -1
+Dim Shared sndPupPos      As Integer : sndPupPos      = -1
+Dim Shared sndWhooshPos   As Integer : sndWhooshPos   = -1
+Dim Shared sndWhooshMdPos As Integer : sndWhooshMdPos = -1
+Dim Shared sndWhooshLgPos As Integer : sndWhooshLgPos = -1
 
 Dim Shared sndKick(0 To SND_KICK_LEN - 1)   As Single
 Dim Shared sndSnare(0 To SND_SNARE_LEN - 1) As Single
@@ -62,9 +66,9 @@ Sub SND_Init()
         sndFade = 1.0 - (sndK / SND_PUP_LEN) ^ 2
         sndPup(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) + Sin(6.2832 * sndF * 2.0 * sndK / SAMPLE_RATE) * 0.3) * sndFade * 0.25
     Next sndK
+    ' small asteroid: bright, sharp Doppler drop 400→160 Hz
     For sndK = 0 To SND_WHOOSH_LEN - 1
         sndGenT = sndK / SND_WHOOSH_LEN
-        ' linear rise to peak at 30%, then exponential decay (passing-object shape)
         If sndGenT < 0.30 Then
             sndFade = sndGenT / 0.30
         Else
@@ -72,9 +76,34 @@ Sub SND_Init()
             If sndGenPX < 0.0 Then sndGenPX = 0.0
             sndFade = Exp(-sndGenPX * 3.5)
         End If
-        ' slight Doppler: higher pitch approaching, drops as it passes
         sndF = 400.0 - 240.0 * sndGenT
         sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.42
+    Next sndK
+    ' medium asteroid: fuller mid-range Doppler drop 220→80 Hz
+    For sndK = 0 To SND_WHOOSH_LEN - 1
+        sndGenT = sndK / SND_WHOOSH_LEN
+        If sndGenT < 0.30 Then
+            sndFade = sndGenT / 0.30
+        Else
+            sndGenPX = (sndGenT - 0.30) / 0.70
+            If sndGenPX < 0.0 Then sndGenPX = 0.0
+            sndFade = Exp(-sndGenPX * 3.5)
+        End If
+        sndF = 220.0 - 140.0 * sndGenT
+        sndWhooshMd(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.44
+    Next sndK
+    ' large asteroid: deep bass Doppler drop 110→35 Hz, slower decay, more sustain
+    For sndK = 0 To SND_WHOOSH_LEN - 1
+        sndGenT = sndK / SND_WHOOSH_LEN
+        If sndGenT < 0.35 Then
+            sndFade = sndGenT / 0.35
+        Else
+            sndGenPX = (sndGenT - 0.35) / 0.65
+            If sndGenPX < 0.0 Then sndGenPX = 0.0
+            sndFade = Exp(-sndGenPX * 2.5)
+        End If
+        sndF = 110.0 - 75.0 * sndGenT
+        sndWhooshLg(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.25 + (Rnd * 2.0 - 1.0) * 0.75) * sndFade * 0.50
     Next sndK
 
     ' kick drum: exponential frequency sweep 160->45 Hz over 250ms
@@ -130,7 +159,15 @@ Sub SND_Shoot() : sndShootPos  = 0 : End Sub
 Sub SND_Boom()  : sndBoomPos   = 0 : End Sub
 Sub SND_Hit()   : sndHitPos    = 0 : End Sub
 Sub SND_Pup()   : sndPupPos    = 0 : End Sub
-Sub SND_Whoosh(): sndWhooshPos = 0 : End Sub
+Sub SND_Whoosh(wscl As Single)
+    If wscl > 2.5 Then
+        sndWhooshLgPos = 0
+    ElseIf wscl > 1.5 Then
+        sndWhooshMdPos = 0
+    Else
+        sndWhooshPos = 0
+    End If
+End Sub
 Sub SND_Blip(blipFreq As Single)
     sndBlipFreq    = blipFreq
     sndBlipPhase   = 0

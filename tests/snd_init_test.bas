@@ -67,8 +67,10 @@ ST_Assert sndTRtErr = 0, "SND_Init completed without runtime error"
 
 ' Playback positions must remain at their sentinel -1 after init; only
 ' SND_Whoosh() / SND_Shoot() etc. arm them by setting to 0.
-ST_Assert sndWhooshPos = -1, "sndWhooshPos = -1 after SND_Init (not armed)"
-ST_Assert sndShootPos  = -1, "sndShootPos = -1 after SND_Init"
+ST_Assert sndWhooshPos   = -1, "sndWhooshPos = -1 after SND_Init (not armed)"
+ST_Assert sndWhooshMdPos = -1, "sndWhooshMdPos = -1 after SND_Init"
+ST_Assert sndWhooshLgPos = -1, "sndWhooshLgPos = -1 after SND_Init"
+ST_Assert sndShootPos    = -1, "sndShootPos = -1 after SND_Init"
 
 ' Verify array is accessible at both bounds; a subscript error here means the
 ' buffer was declared with the wrong size constant.

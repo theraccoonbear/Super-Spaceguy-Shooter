@@ -187,7 +187,7 @@ Sub EBULLET_Update
                 If ebullets(ebI).px < player.px And ebullets(ebI).px >= player.px - 0.42 Then
                     ebDY = Abs(ebullets(ebI).py - player.py)
                     ebDZ = Abs(ebullets(ebI).pz - player.pz)
-                    If ebDY < 5.0 And ebDZ < 5.0 Then SND_Whoosh
+                    If ebDY < 5.0 And ebDZ < 5.0 Then SND_Whoosh 0.5
                 End If
             End If
         End If

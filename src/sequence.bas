@@ -181,8 +181,9 @@ Sub SEQ_Advance()
                 BELT_Init scrW, scrH
                 ' pre-warm: place asteroids at 3 staggered distances so the
                 ' field is already populated on frame 1 of gameplay
-                astSpawnXBias = 120 : WAVE_SpawnAsteroidField
-                astSpawnXBias = 60  : WAVE_SpawnAsteroidField
+                ' pre-warm: near (-90→60-90u), medium (-50→100-130u), far (0→150-180u)
+                astSpawnXBias = -90 : WAVE_SpawnAsteroidField
+                astSpawnXBias = -50 : WAVE_SpawnAsteroidField
                 astSpawnXBias = 0   : WAVE_SpawnAsteroidField
                 astSpawnXBias = 0
             Else
