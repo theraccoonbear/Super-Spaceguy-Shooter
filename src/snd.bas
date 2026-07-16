@@ -145,46 +145,56 @@ Sub SND_Init()
         sndHihat(sndK) = sndGenHP * sndFade * 0.055
     Next sndK
 
-    ' death: ka-ka-ka-BOOOM — three 100ms impacts every 150ms then a 0.28s bass explosion
-    ' impacts: 10% linear attack, 90% quadratic decay; sine body mixed with noise
-    ' boom: phase-accumulator sweep 120→28 Hz; overlaps impact 3's tail
+    ' death: ka-ka-ka-BOOOM
+    ' Each "ka" = tone-dominant phase-accumulator sweep (like a kick drum, not a hi-hat).
+    ' Frequency sweep 600→120 Hz per impact; instant attack, fast exp decay.
+    ' 80% swept sine + 20% noise = body/crack, not cymbal.
+    ' BOOM: linear sweep 320→80 Hz, 70% noise for broadband presence on laptop speakers.
+    ' Three impacts share one phase accumulator — gaps cause arbitrary inter-impact phase
+    ' offset which is fine when noise is mixed in.
     sndGenPh = 0
     For sndK = 0 To SND_DEATH_LEN - 1
         sndGenT = sndK / SND_DEATH_LEN   ' 0→1 over 0.6s
         sndDeath(sndK) = 0
 
-        ' impact 1: t=0.000→0.167
-        sndGenPX = sndGenT / 0.167
+        ' impact 1: t=0.000→0.133 (0-80ms)
+        sndGenPX = sndGenT / 0.133
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            If sndGenPX < 0.10 Then sndFade = sndGenPX / 0.10 Else sndFade = ((1.0 - sndGenPX) / 0.90) ^ 2
-            sndF = 300.0 - 100.0 * sndGenPX
-            sndDeath(sndK) = ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35) * sndFade * 0.42
-        End If
-
-        ' impact 2: t=0.250→0.417
-        sndGenPX = (sndGenT - 0.250) / 0.167
-        If sndGenPX >= 0 And sndGenPX < 1 Then
-            If sndGenPX < 0.10 Then sndFade = sndGenPX / 0.10 Else sndFade = ((1.0 - sndGenPX) / 0.90) ^ 2
-            sndF = 260.0 - 80.0 * sndGenPX
-            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35) * sndFade * 0.56
-        End If
-
-        ' impact 3: t=0.500→0.667  (boom overlaps its tail from t=0.633)
-        sndGenPX = (sndGenT - 0.500) / 0.167
-        If sndGenPX >= 0 And sndGenPX < 1 Then
-            If sndGenPX < 0.10 Then sndFade = sndGenPX / 0.10 Else sndFade = ((1.0 - sndGenPX) / 0.90) ^ 2
-            sndF = 220.0 - 60.0 * sndGenPX
-            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35) * sndFade * 0.68
-        End If
-
-        ' BOOM: t=0.633→1.0; phase accumulator; sweep 120→28 Hz
-        sndGenPX = (sndGenT - 0.633) / 0.367
-        If sndGenPX >= 0 Then
-            sndF    = 120.0 * Exp(-sndGenPX * 10.0) + 28.0
-            sndFade = Exp(-sndGenPX * 4.0)
+            sndF    = 600.0 * Exp(-sndGenPX * 14.0) + 120.0
+            sndFade = Exp(-sndGenPX * 7.0)
             sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
             If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
-            sndDeath(sndK) = sndDeath(sndK) + (Sin(sndGenPh) * 0.52 + (Rnd * 2.0 - 1.0) * 0.48) * sndFade * 0.90
+            sndDeath(sndK) = (Sin(sndGenPh) * 0.80 + (Rnd * 2.0 - 1.0) * 0.20) * sndFade * 0.65
+        End If
+
+        ' impact 2: t=0.233→0.367 (140-220ms)
+        sndGenPX = (sndGenT - 0.233) / 0.133
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            sndF    = 600.0 * Exp(-sndGenPX * 14.0) + 120.0
+            sndFade = Exp(-sndGenPX * 7.0)
+            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(sndGenPh) * 0.80 + (Rnd * 2.0 - 1.0) * 0.20) * sndFade * 0.80
+        End If
+
+        ' impact 3: t=0.467→0.600 (280-360ms)
+        sndGenPX = (sndGenT - 0.467) / 0.133
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            sndF    = 600.0 * Exp(-sndGenPX * 14.0) + 120.0
+            sndFade = Exp(-sndGenPX * 7.0)
+            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(sndGenPh) * 0.80 + (Rnd * 2.0 - 1.0) * 0.20) * sndFade * 0.95
+        End If
+
+        ' BOOM: t=0.550→1.0; linear sweep 320→80 Hz; 70% noise, 30% tone
+        sndGenPX = (sndGenT - 0.550) / 0.450
+        If sndGenPX >= 0 Then
+            sndF    = 320.0 - 240.0 * sndGenPX
+            sndFade = Exp(-sndGenPX * 3.0)
+            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.70 + Sin(sndGenPh) * 0.30) * sndFade * 1.0
         End If
 
         If sndDeath(sndK) >  1.0 Then sndDeath(sndK) =  1.0
