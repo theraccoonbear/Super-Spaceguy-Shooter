@@ -45,6 +45,12 @@ End Sub
 Sub SETTINGS_Save()
 End Sub
 
+Sub BELT_Init(bliW As Single, bliH As Single)
+End Sub
+
+Sub WAVE_SpawnAsteroidField()
+End Sub
+
 ' ── real sequencer logic ─────────────────────────────────────────────────────
 '$INCLUDE:'../src/sequence.bas'
 
