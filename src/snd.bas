@@ -7,6 +7,7 @@ Const SND_WHOOSH_LEN = 22050
 Const SND_KICK_LEN   = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN  = 4410   ' 100ms snare
 Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
+Const SND_DEATH_LEN  = 26460  ' 600ms ship-death: three impacts then a deep BOOM
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -30,6 +31,9 @@ Dim Shared sndWhooshLgPos As Integer : sndWhooshLgPos = -1
 Dim Shared sndKick(0 To SND_KICK_LEN - 1)   As Single
 Dim Shared sndSnare(0 To SND_SNARE_LEN - 1) As Single
 Dim Shared sndHihat(0 To SND_HIHAT_LEN - 1) As Single
+Dim Shared sndDeath(0 To SND_DEATH_LEN - 1) As Single
+Dim Shared sndDeathPos As Integer : sndDeathPos = -1
+
 Dim Shared sndKickPos  As Integer : sndKickPos  = -1
 Dim Shared sndSnarePos As Integer : sndSnarePos = -1
 Dim Shared sndHihatPos As Integer : sndHihatPos = -1
@@ -141,6 +145,52 @@ Sub SND_Init()
         sndHihat(sndK) = sndGenHP * sndFade * 0.055
     Next sndK
 
+    ' death: ka-ka-ka-BOOOM — three 100ms impacts every 150ms then a 0.28s bass explosion
+    ' impacts: 10% linear attack, 90% quadratic decay; sine body mixed with noise
+    ' boom: phase-accumulator sweep 120→28 Hz; overlaps impact 3's tail
+    sndGenPh = 0
+    For sndK = 0 To SND_DEATH_LEN - 1
+        sndGenT = sndK / SND_DEATH_LEN   ' 0→1 over 0.6s
+        sndDeath(sndK) = 0
+
+        ' impact 1: t=0.000→0.167
+        sndGenPX = sndGenT / 0.167
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            If sndGenPX < 0.10 Then sndFade = sndGenPX / 0.10 Else sndFade = ((1.0 - sndGenPX) / 0.90) ^ 2
+            sndF = 300.0 - 100.0 * sndGenPX
+            sndDeath(sndK) = ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35) * sndFade * 0.42
+        End If
+
+        ' impact 2: t=0.250→0.417
+        sndGenPX = (sndGenT - 0.250) / 0.167
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            If sndGenPX < 0.10 Then sndFade = sndGenPX / 0.10 Else sndFade = ((1.0 - sndGenPX) / 0.90) ^ 2
+            sndF = 260.0 - 80.0 * sndGenPX
+            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35) * sndFade * 0.56
+        End If
+
+        ' impact 3: t=0.500→0.667  (boom overlaps its tail from t=0.633)
+        sndGenPX = (sndGenT - 0.500) / 0.167
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            If sndGenPX < 0.10 Then sndFade = sndGenPX / 0.10 Else sndFade = ((1.0 - sndGenPX) / 0.90) ^ 2
+            sndF = 220.0 - 60.0 * sndGenPX
+            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35) * sndFade * 0.68
+        End If
+
+        ' BOOM: t=0.633→1.0; phase accumulator; sweep 120→28 Hz
+        sndGenPX = (sndGenT - 0.633) / 0.367
+        If sndGenPX >= 0 Then
+            sndF    = 120.0 * Exp(-sndGenPX * 10.0) + 28.0
+            sndFade = Exp(-sndGenPX * 4.0)
+            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(sndGenPh) * 0.52 + (Rnd * 2.0 - 1.0) * 0.48) * sndFade * 0.90
+        End If
+
+        If sndDeath(sndK) >  1.0 Then sndDeath(sndK) =  1.0
+        If sndDeath(sndK) < -1.0 Then sndDeath(sndK) = -1.0
+    Next sndK
+
     MUS_Load
 End Sub
 
@@ -167,6 +217,11 @@ Sub SND_Whoosh(wscl As Single)
     Else
         sndWhooshPos = 0
     End If
+End Sub
+Sub SND_Death()
+    sndBoomPos  = -1   ' suppress generic boom so death BOOM dominates
+    sndHitPos   = -1
+    sndDeathPos = 0
 End Sub
 Sub SND_Blip(blipFreq As Single)
     sndBlipFreq    = blipFreq

@@ -45,6 +45,7 @@ ST_Assert SND_WHOOSH_LEN <= SND_INT_MAX, "SND_WHOOSH_LEN <= 32767"
 ST_Assert SND_KICK_LEN   <= SND_INT_MAX, "SND_KICK_LEN <= 32767"
 ST_Assert SND_SNARE_LEN  <= SND_INT_MAX, "SND_SNARE_LEN <= 32767"
 ST_Assert SND_HIHAT_LEN  <= SND_INT_MAX, "SND_HIHAT_LEN <= 32767"
+ST_Assert SND_DEATH_LEN  <= SND_INT_MAX, "SND_DEATH_LEN <= 32767"
 
 Print ""
 Print "--- SND_Init runs without runtime error ---"
@@ -71,6 +72,7 @@ ST_Assert sndWhooshPos   = -1, "sndWhooshPos = -1 after SND_Init (not armed)"
 ST_Assert sndWhooshMdPos = -1, "sndWhooshMdPos = -1 after SND_Init"
 ST_Assert sndWhooshLgPos = -1, "sndWhooshLgPos = -1 after SND_Init"
 ST_Assert sndShootPos    = -1, "sndShootPos = -1 after SND_Init"
+ST_Assert sndDeathPos    = -1, "sndDeathPos = -1 after SND_Init"
 
 ' Verify array is accessible at both bounds; a subscript error here means the
 ' buffer was declared with the wrong size constant.
