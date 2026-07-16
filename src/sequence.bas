@@ -179,6 +179,7 @@ Sub SEQ_Advance()
                 stageScore    = 2147483647   ' boss never triggers on asteroid level
                 astFieldStart = tt
                 BELT_Init scrW, scrH
+                bltActive = 0  ' PERF TEST: belt disabled
                 ' pre-warm: place asteroids at 3 staggered distances so the
                 ' field is already populated on frame 1 of gameplay
                 ' pre-warm: near (-90→60-90u), medium (-50→100-130u), far (0→150-180u)
