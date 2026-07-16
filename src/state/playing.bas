@@ -27,6 +27,9 @@ Sub GS_PLAYING_Update ()
     Dim gspBdbMinY As Single, gspBdbMaxY As Single
     Dim gspBdbHx As Single, gspBdbHy As Single, gspBdbHz As Single
     Dim gspAstNear As Integer, gspAstI As Integer
+    Dim gspAstSX As Single, gspAstSY As Single, gspAstSW As Single
+    Dim gspAstR2D As Integer, gspAstR2DYY As Integer, gspAstR2DXW As Integer
+    Dim gspAstBC As Long
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -356,28 +359,49 @@ Sub GS_PLAYING_Update ()
     FOR j = 1 TO MAX_ASTEROIDS
         IF asteroids(j).active THEN
             IF asteroids(j).px > cam.POS.x THEN
-                pPos.x = asteroids(j).px : pPos.y = asteroids(j).py : pPos.z = asteroids(j).pz
-                pRot.x = asteroids(j).rx : pRot.y = asteroids(j).ry : pRot.z = asteroids(j).rz
-                E3D_BuildObjectMat pPos, pRot, asteroids(j).scl, objMat
-                SELECT CASE asteroids(j).strafeCool
-                CASE 0 : gspAstTR = 1.00 : gspAstTG = 0.84 : gspAstTB = 0.54  ' tan
-                CASE 1 : gspAstTR = 1.00 : gspAstTG = 0.62 : gspAstTB = 0.38  ' brown
-                CASE 2 : gspAstTR = 0.72 : gspAstTG = 0.44 : gspAstTB = 0.26  ' dark brown
-                CASE 3 : gspAstTR = 0.82 : gspAstTG = 0.82 : gspAstTB = 0.82  ' light gray
-                CASE 4 : gspAstTR = 0.56 : gspAstTG = 0.56 : gspAstTB = 0.62  ' blue-gray
-                CASE ELSE : gspAstTR = 1.00 : gspAstTG = 0.50 : gspAstTB = 0.32 ' rust
-                END SELECT
-                ' distance fog: fade in as asteroid approaches; cull beyond 140 (invisible)
                 gspAstDist = asteroids(j).px - player.px
                 IF gspAstDist > 140 THEN GOTO gspAstSkip
+                SELECT CASE asteroids(j).strafeCool
+                CASE 0 : gspAstTR = 1.00 : gspAstTG = 0.84 : gspAstTB = 0.54
+                CASE 1 : gspAstTR = 1.00 : gspAstTG = 0.62 : gspAstTB = 0.38
+                CASE 2 : gspAstTR = 0.72 : gspAstTG = 0.44 : gspAstTB = 0.26
+                CASE 3 : gspAstTR = 0.82 : gspAstTG = 0.82 : gspAstTB = 0.82
+                CASE 4 : gspAstTR = 0.56 : gspAstTG = 0.56 : gspAstTB = 0.62
+                CASE ELSE : gspAstTR = 1.00 : gspAstTG = 0.50 : gspAstTB = 0.32
+                END SELECT
                 IF gspAstDist > 60 THEN
+                    ' mid/far: 2D projected blob — zero polygon cost
                     gspAstFade = 1.0 - (gspAstDist - 60) / 80
                     IF gspAstFade < 0.0 THEN gspAstFade = 0.0
-                    gspAstTR = gspAstTR * gspAstFade
-                    gspAstTG = gspAstTG * gspAstFade
-                    gspAstTB = gspAstTB * gspAstFade
+                    gspAstSX = asteroids(j).px * vpMat.m(0,0) + asteroids(j).py * vpMat.m(0,1) + asteroids(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
+                    gspAstSY = asteroids(j).px * vpMat.m(1,0) + asteroids(j).py * vpMat.m(1,1) + asteroids(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
+                    gspAstSW = asteroids(j).px * vpMat.m(3,0) + asteroids(j).py * vpMat.m(3,1) + asteroids(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
+                    IF gspAstSW > 0.0001 THEN
+                        gspAstSX = (gspAstSX / gspAstSW + 1.0) * scrW * 0.5
+                        gspAstSY = (1.0 - gspAstSY / gspAstSW) * scrH * 0.5
+                        IF gspAstSX >= 0 AND gspAstSX < scrW AND gspAstSY >= 0 AND gspAstSY < scrH THEN
+                            ' screen radius using FOV factor (72° → f≈1.376) and avg asteroid radius 0.62
+                            gspAstR2D = INT(asteroids(j).scl * 0.853 * scrH * 0.5 / gspAstDist + 0.5)
+                            IF gspAstR2D < 1 THEN gspAstR2D = 1
+                            IF gspAstR2D > 12 THEN gspAstR2D = 12
+                            gspAstBC = _RGB(INT(gspAstTR * gspAstFade * 160), INT(gspAstTG * gspAstFade * 128), INT(gspAstTB * gspAstFade * 100))
+                            IF gspAstR2D <= 1 THEN
+                                PSET (INT(gspAstSX), INT(gspAstSY)), gspAstBC
+                            ELSE
+                                FOR gspAstR2DYY = -gspAstR2D TO gspAstR2D
+                                    gspAstR2DXW = INT(SQR(gspAstR2D * gspAstR2D - gspAstR2DYY * gspAstR2DYY) + 0.5)
+                                    LINE (INT(gspAstSX) - gspAstR2DXW, INT(gspAstSY) + gspAstR2DYY)-(INT(gspAstSX) + gspAstR2DXW, INT(gspAstSY) + gspAstR2DYY), gspAstBC
+                                NEXT gspAstR2DYY
+                            END IF
+                        END IF
+                    END IF
+                ELSE
+                    ' close: full 3D mesh, no fade
+                    pPos.x = asteroids(j).px : pPos.y = asteroids(j).py : pPos.z = asteroids(j).pz
+                    pRot.x = asteroids(j).rx : pRot.y = asteroids(j).ry : pRot.z = asteroids(j).rz
+                    E3D_BuildObjectMat pPos, pRot, asteroids(j).scl, objMat
+                    E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, gspAstTR, gspAstTG, gspAstTB
                 END IF
-                E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, gspAstTR, gspAstTG, gspAstTB
                 gspAstSkip:
             END IF
         END IF

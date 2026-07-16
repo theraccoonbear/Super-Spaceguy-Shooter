@@ -197,64 +197,64 @@ Sub WAVE_SpawnAsteroidField
 
     wvafCX = player.px + 150 + RND * 30 + astSpawnXBias
     If astForceTarget Then
-        wvafCY    = player.py + (RND * 4) - 2
-        wvafCZ    = player.pz + (RND * 4) - 2
+        wvafCY    = player.py + (RND * 3) - 1.5
+        wvafCZ    = player.pz + (RND * 3) - 1.5
         astForceTarget = 0
         astIdleTimer   = 0
     Else
-        wvafCY = player.py + (RND * 10) - 5
-        wvafCZ = player.pz + (RND * 12) - 6
+        wvafCY = player.py + (RND * 5) - 2.5
+        wvafCZ = player.pz + (RND * 5) - 2.5
     End If
     wvafN  = 0
 
     Select Case wvafPat
-    Case 0  ' dense cloud: 7 asteroids huddled in a tight sphere
+    Case 0  ' dense cloud: asteroids huddled close to the flight corridor
         wvafXO(0) =  0 : wvafYO(0) =  0 : wvafZO(0) =  0
-        wvafXO(1) =  5 : wvafYO(1) =  7 : wvafZO(1) =  5
-        wvafXO(2) =  5 : wvafYO(2) = -7 : wvafZO(2) = -5
-        wvafXO(3) = 10 : wvafYO(3) =  4 : wvafZO(3) = -7
-        wvafXO(4) = 10 : wvafYO(4) = -4 : wvafZO(4) =  7
-        wvafXO(5) = 15 : wvafYO(5) = -2 : wvafZO(5) =  9
-        wvafXO(6) =  3 : wvafYO(6) =  6 : wvafZO(6) = -9
-        wvafXO(7) =  8 : wvafYO(7) = -5 : wvafZO(7) =  3
+        wvafXO(1) =  5 : wvafYO(1) =  4 : wvafZO(1) =  3
+        wvafXO(2) =  5 : wvafYO(2) = -4 : wvafZO(2) = -3
+        wvafXO(3) = 10 : wvafYO(3) =  2 : wvafZO(3) = -4
+        wvafXO(4) = 10 : wvafYO(4) = -2 : wvafZO(4) =  4
+        wvafXO(5) = 15 : wvafYO(5) = -1 : wvafZO(5) =  5
+        wvafXO(6) =  3 : wvafYO(6) =  3 : wvafZO(6) = -5
+        wvafXO(7) =  8 : wvafYO(7) = -3 : wvafZO(7) =  2
         wvafN = 8
 
-    Case 1  ' Y corridor: two walls above/below a random gap, 2 stragglers in the gap
-        wvafGap = player.py + (RND * 18) - 9
+    Case 1  ' Y corridor: tighter walls above/below, 2 stragglers threading the gap
+        wvafGap = player.py + (RND * 10) - 5
         wvafCY  = wvafGap
         ' upper wall
-        wvafXO(0) =  0 : wvafYO(0) =  12 : wvafZO(0) = -14
-        wvafXO(1) =  7 : wvafYO(1) =  16 : wvafZO(1) =   0
-        wvafXO(2) = 14 : wvafYO(2) =  12 : wvafZO(2) =  14
+        wvafXO(0) =  0 : wvafYO(0) =  7 : wvafZO(0) = -8
+        wvafXO(1) =  7 : wvafYO(1) =  9 : wvafZO(1) =  0
+        wvafXO(2) = 14 : wvafYO(2) =  7 : wvafZO(2) =  8
         ' lower wall
-        wvafXO(3) =  0 : wvafYO(3) = -12 : wvafZO(3) = -14
-        wvafXO(4) =  7 : wvafYO(4) = -16 : wvafZO(4) =   0
-        wvafXO(5) = 14 : wvafYO(5) = -12 : wvafZO(5) =  14
+        wvafXO(3) =  0 : wvafYO(3) = -7 : wvafZO(3) = -8
+        wvafXO(4) =  7 : wvafYO(4) = -9 : wvafZO(4) =  0
+        wvafXO(5) = 14 : wvafYO(5) = -7 : wvafZO(5) =  8
         ' gap stragglers
-        wvafXO(6) = 18 : wvafYO(6) =  3 : wvafZO(6) =  8
-        wvafXO(7) =  4 : wvafYO(7) = -3 : wvafZO(7) = -8
+        wvafXO(6) = 18 : wvafYO(6) =  2 : wvafZO(6) =  4
+        wvafXO(7) =  4 : wvafYO(7) = -2 : wvafZO(7) = -4
         wvafN = 8
 
-    Case 2  ' staggered wave: alternating Y, spread across Z and staggered in X
-        wvafXO(0) =  0 : wvafYO(0) =  13 : wvafZO(0) = -22
-        wvafXO(1) =  7 : wvafYO(1) = -13 : wvafZO(1) = -11
-        wvafXO(2) = 14 : wvafYO(2) =  13 : wvafZO(2) =   0
-        wvafXO(3) = 21 : wvafYO(3) = -13 : wvafZO(3) =  11
-        wvafXO(4) = 28 : wvafYO(4) =  13 : wvafZO(4) =  22
-        wvafXO(5) = 35 : wvafYO(5) = -13 : wvafZO(5) = -22
-        wvafXO(6) = 42 : wvafYO(6) =  13 : wvafZO(6) =  11
-        wvafXO(7) = 14 : wvafYO(7) =  13 : wvafZO(7) = -11
+    Case 2  ' staggered wave: alternating Y through the tunnel, moderate Z spread
+        wvafXO(0) =  0 : wvafYO(0) =  7 : wvafZO(0) = -12
+        wvafXO(1) =  7 : wvafYO(1) = -7 : wvafZO(1) = -6
+        wvafXO(2) = 14 : wvafYO(2) =  7 : wvafZO(2) =  0
+        wvafXO(3) = 21 : wvafYO(3) = -7 : wvafZO(3) =  6
+        wvafXO(4) = 28 : wvafYO(4) =  7 : wvafZO(4) =  12
+        wvafXO(5) = 35 : wvafYO(5) = -7 : wvafZO(5) = -12
+        wvafXO(6) = 42 : wvafYO(6) =  7 : wvafZO(6) =  6
+        wvafXO(7) = 14 : wvafYO(7) =  7 : wvafZO(7) = -6
         wvafN = 8
 
-    Case 3  ' cluster pack: 4 pairs spread across Z, each pair offset in Y
-        wvafXO(0) =  0 : wvafYO(0) =  7 : wvafZO(0) = -22
-        wvafXO(1) =  8 : wvafYO(1) = -7 : wvafZO(1) = -18
-        wvafXO(2) =  0 : wvafYO(2) =  7 : wvafZO(2) =   0
-        wvafXO(3) =  8 : wvafYO(3) = -7 : wvafZO(3) =   4
-        wvafXO(4) =  0 : wvafYO(4) =  7 : wvafZO(4) =  22
-        wvafXO(5) =  8 : wvafYO(5) = -7 : wvafZO(5) =  18
-        wvafXO(6) = 16 : wvafYO(6) =  7 : wvafZO(6) = -12
-        wvafXO(7) = 20 : wvafYO(7) = -7 : wvafZO(7) =  16
+    Case 3  ' cluster pack: 4 pairs threading through Z, tight Y
+        wvafXO(0) =  0 : wvafYO(0) =  4 : wvafZO(0) = -12
+        wvafXO(1) =  8 : wvafYO(1) = -4 : wvafZO(1) = -10
+        wvafXO(2) =  0 : wvafYO(2) =  4 : wvafZO(2) =   0
+        wvafXO(3) =  8 : wvafYO(3) = -4 : wvafZO(3) =   2
+        wvafXO(4) =  0 : wvafYO(4) =  4 : wvafZO(4) =  12
+        wvafXO(5) =  8 : wvafYO(5) = -4 : wvafZO(5) =  10
+        wvafXO(6) = 16 : wvafYO(6) =  4 : wvafZO(6) = -6
+        wvafXO(7) = 20 : wvafYO(7) = -4 : wvafZO(7) =   9
         wvafN = 8
     End Select
 
