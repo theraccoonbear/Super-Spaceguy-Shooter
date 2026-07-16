@@ -17,6 +17,7 @@ Sub GS_PLAYING_Update ()
     Dim pjBX As Single, pjBY As Single, pjBZ As Single
     Dim pjFade As Single
     Dim gspAstTR As Single, gspAstTG As Single, gspAstTB As Single
+    Dim gspAstDist As Single, gspAstFade As Single
     Static gspBossDbgLogged As Integer
     Dim gspBossScnBefore As Integer
     Dim gspBdbVx As Single, gspBdbVy As Single, gspBdbVz As Single, gspBdbW As Single
@@ -366,6 +367,15 @@ Sub GS_PLAYING_Update ()
                 CASE 4 : gspAstTR = 0.56 : gspAstTG = 0.56 : gspAstTB = 0.62  ' blue-gray
                 CASE ELSE : gspAstTR = 1.00 : gspAstTG = 0.50 : gspAstTB = 0.32 ' rust
                 END SELECT
+                ' distance fog: fade in as asteroid approaches from far spawn
+                gspAstDist = asteroids(j).px - player.px
+                IF gspAstDist > 60 THEN
+                    gspAstFade = 1.0 - (gspAstDist - 60) / 140
+                    IF gspAstFade < 0.05 THEN gspAstFade = 0.05
+                    gspAstTR = gspAstTR * gspAstFade
+                    gspAstTG = gspAstTG * gspAstFade
+                    gspAstTB = gspAstTB * gspAstFade
+                END IF
                 E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, gspAstTR, gspAstTG, gspAstTB
             END IF
         END IF
