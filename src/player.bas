@@ -162,9 +162,9 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     TELEM_PlayerDamaged
     If lives <= 0 Then
         shipLives = shipLives - 1
+        SND_Death
         If shipLives <= 0 Then
             gameOver = -1
-            SND_Death
             TELEM_PlayerDeath
             TELEM_SessionEnd
         Else
