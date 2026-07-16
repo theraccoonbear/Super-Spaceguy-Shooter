@@ -198,7 +198,7 @@ Sub GS_PLAYING_Update ()
                     asteroids(i).py = asteroids(i).py + (player.py - asteroids(i).py) * 0.004
                     asteroids(i).pz = asteroids(i).pz + (player.pz - asteroids(i).pz) * 0.004
                 END IF
-                IF asteroids(i).px < -5 THEN asteroids(i).active = 0
+                IF asteroids(i).px < player.px - 20 THEN asteroids(i).active = 0
                 IF asteroids(i).life > 0 THEN
                     asteroids(i).life = asteroids(i).life - 1
                     IF asteroids(i).life <= 0 THEN asteroids(i).active = 0
@@ -227,7 +227,7 @@ Sub GS_PLAYING_Update ()
                         IF asteroids(i).px < player.px + 5 AND asteroids(i).px > player.px - 4 THEN
                             fxShakeTimer = 3
                             astNmSndCool = 50
-                            SND_Whoosh
+                            SND_Whoosh asteroids(i).scl
                         END IF
                     END IF
                 END IF
