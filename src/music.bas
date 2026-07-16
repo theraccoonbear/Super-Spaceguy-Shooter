@@ -458,6 +458,11 @@ Sub MUS_Fill(musFdoSfx As Integer)
                 sndWhooshLgPos = sndWhooshLgPos + 1
                 If sndWhooshLgPos >= SND_WHOOSH_LEN Then sndWhooshLgPos = -1
             End If
+            If sndDeathPos >= 0 Then
+                musFefx = musFefx + sndDeath(sndDeathPos)
+                sndDeathPos = sndDeathPos + 1
+                If sndDeathPos >= SND_DEATH_LEN Then sndDeathPos = -1
+            End If
             SPK_Advance
             _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musFefx) * volSfx _
                   + musFsample * volMusic + (spkSampleOut + musFnarBlip) * volSpeech

@@ -369,9 +369,9 @@ Sub GS_PLAYING_Update ()
                 CASE 4 : gspAstTR = 0.56 : gspAstTG = 0.56 : gspAstTB = 0.62
                 CASE ELSE : gspAstTR = 1.00 : gspAstTG = 0.50 : gspAstTB = 0.32
                 END SELECT
-                IF gspAstDist > 60 THEN
+                IF gspAstDist > 80 THEN
                     ' mid/far: 2D projected blob — zero polygon cost
-                    gspAstFade = 1.0 - (gspAstDist - 60) / 80
+                    gspAstFade = 1.0 - (gspAstDist - 80) / 60
                     IF gspAstFade < 0.0 THEN gspAstFade = 0.0
                     gspAstSX = asteroids(j).px * vpMat.m(0,0) + asteroids(j).py * vpMat.m(0,1) + asteroids(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
                     gspAstSY = asteroids(j).px * vpMat.m(1,0) + asteroids(j).py * vpMat.m(1,1) + asteroids(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
