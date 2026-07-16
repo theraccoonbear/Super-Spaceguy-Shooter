@@ -149,55 +149,54 @@ Sub SND_Init()
     ' death: ka-ka-ka-BOOOM
     ' Each component uses sin(freq * localT / SAMPLE_RATE) where localT resets to 0 at
     ' each onset — so sin(0)=0 at every attack, eliminating discontinuity clicks.
-    ' Same technique as SND_Boom. Impacts: 350→80 Hz; BOOM: 180→40 Hz.
-    ' Impact envelope (1-x)^0.7 sustains longer than (1-x)^2 before dying.
-    ' BOOM starts same tick as ka3 so the third hit blossoms into the BOOM.
+    ' Impacts: 120ms each (was 80ms), (1-x)^0.5 envelope for long sustain.
+    ' 30ms gap between hits instead of 70ms — less staccato, same rhythm feel.
+    ' BOOM: Exp(-0.8) over 300ms — holds ~45% at half-duration.
     For sndK = 0 To SND_DEATH_LEN - 1
         sndGenT = sndK / SND_DEATH_LEN
         sndDeath(sndK) = 0
 
-        ' ka 1: t=0.000→0.133 (0-80ms), localT 0→3519 samples
-        ' Noise-dominant crack for first 10%, then tone-dominant bass body.
-        sndGenPX = sndGenT / 0.133
+        ' ka 1: t=0.000→0.200 (0-120ms), localT 0→5292 samples
+        sndGenPX = sndGenT / 0.200
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            sndDLK  = sndGenPX * 3519.0
+            sndDLK  = sndGenPX * 5292.0
             sndF    = 350.0 - 270.0 * sndGenPX
-            sndFade = (1.0 - sndGenPX) ^ 0.7
-            If sndGenPX < 0.05 Then sndFade = sndFade * (sndGenPX / 0.05)
+            sndFade = (1.0 - sndGenPX) ^ 0.5
+            If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
             sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
             sndDeath(sndK) = (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.70
         End If
 
-        ' ka 2: t=0.250→0.383 (150-230ms), localT 0→3519 samples
-        sndGenPX = (sndGenT - 0.250) / 0.133
+        ' ka 2: t=0.230→0.430 (138-258ms), localT 0→5292 samples
+        sndGenPX = (sndGenT - 0.230) / 0.200
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            sndDLK  = sndGenPX * 3519.0
+            sndDLK  = sndGenPX * 5292.0
             sndF    = 350.0 - 270.0 * sndGenPX
-            sndFade = (1.0 - sndGenPX) ^ 0.7
-            If sndGenPX < 0.05 Then sndFade = sndFade * (sndGenPX / 0.05)
+            sndFade = (1.0 - sndGenPX) ^ 0.5
+            If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
             sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
             sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.85
         End If
 
-        ' ka 3: t=0.500→0.633 (300-380ms), localT 0→3519 samples
-        sndGenPX = (sndGenT - 0.500) / 0.133
+        ' ka 3: t=0.460→0.660 (276-396ms), localT 0→5292 samples
+        sndGenPX = (sndGenT - 0.460) / 0.200
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            sndDLK  = sndGenPX * 3519.0
+            sndDLK  = sndGenPX * 5292.0
             sndF    = 350.0 - 270.0 * sndGenPX
-            sndFade = (1.0 - sndGenPX) ^ 0.7
-            If sndGenPX < 0.05 Then sndFade = sndFade * (sndGenPX / 0.05)
+            sndFade = (1.0 - sndGenPX) ^ 0.5
+            If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
             sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
             sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 1.00
         End If
 
-        ' BOOM: t=0.500→1.0 (300-600ms = 300ms), localT 0→13230 samples; 180→40 Hz
-        ' Starts at same tick as ka3 so the third hit blossoms into the BOOM.
-        ' Exp(-1.2) decay sustains to ~30% at end; tail fadeout prevents end-of-buffer click.
-        sndGenPX = (sndGenT - 0.500) / 0.500
+        ' BOOM: t=0.460→1.0 (276-600ms = 324ms), localT 0→14288 samples; 180→40 Hz
+        ' Starts same tick as ka3; Exp(-0.8) holds ~45% at midpoint.
+        ' Tail fadeout last 10% prevents end-of-buffer discontinuity.
+        sndGenPX = (sndGenT - 0.460) / 0.540
         If sndGenPX >= 0 Then
-            sndDLK  = sndGenPX * 13230.0
+            sndDLK  = sndGenPX * 14288.0
             sndF    = 180.0 - 140.0 * sndGenPX
-            sndFade = Exp(-sndGenPX * 1.2)
+            sndFade = Exp(-sndGenPX * 0.8)
             If sndGenPX < 0.03 Then sndFade = sndFade * (sndGenPX / 0.03)
             If sndGenPX > 0.90 Then sndFade = sndFade * (1.0 - sndGenPX) / 0.10
             sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.35) * sndFade * 1.0
