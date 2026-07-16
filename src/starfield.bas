@@ -164,6 +164,7 @@ Sub BELT_Draw(bldW As Single, bldH As Single)
     Dim bldI As Integer, bldX As Integer, bldY As Integer
     Dim bldCX As Single, bldCY As Single, bldC As Long
     Dim bldDF As Single, bldR As Integer
+    Dim bldYY As Integer, bldXW As Integer
     bldCX = bltCtrX
     bldCY = bltCtrY
     For bldI = 1 To bltCount
@@ -171,7 +172,6 @@ Sub BELT_Draw(bldW As Single, bldH As Single)
         bldY = Int(bldCY + SIN(bltAngle(bldI)) * bltDepth(bldI))
         If bldX >= 0 And bldX < bldW And bldY >= 0 And bldY < bldH Then
             bldC  = bltClr(bldI)
-            ' radius scales with depth: 0 at center vanishing point, max at screen edge
             bldDF = bltDepth(bldI) / bltMaxD
             bldR  = Int(bltSz(bldI) * bldDF * 1.8 + 0.1)
             Select Case bldR
@@ -182,8 +182,11 @@ Sub BELT_Draw(bldW As Single, bldH As Single)
                 PSet (bldX + 1, bldY), bldC : PSet (bldX - 1, bldY), bldC
                 PSet (bldX, bldY + 1), bldC : PSet (bldX, bldY - 1), bldC
             Case Else
-                Circle (bldX, bldY), bldR, bldC
-                Paint (bldX, bldY), bldC, bldC
+                ' scanline fill: vastly faster than Circle+Paint flood fill
+                For bldYY = -bldR To bldR
+                    bldXW = Int(Sqr(bldR * bldR - bldYY * bldYY) + 0.5)
+                    Line (bldX - bldXW, bldY + bldYY)-(bldX + bldXW, bldY + bldYY), bldC
+                Next bldYY
             End Select
         End If
     Next bldI
