@@ -48,6 +48,7 @@ Sub SND_Init()
     Dim sndK As Long, sndF As Single, sndFade As Single
     Dim sndGenPh As Single, sndGenT As Single
     Dim sndGenNz As Single, sndGenHP As Single, sndGenPX As Single
+    Dim sndDLK As Single
 
     sndEngineFreq = 80.0 : sndEngineAmp = 0.07
 
@@ -146,55 +147,51 @@ Sub SND_Init()
     Next sndK
 
     ' death: ka-ka-ka-BOOOM
-    ' Each "ka" = tone-dominant phase-accumulator sweep (like a kick drum, not a hi-hat).
-    ' Frequency sweep 600→120 Hz per impact; instant attack, fast exp decay.
-    ' 80% swept sine + 20% noise = body/crack, not cymbal.
-    ' BOOM: linear sweep 320→80 Hz, 70% noise for broadband presence on laptop speakers.
-    ' Three impacts share one phase accumulator — gaps cause arbitrary inter-impact phase
-    ' offset which is fine when noise is mixed in.
-    sndGenPh = 0
+    ' Each component uses sin(freq * localT / SAMPLE_RATE) where localT resets to 0 at
+    ' each onset — so sin(0)=0 at every attack, eliminating discontinuity clicks.
+    ' Same technique as SND_Boom. Impacts: 350→80 Hz; BOOM: 180→40 Hz.
     For sndK = 0 To SND_DEATH_LEN - 1
-        sndGenT = sndK / SND_DEATH_LEN   ' 0→1 over 0.6s
+        sndGenT = sndK / SND_DEATH_LEN
         sndDeath(sndK) = 0
 
-        ' impact 1: t=0.000→0.133 (0-80ms)
+        ' ka 1: t=0.000→0.133 (0-80ms), localT 0→3519 samples
         sndGenPX = sndGenT / 0.133
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            sndF    = 600.0 * Exp(-sndGenPX * 14.0) + 120.0
-            sndFade = Exp(-sndGenPX * 7.0)
-            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
-            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
-            sndDeath(sndK) = (Sin(sndGenPh) * 0.80 + (Rnd * 2.0 - 1.0) * 0.20) * sndFade * 0.65
+            sndDLK  = sndGenPX * 3519.0
+            sndF    = 350.0 - 270.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 2
+            If sndGenPX < 0.05 Then sndFade = sndFade * (sndGenPX / 0.05)
+            sndDeath(sndK) = (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.55 + (Rnd * 2.0 - 1.0) * 0.45) * sndFade * 0.70
         End If
 
-        ' impact 2: t=0.233→0.367 (140-220ms)
-        sndGenPX = (sndGenT - 0.233) / 0.133
+        ' ka 2: t=0.250→0.383 (150-230ms), localT 0→3519 samples
+        sndGenPX = (sndGenT - 0.250) / 0.133
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            sndF    = 600.0 * Exp(-sndGenPX * 14.0) + 120.0
-            sndFade = Exp(-sndGenPX * 7.0)
-            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
-            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
-            sndDeath(sndK) = sndDeath(sndK) + (Sin(sndGenPh) * 0.80 + (Rnd * 2.0 - 1.0) * 0.20) * sndFade * 0.80
+            sndDLK  = sndGenPX * 3519.0
+            sndF    = 350.0 - 270.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 2
+            If sndGenPX < 0.05 Then sndFade = sndFade * (sndGenPX / 0.05)
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.55 + (Rnd * 2.0 - 1.0) * 0.45) * sndFade * 0.85
         End If
 
-        ' impact 3: t=0.467→0.600 (280-360ms)
-        sndGenPX = (sndGenT - 0.467) / 0.133
+        ' ka 3: t=0.500→0.633 (300-380ms), localT 0→3519 samples
+        sndGenPX = (sndGenT - 0.500) / 0.133
         If sndGenPX >= 0 And sndGenPX < 1 Then
-            sndF    = 600.0 * Exp(-sndGenPX * 14.0) + 120.0
-            sndFade = Exp(-sndGenPX * 7.0)
-            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
-            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
-            sndDeath(sndK) = sndDeath(sndK) + (Sin(sndGenPh) * 0.80 + (Rnd * 2.0 - 1.0) * 0.20) * sndFade * 0.95
+            sndDLK  = sndGenPX * 3519.0
+            sndF    = 350.0 - 270.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 2
+            If sndGenPX < 0.05 Then sndFade = sndFade * (sndGenPX / 0.05)
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.55 + (Rnd * 2.0 - 1.0) * 0.45) * sndFade * 1.00
         End If
 
-        ' BOOM: t=0.550→1.0; linear sweep 320→80 Hz; 70% noise, 30% tone
-        sndGenPX = (sndGenT - 0.550) / 0.450
+        ' BOOM: t=0.583→1.0 (350-600ms = 250ms), localT 0→11025 samples; 180→40 Hz
+        sndGenPX = (sndGenT - 0.583) / 0.417
         If sndGenPX >= 0 Then
-            sndF    = 320.0 - 240.0 * sndGenPX
-            sndFade = Exp(-sndGenPX * 3.0)
-            sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
-            If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
-            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.70 + Sin(sndGenPh) * 0.30) * sndFade * 1.0
+            sndDLK  = sndGenPX * 11025.0
+            sndF    = 180.0 - 140.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 1.5
+            If sndGenPX < 0.03 Then sndFade = sndFade * (sndGenPX / 0.03)
+            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.35) * sndFade * 1.0
         End If
 
         If sndDeath(sndK) >  1.0 Then sndDeath(sndK) =  1.0
