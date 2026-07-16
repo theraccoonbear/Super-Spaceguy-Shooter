@@ -179,6 +179,12 @@ Sub SEQ_Advance()
                 stageScore    = 2147483647   ' boss never triggers on asteroid level
                 astFieldStart = tt
                 BELT_Init scrW, scrH
+                ' pre-warm: place asteroids at 3 staggered distances so the
+                ' field is already populated on frame 1 of gameplay
+                astSpawnXBias = 120 : WAVE_SpawnAsteroidField
+                astSpawnXBias = 60  : WAVE_SpawnAsteroidField
+                astSpawnXBias = 0   : WAVE_SpawnAsteroidField
+                astSpawnXBias = 0
             Else
                 levelType = LEVEL_COMBAT
                 bltActive = 0

@@ -195,7 +195,7 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
     Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer
 
-    wvafCX = player.px + 55 + RND * 25
+    wvafCX = player.px + 55 + RND * 25 + astSpawnXBias
     If astForceTarget Then
         wvafCY    = player.py + (RND * 4) - 2
         wvafCZ    = player.pz + (RND * 4) - 2
@@ -291,7 +291,12 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).dry        = (RND - 0.5) * 2
                 asteroids(wvafI).drz        = (RND - 0.5) * 2
                 asteroids(wvafI).scl        = wvafScl
-                asteroids(wvafI).life       = ASTFIELD_LIFE
+                ' pre-warm asteroids (bias > 0) get life=0: expire by px only, not timer
+                If astSpawnXBias > 0 Then
+                    asteroids(wvafI).life = 0
+                Else
+                    asteroids(wvafI).life = ASTFIELD_LIFE
+                End If
                 asteroids(wvafI).strafeCool = wvafTint
                 Exit For
             End If
