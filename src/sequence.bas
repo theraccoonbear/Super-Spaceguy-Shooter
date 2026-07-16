@@ -182,10 +182,9 @@ Sub SEQ_Advance()
                 bltActive = 0  ' PERF TEST: belt disabled
                 ' pre-warm: place asteroids at 3 staggered distances so the
                 ' field is already populated on frame 1 of gameplay
-                ' pre-warm: near (-90→60-90u), medium (-50→100-130u), far (0→150-180u)
+                ' pre-warm near pass only: 8 asteroids at 60-90u, visible on frame 1
+                ' (medium/far passes fill pool with invisible asteroids, hurting perf)
                 astSpawnXBias = -90 : WAVE_SpawnAsteroidField
-                astSpawnXBias = -50 : WAVE_SpawnAsteroidField
-                astSpawnXBias = 0   : WAVE_SpawnAsteroidField
                 astSpawnXBias = 0
             Else
                 levelType = LEVEL_COMBAT

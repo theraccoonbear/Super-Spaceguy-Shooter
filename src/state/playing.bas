@@ -367,16 +367,18 @@ Sub GS_PLAYING_Update ()
                 CASE 4 : gspAstTR = 0.56 : gspAstTG = 0.56 : gspAstTB = 0.62  ' blue-gray
                 CASE ELSE : gspAstTR = 1.00 : gspAstTG = 0.50 : gspAstTB = 0.32 ' rust
                 END SELECT
-                ' distance fog: fade in as asteroid approaches from far spawn
+                ' distance fog: fade in as asteroid approaches; cull beyond 140 (invisible)
                 gspAstDist = asteroids(j).px - player.px
+                IF gspAstDist > 140 THEN GOTO gspAstSkip
                 IF gspAstDist > 60 THEN
-                    gspAstFade = 1.0 - (gspAstDist - 60) / 140
-                    IF gspAstFade < 0.05 THEN gspAstFade = 0.05
+                    gspAstFade = 1.0 - (gspAstDist - 60) / 80
+                    IF gspAstFade < 0.0 THEN gspAstFade = 0.0
                     gspAstTR = gspAstTR * gspAstFade
                     gspAstTG = gspAstTG * gspAstFade
                     gspAstTB = gspAstTB * gspAstFade
                 END IF
                 E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, gspAstTR, gspAstTG, gspAstTB
+                gspAstSkip:
             END IF
         END IF
     NEXT j
