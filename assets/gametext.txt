@@ -56,13 +56,15 @@ This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage4]
 ~4-~E=~7[ ~3CHAPTER 4 ~7]~E=~4-
 
-~6The data core is on board. The destination is ~2{{planet4}}~6. The route is dead.
+~6The data core is aboard. ~4{{the_empire}}~6 knows it exists. They do not know where it is — yet.
 
-~6Between here and there: the ~4Kethara Belt~6, a graveyard of moons crushed by ~4{{the_empire}}'s~6 mass-driver tests. Millions of tons of rock, no nav beacons, and a debris field thick enough to swallow a frigate.
+~6Every other courier turned the run down. The safe routes around the ~4Kethara Belt~6 add fourteen hundred parsecs — beyond fuel range for any ship with a cargo hold. The direct path cuts three hundred and forty parsecs straight through: crushed moon debris, no nav beacons, and a field dense enough to swallow a frigate.
 
-~6{{the_empire}}'s~6 blockade ends at the belt's edge. Nothing they send in comes back.
+~6{{the_empire}}'s~6 mass-driver tests shattered those moons a decade ago. Their blockade ends at the belt's edge. Nothing they send in survives cleanly, so they don't bother.
 
-~6Neither do most pilots.
+~6Neither do most pilots. But the data core reaches ~2{{planet4}}~6 or it reaches no one.
+
+~6Fly light. Every thruster burn is fuel that does not come back.
 
 [BLOCK:stage5]
 ~4-~E=~7[ ~3CHAPTER 5 ~7]~E=~4-

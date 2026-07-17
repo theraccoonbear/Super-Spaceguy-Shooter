@@ -9,11 +9,18 @@ Sub GS_TITLE_Update ()
     FONT_PrintAlpha fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H, 255
     FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
     IF titleEscConfirm THEN
+        Dim gstKX As Integer
         UI_DrawPanel scrW\2 - 76, scrH\2 - 52, scrW\2 + 76, scrH\2 + 52, "COMMAND CONSOLE"
-        FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "A   ABOUT",       scrH\2 - 26, scrW, 255
-        FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "S   SETTINGS",    scrH\2 -  6, scrW, 255
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   QUIT GAME",   scrH\2 + 14, scrW, 255
-        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",      scrH\2 + 34, scrW, 255
+        ' key column left-aligned so widest entry (Y QUIT GAME) is centered
+        gstKX = scrW\2 - 44
+        FONT_PrintAlpha fontPalette(15), backBuffer, "A",        gstKX,                        scrH\2 - 26, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "BOUT",     gstKX + FONT_CHAR_W,          scrH\2 - 26, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "S",        gstKX,                        scrH\2 -  6, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "ETTINGS",  gstKX + FONT_CHAR_W,          scrH\2 -  6, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "Y",        gstKX,                        scrH\2 + 14, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, " QUIT GAME", gstKX + FONT_CHAR_W,        scrH\2 + 14, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",      gstKX,                        scrH\2 + 34, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, " CANCEL",  gstKX + 3 * FONT_CHAR_W,     scrH\2 + 34, 255
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
