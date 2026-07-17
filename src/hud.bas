@@ -197,6 +197,25 @@ Sub HUD_Draw
     hdHiStr = "HI: " + LTRIM$(STR$(highScore))
     FONT_PrintAlpha fontPalette(8), backBuffer, hdHiStr, scrW - LEN(hdHiStr) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
 
+    ' parsec-to-destination gauge — asteroid field only
+    If levelType = LEVEL_ASTEROID Then
+        Dim hdPPct As Single, hdPPSC As Integer, hdPFill As Integer
+        Dim hdPClr As Long, hdPStr As String
+        hdPPct = 1.0 - (tt - astFieldStart) / ASTFIELD_DURATION
+        If hdPPct < 0.0 Then hdPPct = 0.0
+        If hdPPct > 1.0 Then hdPPct = 1.0
+        hdPPSC = INT(hdPPct * ASTFIELD_PARSECS)
+        hdPStr = LTRIM$(STR$(hdPPSC)) + " PSC TO " + astDestName
+        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, hdPStr, 20, scrW, 255
+        hdPFill = INT(hdPPct * 120)
+        LINE (scrW\2 - 61, 37)-(scrW\2 + 61, 41), _RGB(15, 20, 30), BF
+        If hdPFill > 0 Then
+            hdPClr = _RGB(60, 160, 255)
+            LINE (scrW\2 - 60, 38)-(scrW\2 - 60 + hdPFill, 40), hdPClr, BF
+        End If
+        LINE (scrW\2 - 61, 37)-(scrW\2 + 61, 41), _RGB(70, 90, 100), B
+    End If
+
     ' invincibility lead-in
     If invTimer > 0 And gameState = GS_PLAYING Then
         hdThrobBright = INT(160 + 95 * SIN(tt * 10))

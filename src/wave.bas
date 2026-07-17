@@ -16,7 +16,6 @@ Const SPAWN_SPREAD_Z      = 22     ' ±Z spawn spread
 Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
 Const EFIRE_INIT_MIN      = 2.5    ' enemy initial fire timer min (seconds)
 Const EFIRE_INIT_VAR      = 2.0    ' enemy initial fire timer variance
-Const ASTFIELD_DURATION   = 200.0  ' tt-ticks to survive (≈80s at 40fps / 55s at 60fps)
 Const ASTFIELD_INTERVAL   = 1.8    ' tt-ticks between asteroid patterns
 Const ASTFIELD_LIFE       = 220    ' frames each asteroid lives; long enough to cross from far spawn
 

@@ -178,6 +178,7 @@ Sub SEQ_Advance()
                 levelType     = LEVEL_ASTEROID
                 stageScore    = 2147483647   ' boss never triggers on asteroid level
                 astFieldStart = tt
+                astDestName   = planetNames(levelNum)
                 BELT_Init scrW, scrH
                 ' pre-warm: place asteroids at 3 staggered distances so the
                 ' field is already populated on frame 1 of gameplay
