@@ -7,23 +7,8 @@ Const SHIELD_RESTORE = 30      ' shield added by powerup
 
 Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
-    Dim hit As Integer
-    Dim i As Integer, j As Integer
-    Dim eDimF As Single, eDist As Single
-    Dim ebClr As Long
-    Dim partR As Integer
-    Dim pjX As Single, pjY As Single, pjW As Single
-    Dim pjX2 As Single, pjY2 As Single, pjW2 As Single
-    Dim pjBX As Single, pjBY As Single, pjBZ As Single
-    Dim pjFade As Single
-    Static gspBossDbgLogged As Integer
-    Dim gspBossScnBefore As Integer
-    Dim gspBdbVx As Single, gspBdbVy As Single, gspBdbVz As Single, gspBdbW As Single
-    Dim gspBdbSx(1 To 8) As Single, gspBdbSy(1 To 8) As Single
-    Dim gspBdbAllFwd As Integer, gspBdbI As Integer
-    Dim gspBdbMinX As Single, gspBdbMaxX As Single
-    Dim gspBdbMinY As Single, gspBdbMaxY As Single
-    Dim gspBdbHx As Single, gspBdbHy As Single, gspBdbHz As Single
+    Dim gspHit As Integer
+    Dim gspI As Integer, gspJ As Integer
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -150,67 +135,30 @@ Sub GS_PLAYING_Update ()
 
         WAVE_Spawn
 
-        FOR i = 1 TO MAX_BULLETS
-            IF bullets(i).active THEN
-                bullets(i).px = bullets(i).px + bullets(i).vx
-                bullets(i).py = bullets(i).py + bullets(i).vy
-                bullets(i).pz = bullets(i).pz + bullets(i).vz
-                bullets(i).life = bullets(i).life - 1
-                IF bullets(i).life <= 0 THEN bullets(i).active = 0
+        FOR gspI = 1 TO MAX_BULLETS
+            IF bullets(gspI).active THEN
+                bullets(gspI).px = bullets(gspI).px + bullets(gspI).vx
+                bullets(gspI).py = bullets(gspI).py + bullets(gspI).vy
+                bullets(gspI).pz = bullets(gspI).pz + bullets(gspI).vz
+                bullets(gspI).life = bullets(gspI).life - 1
+                IF bullets(gspI).life <= 0 THEN bullets(gspI).active = 0
             END IF
-        NEXT i
+        NEXT gspI
 
         ENEMY_Update
+        ASTEROIDS_Update
 
-        FOR i = 1 TO MAX_ASTEROIDS
-            IF asteroids(i).active THEN
-                asteroids(i).px  = asteroids(i).px  + asteroids(i).vx
-                asteroids(i).rx  = asteroids(i).rx  + asteroids(i).drx
-                asteroids(i).ry  = asteroids(i).ry  + asteroids(i).dry
-                asteroids(i).rz  = asteroids(i).rz  + asteroids(i).drz
-                IF asteroids(i).px < player.px + 25 THEN
-                    asteroids(i).py = asteroids(i).py + (player.py - asteroids(i).py) * 0.004
-                    asteroids(i).pz = asteroids(i).pz + (player.pz - asteroids(i).pz) * 0.004
-                END IF
-                IF asteroids(i).px < -5 THEN asteroids(i).active = 0
-
-                FOR j = 1 TO MAX_BULLETS
-                    IF bullets(j).active THEN
-                        E3D_AABBOverlap asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), _
-                        bullets(j).px, bullets(j).py, bullets(j).pz, boxLib(MESH_BULLET), hit
-                        IF hit THEN
-                            asteroids(i).active = 0
-                            bullets(j).active = 0
-                            score = score + SCORE_ASTEROID
-                            SND_Boom
-                            scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ASTEROID
-                            FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
-                        END IF
-                    END IF
-                NEXT j
+        FOR gspI = 1 TO MAX_POWERUPS
+            IF powerups(gspI).active THEN
+                powerups(gspI).px  = powerups(gspI).px  + powerups(gspI).vx
+                powerups(gspI).ry  = powerups(gspI).ry  + powerups(gspI).dry
+                powerups(gspI).rz  = powerups(gspI).rz  + powerups(gspI).drz
+                IF powerups(gspI).px < -5 THEN powerups(gspI).active = 0
 
                 E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                asteroids(i).px, asteroids(i).py, asteroids(i).pz, boxLib(MESH_ASTEROID), hit
-                IF hit AND invTimer = 0 THEN
-                    asteroids(i).active = 0
-                    SND_Boom
-                    FX_SpawnBurst asteroids(i).px, asteroids(i).py, asteroids(i).pz, 8, 0.18, 15, 7, _RGB(120 + INT(RND * 40), 100 + INT(RND * 30), 75 + INT(RND * 20))
-                    PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
-                END IF
-            END IF
-        NEXT i
-
-        FOR i = 1 TO MAX_POWERUPS
-            IF powerups(i).active THEN
-                powerups(i).px  = powerups(i).px  + powerups(i).vx
-                powerups(i).ry  = powerups(i).ry  + powerups(i).dry
-                powerups(i).rz  = powerups(i).rz  + powerups(i).drz
-                IF powerups(i).px < -5 THEN powerups(i).active = 0
-
-                E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                powerups(i).px, powerups(i).py, powerups(i).pz, boxLib(MESH_POWERUP), hit
-                IF hit THEN
-                    powerups(i).active = 0
+                powerups(gspI).px, powerups(gspI).py, powerups(gspI).pz, boxLib(MESH_POWERUP), gspHit
+                IF gspHit THEN
+                    powerups(gspI).active = 0
                     lives = lives + SHIELD_RESTORE
                     IF lives > 100 THEN lives = 100
                     score = score + SCORE_POWERUP
@@ -218,7 +166,7 @@ Sub GS_PLAYING_Update ()
                     TELEM_PowerupCollected
                 END IF
             END IF
-        NEXT i
+        NEXT gspI
 
         BOSS_Update
         EBULLET_Update
@@ -284,176 +232,23 @@ Sub GS_PLAYING_Update ()
         E3D_SceneAddMeshLit meshLib(MESH_THRUSTER), objMat, cam.POS, tt, thrusterLight
     END IF
 
-    FOR j = 1 TO MAX_ENEMIES
-        IF enemies(j).active THEN
-            IF enemies(j).px > cam.POS.x THEN
-                pPos.x = enemies(j).px : pPos.y = enemies(j).py : pPos.z = enemies(j).pz
-                pRot.x = enemies(j).rx : pRot.y = enemies(j).ry : pRot.z = enemies(j).rz
-                E3D_BuildObjectMat pPos, pRot, enemies(j).scl, objMat
-                eDist = enemies(j).px - player.px
-                IF eDist > DIM_FAR THEN
-                    eDimF = DIM_AMBIENT
-                ELSEIF eDist > DIM_NEAR THEN
-                    eDimF = DIM_AMBIENT + (eDist - DIM_NEAR) * ((1.0 - DIM_AMBIENT) / (DIM_FAR - DIM_NEAR))
-                ELSE
-                    eDimF = 1.0
-                END IF
-                eLitDir.x = lightDir.x * eDimF
-                eLitDir.y = lightDir.y * eDimF
-                eLitDir.z = lightDir.z * eDimF
-                E3D_SceneAddMeshLit meshLib(enemies(j).meshIdx), objMat, cam.POS, tt, eLitDir
-            END IF
-        END IF
-    NEXT j
+    COMBAT_SceneDraw
+    ASTEROIDS_Draw
 
-    FOR j = 1 TO MAX_ASTEROIDS
-        IF asteroids(j).active THEN
-            IF asteroids(j).px > cam.POS.x THEN
-                pPos.x = asteroids(j).px : pPos.y = asteroids(j).py : pPos.z = asteroids(j).pz
-                pRot.x = asteroids(j).rx : pRot.y = asteroids(j).ry : pRot.z = asteroids(j).rz
-                E3D_BuildObjectMat pPos, pRot, asteroids(j).scl, objMat
-                E3D_SceneAddMeshLit meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir
-            END IF
-        END IF
-    NEXT j
-
-    IF boss.active THEN
-        pPos.x = boss.px : pPos.y = boss.py : pPos.z = boss.pz
-        pRot.x = boss.rx : pRot.y = boss.ry : pRot.z = boss.rz
-        E3D_BuildObjectMat pPos, pRot, boss.scl, objMat
-        eDist = boss.px - player.px
-        IF eDist > DIM_FAR THEN
-            eDimF = 0.35
-        ELSEIF eDist > DIM_NEAR THEN
-            eDimF = 0.35 + (eDist - DIM_NEAR) * (0.65 / (DIM_FAR - DIM_NEAR))
-        ELSE
-            eDimF = 1.0
-        END IF
-        eLitDir.x = lightDir.x * eDimF
-        eLitDir.y = lightDir.y * eDimF
-        eLitDir.z = lightDir.z * eDimF
-        gspBossScnBefore = E3D_scnCount
-        E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.POS, tt, eLitDir
-        If debugMode And gspBossDbgLogged = 0 Then
-            DBG_Print "[boss-rend] faces_rendered=" + LTrim$(Str$(E3D_scnCount - gspBossScnBefore)) + "  dist=" + LTrim$(Str$(boss.px - cam.POS.x))
-            gspBossDbgLogged = -1
-        End If
-    END IF
-
-    FOR j = 1 TO MAX_POWERUPS
-        IF powerups(j).active THEN
-            IF powerups(j).px > cam.POS.x THEN
-                pPos.x = powerups(j).px : pPos.y = powerups(j).py : pPos.z = powerups(j).pz
-                pRot.x = powerups(j).rx : pRot.y = powerups(j).ry : pRot.z = powerups(j).rz
-                E3D_BuildObjectMat pPos, pRot, powerups(j).scl, objMat
+    FOR gspJ = 1 TO MAX_POWERUPS
+        IF powerups(gspJ).active THEN
+            IF powerups(gspJ).px > cam.POS.x THEN
+                pPos.x = powerups(gspJ).px : pPos.y = powerups(gspJ).py : pPos.z = powerups(gspJ).pz
+                pRot.x = powerups(gspJ).rx : pRot.y = powerups(gspJ).ry : pRot.z = powerups(gspJ).rz
+                E3D_BuildObjectMat pPos, pRot, powerups(gspJ).scl, objMat
                 E3D_SceneAddMeshLit meshLib(MESH_POWERUP), objMat, cam.POS, tt, lightDir
             END IF
         END IF
-    NEXT j
+    NEXT gspJ
 
     E3D_SceneFlush vpMat, scrW, scrH
 
-    ' [DEBUG] yellow AABB box overlay around boss when debug mode active
-    If debugMode And boss.active Then
-        gspBdbHx = boxLib(MESH_BOSS).hx
-        gspBdbHy = boxLib(MESH_BOSS).hy
-        gspBdbHz = boxLib(MESH_BOSS).hz
-        gspBdbAllFwd = -1
-        For gspBdbI = 1 To 8
-            If (gspBdbI And 1) Then gspBdbVx = boss.px + gspBdbHx Else gspBdbVx = boss.px - gspBdbHx
-            If (gspBdbI And 2) Then gspBdbVy = boss.py + gspBdbHy Else gspBdbVy = boss.py - gspBdbHy
-            If (gspBdbI And 4) Then gspBdbVz = boss.pz + gspBdbHz Else gspBdbVz = boss.pz - gspBdbHz
-            gspBdbW = gspBdbVx * vpMat.m(3,0) + gspBdbVy * vpMat.m(3,1) + gspBdbVz * vpMat.m(3,2) + vpMat.m(3,3)
-            If gspBdbW > 0.0001 Then
-                gspBdbSx(gspBdbI) = ((gspBdbVx * vpMat.m(0,0) + gspBdbVy * vpMat.m(0,1) + gspBdbVz * vpMat.m(0,2) + vpMat.m(0,3)) / gspBdbW + 1.0) * scrW * 0.5
-                gspBdbSy(gspBdbI) = (1.0 - (gspBdbVx * vpMat.m(1,0) + gspBdbVy * vpMat.m(1,1) + gspBdbVz * vpMat.m(1,2) + vpMat.m(1,3)) / gspBdbW) * scrH * 0.5
-            Else
-                gspBdbAllFwd = 0
-            End If
-        Next gspBdbI
-        If gspBdbAllFwd Then
-            gspBdbMinX = gspBdbSx(1) : gspBdbMaxX = gspBdbSx(1)
-            gspBdbMinY = gspBdbSy(1) : gspBdbMaxY = gspBdbSy(1)
-            For gspBdbI = 2 To 8
-                If gspBdbSx(gspBdbI) < gspBdbMinX Then gspBdbMinX = gspBdbSx(gspBdbI)
-                If gspBdbSx(gspBdbI) > gspBdbMaxX Then gspBdbMaxX = gspBdbSx(gspBdbI)
-                If gspBdbSy(gspBdbI) < gspBdbMinY Then gspBdbMinY = gspBdbSy(gspBdbI)
-                If gspBdbSy(gspBdbI) > gspBdbMaxY Then gspBdbMaxY = gspBdbSy(gspBdbI)
-            Next gspBdbI
-            _Dest backBuffer
-            LINE (gspBdbMinX, gspBdbMinY)-(gspBdbMaxX, gspBdbMaxY), _RGB(255, 255, 0), B
-        End If
-    End If
-
-    _DEST backBuffer
-    FOR j = 1 TO MAX_BULLETS
-        IF bullets(j).active THEN
-            pjX  = bullets(j).px * vpMat.m(0,0) + bullets(j).py * vpMat.m(0,1) + bullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-            pjY  = bullets(j).px * vpMat.m(1,0) + bullets(j).py * vpMat.m(1,1) + bullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-            pjW  = bullets(j).px * vpMat.m(3,0) + bullets(j).py * vpMat.m(3,1) + bullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-            pjBX = bullets(j).px - bullets(j).vx * (BULLET_TRAIL_LEN / BULLET_SPEED)
-            pjBY = bullets(j).py - bullets(j).vy * (BULLET_TRAIL_LEN / BULLET_SPEED)
-            pjBZ = bullets(j).pz - bullets(j).vz * (BULLET_TRAIL_LEN / BULLET_SPEED)
-            pjX2 = pjBX * vpMat.m(0,0) + pjBY * vpMat.m(0,1) + pjBZ * vpMat.m(0,2) + vpMat.m(0,3)
-            pjY2 = pjBX * vpMat.m(1,0) + pjBY * vpMat.m(1,1) + pjBZ * vpMat.m(1,2) + vpMat.m(1,3)
-            pjW2 = pjBX * vpMat.m(3,0) + pjBY * vpMat.m(3,1) + pjBZ * vpMat.m(3,2) + vpMat.m(3,3)
-            IF pjW > 0.0001 AND pjW2 > 0.0001 THEN
-                pjX  = (pjX  / pjW  + 1.0) * scrW * 0.5
-                pjY  = (1.0 - pjY  / pjW)  * scrH * 0.5
-                pjX2 = (pjX2 / pjW2 + 1.0) * scrW * 0.5
-                pjY2 = (1.0 - pjY2 / pjW2) * scrH * 0.5
-                IF pjX >= 0 AND pjX < scrW AND pjY >= 0 AND pjY < scrH THEN
-                    pjFade = bullets(j).life / (BULLET_RANGE / BULLET_SPEED)
-                    IF pjFade > 1.0 THEN pjFade = 1.0
-                    LINE (INT(pjX2), INT(pjY2))-(INT(pjX), INT(pjY)), _RGB(INT(210*pjFade), INT(215*pjFade), INT(60*pjFade))
-                    PSET (INT(pjX), INT(pjY)), _RGB(INT(240*pjFade), INT(245*pjFade), INT(140*pjFade))
-                END IF
-            END IF
-        END IF
-    NEXT j
-
-    FOR j = 1 TO MAX_EBULLETS
-        IF ebullets(j).active THEN
-            pjX = ebullets(j).px * vpMat.m(0,0) + ebullets(j).py * vpMat.m(0,1) + ebullets(j).pz * vpMat.m(0,2) + vpMat.m(0,3)
-            pjY = ebullets(j).px * vpMat.m(1,0) + ebullets(j).py * vpMat.m(1,1) + ebullets(j).pz * vpMat.m(1,2) + vpMat.m(1,3)
-            pjW = ebullets(j).px * vpMat.m(3,0) + ebullets(j).py * vpMat.m(3,1) + ebullets(j).pz * vpMat.m(3,2) + vpMat.m(3,3)
-            IF pjW > 0.0001 THEN
-                pjX = (pjX / pjW + 1.0) * scrW * 0.5
-                pjY = (1.0 - pjY / pjW) * scrH * 0.5
-                IF pjX >= 4 AND pjX < scrW - 4 AND pjY >= 3 AND pjY < scrH - 3 THEN
-                    SELECT CASE ebullets(j).meshIdx
-                    CASE MESH_BOSS         : ebClr = _RGB(255, 200,   0)
-                    CASE MESH_ENEMY        : ebClr = _RGB(255,  80,  60)
-                    CASE MESH_ENEMY_ARROW  : ebClr = _RGB(220,  35,  65)
-                    CASE MESH_ENEMY_HLINE  : ebClr = _RGB( 80, 140, 255)
-                    CASE MESH_ENEMY_VCOL   : ebClr = _RGB(180,  65, 255)
-                    CASE MESH_ENEMY_PINCER : ebClr = _RGB(255,  45, 190)
-                    CASE ELSE              : ebClr = _RGB(185,  80, 255)
-                    END SELECT
-                    LINE (pjX - 4, pjY)-(pjX + 4, pjY), ebClr
-                    LINE (pjX, pjY - 2)-(pjX, pjY + 2), ebClr
-                    PSET (pjX, pjY), _RGB(255, 255, 255)
-                END IF
-            END IF
-        END IF
-    NEXT j
-
-    _DEST backBuffer
-    IF spawnFlashTimer > 0 THEN
-        pjX = spawnFlashPX * vpMat.m(0,0) + spawnFlashPY * vpMat.m(0,1) + spawnFlashPZ * vpMat.m(0,2) + vpMat.m(0,3)
-        pjY = spawnFlashPX * vpMat.m(1,0) + spawnFlashPY * vpMat.m(1,1) + spawnFlashPZ * vpMat.m(1,2) + vpMat.m(1,3)
-        pjW = spawnFlashPX * vpMat.m(3,0) + spawnFlashPY * vpMat.m(3,1) + spawnFlashPZ * vpMat.m(3,2) + vpMat.m(3,3)
-        IF pjW > 0.0001 THEN
-            pjX = (pjX / pjW + 1.0) * scrW * 0.5
-            pjY = (1.0 - pjY / pjW) * scrH * 0.5
-            IF pjX >= 3 AND pjX < scrW - 3 AND pjY >= 3 AND pjY < scrH - 3 THEN
-                partR = spawnFlashTimer * 26
-                LINE (pjX - 4, pjY)-(pjX + 4, pjY), _RGB(partR, partR, partR)
-                LINE (pjX, pjY - 4)-(pjX, pjY + 4), _RGB(partR, partR, partR)
-            END IF
-        END IF
-        spawnFlashTimer = spawnFlashTimer - 1
-    END IF
+    COMBAT_OverlayDraw
 
     FX_Draw vpMat, scrW, scrH
     HUD_Draw
