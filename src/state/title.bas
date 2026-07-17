@@ -17,8 +17,8 @@ Sub GS_TITLE_Update ()
         FONT_PrintAlpha fontPalette(9),  backBuffer, "BOUT",     gstKX + FONT_CHAR_W,          scrH\2 - 26, 255
         FONT_PrintAlpha fontPalette(15), backBuffer, "S",        gstKX,                        scrH\2 -  6, 255
         FONT_PrintAlpha fontPalette(9),  backBuffer, "ETTINGS",  gstKX + FONT_CHAR_W,          scrH\2 -  6, 255
-        FONT_PrintAlpha fontPalette(15), backBuffer, "Y",        gstKX,                        scrH\2 + 14, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, " QUIT GAME", gstKX + FONT_CHAR_W,        scrH\2 + 14, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "Q",        gstKX,                        scrH\2 + 14, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "UIT GAME", gstKX + FONT_CHAR_W,         scrH\2 + 14, 255
         FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",      gstKX,                        scrH\2 + 34, 255
         FONT_PrintAlpha fontPalette(9),  backBuffer, " CANCEL",  gstKX + 3 * FONT_CHAR_W,     scrH\2 + 34, 255
     END IF
@@ -34,7 +34,7 @@ Sub GS_TITLE_Update ()
             gameState = GS_OPTIONS : titleEscConfirm = 0
             optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
         END IF
-        IF _KEYDOWN(89) OR _KEYDOWN(121) THEN SYSTEM
+        IF _KEYDOWN(81) OR _KEYDOWN(113) THEN SYSTEM
         IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
         MUS_Fill 0
         EXIT SUB

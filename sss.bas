@@ -103,6 +103,8 @@ IF cliScene <> "" THEN
         GAME_ResetState
         levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1
         IF levelNum < 0 THEN levelNum = 0
+        planetCurrent = levelNum  ' stage-end formula (x Mod 6)+1 then gives the correct planet
+        planetNameIdx = levelNum
     END IF
     IF cliSceneType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
