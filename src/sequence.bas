@@ -179,6 +179,7 @@ Sub SEQ_Advance()
                 stageScore    = 2147483647   ' boss never triggers on asteroid level
                 astFieldStart = tt
                 astDestName   = planetNames(levelNum)
+                fuelLevel     = 45.0  ' pre-depleted: long approach burned most of the tank
                 BELT_Init scrW, scrH
             Else
                 levelType = LEVEL_COMBAT

@@ -50,6 +50,7 @@ Sub WAVE_Spawn
             MUS_SetCue "planet"
             planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
             planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
+            For wvI = 1 To MAX_ASTEROIDS : asteroids(wvI).active = 0 : Next wvI
         End If
         wvAstElapsed = tt - astFieldStart
         If wvAstElapsed < 3.0 Then
@@ -67,8 +68,10 @@ Sub WAVE_Spawn
             wvAstProg = wvAstElapsed / ASTFIELD_DURATION
             If wvAstProg > 1.0 Then wvAstProg = 1.0
             wvAstInterval = 3.0
-            If wvAstProg > 0.67 Then
-                wvAstInterval = 3.0 - ((wvAstProg - 0.67) / 0.33) * 2.0
+            If wvAstProg > 0.67 And wvAstProg <= 0.82 Then
+                wvAstInterval = 3.0 - ((wvAstProg - 0.67) / 0.15) * 2.0
+            ElseIf wvAstProg > 0.82 Then
+                wvAstInterval = 1.0 + ((wvAstProg - 0.82) / 0.18) * 3.0
             End If
             If spawnTimer > wvAstInterval And gameState = GS_PLAYING Then
                 spawnTimer = 0

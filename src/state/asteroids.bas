@@ -34,10 +34,15 @@ Sub ASTEROIDS_Update()
             E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
             asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, boxLib(MESH_ASTEROID), astUHit
             If astUHit And invTimer = 0 Then
-                SND_Boom
-                FX_SpawnBurst asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, 8, 0.18, 15, 7, _RGB(120 + Int(Rnd * 40), 100 + Int(Rnd * 30), 75 + Int(Rnd * 20))
-                telemDeathCause = "asteroid"
-                PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
+                If Abs(asteroids(astUI).vy) > 0.1 Or Abs(asteroids(astUI).vz) > 0.1 Then
+                    fxShakeTimer = 6
+                    SND_Whoosh asteroids(astUI).scl
+                Else
+                    SND_Boom
+                    FX_SpawnBurst asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, 8, 0.18, 15, 7, _RGB(120 + Int(Rnd * 40), 100 + Int(Rnd * 30), 75 + Int(Rnd * 20))
+                    telemDeathCause = "asteroid"
+                    PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
+                End If
             ElseIf astNmSndCool = 0 And levelType = LEVEL_ASTEROID Then
                 If Abs(asteroids(astUI).py - player.py) < 7 And Abs(asteroids(astUI).pz - player.pz) < 7 Then
                     If asteroids(astUI).px < player.px + 5 And asteroids(astUI).px > player.px - 4 Then
