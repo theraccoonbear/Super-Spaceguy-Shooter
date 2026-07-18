@@ -200,21 +200,22 @@ Sub HUD_Draw
     ' parsec-to-destination gauge — asteroid field only
     If levelType = LEVEL_ASTEROID Then
         Dim hdPPct As Single, hdPPSC As Integer, hdPFill As Integer
-        Dim hdPClr As Long, hdPStr As String
+        Dim hdPClr As Long, hdPStr As String, hdPX As Integer
         hdPPct = 1.0 - (tt - astFieldStart) / ASTFIELD_DURATION
         If hdPPct < 0.0 Then hdPPct = 0.0
         If hdPPct > 1.0 Then hdPPct = 1.0
         hdPPSC = INT(hdPPct * ASTFIELD_PARSECS)
-        hdPStr = LTRIM$(STR$(hdPPSC)) + " PSC TO " + astDestName
-        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, hdPStr, scrH - 32, scrW, 255
-        hdPFill = INT(hdPPct * 78)
-        LINE (scrW\2 - 40, scrH - 14)-(scrW\2 + 40, scrH - 5), _RGB(15, 20, 30), BF
+        hdPStr = LTRIM$(STR$(hdPPSC)) + " PSC"
+        hdPX = scrW\2 - 56
+        FONT_PrintAlpha fontPalette(11), backBuffer, hdPStr, hdPX, scrH - 16, 255
+        hdPFill = INT(hdPPct * 50)
+        LINE (scrW\2 + 4, scrH - 14)-(scrW\2 + 56, scrH - 5), _RGB(15, 20, 30), BF
         If hdPFill > 0 Then
             hdPClr = _RGB(60, 160, 255)
-            LINE (scrW\2 - 39, scrH - 13)-(scrW\2 - 39 + hdPFill, scrH - 6), hdPClr, BF
-            LINE (scrW\2 - 39, scrH - 13)-(scrW\2 - 39 + hdPFill, scrH - 12), _RGB(140, 210, 255), BF
+            LINE (scrW\2 + 5, scrH - 13)-(scrW\2 + 5 + hdPFill, scrH - 6), hdPClr, BF
+            LINE (scrW\2 + 5, scrH - 13)-(scrW\2 + 5 + hdPFill, scrH - 12), _RGB(140, 210, 255), BF
         End If
-        LINE (scrW\2 - 40, scrH - 14)-(scrW\2 + 40, scrH - 5), _RGB(70, 90, 100), B
+        LINE (scrW\2 + 4, scrH - 14)-(scrW\2 + 56, scrH - 5), _RGB(70, 90, 100), B
     End If
 
     ' invincibility lead-in
