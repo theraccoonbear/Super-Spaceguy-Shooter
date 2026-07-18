@@ -190,7 +190,7 @@ DIM SHARED thrusterScale AS SINGLE
 DIM SHARED levelNum      AS INTEGER
 DIM SHARED levelType     AS INTEGER
 Const ASTFIELD_PARSECS    = 340    ' parsec display total for the asteroid stage HUD gauge
-Const ASTFIELD_DURATION   = 200.0  ' tt-ticks to survive the asteroid stage (≈133s at 60fps)
+Const ASTFIELD_DURATION   = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
 DIM SHARED astFieldStart AS SINGLE
 DIM SHARED astDestName   AS STRING
 DIM SHARED astNmSndCool   AS INTEGER

@@ -28,6 +28,7 @@ Sub WAVE_Spawn
     Dim wvDX(0 To 4) As Single, wvDY(0 To 4) As Single, wvDZ(0 To 4) As Single
     Dim wvI As Integer
     Dim wvTypeName As String
+    Dim wvAstProg As Single, wvAstInterval As Single
 
     diffTime  = diffTime + 0.025
     diffScale = diffTime / DIFF_RAMP_DURATION
@@ -50,7 +51,13 @@ Sub WAVE_Spawn
             planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
             planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
         End If
-        If spawnTimer > ASTFIELD_INTERVAL And gameState = GS_PLAYING Then
+        wvAstProg = (tt - astFieldStart) / ASTFIELD_DURATION
+        If wvAstProg > 1.0 Then wvAstProg = 1.0
+        wvAstInterval = 3.0
+        If wvAstProg > 0.67 Then
+            wvAstInterval = 3.0 - ((wvAstProg - 0.67) / 0.33) * 2.0
+        End If
+        If spawnTimer > wvAstInterval And gameState = GS_PLAYING Then
             spawnTimer = 0
             WAVE_SpawnAsteroidField
         End If
@@ -200,7 +207,7 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafCX As Single, wvafCY As Single, wvafCZ As Single
     Dim wvafGap As Single
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
-    Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer
+    Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer, wvafErratic As Integer
 
     wvafCX = player.px + 150 + RND * 30 + astSpawnXBias
     If astForceTarget Then
@@ -266,13 +273,15 @@ Sub WAVE_SpawnAsteroidField
     End Select
 
     For wvafJ = 0 To wvafN - 1
-        ' per-asteroid trajectory: most drift slightly, 1-in-5 are erratic cross-cutters
-        If Int(RND * 3) = 0 Then
+        ' per-asteroid trajectory: most drift slightly, 1-in-6 are erratic cross-cutters
+        If Int(RND * 6) = 0 Then
             wvafVY = (RND - 0.5) * 0.50
             wvafVZ = (RND - 0.5) * 0.50
+            wvafErratic = -1
         Else
             wvafVY = (RND - 0.5) * 0.06
             wvafVZ = (RND - 0.5) * 0.06
+            wvafErratic = 0
         End If
         If Int(RND * 5) = 0 Then
             wvafScl = 3.0 + RND * 1.5
@@ -285,6 +294,7 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).active     = -1
                 asteroids(wvafI).meshIdx    = MESH_ASTEROID
                 asteroids(wvafI).px         = wvafCX + wvafXO(wvafJ)
+                If wvafErratic Then asteroids(wvafI).px = asteroids(wvafI).px + 50
                 asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
                 asteroids(wvafI).pz         = wvafCZ + wvafZO(wvafJ)
                 If Int(RND * 6) = 0 Then
