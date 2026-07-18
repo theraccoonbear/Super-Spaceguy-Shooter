@@ -28,7 +28,7 @@ Sub WAVE_Spawn
     Dim wvDX(0 To 4) As Single, wvDY(0 To 4) As Single, wvDZ(0 To 4) As Single
     Dim wvI As Integer
     Dim wvTypeName As String
-    Dim wvAstProg As Single, wvAstInterval As Single
+    Dim wvAstProg As Single, wvAstInterval As Single, wvAstElapsed As Single
 
     diffTime  = diffTime + 0.025
     diffScale = diffTime / DIFF_RAMP_DURATION
@@ -51,15 +51,29 @@ Sub WAVE_Spawn
             planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
             planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
         End If
-        wvAstProg = (tt - astFieldStart) / ASTFIELD_DURATION
-        If wvAstProg > 1.0 Then wvAstProg = 1.0
-        wvAstInterval = 3.0
-        If wvAstProg > 0.67 Then
-            wvAstInterval = 3.0 - ((wvAstProg - 0.67) / 0.33) * 2.0
-        End If
-        If spawnTimer > wvAstInterval And gameState = GS_PLAYING Then
-            spawnTimer = 0
-            WAVE_SpawnAsteroidField
+        wvAstElapsed = tt - astFieldStart
+        If wvAstElapsed < 3.0 Then
+            spawnTimer = 0  ' hold — empty space
+        ElseIf wvAstElapsed < 12.0 Then
+            ' approach phase: spawn far so asteroids appear as distant 2D blobs first
+            If spawnTimer > 3.5 And gameState = GS_PLAYING Then
+                spawnTimer = 0
+                astSpawnXBias = 200.0 * (1.0 - (wvAstElapsed - 3.0) / 9.0)
+                WAVE_SpawnAsteroidField
+                astSpawnXBias = 0.0
+            End If
+        Else
+            ' normal progressive density
+            wvAstProg = wvAstElapsed / ASTFIELD_DURATION
+            If wvAstProg > 1.0 Then wvAstProg = 1.0
+            wvAstInterval = 3.0
+            If wvAstProg > 0.67 Then
+                wvAstInterval = 3.0 - ((wvAstProg - 0.67) / 0.33) * 2.0
+            End If
+            If spawnTimer > wvAstInterval And gameState = GS_PLAYING Then
+                spawnTimer = 0
+                WAVE_SpawnAsteroidField
+            End If
         End If
         Exit Sub
     End If
@@ -273,10 +287,10 @@ Sub WAVE_SpawnAsteroidField
     End Select
 
     For wvafJ = 0 To wvafN - 1
-        ' per-asteroid trajectory: most drift slightly, 1-in-6 are erratic cross-cutters
-        If Int(RND * 6) = 0 Then
-            wvafVY = (RND - 0.5) * 0.50
-            wvafVZ = (RND - 0.5) * 0.50
+        ' per-asteroid trajectory: most drift slightly, 1-in-10 are erratic cross-cutters
+        If Int(RND * 10) = 0 Then
+            wvafVY = (RND - 0.5) * 0.35
+            wvafVZ = (RND - 0.5) * 0.35
             wvafErratic = -1
         Else
             wvafVY = (RND - 0.5) * 0.06

@@ -68,7 +68,7 @@ Sub ASTEROIDS_Draw()
         If asteroids(astDJ).active Then
             If asteroids(astDJ).px > cam.POS.x Then
                 astDDist = asteroids(astDJ).px - player.px
-                If astDDist > 140 Then GoTo astDSkip
+                If astDDist > 300 Then GoTo astDSkip
                 Select Case asteroids(astDJ).strafeCool
                 Case 0 : astDTR = 1.00 : astDTG = 0.84 : astDTB = 0.54
                 Case 1 : astDTR = 1.00 : astDTG = 0.62 : astDTB = 0.38
@@ -79,7 +79,7 @@ Sub ASTEROIDS_Draw()
                 End Select
                 If astDDist > 80 Then
                     ' mid/far: 2D projected blob — zero polygon cost
-                    astDFade = 1.0 - (astDDist - 80) / 60
+                    astDFade = 1.0 - (astDDist - 80) / 220
                     If astDFade < 0.0 Then astDFade = 0.0
                     astDSX = asteroids(astDJ).px * vpMat.m(0,0) + asteroids(astDJ).py * vpMat.m(0,1) + asteroids(astDJ).pz * vpMat.m(0,2) + vpMat.m(0,3)
                     astDSY = asteroids(astDJ).px * vpMat.m(1,0) + asteroids(astDJ).py * vpMat.m(1,1) + asteroids(astDJ).pz * vpMat.m(1,2) + vpMat.m(1,3)
