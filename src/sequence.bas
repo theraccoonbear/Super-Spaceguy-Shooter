@@ -181,9 +181,11 @@ Sub SEQ_Advance()
                 astDestName   = planetNames(levelNum)
                 fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
                 BELT_Init scrW, scrH
+                MUS_SetCue "asteroid"
             Else
                 levelType = LEVEL_COMBAT
                 bltActive = 0
+                MUS_SetCue "game"
             End If
             If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                 diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
@@ -192,7 +194,6 @@ Sub SEQ_Advance()
             If diffScale > 1.0 Then diffScale = 1.0
             StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
             gameState = GS_PLAYING
-            MUS_SetCue "game"
         Case SEQ_TITLE
             If score > highScore Then highScore = score : SETTINGS_Save
             SEQ_RewindToTitle

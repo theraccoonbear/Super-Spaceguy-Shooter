@@ -168,7 +168,7 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
             TELEM_PlayerDeath
             TELEM_SessionEnd
         Else
-            lives = 100 : invTimer = 240 : fuelLevel = 100.0 : fuelStranded = 0
+            lives = 100 : invTimer = 240
         End If
     End If
 End Sub
