@@ -36,6 +36,14 @@ Sub WAVE_Spawn
     ' --- asteroid field level: pattern-based spawning, no enemies ---
     If levelType = LEVEL_ASTEROID Then
         If tt - astFieldStart >= ASTFIELD_DURATION And gameState = GS_PLAYING Then
+            Dim wvFuelBonus As Long
+            wvFuelBonus = INT(fuelLevel * 5)
+            If wvFuelBonus > 0 Then
+                score = score + wvFuelBonus
+                scorePopVal = wvFuelBonus
+                scorePopTimer = 45
+                scorePopY = scrH * 0.4
+            End If
             gameState     = GS_PLANET
             planetTimer   = 1
             MUS_SetCue "planet"

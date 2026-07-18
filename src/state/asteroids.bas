@@ -1,5 +1,5 @@
 Sub ASTEROIDS_Update()
-    Dim astUI As Integer, astUJ As Integer, astUHit As Integer
+    Dim astUI As Integer, astUJ As Integer, astUHit As Integer, astUNmPts As Long
 
     If astNmSndCool > 0 Then astNmSndCool = astNmSndCool - 1
     For astUI = 1 To MAX_ASTEROIDS
@@ -44,6 +44,11 @@ Sub ASTEROIDS_Update()
                         fxShakeTimer = 3
                         astNmSndCool = 50
                         SND_Whoosh asteroids(astUI).scl
+                        astUNmPts = INT(asteroids(astUI).scl * 60)
+                        score = score + astUNmPts
+                        scorePopVal = astUNmPts
+                        scorePopTimer = 30
+                        scorePopY = scrH * 0.4
                     End If
                 End If
             End If
