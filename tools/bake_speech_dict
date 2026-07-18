@@ -54,9 +54,22 @@ if [ -f "$CUSTOM" ]; then
 fi
 
 # ---- find words with no pronunciation entry at all ----
+# SPK_Say has a plural fallback: strips trailing S and tries the stem.
+# Accept a word as covered if either the word itself or its S-stem is in the dict.
 FOUNDTMP="$(mktemp)"
 cut -d' ' -f1 "$DATATMP" | sort > "$FOUNDTMP"
-missing=$(comm -23 "$TMP" "$FOUNDTMP")
+missing=""
+while IFS= read -r word; do
+    if ! grep -qx "$word" "$FOUNDTMP"; then
+        stem="${word%S}"
+        if [[ "$stem" != "$word" ]] && (grep -q "^${stem} " "$DICT" || grep -v '^#\|^$' "$CUSTOM" | grep -q "^${stem} "); then
+            : # plural fallback covers it
+        else
+            missing="${missing}${word}"$'\n'
+        fi
+    fi
+done < "$TMP"
+missing="${missing%$'\n'}"
 rm -f "$FOUNDTMP"
 
 {

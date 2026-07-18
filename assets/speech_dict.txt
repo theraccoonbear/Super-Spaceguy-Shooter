@@ -283,7 +283,6 @@ OUTER  AW1 T ER0
 OVER  OW1 V ER0
 PAPERWORK  P EY1 P ER0 W ER2 K
 PARLIAMENTS  P AA1 R L AH0 M EH2 N T S
-PARSECS  P AA1 R S EH0 K S
 PAST  P AE1 S T
 PATH  P AE1 TH
 PATROL  P AH0 T R OW1 L
@@ -434,4 +433,4 @@ YET  Y EH1 T
 YOU  Y UW1
 ZERO  Z IY1 R OW0
 
-# 406 / 429 words found in CMU dict (plus 26 custom entries)
+# 406 / 429 words found in CMU dict (plus 25 custom entries)

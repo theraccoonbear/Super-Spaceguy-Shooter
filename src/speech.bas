@@ -483,6 +483,7 @@ SUB SPK_Init()
         DIM spkPI2 AS INTEGER, spkPI3 AS INTEGER, spkPI4 AS INTEGER
         DIM spkWStart AS INTEGER
         DIM spkWOccI AS INTEGER, spkWOccN AS INTEGER
+        DIM spkStem AS STRING, spkStemIdx AS INTEGER, spkStemFound AS INTEGER, spkLastPh AS INTEGER
 
         spkRateScale = 1.0  ' reset; SPK_SyncToScroll may override after this returns
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
@@ -573,7 +574,32 @@ SUB SPK_Init()
                     END IF
                 NEXT pi
             ELSE
-                SPK_SpellWord wrd
+                ' Plural fallback: strip trailing S and try stem; if found, append correct S allophone.
+                spkStemFound = 0
+                IF LEN(wrd) > 1 AND RIGHT$(wrd, 1) = "S" THEN
+                    spkStem = LEFT$(wrd, LEN(wrd) - 1)
+                    SPK_DictFind spkStem, spkStemIdx
+                    IF spkStemIdx >= 0 THEN
+                        spkStemFound = -1
+                        FOR pi = 0 TO spkDictPhoneLen(spkStemIdx) - 1
+                            IF spkPhoneCount < SPK_PHONE_MAX THEN
+                                spkPhones(spkPhoneCount) = spkDictPh(spkStemIdx, pi)
+                                spkStress(spkPhoneCount) = spkDictSt(spkStemIdx, pi)
+                                spkPhoneCount = spkPhoneCount + 1
+                            END IF
+                        NEXT pi
+                        spkLastPh = spkDictPh(spkStemIdx, spkDictPhoneLen(spkStemIdx) - 1)
+                        IF spkLastPh = SPK_S OR spkLastPh = SPK_Z OR spkLastPh = SPK_SH OR spkLastPh = SPK_ZH OR spkLastPh = SPK_CH OR spkLastPh = SPK_JH THEN
+                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_IH : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_Z  : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                        ELSEIF spkLastPh = SPK_F OR spkLastPh = SPK_TH OR spkLastPh = SPK_P OR spkLastPh = SPK_T OR spkLastPh = SPK_K THEN
+                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_S  : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                        ELSE
+                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_Z  : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                        END IF
+                    END IF
+                END IF
+                IF spkStemFound = 0 THEN SPK_SpellWord wrd
             END IF
 
             ' inter-word silence
