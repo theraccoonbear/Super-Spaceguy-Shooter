@@ -5,7 +5,7 @@
 ' SPK_Fill returns one sample per call; wire into audio fill loop.
 ' ============================================================
 
-CONST SPK_DICT_MAX  = 400    ' max dictionary word entries
+CONST SPK_DICT_MAX  = 2048   ' max dictionary word entries — sized well above any plausible game text
 CONST SPK_PHONE_MAX = 2048   ' max queued phonemes per utterance
 CONST SPK_FADE      = 441    ' 10ms fade at phoneme edges (@ 44100)
 
