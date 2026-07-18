@@ -189,8 +189,10 @@ DIM SHARED thrusterScale AS SINGLE
 ' --- gameplay timers / misc ---
 DIM SHARED levelNum      AS INTEGER
 DIM SHARED levelType     AS INTEGER
-Const ASTFIELD_PARSECS    = 340    ' parsec display total for the asteroid stage HUD gauge
-Const ASTFIELD_DURATION   = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
+Const ASTFIELD_PARSECS       = 340    ' parsec display total for the asteroid stage HUD gauge
+Const ASTFIELD_DURATION      = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
+Const ASTFIELD_FUEL_DRAIN_PT = 0.74   ' fuel units per tt-tick (FUEL_DRAIN 0.0185/frame * 40 frames/tick)
+Const ASTFIELD_FUEL_FRAC     = 0.50   ' fraction of field's base-drain cost on arrival — tune for evasive margin
 DIM SHARED astFieldStart AS SINGLE
 DIM SHARED astDestName   AS STRING
 DIM SHARED astNmSndCool   AS INTEGER

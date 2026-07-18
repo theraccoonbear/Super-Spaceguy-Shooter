@@ -50,7 +50,6 @@ Sub WAVE_Spawn
             MUS_SetCue "planet"
             planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
             planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
-            For wvI = 1 To MAX_ASTEROIDS : asteroids(wvI).active = 0 : Next wvI
         End If
         wvAstElapsed = tt - astFieldStart
         If wvAstElapsed < 3.0 Then
