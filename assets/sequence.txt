@@ -6,16 +6,16 @@ CRAWL intro
 EMPEROR
 TITLE
 CRAWL stage1
-PLAY
+PLAY game
 CRAWL stage2
-PLAY
+PLAY game
 CRAWL stage3
-PLAY
+PLAY game
 CRAWL stage4
 PLAY asteroid
 CRAWL stage5
-PLAY
+PLAY game
 CRAWL stage6
-PLAY
+PLAY game
 CRAWL outro
 TITLE

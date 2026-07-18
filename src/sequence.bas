@@ -62,28 +62,6 @@ Sub SEQ_Load(seqlData As String)
     Loop
 End Sub
 
-' Hardcoded fallback used by headless tests (no $EMBED available).
-Sub SEQ_Init()
-    seqCount = 0 : seqIdx = -1
-    SEQ_Add SEQ_CRAWL,   "intro"   ' prologue
-    SEQ_Add SEQ_EMPEROR, ""        ' antagonist reveal
-    SEQ_Add SEQ_TITLE,   ""        ' main menu
-    SEQ_Add SEQ_CRAWL,   "stage1"  ' chapter 1
-    SEQ_Add SEQ_PLAY,    ""        ' stage 1
-    SEQ_Add SEQ_CRAWL,   "stage2"  ' chapter 2
-    SEQ_Add SEQ_PLAY,    ""        ' stage 2
-    SEQ_Add SEQ_CRAWL,   "stage3"  ' chapter 3
-    SEQ_Add SEQ_PLAY,    ""        ' stage 3
-    SEQ_Add SEQ_CRAWL,   "stage4"     ' asteroid field
-    SEQ_Add SEQ_PLAY,    "asteroid"  ' stage 4: asteroid field
-    SEQ_Add SEQ_CRAWL,   "stage5"  ' chapter 5
-    SEQ_Add SEQ_PLAY,    ""        ' stage 5
-    SEQ_Add SEQ_CRAWL,   "stage6"  ' chapter 6
-    SEQ_Add SEQ_PLAY,    ""        ' stage 6
-    SEQ_Add SEQ_CRAWL,   "outro"   ' epilogue
-    SEQ_Add SEQ_TITLE,   ""        ' title screen
-End Sub
-
 ' Rewind seqIdx to the first SEQ_TITLE waypoint so GAME_NewGame advances into stage 1.
 Sub SEQ_RewindToTitle()
     Dim seqrI As Integer
@@ -181,12 +159,11 @@ Sub SEQ_Advance()
                 astDestName   = planetNames(levelNum)
                 fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
                 BELT_Init scrW, scrH
-                MUS_SetCue "asteroid"
             Else
                 levelType = LEVEL_COMBAT
                 bltActive = 0
-                MUS_SetCue "game"
             End If
+            MUS_SetCue seqSval$(seqIdx)
             If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                 diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
             End If

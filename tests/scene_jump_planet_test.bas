@@ -51,6 +51,27 @@ End Sub
 
 '$INCLUDE:'../src/sequence.bas'
 
+Sub SEQ_Init()
+    seqCount = 0 : seqIdx = -1
+    SEQ_Add SEQ_CRAWL,   "intro"
+    SEQ_Add SEQ_EMPEROR, ""
+    SEQ_Add SEQ_TITLE,   ""
+    SEQ_Add SEQ_CRAWL,   "stage1"
+    SEQ_Add SEQ_PLAY,    "game"
+    SEQ_Add SEQ_CRAWL,   "stage2"
+    SEQ_Add SEQ_PLAY,    "game"
+    SEQ_Add SEQ_CRAWL,   "stage3"
+    SEQ_Add SEQ_PLAY,    "game"
+    SEQ_Add SEQ_CRAWL,   "stage4"
+    SEQ_Add SEQ_PLAY,    "asteroid"
+    SEQ_Add SEQ_CRAWL,   "stage5"
+    SEQ_Add SEQ_PLAY,    "game"
+    SEQ_Add SEQ_CRAWL,   "stage6"
+    SEQ_Add SEQ_PLAY,    "game"
+    SEQ_Add SEQ_CRAWL,   "outro"
+    SEQ_Add SEQ_TITLE,   ""
+End Sub
+
 ' test helpers
 Dim Shared stPassed As Integer, stFailed As Integer
 
