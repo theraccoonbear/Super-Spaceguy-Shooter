@@ -21,9 +21,11 @@ for key in "${!TOKENS[@]}"; do
     rendered="${rendered//\{\{$key\}\}/${TOKENS[$key]}}"
 done
 
-# Strip block tags and color codes (~X hex digit), then pull unique words
+# Strip block tags, color codes, then apply the same contraction pre-pass
+# SPK_Say uses at runtime: strip possessive 's, then bare apostrophes.
+# This ensures "don't" -> "DONT" (not "DON"+"T") so missing entries fail here.
 printf '%s\n' "$rendered" \
-    | sed 's/\[BLOCK:[^]]*\]//g; s/~[0-9A-Fa-f]//g' \
+    | sed "s/\[BLOCK:[^]]*\]//g; s/~[0-9A-Fa-f]//g; s/'[Ss]//g; s/'//g" \
     | tr -cs 'A-Za-z' '\n' | tr 'a-z' 'A-Z' \
     | sort -u | grep -v '^$' > "$TMP"
 
