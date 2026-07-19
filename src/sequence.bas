@@ -337,10 +337,12 @@ Sub SEQ_Advance()
                     SPK_Say seqaBossWarn
                     ' music cue set in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
-                    levelNum      = levelNum + 1
-                    levelType     = LEVEL_ASTEROID
-                    stageScore    = 2147483647
-                    astFieldStart = tt
+                    levelNum       = levelNum + 1
+                    levelType      = LEVEL_ASTEROID
+                    stageScore     = 2147483647
+                    planetBgR      = 3.0
+                    planetBgAlpha  = 245.0
+                    astFieldStart  = tt
                     astDestName   = planetNames(levelNum)
                     astParsecs    = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If astParsecs = 0 Then astParsecs = 340

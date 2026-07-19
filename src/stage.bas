@@ -12,7 +12,7 @@ Sub STAGE_Update
 
     If planetTimer = 0 Then
         ' tick sprite animation during pre-reveal (combat and boss phases)
-        If levelType = LEVEL_COMBAT Or levelType = LEVEL_BOSS Then
+        If levelType = LEVEL_COMBAT Or levelType = LEVEL_BOSS Or levelType = LEVEL_ASTEROID Then
             planetTick = planetTick + 1
             If planetTick >= 4 Then
                 planetTick = 0
@@ -156,7 +156,6 @@ End Sub
 
 Sub STAGE_DrawPlanetBackground
     If planetTimer > 0 Then Exit Sub
-    If levelType = LEVEL_ASTEROID Then Exit Sub
     ' planetCurrent is incremented on ARRIVE; pre-reveal must show the same
     ' planet that will appear on arrival, which is the next value in the cycle
     Dim stNextPlanet As Integer
@@ -164,14 +163,24 @@ Sub STAGE_DrawPlanetBackground
     If planetImages(stNextPlanet) = 0 Then Exit Sub
 
     Dim stProg As Single
-    If levelType = LEVEL_BOSS Then
-        stProg = 1.0
-    Else
-        If stageScore <= stageScoreBase Then Exit Sub
-        stProg = (score - stageScoreBase) / CSng(stageScore - stageScoreBase)
-        If stProg < 0.0 Then stProg = 0.0
-        If stProg > 1.0 Then stProg = 1.0
-    End If
+    Dim stAstDur As Single
+    Select Case levelType
+        Case LEVEL_BOSS
+            stProg = 1.0
+        Case LEVEL_COMBAT
+            If stageScore <= stageScoreBase Then Exit Sub
+            stProg = (score - stageScoreBase) / CSng(stageScore - stageScoreBase)
+            If stProg < 0.0 Then stProg = 0.0
+            If stProg > 1.0 Then stProg = 1.0
+        Case LEVEL_ASTEROID
+            If settingNerf Then stAstDur = ASTFIELD_DURATION * NERF_FACTOR Else stAstDur = ASTFIELD_DURATION
+            If stAstDur <= 0 Then Exit Sub
+            stProg = (tt - astFieldStart) / stAstDur
+            If stProg < 0.0 Then stProg = 0.0
+            If stProg > 1.0 Then stProg = 1.0
+        Case Else
+            Exit Sub
+    End Select
 
     ' ease smoothed radius and overlay toward score-driven targets
     Dim stTargetR As Single, stTargetAlpha As Single
