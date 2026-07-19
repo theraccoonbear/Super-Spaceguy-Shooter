@@ -206,7 +206,7 @@ Sub HUD_Draw
         hdPPct = 1.0 - (tt - astFieldStart) / hdAstDur
         If hdPPct < 0.0 Then hdPPct = 0.0
         If hdPPct > 1.0 Then hdPPct = 1.0
-        hdPPSC = INT(hdPPct * ASTFIELD_PARSECS)
+        hdPPSC = INT(hdPPct * astParsecs)
         hdPStr = LTRIM$(STR$(hdPPSC)) + " PSC"
         hdPX = scrW\2 - 56
         FONT_PrintAlpha fontPalette(11), backBuffer, hdPStr, hdPX, scrH - 16, 255

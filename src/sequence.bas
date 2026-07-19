@@ -303,6 +303,8 @@ Sub SEQ_Advance()
                     stageScore    = 2147483647
                     astFieldStart = tt
                     astDestName   = planetNames(levelNum)
+                    astParsecs    = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
+                    If astParsecs = 0 Then astParsecs = 340
                     fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
                     BELT_Init scrW, scrH
                     If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
