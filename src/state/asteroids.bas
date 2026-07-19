@@ -34,7 +34,7 @@ Sub ASTEROIDS_Update()
             E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
             asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, boxLib(MESH_ASTEROID), astUHit
             If astUHit And invTimer = 0 Then
-                If Abs(asteroids(astUI).vy) > 0.1 Or Abs(asteroids(astUI).vz) > 0.1 Then
+                If asteroids(astUI).strafeCool >= 10 Then
                     fxShakeTimer = 6
                     SND_Whoosh asteroids(astUI).scl
                 Else
@@ -74,7 +74,8 @@ Sub ASTEROIDS_Draw()
             If asteroids(astDJ).px > cam.POS.x Then
                 astDDist = asteroids(astDJ).px - player.px
                 If astDDist > 300 Then GoTo astDSkip
-                Select Case asteroids(astDJ).strafeCool
+                Dim astDTint As Integer : astDTint = asteroids(astDJ).strafeCool Mod 10
+                Select Case astDTint
                 Case 0 : astDTR = 1.00 : astDTG = 0.84 : astDTB = 0.54
                 Case 1 : astDTR = 1.00 : astDTG = 0.62 : astDTB = 0.38
                 Case 2 : astDTR = 0.72 : astDTG = 0.44 : astDTB = 0.26

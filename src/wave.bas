@@ -299,7 +299,10 @@ Sub WAVE_SpawnAsteroidField
 
     For wvafJ = 0 To wvafN - 1
         ' per-asteroid trajectory: most drift slightly, 1-in-10 are erratic cross-cutters
-        If Int(RND * 10) = 0 Then
+        ' erratic ones are non-lethal (visual thrill only); strafeCool >= 10 is the flag
+        Dim wvafErraticChance As Integer
+        If settingNerf Then wvafErraticChance = 20 Else wvafErraticChance = 10
+        If Int(RND * wvafErraticChance) = 0 Then
             wvafVY = (RND - 0.5) * 0.35
             wvafVZ = (RND - 0.5) * 0.35
             wvafErratic = -1
@@ -334,7 +337,12 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).drz        = (RND - 0.5) * 2
                 asteroids(wvafI).scl        = wvafScl
                 asteroids(wvafI).life = 0  ' expire by position (px < player.px-20), not timer
-                asteroids(wvafI).strafeCool = wvafTint
+                ' strafeCool >= 10 marks erratic (non-lethal); Mod 10 gives tint index
+                If wvafErratic Then
+                    asteroids(wvafI).strafeCool = wvafTint + 10
+                Else
+                    asteroids(wvafI).strafeCool = wvafTint
+                End If
                 Exit For
             End If
         Next wvafI

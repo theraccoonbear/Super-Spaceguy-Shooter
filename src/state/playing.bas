@@ -60,7 +60,7 @@ Sub GS_PLAYING_Update ()
             camF.orbitMode = 1 - camF.orbitMode
             IF camF.orbitMode THEN
                 camF.orbitR     = SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.y-player.py)*(cam.POS.y-player.py) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz))
-                camF.orbitTheta = _ATAN2(cam.POS.z - player.pz, cam.POS.x - player.px)
+                camF.orbitTheta = _PI(1.0)
                 camF.orbitPhi   = _ATAN2(cam.POS.y - player.py, SQR((cam.POS.x-player.px)*(cam.POS.x-player.px) + (cam.POS.z-player.pz)*(cam.POS.z-player.pz)))
             ELSE
                 camF.angleLocked = -1
@@ -248,6 +248,7 @@ Sub GS_PLAYING_Update ()
         END IF
         BELT_Draw scrW, scrH
     END IF
+    STAGE_DrawPlanetBackground
     STAGE_DrawPlanet
 
     E3D_SceneBegin
