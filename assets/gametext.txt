@@ -154,3 +154,12 @@ POOP
 
 [BLOCK:speech_numbers]
 ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE
+
+[BLOCK:death_final]
+~4-~E=~7[ ~4FALLEN ~7]~E=~4-
+
+~6Another mission. Another star that will not be saved.
+
+~6~4{{the_empire}}~6 does not pause for this. The convoys keep running, the blockades keep closing, and the pilots who were supposed to be brave keep finding reasons to stay docked.
+
+~6This one flew.
