@@ -42,13 +42,15 @@ Sub STAGE_Update
     End If
 
     ' glide ship back to lane center before cinematic starts; velocity decays naturally
-    ' asteroids shift by the same delta so they don't appear to slide during recentering
+    ' camera lag and asteroids shift by the same delta so nothing slides relative to the camera
     If gameState = GS_PLANET Then
         Dim stDY As Single, stDZ As Single
         stDY = (0 - player.py) * 0.04
         stDZ = (0 - player.pz) * 0.04
-        player.py = player.py + stDY
-        player.pz = player.pz + stDZ
+        player.py  = player.py  + stDY
+        player.pz  = player.pz  + stDZ
+        camF.lagY  = camF.lagY  + stDY
+        camF.lagZ  = camF.lagZ  + stDZ
         For stI = 1 To MAX_ASTEROIDS
             If asteroids(stI).active Then
                 asteroids(stI).py = asteroids(stI).py + stDY
