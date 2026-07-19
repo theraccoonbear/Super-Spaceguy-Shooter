@@ -49,7 +49,7 @@ End Sub
 Sub WAVE_SpawnAsteroidField()
 End Sub
 
-'$INCLUDE:'../src/sequence.bas'
+'$INCLUDE:'../src/sys/sequence.bas'
 
 Sub SEQ_Init()
     seqCount = 0 : seqIdx = -1
