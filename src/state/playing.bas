@@ -105,105 +105,112 @@ Sub GS_PLAYING_Update ()
         END IF
         STAGE_Update
 
-        PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
-
-        IF gameState = GS_PLAYING THEN
-            fuelLevel = fuelLevel - FUEL_DRAIN
-            IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
-            IF fuelLevel <= 0 THEN
-                fuelLevel = 0
-                IF fuelStranded = 0 THEN TELEM_FuelExhausted
-                fuelStranded = -1
-            END IF
-        END IF
-        IF godMode THEN
-            lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
-        END IF
-
-        IF isManeuver THEN
-            thrusterScale = thrusterScale + (0.88 - thrusterScale) * 0.14
-        ELSEIF fuelStranded THEN
-            thrusterScale = thrusterScale * 0.92
+        IF deathTimer > 0 THEN
+            deathTimer = deathTimer - 1
+            IF deathTimer = 0 THEN invTimer = 240
+            FX_Update
+            E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
         ELSE
-            thrusterScale = thrusterScale + (0.28 - thrusterScale) * 0.06
-        END IF
+            PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
 
-        PLAYER_Fire
-
-        IF (INT(tt * 40)) MOD 2 = 0 THEN
-            FX_SpawnTrail player.px - 1.1, player.py, player.pz, 2, 0.005, 24, 10, _RGB(80, 140, 255), -0.035, playerVY * 0.3 - 0.008, playerVZ * 0.3
-        END IF
-
-        IF levelType = LEVEL_ASTEROID THEN
-            IF isManeuver THEN
-                astIdleTimer = 0
-            ELSEIF astIdleTimer < 9999 THEN
-                astIdleTimer = astIdleTimer + 1
-            END IF
-            IF astIdleTimer > 40 THEN
-                gspAstNear = 0
-                FOR gspAstI = 1 TO MAX_ASTEROIDS
-                    IF asteroids(gspAstI).active THEN
-                        IF asteroids(gspAstI).px > player.px AND asteroids(gspAstI).px < player.px + 35 THEN
-                            IF Abs(asteroids(gspAstI).py - player.py) < 5 AND Abs(asteroids(gspAstI).pz - player.pz) < 5 THEN
-                                gspAstNear = -1
-                            END IF
-                        END IF
-                    END IF
-                NEXT gspAstI
-                IF gspAstNear = 0 THEN astForceTarget = -1
-            END IF
-        END IF
-        WAVE_Spawn
-
-        FOR i = 1 TO MAX_BULLETS
-            IF bullets(i).active THEN
-                bullets(i).px = bullets(i).px + bullets(i).vx
-                bullets(i).py = bullets(i).py + bullets(i).vy
-                bullets(i).pz = bullets(i).pz + bullets(i).vz
-                bullets(i).life = bullets(i).life - 1
-                IF bullets(i).life <= 0 THEN bullets(i).active = 0
-            END IF
-        NEXT i
-
-        ENEMY_Update
-
-        ASTEROIDS_Update
-
-        FOR i = 1 TO MAX_POWERUPS
-            IF powerups(i).active THEN
-                powerups(i).px  = powerups(i).px  + powerups(i).vx
-                powerups(i).ry  = powerups(i).ry  + powerups(i).dry
-                powerups(i).rz  = powerups(i).rz  + powerups(i).drz
-                IF powerups(i).px < -5 THEN powerups(i).active = 0
-
-                E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                powerups(i).px, powerups(i).py, powerups(i).pz, boxLib(MESH_POWERUP), hit
-                IF hit THEN
-                    powerups(i).active = 0
-                    lives = lives + SHIELD_RESTORE
-                    IF lives > 100 THEN lives = 100
-                    score = score + SCORE_POWERUP
-                    SND_Pup
-                    TELEM_PowerupCollected
+            IF gameState = GS_PLAYING THEN
+                fuelLevel = fuelLevel - FUEL_DRAIN
+                IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
+                IF fuelLevel <= 0 THEN
+                    fuelLevel = 0
+                    IF fuelStranded = 0 THEN TELEM_FuelExhausted
+                    fuelStranded = -1
                 END IF
             END IF
-        NEXT i
+            IF godMode THEN
+                lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
+            END IF
 
-        BOSS_Update
-        EBULLET_Update
-        FX_Update
-        E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
-        IF bltActive THEN BELT_Update scrW, scrH
+            IF isManeuver THEN
+                thrusterScale = thrusterScale + (0.88 - thrusterScale) * 0.14
+            ELSEIF fuelStranded THEN
+                thrusterScale = thrusterScale * 0.92
+            ELSE
+                thrusterScale = thrusterScale + (0.28 - thrusterScale) * 0.06
+            END IF
 
-        IF gameOver THEN
-            IF score > highScore THEN highScore = score : SETTINGS_Save
-            gameOverDelay = 90
-            gameState = GS_GAMEOVER
-            StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
-            MUS_SetCue "gameover"
-            SPK_Say sSpkGameOver
-            gameOver = 0
+            PLAYER_Fire
+
+            IF (INT(tt * 40)) MOD 2 = 0 THEN
+                FX_SpawnTrail player.px - 1.1, player.py, player.pz, 2, 0.005, 24, 10, _RGB(80, 140, 255), -0.035, playerVY * 0.3 - 0.008, playerVZ * 0.3
+            END IF
+
+            IF levelType = LEVEL_ASTEROID THEN
+                IF isManeuver THEN
+                    astIdleTimer = 0
+                ELSEIF astIdleTimer < 9999 THEN
+                    astIdleTimer = astIdleTimer + 1
+                END IF
+                IF astIdleTimer > 40 THEN
+                    gspAstNear = 0
+                    FOR gspAstI = 1 TO MAX_ASTEROIDS
+                        IF asteroids(gspAstI).active THEN
+                            IF asteroids(gspAstI).px > player.px AND asteroids(gspAstI).px < player.px + 35 THEN
+                                IF Abs(asteroids(gspAstI).py - player.py) < 5 AND Abs(asteroids(gspAstI).pz - player.pz) < 5 THEN
+                                    gspAstNear = -1
+                                END IF
+                            END IF
+                        END IF
+                    NEXT gspAstI
+                    IF gspAstNear = 0 THEN astForceTarget = -1
+                END IF
+            END IF
+            WAVE_Spawn
+
+            FOR i = 1 TO MAX_BULLETS
+                IF bullets(i).active THEN
+                    bullets(i).px = bullets(i).px + bullets(i).vx
+                    bullets(i).py = bullets(i).py + bullets(i).vy
+                    bullets(i).pz = bullets(i).pz + bullets(i).vz
+                    bullets(i).life = bullets(i).life - 1
+                    IF bullets(i).life <= 0 THEN bullets(i).active = 0
+                END IF
+            NEXT i
+
+            ENEMY_Update
+
+            ASTEROIDS_Update
+
+            FOR i = 1 TO MAX_POWERUPS
+                IF powerups(i).active THEN
+                    powerups(i).px  = powerups(i).px  + powerups(i).vx
+                    powerups(i).ry  = powerups(i).ry  + powerups(i).dry
+                    powerups(i).rz  = powerups(i).rz  + powerups(i).drz
+                    IF powerups(i).px < -5 THEN powerups(i).active = 0
+
+                    E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
+                    powerups(i).px, powerups(i).py, powerups(i).pz, boxLib(MESH_POWERUP), hit
+                    IF hit THEN
+                        powerups(i).active = 0
+                        lives = lives + SHIELD_RESTORE
+                        IF lives > 100 THEN lives = 100
+                        score = score + SCORE_POWERUP
+                        SND_Pup
+                        TELEM_PowerupCollected
+                    END IF
+                END IF
+            NEXT i
+
+            BOSS_Update
+            EBULLET_Update
+            FX_Update
+            E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
+            IF bltActive THEN BELT_Update scrW, scrH
+
+            IF gameOver THEN
+                IF score > highScore THEN highScore = score : SETTINGS_Save
+                gameOverDelay = 90
+                gameState = GS_GAMEOVER
+                StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
+                MUS_SetCue "gameover"
+                SPK_Say sSpkGameOver
+                gameOver = 0
+            END IF
         END IF
     END IF
 
@@ -256,7 +263,7 @@ Sub GS_PLAYING_Update ()
     pPos.x = player.px : pPos.y = player.py : pPos.z = player.pz
     pRot.x = player.rx : pRot.y = player.ry : pRot.z = player.rz
     E3D_BuildObjectMat pPos, pRot, player.scl, objMat
-    IF invTimer = 0 OR (invTimer MOD 6) < 3 THEN
+    IF deathTimer = 0 AND (invTimer = 0 OR (invTimer MOD 6) < 3) THEN
         E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.POS, tt, lightDir
     END IF
 
@@ -264,7 +271,7 @@ Sub GS_PLAYING_Update ()
     thrusterLight.y = 0.0 : thrusterLight.z = 0.0
     pPos.x = player.px - 0.92 : pPos.y = player.py : pPos.z = player.pz
     E3D_BuildObjectMat pPos, pRot, thrusterScale, objMat
-    IF invTimer = 0 OR (invTimer MOD 6) < 3 THEN
+    IF deathTimer = 0 AND (invTimer = 0 OR (invTimer MOD 6) < 3) THEN
         E3D_SceneAddMeshLit meshLib(MESH_THRUSTER), objMat, cam.POS, tt, thrusterLight
     END IF
 

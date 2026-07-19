@@ -14,7 +14,7 @@ Sub GAME_ResetState
     fuelLevel = 100.0 : fuelStranded = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
-    thrusterScale = 0.30 : invTimer = 120 : escConfirm = 0 : titleEscConfirm = 0
+    thrusterScale = 0.30 : invTimer = 120 : deathTimer = 0 : escConfirm = 0 : titleEscConfirm = 0
     camF.lagY = 0 : camF.lagZ = 0 : camF.fwdY = 0 : camF.fwdZ = 0
     camF.orbitMode = 0
     playerVY = 0 : playerVZ = 0
