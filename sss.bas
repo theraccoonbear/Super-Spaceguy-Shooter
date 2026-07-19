@@ -30,7 +30,6 @@ $EMBED:'assets/sequence.txt':'SEQTXT'
 
 '$INCLUDE:'src/sys/version.bas'
 '$INCLUDE:'src/engine3d.bi'
-'$INCLUDE:'src/3d/obj.bas'
 '$INCLUDE:'src/sys/dims.bas'
 '$INCLUDE:'src/game.bi'
 
