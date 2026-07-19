@@ -157,9 +157,7 @@ Sub SEQ_Advance()
                 stageScore    = 2147483647   ' boss never triggers on asteroid level
                 astFieldStart = tt
                 astDestName   = planetNames(levelNum)
-                Dim seqAstDur As Single
-                If settingNerf Then seqAstDur = ASTFIELD_DURATION * 0.1 Else seqAstDur = ASTFIELD_DURATION
-                fuelLevel     = seqAstDur * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
+                fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
                 BELT_Init scrW, scrH
             Else
                 levelType = LEVEL_COMBAT
