@@ -199,50 +199,85 @@ Function SEQ_JumpToScene%(seqjSpec As String)
     SEQ_JumpToScene% = -1
 End Function
 
-' Print valid --scene names to file handle fh, derived from the loaded sequence table.
+' Print valid --scene names to file handle fh, grouped as ranges or lists.
 Sub SEQ_PrintScenes(seqpFH As Integer)
     Dim seqpI As Integer, seqpN As Integer, seqpLabel As String
-    Dim seqpSeen$(0 To SEQ_MAX - 1), seqpSeenCount As Integer
-    Dim seqpAlready As Integer, seqpJ As Integer
+    Dim seqpCNums(0 To SEQ_MAX - 1) As Integer, seqpCCnt As Integer
+    Dim seqpPNums(0 To SEQ_MAX - 1) As Integer, seqpPCnt As Integer
+    Dim seqpBNums(0 To SEQ_MAX - 1) As Integer, seqpBCnt As Integer
+    Dim seqpHasTitle As Integer, seqpHasEmp As Integer
+    Dim seqpMin As Integer, seqpMax As Integer, seqpJ As Integer
+    Dim seqpOut As String
 
     For seqpI = 0 To seqCount - 1
         seqpLabel = seqLabel$(seqpI)
-        If Len(seqpLabel) = 0 Then GoTo seqpNext
-
-        ' skip if we've already processed this label
-        seqpAlready = 0
-        For seqpJ = 0 To seqpSeenCount - 1
-            If seqpSeen$(seqpJ) = seqpLabel Then seqpAlready = -1
-        Next seqpJ
-        If seqpAlready Then GoTo seqpNext
-        seqpSeen$(seqpSeenCount) = seqpLabel : seqpSeenCount = seqpSeenCount + 1
-
-        ' emit scene names for this label
-        If seqpLabel = "title" Then
-            Print #seqpFH, "  title"
-        ElseIf seqpLabel = "emperor" Or seqKind(seqpI) = SEQ_EMPEROR Then
-            Print #seqpFH, "  emperor"
-        ElseIf seqpLabel = "crawl0" Then
-            Print #seqpFH, "  crawl0"
+        If seqpLabel = "crawl0" And seqKind(seqpI) = SEQ_CRAWL Then
+            seqpCNums(seqpCCnt) = 0 : seqpCCnt = seqpCCnt + 1
+        ElseIf seqpLabel = "title" And seqKind(seqpI) = SEQ_TITLE Then
+            seqpHasTitle = -1
+        ElseIf seqpLabel = "emperor" And seqKind(seqpI) = SEQ_EMPEROR Then
+            seqpHasEmp = -1
         ElseIf Left$(seqpLabel, 5) = "level" Then
             seqpN = Val(Mid$(seqpLabel, 6))
-            ' scan all tasks in this label block
-            For seqpJ = 0 To seqCount - 1
-                If seqLabel$(seqpJ) = seqpLabel Then
-                    Select Case seqKind(seqpJ)
-                        Case SEQ_CRAWL
-                            Print #seqpFH, "  crawl" + LTrim$(Str$(seqpN))
-                        Case SEQ_PLAY
-                            Select Case LCase$(SEQ_GetKV$(seqSval$(seqpJ), "type"))
-                                Case "combat", "asteroid" : Print #seqpFH, "  playing" + LTrim$(Str$(seqpN))
-                                Case "boss"               : Print #seqpFH, "  boss" + LTrim$(Str$(seqpN))
-                            End Select
+            Select Case seqKind(seqpI)
+                Case SEQ_CRAWL
+                    seqpCNums(seqpCCnt) = seqpN : seqpCCnt = seqpCCnt + 1
+                Case SEQ_PLAY
+                    Select Case LCase$(SEQ_GetKV$(seqSval$(seqpI), "type"))
+                        Case "combat", "asteroid"
+                            seqpPNums(seqpPCnt) = seqpN : seqpPCnt = seqpPCnt + 1
+                        Case "boss"
+                            seqpBNums(seqpBCnt) = seqpN : seqpBCnt = seqpBCnt + 1
                     End Select
-                End If
-            Next seqpJ
+            End Select
         End If
-        seqpNext:
     Next seqpI
+
+    ' format each group: [min-max] if contiguous, else [n,n,...]
+    If seqpCCnt > 0 Then
+        seqpMin = seqpCNums(0) : seqpMax = seqpCNums(seqpCCnt - 1)
+        If seqpMax - seqpMin + 1 = seqpCCnt Then
+            seqpOut = "[" + LTrim$(Str$(seqpMin)) + "-" + LTrim$(Str$(seqpMax)) + "]"
+        Else
+            seqpOut = "["
+            For seqpJ = 0 To seqpCCnt - 1
+                If seqpJ > 0 Then seqpOut = seqpOut + ","
+                seqpOut = seqpOut + LTrim$(Str$(seqpCNums(seqpJ)))
+            Next seqpJ
+            seqpOut = seqpOut + "]"
+        End If
+        Print #seqpFH, "  crawl" + seqpOut
+    End If
+    If seqpPCnt > 0 Then
+        seqpMin = seqpPNums(0) : seqpMax = seqpPNums(seqpPCnt - 1)
+        If seqpMax - seqpMin + 1 = seqpPCnt Then
+            seqpOut = "[" + LTrim$(Str$(seqpMin)) + "-" + LTrim$(Str$(seqpMax)) + "]"
+        Else
+            seqpOut = "["
+            For seqpJ = 0 To seqpPCnt - 1
+                If seqpJ > 0 Then seqpOut = seqpOut + ","
+                seqpOut = seqpOut + LTrim$(Str$(seqpPNums(seqpJ)))
+            Next seqpJ
+            seqpOut = seqpOut + "]"
+        End If
+        Print #seqpFH, "  playing" + seqpOut
+    End If
+    If seqpBCnt > 0 Then
+        seqpMin = seqpBNums(0) : seqpMax = seqpBNums(seqpBCnt - 1)
+        If seqpMax - seqpMin + 1 = seqpBCnt Then
+            seqpOut = "[" + LTrim$(Str$(seqpMin)) + "-" + LTrim$(Str$(seqpMax)) + "]"
+        Else
+            seqpOut = "["
+            For seqpJ = 0 To seqpBCnt - 1
+                If seqpJ > 0 Then seqpOut = seqpOut + ","
+                seqpOut = seqpOut + LTrim$(Str$(seqpBNums(seqpJ)))
+            Next seqpJ
+            seqpOut = seqpOut + "]"
+        End If
+        Print #seqpFH, "  boss" + seqpOut
+    End If
+    If seqpHasTitle Then Print #seqpFH, "  title"
+    If seqpHasEmp Then Print #seqpFH, "  emperor"
 End Sub
 
 ' Advance to the next sequence step and execute it.
