@@ -111,7 +111,7 @@ End Sub
 
 Sub STAGE_DrawPlanet
     Dim stSeqX As Integer, stSeqY As Integer
-    Dim stRi As Integer, stAlpha As Integer, stMsgAlpha As Integer
+    Dim stRi As Integer, stMsgAlpha As Integer
 
     If planetTimer = 0 Then Exit Sub
 
@@ -127,16 +127,13 @@ Sub STAGE_DrawPlanet
     stCx = (stVpX / stVpW + 1.0) * (scrW * 0.5)
     stCy = (1.0 - stVpY / stVpW) * (scrH * 0.5)
 
-    ' planet sprite — fades in and grows after boss defeat
+    ' planet sprite — already revealed by pre-reveal; draw at full opacity
     If planetImages(planetCurrent) <> 0 Then
         stSeqX = (planetSeq Mod 6) * 161
         stSeqY = (planetSeq \ 6) * 161
         stRi   = Int(planetR)
         _PUTIMAGE (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _
             planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
-        stAlpha = 240 - planetTimer
-        If stAlpha < 0 Then stAlpha = 0
-        If stAlpha > 0 Then Line (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _RGBA(0, 0, 0, stAlpha), BF
     End If
 
     ' "Entering [Planet] Airspace" — fades in, holds, fades out
