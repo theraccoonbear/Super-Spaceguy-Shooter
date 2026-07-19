@@ -8,7 +8,6 @@
 
 Const BOSS_SPAWN_DIST  = 55     ' boss spawns this far ahead of player
 Const BOSS_COMBAT_DIST = 20     ' boss holds at this X distance
-Const BOSS_WARN_FRAMES = 120    ' warning frames before boss spawns
 Const BOSS_FIRE_INIT   = 2.5    ' fire interval at boss spawn (before phase lock-in)
 Const BOSS_FIRE1       = 2.2    ' phase 1 fire interval
 Const BOSS_FIRE2       = 1.5    ' phase 2 fire interval
@@ -26,19 +25,9 @@ Sub BOSS_Update
     Dim bssVY As Single, bssVZ As Single
     Dim bssTgtRx As Single, bssTgtRy As Single, bssTgtRz As Single
 
-    ' trigger when score threshold reached
+    ' combat phase complete: advance sequence (-> boss step or arrive)
     If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore Then
-        If levelHasBoss = 0 Then
-            ' no boss on this level — go straight to planet
-            gameState     = GS_PLANET
-            planetTimer   = 1
-            MUS_SetCue "planet"
-            planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
-            planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
-        Else
-            boss.warnTimer = BOSS_WARN_FRAMES
-            SPK_Say GTEXT_Get$("speech_boss_warning")
-        End If
+        SEQ_Advance
     End If
 
     If boss.warnTimer > 0 Then
@@ -189,12 +178,7 @@ Sub BOSS_Update
                     If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
                     TELEM_BossDefeated
                     boss.active  = 0
-                    gameState    = GS_PLANET
-                    planetTimer  = 1
-                    MUS_SetCue "planet"
-                    ' note: stage.bas lerps player.py/pz to 0 over the GS_PLANET window
-                    planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
-                    planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
+                    SEQ_Advance   ' -> SEQ_ARRIVE: sets GS_PLANET, planet indices, music
                     score = score + 2000
                     scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
                     bssPK = 0

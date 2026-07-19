@@ -47,11 +47,7 @@ Sub WAVE_Spawn
                 scorePopTimer = 45
                 scorePopY = scrH * 0.4
             End If
-            gameState     = GS_PLANET
-            planetTimer   = 1
-            MUS_SetCue "planet"
-            planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
-            planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
+            SEQ_Advance   ' -> SEQ_ARRIVE: sets GS_PLANET, planet indices, music
         End If
         wvAstElapsed = tt - astFieldStart
         If wvAstElapsed < 3.0 And settingNerf = 0 Then
