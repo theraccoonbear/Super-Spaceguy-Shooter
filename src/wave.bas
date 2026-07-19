@@ -298,10 +298,15 @@ Sub WAVE_SpawnAsteroidField
     End Select
 
     For wvafJ = 0 To wvafN - 1
-        ' per-asteroid trajectory: most drift slightly, 1-in-10 are erratic cross-cutters
-        If Int(RND * 10) = 0 Then
-            wvafVY = (RND - 0.5) * 0.35
-            wvafVZ = (RND - 0.5) * 0.35
+        ' per-asteroid trajectory: most drift slightly, erratic ones cross-cut
+        ' erratic vy/vz capped below PLAYER_MAX_VEL (0.12) so they are always dodgeable;
+        ' erratic and high-speed vx are mutually exclusive to keep reaction time fair
+        Dim wvafErraticChance As Integer
+        If settingNerf Then wvafErraticChance = 20 Else wvafErraticChance = 10
+        If Int(RND * wvafErraticChance) = 0 Then
+            wvafVY = (RND - 0.5) * 0.18
+            wvafVZ = (RND - 0.5) * 0.18
+            If settingNerf Then wvafVY = wvafVY * 0.5 : wvafVZ = wvafVZ * 0.5
             wvafErratic = -1
         Else
             wvafVY = (RND - 0.5) * 0.06
@@ -322,11 +327,13 @@ Sub WAVE_SpawnAsteroidField
                 If wvafErratic Then asteroids(wvafI).px = asteroids(wvafI).px + 50
                 asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
                 asteroids(wvafI).pz         = wvafCZ + wvafZO(wvafJ)
-                If Int(RND * 6) = 0 Then
+                ' erratic and high-speed are mutually exclusive
+                If wvafErratic = 0 And Int(RND * 6) = 0 Then
                     asteroids(wvafI).vx = -(1.2 + RND * 0.3)
                 Else
                     asteroids(wvafI).vx = -(0.45 + RND * 0.25)
                 End If
+                If settingNerf Then asteroids(wvafI).vx = asteroids(wvafI).vx * 0.7
                 asteroids(wvafI).vy         = wvafVY
                 asteroids(wvafI).vz         = wvafVZ
                 asteroids(wvafI).drx        = (RND - 0.5) * 2
