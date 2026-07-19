@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /var/home/don/Downloads/_installers/qb64pe/code/3d/tools/hooks/post-bash-ci-check.sh"
+            "command": "bash tools/hooks/post-bash-ci-check.sh"
           }
         ]
       }
