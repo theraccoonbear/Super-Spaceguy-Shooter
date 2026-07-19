@@ -52,9 +52,9 @@ Sub WAVE_Spawn
             planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
         End If
         wvAstElapsed = tt - astFieldStart
-        If wvAstElapsed < 3.0 Then
+        If wvAstElapsed < 3.0 And settingNerf = 0 Then
             spawnTimer = 0  ' hold — empty space
-        ElseIf wvAstElapsed < 12.0 Then
+        ElseIf wvAstElapsed < 12.0 And settingNerf = 0 Then
             ' approach phase: spawn far so asteroids appear as distant 2D blobs first
             If spawnTimer > 3.5 And gameState = GS_PLAYING Then
                 spawnTimer = 0
