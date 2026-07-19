@@ -85,6 +85,8 @@ E3D_MakeCamera cam, 0, 1.5, 0, 0, 0, 0, GAME_FOV
 '$INCLUDE:'src/state/gameover.bas'
 '$INCLUDE:'src/state/crawl.bas'
 '$INCLUDE:'src/state/playing.bas'
+'$INCLUDE:'src/state/asteroids.bas'
+'$INCLUDE:'src/state/combat.bas'
 E3D_MatPerspective cam, scrW / scrH, projMat
 GAME_InitMeshes
 IF debugMode THEN dbgOverlay = 1
@@ -101,6 +103,8 @@ IF cliScene <> "" THEN
         GAME_ResetState
         levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1
         IF levelNum < 0 THEN levelNum = 0
+        planetCurrent = levelNum  ' stage-end formula (x Mod 6)+1 then gives the correct planet
+        planetNameIdx = levelNum
     END IF
     IF cliSceneType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance

@@ -101,6 +101,24 @@ VOICE plnbass  pln_bass
 CHORD gmaj_pad
 
 # ================================================================
+# ASTEROID  (belt traverse — slow Am drone, building dread)
+# ================================================================
+INST abass    0.050  0.50  0.25  0.70
+
+SEQ ast_bass  A2 4  R 4  G2 4  R 4  A2 4  F2 4  E2 4  R 4
+
+PAD am_belt   0.020  0.00003  A2  C3  E3
+PAD ast_sub   0.028  0.00002  A1
+
+DRUM ast_hh  . . H . . . . H . . H . . . . H
+
+CUE asteroid  70
+VOICE abass  ast_bass
+CHORD am_belt
+CHORD ast_sub
+DRUMS ast_hh
+
+# ================================================================
 # GAME OVER  (descending Am, slow)
 # ================================================================
 INST gobass   0.07   0.50  0.25  0.75

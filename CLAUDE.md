@@ -3,7 +3,9 @@
 ## Branch discipline
 - Stay on task. If you discover a bug while working on a feature branch, log it as a GitHub issue and move on. Do NOT fix it on an unrelated branch.
 - Exception: if the bug was introduced by your current branch's changes, fix it here.
-- Branch naming follows CI conventions: `feat/`, `fix/`, `bug/`
+- Branch naming: **`type/short-description-ISSUENUMBER`** — issue number ALWAYS at the end. Examples: `feat/level-difficulty-120`, `fix/boss-model-82`. NO EXCEPTIONS.
+- Before creating or switching to any branch: verify it has an issue number. If it does not, STOP and flag it to the user before touching any code.
+- Before writing any plan or code: run `git branch` and confirm the current branch has an issue number in the name.
 
 ## Build requirement
 - Always do a test build after any code change. Fix all errors before reporting back.

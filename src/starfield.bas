@@ -1,4 +1,16 @@
-Const E3D_SF_MAX = 400
+Const E3D_SF_MAX  = 400
+Const BELT_MAX    = 100
+
+Dim Shared bltCount                    As Integer
+Dim Shared bltActive                   As Integer
+Dim Shared bltAngle(1 To BELT_MAX)     As Single   ' radial direction from screen center
+Dim Shared bltDepth(1 To BELT_MAX)     As Single   ' current radius from center (pixels)
+Dim Shared bltDSpd(1 To BELT_MAX)      As Single   ' depth growth per frame
+Dim Shared bltSz(1 To BELT_MAX)        As Integer  ' size tier 0-3 (also controls speed)
+Dim Shared bltClr(1 To BELT_MAX)       As Long
+Dim Shared bltMaxD                     As Single   ' screen half-diagonal
+Dim Shared bltCtrX                     As Single   ' belt vanishing point screen X (set by playing.bas)
+Dim Shared bltCtrY                     As Single   ' belt vanishing point screen Y
 
 Dim Shared E3D_sfCount As Integer
 Dim Shared E3D_sfX(1 To E3D_SF_MAX)   As Single
@@ -95,6 +107,89 @@ Sub E3D_StarfieldDraw (vpMat As E3D_Matrix4, scrW As Single, scrH As Single)
             End If
         End If
     Next i
+End Sub
+
+' Belt parallax: earthen pebbles that radiate outward from the screen center,
+' exactly like the starfield but in the 2D projection plane.
+' Bigger size tier = faster speed = closer debris.
+Sub BELT_Init(bliW As Single, bliH As Single)
+    Dim bliI As Integer, bliR As Single
+    Dim bliColors(0 To 4) As Long
+    bliColors(0) = _RGB( 70,  55,  40)
+    bliColors(1) = _RGB( 55,  38,  22)
+    bliColors(2) = _RGB( 60,  60,  60)
+    bliColors(3) = _RGB( 78,  42,  28)
+    bliColors(4) = _RGB( 45,  45,  50)
+    bltMaxD   = SQR(bliW * bliW * 0.25 + bliH * bliH * 0.25)
+    bltCtrX   = bliW * 0.5
+    bltCtrY   = bliH * 0.5
+    bltCount  = 0
+    bltActive = -1
+    For bliI = 1 To BELT_MAX
+        bliR = RND
+        If bliR < 0.40 Then
+            bltSz(bliI) = 0
+        ElseIf bliR < 0.70 Then
+            bltSz(bliI) = 1
+        ElseIf bliR < 0.88 Then
+            bltSz(bliI) = 2
+        Else
+            bltSz(bliI) = 3
+        End If
+        bltAngle(bliI) = RND * _PI(2)
+        bltDepth(bliI) = RND * bltMaxD     ' scatter so they don't all flash from center at once
+        Select Case bltSz(bliI)
+        Case 0 : bltDSpd(bliI) = 0.15 + RND * 0.20
+        Case 1 : bltDSpd(bliI) = 0.30 + RND * 0.25
+        Case 2 : bltDSpd(bliI) = 0.55 + RND * 0.35
+        Case Else : bltDSpd(bliI) = 1.0 + RND * 0.6
+        End Select
+        bltClr(bliI) = bliColors(Int(RND * 5))
+        bltCount     = bltCount + 1
+    Next bliI
+End Sub
+
+Sub BELT_Update(bluW As Single, bluH As Single)
+    Dim bluI As Integer
+    For bluI = 1 To bltCount
+        bltDepth(bluI) = bltDepth(bluI) + bltDSpd(bluI)
+        If bltDepth(bluI) > bltMaxD * 1.05 Then
+            bltAngle(bluI) = RND * _PI(2)
+            bltDepth(bluI) = RND * 4
+        End If
+    Next bluI
+End Sub
+
+Sub BELT_Draw(bldW As Single, bldH As Single)
+    Dim bldI As Integer, bldX As Integer, bldY As Integer
+    Dim bldCX As Single, bldCY As Single, bldC As Long
+    Dim bldDF As Single, bldR As Integer
+    Dim bldYY As Integer, bldXW As Integer
+    bldCX = bltCtrX
+    bldCY = bltCtrY
+    For bldI = 1 To bltCount
+        bldX = Int(bldCX + COS(bltAngle(bldI)) * bltDepth(bldI))
+        bldY = Int(bldCY + SIN(bltAngle(bldI)) * bltDepth(bldI))
+        If bldX >= 0 And bldX < bldW And bldY >= 0 And bldY < bldH Then
+            bldC  = bltClr(bldI)
+            bldDF = bltDepth(bldI) / bltMaxD
+            bldR  = Int(bltSz(bldI) * bldDF * 1.8 + 0.1)
+            Select Case bldR
+            Case 0
+                PSet (bldX, bldY), bldC
+            Case 1
+                PSet (bldX, bldY), bldC
+                PSet (bldX + 1, bldY), bldC : PSet (bldX - 1, bldY), bldC
+                PSet (bldX, bldY + 1), bldC : PSet (bldX, bldY - 1), bldC
+            Case Else
+                ' scanline fill: vastly faster than Circle+Paint flood fill
+                For bldYY = -bldR To bldR
+                    bldXW = Int(Sqr(bldR * bldR - bldYY * bldYY) + 0.5)
+                    Line (bldX - bldXW, bldY + bldYY)-(bldX + bldXW, bldY + bldYY), bldC
+                Next bldYY
+            End Select
+        End If
+    Next bldI
 End Sub
 
 Sub StarfieldReset(srX As Single, srY As Single, srZ As Single)

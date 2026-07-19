@@ -44,7 +44,7 @@ Sub DBG_Overlay()
 
     dbgFrameMs = (Timer - dbgT0) * 1000
 
-    If Not dbgOverlay Then Exit Sub
+    If dbgOverlay = 0 Then Exit Sub
 
     If E3D_scnCount > 350 Then
         dbgPolyClr = _RGB(255, 80, 60)

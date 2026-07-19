@@ -31,10 +31,19 @@ Sub STAGE_Update
     End If
 
     ' glide ship back to lane center before cinematic starts; velocity decays naturally
-    ' (attitude follows via playerVY/VZ), position lerps to zero over the 120-frame window
+    ' asteroids shift by the same delta so they don't appear to slide during recentering
     If gameState = GS_PLANET Then
-        player.py = player.py + (0 - player.py) * 0.04
-        player.pz = player.pz + (0 - player.pz) * 0.04
+        Dim stDY As Single, stDZ As Single
+        stDY = (0 - player.py) * 0.04
+        stDZ = (0 - player.pz) * 0.04
+        player.py = player.py + stDY
+        player.pz = player.pz + stDZ
+        For stI = 1 To MAX_ASTEROIDS
+            If asteroids(stI).active Then
+                asteroids(stI).py = asteroids(stI).py + stDY
+                asteroids(stI).pz = asteroids(stI).pz + stDZ
+            End If
+        Next stI
     End If
 
     ' cinematic transition: camera freezes, ship rockets toward planet

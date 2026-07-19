@@ -21,8 +21,8 @@ Sub HUD_Draw
 
     _DEST backBuffer
 
-    ' crosshair and target locks — gameplay only
-    If gameState = GS_PLAYING Then
+    ' crosshair and target locks — combat only
+    If gameState = GS_PLAYING And levelType <> LEVEL_ASTEROID Then
         ' project aim point along ship nose — full E3D rotation Rx*Ry*Rz applied to forward (1,0,0)
         Dim hdRx As Single, hdRy As Single, hdRz As Single
         Dim hdAimPX As Single, hdAimPY As Single, hdAimPZ As Single
@@ -196,6 +196,29 @@ Sub HUD_Draw
     ' hi score — lower-right, always visible during play
     hdHiStr = "HI: " + LTRIM$(STR$(highScore))
     FONT_PrintAlpha fontPalette(8), backBuffer, hdHiStr, scrW - LEN(hdHiStr) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
+
+    ' parsec-to-destination gauge — asteroid field only
+    If levelType = LEVEL_ASTEROID Then
+        Dim hdPPct As Single, hdPPSC As Integer, hdPFill As Integer
+        Dim hdPClr As Long, hdPStr As String, hdPX As Integer
+        Dim hdAstDur As Single
+        If settingNerf Then hdAstDur = ASTFIELD_DURATION * 0.1 Else hdAstDur = ASTFIELD_DURATION
+        hdPPct = 1.0 - (tt - astFieldStart) / hdAstDur
+        If hdPPct < 0.0 Then hdPPct = 0.0
+        If hdPPct > 1.0 Then hdPPct = 1.0
+        hdPPSC = INT(hdPPct * ASTFIELD_PARSECS)
+        hdPStr = LTRIM$(STR$(hdPPSC)) + " PSC"
+        hdPX = scrW\2 - 56
+        FONT_PrintAlpha fontPalette(11), backBuffer, hdPStr, hdPX, scrH - 16, 255
+        hdPFill = INT(hdPPct * 50)
+        LINE (scrW\2 + 4, scrH - 14)-(scrW\2 + 56, scrH - 5), _RGB(15, 20, 30), BF
+        If hdPFill > 0 Then
+            hdPClr = _RGB(60, 160, 255)
+            LINE (scrW\2 + 5, scrH - 13)-(scrW\2 + 5 + hdPFill, scrH - 6), hdPClr, BF
+            LINE (scrW\2 + 5, scrH - 13)-(scrW\2 + 5 + hdPFill, scrH - 12), _RGB(140, 210, 255), BF
+        End If
+        LINE (scrW\2 + 4, scrH - 14)-(scrW\2 + 56, scrH - 5), _RGB(70, 90, 100), B
+    End If
 
     ' invincibility lead-in
     If invTimer > 0 And gameState = GS_PLAYING Then

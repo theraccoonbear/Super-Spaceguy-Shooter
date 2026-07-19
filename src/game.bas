@@ -105,7 +105,7 @@ Sub GAME_Usage(guErr As String)
     Print #guFH, "  -h, --help             Show this help and exit"
     Print #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     Print #guFH, "  --god                  God mode: shields, health, and laser never deplete"
-    Print #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
+    Print #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30), asteroid field 10% length"
     Print #guFH, "  --debug                Enable debug overlay and stdout event logging"
     Print #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
     Print #guFH, ""
