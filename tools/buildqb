@@ -12,6 +12,14 @@ if [ "$1" == "sss.bas" ]; then
     echo ">>> Baking in-game spoken text..."
     "$(dirname "$0")/bake_speech_dict" || exit 1
     echo ">>> ...done!"
+    REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+    if ! git -C "$REPO_ROOT" diff --exit-code assets/speech_dict.txt > /dev/null 2>&1; then
+        echo ""
+        echo "!!! speech_dict.txt was stale and has been updated." >&2
+        echo "!!! You must commit it before pushing:" >&2
+        echo "!!!   git add assets/speech_dict.txt && git commit" >&2
+        echo ""
+    fi
 fi
 
 # QB64-PE resolves $EMBED paths relative to its binary directory.
