@@ -1,21 +1,58 @@
-; sequence.txt — game scene order
-; Format: KIND [sval]    KIND: CRAWL EMPEROR TITLE PLAY
-; Adding a mission: insert a CRAWL line + a PLAY line before the outro CRAWL.
+; sequence.txt -- game scene order
+; Format:
+;   label:id              section header; id optional; becomes --scene name "labelid"
+;     TASK key=val ...    task under the label (must be indented with spaces or tab)
+;
+; Task types: CRAWL CARD TITLE PLAY ARRIVE
+; CRAWL  txt=<gtext-key>  mus=<cue>
+; CARD   img=<image-key>  mus=<cue>   (EMPEROR is a backward-compat alias)
+; TITLE  mus=<cue>
+; PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
+;   trigger=n: score threshold in units of 100 pts (nerf: * NERF_FACTOR)
+; ARRIVE mus=<cue>
 
-CRAWL intro
-EMPEROR
-TITLE
-CRAWL stage1
-PLAY game
-CRAWL stage2
-PLAY game
-CRAWL stage3
-PLAY game
-CRAWL stage4
-PLAY asteroid
-CRAWL stage5
-PLAY game
-CRAWL stage6
-PLAY game
-CRAWL outro
-TITLE
+crawl:0
+    CRAWL txt=intro mus=crawl
+
+emperor:
+    CARD img=emperor mus=emperor
+
+title:
+    TITLE mus=title
+
+level:1
+    CRAWL txt=stage1 mus=crawl
+    PLAY type=combat mus=game trigger=10
+    ARRIVE mus=planet
+
+level:2
+    CRAWL txt=stage2 mus=crawl
+    PLAY type=combat mus=game trigger=15
+    ARRIVE mus=planet
+
+level:3
+    CRAWL txt=stage3 mus=crawl
+    PLAY type=combat mus=game trigger=10
+    PLAY type=boss mus=boss
+    ARRIVE mus=planet
+
+level:4
+    CRAWL txt=stage4 mus=crawl
+    PLAY type=asteroid mus=asteroid
+    ARRIVE mus=planet
+
+level:5
+    CRAWL txt=stage5 mus=crawl
+    PLAY type=combat mus=game trigger=15
+    PLAY type=boss mus=boss
+    ARRIVE mus=planet
+
+level:6
+    CRAWL txt=stage6 mus=crawl
+    PLAY type=combat mus=game trigger=20
+    PLAY type=boss mus=boss
+    ARRIVE mus=planet
+
+outro:
+    CRAWL txt=outro mus=crawl
+    TITLE mus=title
