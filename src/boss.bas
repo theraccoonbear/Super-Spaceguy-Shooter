@@ -26,10 +26,19 @@ Sub BOSS_Update
     Dim bssVY As Single, bssVZ As Single
     Dim bssTgtRx As Single, bssTgtRy As Single, bssTgtRz As Single
 
-    ' trigger warning when score threshold reached
+    ' trigger when score threshold reached
     If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore Then
-        boss.warnTimer = BOSS_WARN_FRAMES
-        SPK_Say GTEXT_Get$("speech_boss_warning")
+        If levelHasBoss = 0 Then
+            ' no boss on this level — go straight to planet
+            gameState     = GS_PLANET
+            planetTimer   = 1
+            MUS_SetCue "planet"
+            planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
+            planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
+        Else
+            boss.warnTimer = BOSS_WARN_FRAMES
+            SPK_Say GTEXT_Get$("speech_boss_warning")
+        End If
     End If
 
     If boss.warnTimer > 0 Then
