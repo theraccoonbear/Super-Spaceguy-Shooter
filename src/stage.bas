@@ -113,16 +113,28 @@ Sub STAGE_DrawPlanet
 
     If planetTimer = 0 Then Exit Sub
 
+    ' project the same corridor-centre world point used by pre-reveal so
+    ' the planet position is continuous across the handoff
+    Dim stFwdX As Single, stVpX As Single, stVpY As Single, stVpW As Single
+    Dim stCx As Single, stCy As Single
+    stFwdX = cam.POS.x + 5000.0
+    stVpX  = stFwdX * vpMat.m(0,0) + vpMat.m(0,3)
+    stVpY  = stFwdX * vpMat.m(1,0) + vpMat.m(1,3)
+    stVpW  = stFwdX * vpMat.m(3,0) + vpMat.m(3,3)
+    If stVpW < 0.00001 Then Exit Sub
+    stCx = (stVpX / stVpW + 1.0) * (scrW * 0.5)
+    stCy = (1.0 - stVpY / stVpW) * (scrH * 0.5)
+
     ' planet sprite — fades in and grows after boss defeat
     If planetImages(planetCurrent) <> 0 Then
         stSeqX = (planetSeq Mod 6) * 161
         stSeqY = (planetSeq \ 6) * 161
         stRi   = Int(planetR)
-        _PUTIMAGE (scrW\2 - stRi, scrH\2 - 30 - stRi)-(scrW\2 + stRi, scrH\2 - 30 + stRi), _
+        _PUTIMAGE (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _
             planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
         stAlpha = 240 - planetTimer
         If stAlpha < 0 Then stAlpha = 0
-        If stAlpha > 0 Then Line (scrW\2 - stRi, scrH\2 - 30 - stRi)-(scrW\2 + stRi, scrH\2 - 30 + stRi), _RGBA(0, 0, 0, stAlpha), BF
+        If stAlpha > 0 Then Line (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _RGBA(0, 0, 0, stAlpha), BF
     End If
 
     ' "Entering [Planet] Airspace" — fades in, holds, fades out
@@ -146,7 +158,11 @@ End Sub
 Sub STAGE_DrawPlanetBackground
     If planetTimer > 0 Then Exit Sub
     If levelType = LEVEL_ASTEROID Then Exit Sub
-    If planetImages(planetCurrent) = 0 Then Exit Sub
+    ' planetCurrent is incremented on ARRIVE; pre-reveal must show the same
+    ' planet that will appear on arrival, which is the next value in the cycle
+    Dim stNextPlanet As Integer
+    stNextPlanet = (planetCurrent Mod PLANET_COUNT) + 1
+    If planetImages(stNextPlanet) = 0 Then Exit Sub
 
     Dim stProg As Single
     If levelType = LEVEL_BOSS Then
@@ -182,7 +198,7 @@ Sub STAGE_DrawPlanetBackground
     stSeqX = (planetSeq Mod 6) * 161
     stSeqY = (planetSeq \ 6) * 161
     _PUTIMAGE (stCx - stR, stCy - stR)-(stCx + stR, stCy + stR), _
-        planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
+        planetImages(stNextPlanet), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
     Dim stOverlay As Integer
     stOverlay = CInt(planetBgAlpha)
     If stOverlay > 0 Then
