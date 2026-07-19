@@ -202,7 +202,7 @@ Sub HUD_Draw
         Dim hdPPct As Single, hdPPSC As Integer, hdPFill As Integer
         Dim hdPClr As Long, hdPStr As String, hdPX As Integer
         Dim hdAstDur As Single
-        If settingNerf Then hdAstDur = ASTFIELD_DURATION * 0.1 Else hdAstDur = ASTFIELD_DURATION
+        If settingNerf Then hdAstDur = ASTFIELD_DURATION * NERF_FACTOR Else hdAstDur = ASTFIELD_DURATION
         hdPPct = 1.0 - (tt - astFieldStart) / hdAstDur
         If hdPPct < 0.0 Then hdPPct = 0.0
         If hdPPct > 1.0 Then hdPPct = 1.0

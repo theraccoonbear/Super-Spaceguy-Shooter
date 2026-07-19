@@ -37,7 +37,7 @@ Sub WAVE_Spawn
     ' --- asteroid field level: pattern-based spawning, no enemies ---
     If levelType = LEVEL_ASTEROID Then
         Dim wvAstDur As Single
-        If settingNerf Then wvAstDur = ASTFIELD_DURATION * 0.1 Else wvAstDur = ASTFIELD_DURATION
+        If settingNerf Then wvAstDur = ASTFIELD_DURATION * NERF_FACTOR Else wvAstDur = ASTFIELD_DURATION
         If tt - astFieldStart >= wvAstDur And gameState = GS_PLAYING Then
             Dim wvFuelBonus As Long
             wvFuelBonus = INT(fuelLevel * 5)
