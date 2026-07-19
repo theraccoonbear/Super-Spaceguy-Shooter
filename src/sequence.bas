@@ -160,8 +160,9 @@ Sub SEQ_Advance()
                 fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
                 BELT_Init scrW, scrH
             Else
-                levelType = LEVEL_COMBAT
-                bltActive = 0
+                levelType   = LEVEL_COMBAT
+                bltActive   = 0
+                If levelNum <= 2 Then levelHasBoss = 0 Else levelHasBoss = -1
             End If
             MUS_SetCue seqSval$(seqIdx)
             If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
