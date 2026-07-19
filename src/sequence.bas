@@ -312,6 +312,7 @@ Sub SEQ_Advance()
                     bltActive = 0
                     seqaTrig  = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If seqaTrig = 0 Then seqaTrig = 10
+                    stageScoreBase = score
                     If settingNerf Then
                         stageScore = score + CLng(seqaTrig * 100 * NERF_FACTOR)
                     Else
@@ -327,6 +328,7 @@ Sub SEQ_Advance()
                     gameState = GS_PLAYING
                 Case "boss"
                     ' stageScore set to max so combat trigger won't re-fire during boss
+                    levelType      = LEVEL_BOSS
                     stageScore     = 2147483647
                     boss.warnTimer = BOSS_WARN_FRAMES
                     Dim seqaBossWarn As String : seqaBossWarn = GTEXT_Get$("speech_boss_warning")
@@ -360,6 +362,7 @@ Sub SEQ_Advance()
         Case SEQ_ARRIVE
             gameState     = GS_PLANET
             planetTimer   = 1
+            planetR       = 40.0
             planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
             planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")

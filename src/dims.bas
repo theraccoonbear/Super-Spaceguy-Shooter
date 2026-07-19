@@ -48,6 +48,7 @@ CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (vis
 ' --- level types ---
 CONST LEVEL_COMBAT   = 0
 CONST LEVEL_ASTEROID = 1
+CONST LEVEL_BOSS     = 2
 
 ' --- camera ---
 CONST CAM_OFFSET_X  = 6.5
@@ -138,7 +139,8 @@ DIM SHARED enemyFireTimer(1 TO MAX_ENEMIES) AS SINGLE
 ' --- game state ---
 DIM SHARED score AS LONG
 DIM SHARED highScore AS LONG
-DIM SHARED stageScore AS LONG  : stageScore = BOSS_TRIGGER
+DIM SHARED stageScore AS LONG     : stageScore = BOSS_TRIGGER
+DIM SHARED stageScoreBase AS LONG : stageScoreBase = 0
 DIM SHARED lives AS INTEGER : lives = 100
 DIM SHARED shipLives AS INTEGER : shipLives = 3
 DIM SHARED tt AS SINGLE

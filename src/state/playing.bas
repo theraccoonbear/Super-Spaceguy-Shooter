@@ -248,6 +248,7 @@ Sub GS_PLAYING_Update ()
         END IF
         BELT_Draw scrW, scrH
     END IF
+    STAGE_DrawPlanetBackground
     STAGE_DrawPlanet
 
     E3D_SceneBegin
