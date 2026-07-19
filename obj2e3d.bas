@@ -9,7 +9,6 @@
 $SCREENHIDE
 
 '$INCLUDE:'src/engine3d.bi'
-'$INCLUDE:'src/3d/obj.bas'
 
 DIM cmdStr   AS STRING  : cmdStr   = LTRIM$(RTRIM$(COMMAND$))
 DIM objPath  AS STRING

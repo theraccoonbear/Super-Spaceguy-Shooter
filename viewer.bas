@@ -8,7 +8,6 @@ $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
 
 '$INCLUDE:'src/engine3d.bi'
-'$INCLUDE:'src/3d/obj.bas'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
