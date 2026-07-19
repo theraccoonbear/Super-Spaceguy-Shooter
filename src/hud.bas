@@ -220,8 +220,14 @@ Sub HUD_Draw
         LINE (scrW\2 + 4, scrH - 14)-(scrW\2 + 56, scrH - 5), _RGB(70, 90, 100), B
     End If
 
-    ' invincibility lead-in
-    If invTimer > 0 And gameState = GS_PLAYING Then
+    ' death pause: "SHIP DESTROYED" banner
+    If deathTimer > 0 And gameState = GS_PLAYING Then
+        hdThrobBright = INT(160 + 95 * SIN(tt * 18))
+        FONT_PrintCenteredAlpha fontPalette(4), backBuffer, "SHIP DESTROYED", scrH \ 2, scrW, hdThrobBright
+    End If
+
+    ' invincibility lead-in: "GET READY"
+    If invTimer > 0 And deathTimer = 0 And gameState = GS_PLAYING Then
         hdThrobBright = INT(160 + 95 * SIN(tt * 10))
         FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GET READY", scrH * 2 \ 3, scrW, hdThrobBright
     End If
