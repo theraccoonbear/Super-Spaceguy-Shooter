@@ -36,7 +36,7 @@ Sub WAVE_Spawn
 
     ' --- asteroid field level: pattern-based spawning, no enemies ---
     If levelType = LEVEL_ASTEROID Then
-        If tt - astFieldStart >= ASTFIELD_DURATION And gameState = GS_PLAYING Then
+        If tt - astFieldStart >= astFieldDuration And gameState = GS_PLAYING Then
             Dim wvFuelBonus As Long
             wvFuelBonus = INT(fuelLevel * 5)
             If wvFuelBonus > 0 Then
@@ -64,7 +64,7 @@ Sub WAVE_Spawn
             End If
         Else
             ' normal progressive density
-            wvAstProg = wvAstElapsed / ASTFIELD_DURATION
+            wvAstProg = wvAstElapsed / astFieldDuration
             If wvAstProg > 1.0 Then wvAstProg = 1.0
             wvAstInterval = 3.0
             If wvAstProg > 0.67 And wvAstProg <= 0.82 Then

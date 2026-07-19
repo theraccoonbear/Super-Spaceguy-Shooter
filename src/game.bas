@@ -10,6 +10,7 @@ Sub GAME_ResetState
     Dim grI As Integer
 
     score = 0 : IF settingNerf THEN stageScore = BOSS_TRIGGER_NERF ELSE stageScore = BOSS_TRIGGER
+    IF settingNerf THEN astFieldDuration = ASTFIELD_DURATION * 0.1 ELSE astFieldDuration = ASTFIELD_DURATION
     lives = 100 : shipLives = 3 : laserEnergy = 100.0 : gameOver = 0 : diffTime = 0 : diffScale = 0 : levelNum = 0
     fuelLevel = 100.0 : fuelStranded = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
@@ -105,7 +106,7 @@ Sub GAME_Usage(guErr As String)
     Print #guFH, "  -h, --help             Show this help and exit"
     Print #guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     Print #guFH, "  --god                  God mode: shields, health, and laser never deplete"
-    Print #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30)"
+    Print #guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30), asteroid field 10% length"
     Print #guFH, "  --debug                Enable debug overlay and stdout event logging"
     Print #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
     Print #guFH, ""

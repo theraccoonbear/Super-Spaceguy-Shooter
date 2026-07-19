@@ -201,7 +201,7 @@ Sub HUD_Draw
     If levelType = LEVEL_ASTEROID Then
         Dim hdPPct As Single, hdPPSC As Integer, hdPFill As Integer
         Dim hdPClr As Long, hdPStr As String, hdPX As Integer
-        hdPPct = 1.0 - (tt - astFieldStart) / ASTFIELD_DURATION
+        hdPPct = 1.0 - (tt - astFieldStart) / astFieldDuration
         If hdPPct < 0.0 Then hdPPct = 0.0
         If hdPPct > 1.0 Then hdPPct = 1.0
         hdPPSC = INT(hdPPct * ASTFIELD_PARSECS)
