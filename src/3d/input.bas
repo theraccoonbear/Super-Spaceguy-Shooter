@@ -25,14 +25,18 @@ Sub E3D_CtrlInit
     Dim ctrlN As Integer, ctrlI As Integer
     ctrlN = _DEVICES
     ctrlDev = 0
+    DBG_Print "Input devices (" + LTRIM$(STR$(ctrlN)) + "):"
     For ctrlI = 1 To ctrlN
+        DBG_Print "  [" + LTRIM$(STR$(ctrlI)) + "] " + _DEVICE$(ctrlI)
         If InStr(_DEVICE$(ctrlI), "[GAMEPAD]") > 0 Or InStr(_DEVICE$(ctrlI), "[JOYSTICK]") > 0 Then
             ctrlDev = ctrlI
-            DBG_Print "Gamepad (device" + LTRIM$(STR$(ctrlI)) + "): " + _DEVICE$(ctrlI)
-            Exit For
         End If
     Next ctrlI
-    If ctrlDev = 0 Then DBG_Print "No gamepad found; keyboard-only"
+    If ctrlDev > 0 Then
+        DBG_Print "Gamepad: device " + LTRIM$(STR$(ctrlDev))
+    Else
+        DBG_Print "No gamepad found; keyboard-only"
+    End If
 End Sub
 
 ' Call once per frame before reading input.
