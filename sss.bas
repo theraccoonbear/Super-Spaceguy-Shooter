@@ -28,10 +28,9 @@ $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
-'$INCLUDE:'src/version.bas'
+'$INCLUDE:'src/sys/version.bas'
 '$INCLUDE:'src/engine3d.bi'
-'$INCLUDE:'src/obj.bas'
-'$INCLUDE:'src/dims.bas'
+'$INCLUDE:'src/sys/dims.bas'
 '$INCLUDE:'src/game.bi'
 
 ' --- load sequence before CLI so GAME_Usage can enumerate valid scene names ---
