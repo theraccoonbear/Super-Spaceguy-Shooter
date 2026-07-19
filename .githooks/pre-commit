@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+case "$branch" in
+  master|main|HEAD|"") exit 0 ;;
+esac
+if [[ ! "$branch" =~ -[0-9]+$ ]]; then
+  echo "ERROR: branch '$branch' has no issue number."
+  echo "Rename: git branch -m $branch $branch-<issue-number>"
+  exit 1
+fi

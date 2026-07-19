@@ -56,32 +56,10 @@ Sub SEQ_Load(seqlData As String)
                 Case "CRAWL"   : SEQ_Add SEQ_CRAWL,   seqlSval
                 Case "EMPEROR" : SEQ_Add SEQ_EMPEROR,  ""
                 Case "TITLE"   : SEQ_Add SEQ_TITLE,    ""
-                Case "PLAY"    : SEQ_Add SEQ_PLAY,      ""
+                Case "PLAY"    : SEQ_Add SEQ_PLAY,   seqlSval
             End Select
         End If
     Loop
-End Sub
-
-' Hardcoded fallback used by headless tests (no $EMBED available).
-Sub SEQ_Init()
-    seqCount = 0 : seqIdx = -1
-    SEQ_Add SEQ_CRAWL,   "intro"   ' prologue
-    SEQ_Add SEQ_EMPEROR, ""        ' antagonist reveal
-    SEQ_Add SEQ_TITLE,   ""        ' main menu
-    SEQ_Add SEQ_CRAWL,   "stage1"  ' chapter 1
-    SEQ_Add SEQ_PLAY,    ""        ' stage 1
-    SEQ_Add SEQ_CRAWL,   "stage2"  ' chapter 2
-    SEQ_Add SEQ_PLAY,    ""        ' stage 2
-    SEQ_Add SEQ_CRAWL,   "stage3"  ' chapter 3
-    SEQ_Add SEQ_PLAY,    ""        ' stage 3
-    SEQ_Add SEQ_CRAWL,   "stage4"  ' chapter 4
-    SEQ_Add SEQ_PLAY,    ""        ' stage 4
-    SEQ_Add SEQ_CRAWL,   "stage5"  ' chapter 5
-    SEQ_Add SEQ_PLAY,    ""        ' stage 5
-    SEQ_Add SEQ_CRAWL,   "stage6"  ' chapter 6
-    SEQ_Add SEQ_PLAY,    ""        ' stage 6
-    SEQ_Add SEQ_CRAWL,   "outro"   ' epilogue
-    SEQ_Add SEQ_TITLE,   ""        ' title screen
 End Sub
 
 ' Rewind seqIdx to the first SEQ_TITLE waypoint so GAME_NewGame advances into stage 1.
@@ -174,6 +152,18 @@ Sub SEQ_Advance()
             MUS_SetCue "emperor"
         Case SEQ_PLAY
             levelNum = levelNum + 1
+            If seqSval$(seqIdx) = "asteroid" Then
+                levelType     = LEVEL_ASTEROID
+                stageScore    = 2147483647   ' boss never triggers on asteroid level
+                astFieldStart = tt
+                astDestName   = planetNames(levelNum)
+                fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
+                BELT_Init scrW, scrH
+            Else
+                levelType = LEVEL_COMBAT
+                bltActive = 0
+            End If
+            MUS_SetCue seqSval$(seqIdx)
             If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                 diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
             End If
@@ -181,7 +171,6 @@ Sub SEQ_Advance()
             If diffScale > 1.0 Then diffScale = 1.0
             StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
             gameState = GS_PLAYING
-            MUS_SetCue "game"
         Case SEQ_TITLE
             If score > highScore Then highScore = score : SETTINGS_Save
             SEQ_RewindToTitle

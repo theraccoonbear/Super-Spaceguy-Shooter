@@ -3,10 +3,11 @@ Const SND_SHOOT_LEN  = 2205
 Const SND_BOOM_LEN   = 11025
 Const SND_HIT_LEN    = 8820
 Const SND_PUP_LEN    = 4410
-Const SND_WHOOSH_LEN = 6615
+Const SND_WHOOSH_LEN = 22050
 Const SND_KICK_LEN   = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN  = 4410   ' 100ms snare
 Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
+Const SND_DEATH_LEN  = 32760  ' 742ms ship-death: three impacts then a deep BOOM
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -16,16 +17,23 @@ Dim Shared sndShoot(0 To SND_SHOOT_LEN - 1)  As Single
 Dim Shared sndBoom(0 To SND_BOOM_LEN - 1)    As Single
 Dim Shared sndHit(0 To SND_HIT_LEN - 1)      As Single
 Dim Shared sndPup(0 To SND_PUP_LEN - 1)      As Single
-Dim Shared sndWhoosh(0 To SND_WHOOSH_LEN - 1) As Single
-Dim Shared sndShootPos  As Integer : sndShootPos  = -1
-Dim Shared sndBoomPos   As Integer : sndBoomPos   = -1
-Dim Shared sndHitPos    As Integer : sndHitPos    = -1
-Dim Shared sndPupPos    As Integer : sndPupPos    = -1
-Dim Shared sndWhooshPos As Integer : sndWhooshPos = -1
+Dim Shared sndWhoosh(0 To SND_WHOOSH_LEN - 1)   As Single  ' small asteroid
+Dim Shared sndWhooshMd(0 To SND_WHOOSH_LEN - 1) As Single  ' medium asteroid
+Dim Shared sndWhooshLg(0 To SND_WHOOSH_LEN - 1) As Single  ' large asteroid
+Dim Shared sndShootPos    As Integer : sndShootPos    = -1
+Dim Shared sndBoomPos     As Integer : sndBoomPos     = -1
+Dim Shared sndHitPos      As Integer : sndHitPos      = -1
+Dim Shared sndPupPos      As Integer : sndPupPos      = -1
+Dim Shared sndWhooshPos   As Integer : sndWhooshPos   = -1
+Dim Shared sndWhooshMdPos As Integer : sndWhooshMdPos = -1
+Dim Shared sndWhooshLgPos As Integer : sndWhooshLgPos = -1
 
 Dim Shared sndKick(0 To SND_KICK_LEN - 1)   As Single
 Dim Shared sndSnare(0 To SND_SNARE_LEN - 1) As Single
 Dim Shared sndHihat(0 To SND_HIHAT_LEN - 1) As Single
+Dim Shared sndDeath(0 To SND_DEATH_LEN - 1) As Single
+Dim Shared sndDeathPos As Integer : sndDeathPos = -1
+
 Dim Shared sndKickPos  As Integer : sndKickPos  = -1
 Dim Shared sndSnarePos As Integer : sndSnarePos = -1
 Dim Shared sndHihatPos As Integer : sndHihatPos = -1
@@ -37,9 +45,10 @@ Dim Shared sndBlipLen     As Integer
 Dim Shared sndBlipPlosLen As Integer
 
 Sub SND_Init()
-    Dim sndK As Integer, sndF As Single, sndFade As Single
+    Dim sndK As Long, sndF As Single, sndFade As Single
     Dim sndGenPh As Single, sndGenT As Single
     Dim sndGenNz As Single, sndGenHP As Single, sndGenPX As Single
+    Dim sndDLK As Single
 
     sndEngineFreq = 80.0 : sndEngineAmp = 0.07
 
@@ -62,10 +71,44 @@ Sub SND_Init()
         sndFade = 1.0 - (sndK / SND_PUP_LEN) ^ 2
         sndPup(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) + Sin(6.2832 * sndF * 2.0 * sndK / SAMPLE_RATE) * 0.3) * sndFade * 0.25
     Next sndK
+    ' small asteroid: bright, sharp Doppler drop 400→160 Hz
     For sndK = 0 To SND_WHOOSH_LEN - 1
-        sndF    = 580.0 - 500.0 * sndK / SND_WHOOSH_LEN
-        sndFade = (1.0 - sndK / SND_WHOOSH_LEN) ^ 0.5
-        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.35 + (Rnd * 2.0 - 1.0) * 0.25) * sndFade * 0.32
+        sndGenT = sndK / SND_WHOOSH_LEN
+        If sndGenT < 0.30 Then
+            sndFade = sndGenT / 0.30
+        Else
+            sndGenPX = (sndGenT - 0.30) / 0.70
+            If sndGenPX < 0.0 Then sndGenPX = 0.0
+            sndFade = Exp(-sndGenPX * 3.5)
+        End If
+        sndF = 400.0 - 240.0 * sndGenT
+        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.42
+    Next sndK
+    ' medium asteroid: fuller mid-range Doppler drop 220→80 Hz
+    For sndK = 0 To SND_WHOOSH_LEN - 1
+        sndGenT = sndK / SND_WHOOSH_LEN
+        If sndGenT < 0.30 Then
+            sndFade = sndGenT / 0.30
+        Else
+            sndGenPX = (sndGenT - 0.30) / 0.70
+            If sndGenPX < 0.0 Then sndGenPX = 0.0
+            sndFade = Exp(-sndGenPX * 3.5)
+        End If
+        sndF = 220.0 - 140.0 * sndGenT
+        sndWhooshMd(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.44
+    Next sndK
+    ' large asteroid: deep bass Doppler drop 110→35 Hz, slower decay, more sustain
+    For sndK = 0 To SND_WHOOSH_LEN - 1
+        sndGenT = sndK / SND_WHOOSH_LEN
+        If sndGenT < 0.35 Then
+            sndFade = sndGenT / 0.35
+        Else
+            sndGenPX = (sndGenT - 0.35) / 0.65
+            If sndGenPX < 0.0 Then sndGenPX = 0.0
+            sndFade = Exp(-sndGenPX * 2.5)
+        End If
+        sndF = 110.0 - 75.0 * sndGenT
+        sndWhooshLg(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.25 + (Rnd * 2.0 - 1.0) * 0.75) * sndFade * 0.50
     Next sndK
 
     ' kick drum: exponential frequency sweep 160->45 Hz over 250ms
@@ -103,6 +146,63 @@ Sub SND_Init()
         sndHihat(sndK) = sndGenHP * sndFade * 0.055
     Next sndK
 
+    ' death: ka-ka-ka-BOOOM (742ms total = Integer ceiling)
+    ' Ka hits pack into first 408ms; BOOM owns 250ms→742ms = 492ms of rumble.
+    ' BOOM Exp(-0.7) holds 70% at midpoint, fades with tail to prevent end-click.
+    For sndK = 0 To SND_DEATH_LEN - 1
+        sndGenT = sndK / SND_DEATH_LEN
+        sndDeath(sndK) = 0
+
+        ' ka 1: t=0.000→0.160 (0-119ms), localT 0→5241 samples
+        sndGenPX = sndGenT / 0.160
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            sndDLK  = sndGenPX * 5241.0
+            sndF    = 350.0 - 270.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 0.5
+            If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
+            sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
+            sndDeath(sndK) = (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.70
+        End If
+
+        ' ka 2: t=0.195→0.355 (145-264ms), localT 0→5241 samples
+        sndGenPX = (sndGenT - 0.195) / 0.160
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            sndDLK  = sndGenPX * 5241.0
+            sndF    = 350.0 - 270.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 0.5
+            If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
+            sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.85
+        End If
+
+        ' ka 3: t=0.390→0.550 (290-408ms), localT 0→5241 samples
+        sndGenPX = (sndGenT - 0.390) / 0.160
+        If sndGenPX >= 0 And sndGenPX < 1 Then
+            sndDLK  = sndGenPX * 5241.0
+            sndF    = 350.0 - 270.0 * sndGenPX
+            sndFade = (1.0 - sndGenPX) ^ 0.5
+            If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
+            sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 1.00
+        End If
+
+        ' BOOM: t=0.337→1.0 (250-742ms = 492ms), localT 0→21634 samples; 180→40 Hz
+        ' Starts before ka3 so the third hit punches into an already-rising boom.
+        ' Exp(-0.7) holds 70% at midpoint; tail fadeout last 10% prevents end-click.
+        sndGenPX = (sndGenT - 0.337) / 0.663
+        If sndGenPX >= 0 Then
+            sndDLK  = sndGenPX * 21634.0
+            sndF    = 180.0 - 140.0 * sndGenPX
+            sndFade = Exp(-sndGenPX * 0.7)
+            If sndGenPX < 0.02 Then sndFade = sndFade * (sndGenPX / 0.02)
+            If sndGenPX > 0.90 Then sndFade = sndFade * (1.0 - sndGenPX) / 0.10
+            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.35) * sndFade * 1.0
+        End If
+
+        If sndDeath(sndK) >  1.0 Then sndDeath(sndK) =  1.0
+        If sndDeath(sndK) < -1.0 Then sndDeath(sndK) = -1.0
+    Next sndK
+
     MUS_Load
 End Sub
 
@@ -121,7 +221,20 @@ Sub SND_Shoot() : sndShootPos  = 0 : End Sub
 Sub SND_Boom()  : sndBoomPos   = 0 : End Sub
 Sub SND_Hit()   : sndHitPos    = 0 : End Sub
 Sub SND_Pup()   : sndPupPos    = 0 : End Sub
-Sub SND_Whoosh(): sndWhooshPos = 0 : End Sub
+Sub SND_Whoosh(wscl As Single)
+    If wscl > 2.5 Then
+        sndWhooshLgPos = 0
+    ElseIf wscl > 1.5 Then
+        sndWhooshMdPos = 0
+    Else
+        sndWhooshPos = 0
+    End If
+End Sub
+Sub SND_Death()
+    sndBoomPos  = -1   ' suppress generic boom so death BOOM dominates
+    sndHitPos   = -1
+    sndDeathPos = 0
+End Sub
 Sub SND_Blip(blipFreq As Single)
     sndBlipFreq    = blipFreq
     sndBlipPhase   = 0

@@ -40,6 +40,27 @@ SUB E3D_SceneAddMeshLit (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3
     NEXT i
 END SUB
 
+SUB E3D_SceneAddMeshLitTinted (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3D_Coord, tt AS SINGLE, lightDir AS E3D_Coord, tintR AS SINGLE, tintG AS SINGLE, tintB AS SINGLE)
+    DIM scntFc AS INTEGER, scntI AS INTEGER, scntV AS INTEGER, scntN AS INTEGER, scntVc AS INTEGER
+    E3D_GetMeshFacesLit mesh, modelMat, camPos, tt, lightDir, E3D_tmpPolys(), E3D_tmpClrs(), E3D_tmpDepths(), scntFc
+    FOR scntI = 1 TO scntFc
+        IF E3D_scnCount < E3D_SCENE_MAX THEN
+            E3D_scnCount = E3D_scnCount + 1
+            scntN  = E3D_scnCount
+            scntVc = E3D_tmpPolys(scntI).count
+            E3D_scnVCount(scntN) = scntVc
+            FOR scntV = 1 TO scntVc
+                E3D_scnVX(scntN, scntV) = E3D_tmpPolys(scntI).coords(scntV).x
+                E3D_scnVY(scntN, scntV) = E3D_tmpPolys(scntI).coords(scntV).y
+                E3D_scnVZ(scntN, scntV) = E3D_tmpPolys(scntI).coords(scntV).z
+            NEXT scntV
+            E3D_scnClrs(scntN)   = _RGB(INT(_Red32(E3D_tmpClrs(scntI)) * tintR), INT(_Green32(E3D_tmpClrs(scntI)) * tintG), INT(_Blue32(E3D_tmpClrs(scntI)) * tintB))
+            E3D_scnDepths(scntN) = E3D_tmpDepths(scntI)
+            E3D_scnOrder(scntN)  = scntN
+        END IF
+    NEXT scntI
+END SUB
+
 SUB E3D_SceneFlush (vpMat AS E3D_Matrix4, scrW AS SINGLE, scrH AS SINGLE)
     E3D_ZBufClear CINT(scrW), CINT(scrH)
     DIM scI AS INTEGER

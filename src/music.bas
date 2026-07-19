@@ -406,6 +406,11 @@ Sub MUS_Fill(musFdoSfx As Integer)
             sndPupPos = sndPupPos + 1
             If sndPupPos >= SND_PUP_LEN Then sndPupPos = -1
         End If
+        If sndDeathPos >= 0 Then
+            musFefx = musFefx + sndDeath(sndDeathPos)
+            sndDeathPos = sndDeathPos + 1
+            If sndDeathPos >= SND_DEATH_LEN Then sndDeathPos = -1
+        End If
         If sndBlipTimer > 0 Then
             Dim blpPos As Long, blpEnv As Single
             blpPos = sndBlipLen - sndBlipTimer
@@ -447,6 +452,16 @@ Sub MUS_Fill(musFdoSfx As Integer)
                 musFefx = musFefx + sndWhoosh(sndWhooshPos)
                 sndWhooshPos = sndWhooshPos + 1
                 If sndWhooshPos >= SND_WHOOSH_LEN Then sndWhooshPos = -1
+            End If
+            If sndWhooshMdPos >= 0 Then
+                musFefx = musFefx + sndWhooshMd(sndWhooshMdPos)
+                sndWhooshMdPos = sndWhooshMdPos + 1
+                If sndWhooshMdPos >= SND_WHOOSH_LEN Then sndWhooshMdPos = -1
+            End If
+            If sndWhooshLgPos >= 0 Then
+                musFefx = musFefx + sndWhooshLg(sndWhooshLgPos)
+                sndWhooshLgPos = sndWhooshLgPos + 1
+                If sndWhooshLgPos >= SND_WHOOSH_LEN Then sndWhooshLgPos = -1
             End If
             SPK_Advance
             _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musFefx) * volSfx _

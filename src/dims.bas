@@ -15,7 +15,7 @@ CONST GS_LEADIN    = 9
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
 CONST MAX_BULLETS   = 30
-CONST MAX_ASTEROIDS = 15
+CONST MAX_ASTEROIDS = 25
 CONST MAX_POWERUPS  = 5
 CONST MAX_EBULLETS  = 24
 
@@ -42,6 +42,10 @@ CONST BOSS_TRIGGER     = 1000
 CONST BOSS_TRIGGER_NERF = 100
 CONST PLANET_COUNT     = 6
 CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (visual stays unchanged)
+
+' --- level types ---
+CONST LEVEL_COMBAT   = 0
+CONST LEVEL_ASTEROID = 1
 
 ' --- camera ---
 CONST CAM_OFFSET_X  = 6.5
@@ -183,7 +187,18 @@ DIM SHARED optAboutWas AS INTEGER
 DIM SHARED thrusterScale AS SINGLE
 
 ' --- gameplay timers / misc ---
-DIM SHARED levelNum   AS INTEGER
+DIM SHARED levelNum      AS INTEGER
+DIM SHARED levelType     AS INTEGER
+Const ASTFIELD_PARSECS       = 340    ' parsec display total for the asteroid stage HUD gauge
+Const ASTFIELD_DURATION      = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
+Const ASTFIELD_FUEL_DRAIN_PT = 0.74   ' fuel units per tt-tick (FUEL_DRAIN 0.0185/frame * 40 frames/tick)
+Const ASTFIELD_FUEL_FRAC     = 0.50   ' fraction of field's base-drain cost on arrival — tune for evasive margin
+DIM SHARED astFieldStart AS SINGLE
+DIM SHARED astDestName   AS STRING
+DIM SHARED astNmSndCool   AS INTEGER
+DIM SHARED astIdleTimer   AS INTEGER
+DIM SHARED astForceTarget AS INTEGER
+DIM SHARED astSpawnXBias  AS SINGLE
 DIM SHARED invTimer AS INTEGER
 DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE
