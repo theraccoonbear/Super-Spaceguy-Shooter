@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /var/home/don/Downloads/_installers/qb64pe/code/3d/tools/hooks/post-bash-ci-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
