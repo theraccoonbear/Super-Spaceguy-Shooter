@@ -53,18 +53,29 @@ Sub WAVE_Spawn
         End If
         wvAstElapsed = tt - astFieldStart
         If wvAstElapsed < 3.0 And settingNerf = 0 Then
-            spawnTimer = 0  ' hold — empty space
+            spawnTimer = 0  ' hold — empty space (normal mode only)
         ElseIf wvAstElapsed < 12.0 And settingNerf = 0 Then
-            ' approach phase: spawn far so asteroids appear as distant 2D blobs first
+            ' approach phase (normal): spawn far so asteroids appear as distant 2D blobs
             If spawnTimer > 3.5 And gameState = GS_PLAYING Then
                 spawnTimer = 0
                 astSpawnXBias = 200.0 * (1.0 - (wvAstElapsed - 3.0) / 9.0)
                 WAVE_SpawnAsteroidField
                 astSpawnXBias = 0.0
             End If
+        ElseIf wvAstElapsed < 0.9 And settingNerf Then
+            ' approach phase (nerf): 10% duration, 10% interval — brief blob lead-in
+            If spawnTimer > 0.35 And gameState = GS_PLAYING Then
+                spawnTimer = 0
+                astSpawnXBias = 200.0 * (1.0 - wvAstElapsed / 0.9)
+                WAVE_SpawnAsteroidField
+                astSpawnXBias = 0.0
+            End If
         Else
-            ' normal progressive density
-            wvAstProg = wvAstElapsed / astFieldDuration
+            ' main progressive density — density curve runs from end of approach to astFieldDuration
+            Dim wvAstMainStart As Single
+            If settingNerf Then wvAstMainStart = 0.9 Else wvAstMainStart = 12.0
+            wvAstProg = (wvAstElapsed - wvAstMainStart) / (astFieldDuration - wvAstMainStart)
+            If wvAstProg < 0.0 Then wvAstProg = 0.0
             If wvAstProg > 1.0 Then wvAstProg = 1.0
             wvAstInterval = 3.0
             If wvAstProg > 0.67 And wvAstProg <= 0.82 Then
