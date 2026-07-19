@@ -29,6 +29,16 @@
 - Every PR body must include `Closes #N` (or `Fixes #N`) for each GitHub issue the PR resolves. Without it the issue will not auto-close on merge.
 - After every commit on a PR branch, push immediately. The user tests from a separate working copy and cannot see local commits.
 
+## Definition of done — a task is NOT complete until ALL of these are true
+1. Code builds locally with no new errors (`./tools/buildqb sss.bas`)
+2. Smoke test passes (`builds/sss --version` prints version and exits)
+3. If `assets/gametext.txt` or `assets/gamevalues.ini` changed: `bash tools/bake_speech_dict` has been run AND `assets/speech_dict.txt` is committed
+4. All changes are committed and pushed to the PR branch
+5. A PR is open against master with `Closes #N`
+6. **CI is green** — check with `gh pr checks <number>` and wait for all checks to pass before reporting the task complete to the user
+
+Never tell the user a task is done while CI is still running or red. Silence is better than a premature "done."
+
 ## Tackling a task
 - Regardless of how enthusiastic the user is to get started, make a plan that is shared first.
 - For bugs, features, or any discrete coding task, there should be:
