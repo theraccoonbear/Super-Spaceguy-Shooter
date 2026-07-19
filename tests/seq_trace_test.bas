@@ -73,7 +73,7 @@ Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 
 ' ── real sequencer ───────────────────────────────────────────────────────────
-'$INCLUDE:'../src/sequence.bas'
+'$INCLUDE:'../src/sys/sequence.bas'
 
 ' ── test sequence (matches assets/sequence.txt) ──────────────────────────────
 ' Sequence indices used by these tests:

@@ -15,7 +15,7 @@ Const SAMPLE_RATE = 44100
 Sub MUS_Load() : End Sub
 Sub MUS_Fill(n As Integer) : End Sub
 
-'$INCLUDE:'../src/snd.bas'
+'$INCLUDE:'../src/audio/snd.bas'
 
 Dim Shared stPassed As Integer, stFailed As Integer
 
