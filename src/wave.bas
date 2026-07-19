@@ -36,7 +36,9 @@ Sub WAVE_Spawn
 
     ' --- asteroid field level: pattern-based spawning, no enemies ---
     If levelType = LEVEL_ASTEROID Then
-        If tt - astFieldStart >= astFieldDuration And gameState = GS_PLAYING Then
+        Dim wvAstDur As Single
+        If settingNerf Then wvAstDur = ASTFIELD_DURATION * 0.1 Else wvAstDur = ASTFIELD_DURATION
+        If tt - astFieldStart >= wvAstDur And gameState = GS_PLAYING Then
             Dim wvFuelBonus As Long
             wvFuelBonus = INT(fuelLevel * 5)
             If wvFuelBonus > 0 Then
@@ -63,7 +65,7 @@ Sub WAVE_Spawn
                 astSpawnXBias = 0.0
             End If
         ElseIf wvAstElapsed < 0.9 And settingNerf Then
-            ' approach phase (nerf): 10% duration, 10% interval — brief blob lead-in
+            ' approach phase (nerf): brief blob lead-in at compressed interval
             If spawnTimer > 0.35 And gameState = GS_PLAYING Then
                 spawnTimer = 0
                 astSpawnXBias = 200.0 * (1.0 - wvAstElapsed / 0.9)
@@ -71,10 +73,10 @@ Sub WAVE_Spawn
                 astSpawnXBias = 0.0
             End If
         Else
-            ' main progressive density — density curve runs from end of approach to astFieldDuration
+            ' main progressive density
             Dim wvAstMainStart As Single
             If settingNerf Then wvAstMainStart = 0.9 Else wvAstMainStart = 12.0
-            wvAstProg = (wvAstElapsed - wvAstMainStart) / (astFieldDuration - wvAstMainStart)
+            wvAstProg = (wvAstElapsed - wvAstMainStart) / (wvAstDur - wvAstMainStart)
             If wvAstProg < 0.0 Then wvAstProg = 0.0
             If wvAstProg > 1.0 Then wvAstProg = 1.0
             wvAstInterval = 3.0
