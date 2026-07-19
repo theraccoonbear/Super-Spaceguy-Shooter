@@ -107,7 +107,17 @@ Sub GS_PLAYING_Update ()
 
         IF deathTimer > 0 THEN
             deathTimer = deathTimer - 1
-            IF deathTimer = 0 THEN invTimer = 240
+            IF deathTimer = 0 THEN
+                IF gameOver THEN
+                    IF score > highScore THEN highScore = score : SETTINGS_Save
+                    crawlNextState = GS_GAMEOVER
+                    CRAWL_Prep "death_final", scrH
+                    gameState = GS_CRAWL
+                    gameOver = 0
+                ELSE
+                    invTimer = 240
+                END IF
+            END IF
             FX_Update
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
         ELSE
@@ -202,7 +212,8 @@ Sub GS_PLAYING_Update ()
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
             IF bltActive THEN BELT_Update scrW, scrH
 
-            IF gameOver THEN
+            ' gameOver with deathTimer>0 is handled at deathTimer expiry above
+            IF gameOver AND deathTimer = 0 THEN
                 IF score > highScore THEN highScore = score : SETTINGS_Save
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
