@@ -36,10 +36,12 @@ CONST MESH_BOSS         = 13
 CONST MESH_COUNT        = 13
 
 ' --- boss / stage globals ---
-CONST BOSS_MAX_HP      = 30
-CONST BOSS_MAX_HP_NERF = 10
-CONST BOSS_TRIGGER     = 1000
-CONST BOSS_TRIGGER_NERF = 100
+CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
+CONST BOSS_MAX_HP       = 30
+CONST BOSS_MAX_HP_NERF  = BOSS_MAX_HP * NERF_FACTOR  ' 3
+CONST BOSS_TRIGGER      = 1000
+CONST BOSS_TRIGGER_NERF = BOSS_TRIGGER * NERF_FACTOR ' 100
+CONST BOSS_WARN_FRAMES  = 120   ' frames of warning before boss spawns
 CONST PLANET_COUNT     = 6
 CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (visual stays unchanged)
 
@@ -189,7 +191,7 @@ DIM SHARED thrusterScale AS SINGLE
 ' --- gameplay timers / misc ---
 DIM SHARED levelNum      AS INTEGER
 DIM SHARED levelType     AS INTEGER
-Const ASTFIELD_PARSECS       = 340    ' parsec display total for the asteroid stage HUD gauge
+DIM SHARED astParsecs        AS INTEGER                          ' parsec display total for the asteroid stage HUD gauge
 Const ASTFIELD_DURATION      = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
 Const ASTFIELD_FUEL_DRAIN_PT = 0.74   ' fuel units per tt-tick (FUEL_DRAIN 0.0185/frame * 40 frames/tick)
 Const ASTFIELD_FUEL_FRAC     = 0.50   ' fraction of field's base-drain cost on arrival — tune for evasive margin
