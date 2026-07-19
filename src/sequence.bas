@@ -294,7 +294,8 @@ Sub SEQ_Advance()
                     ' stageScore set to max so combat trigger won't re-fire during boss
                     stageScore     = 2147483647
                     boss.warnTimer = BOSS_WARN_FRAMES
-                    SPK_Say GTEXT_Get$("speech_boss_warning")
+                    Dim seqaBossWarn As String : seqaBossWarn = GTEXT_Get$("speech_boss_warning")
+                    SPK_Say seqaBossWarn
                     ' music cue set in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
                     levelNum      = levelNum + 1
