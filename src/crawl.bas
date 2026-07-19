@@ -31,6 +31,7 @@ DIM SHARED crawlRateScale AS SINGLE  ' uniform rate for whole crawl; computed in
 DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
 DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
 DIM SHARED crawlFFActive AS INTEGER    ' -1 while FF is active; tracks vol save/restore independent of spaceWas
+DIM SHARED crawlNextState AS INTEGER   ' 0 = SEQ_Advance on exit; nonzero = jump to that gameState
 
 ' Strip ~X color codes; expand single digits to English words for speech.
 Function CRAWL_StripColor$(scS As String)
@@ -249,3 +250,21 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
     crawlBtWas = 0
     crawlFFActive = 0
 END SUB
+
+' Called at both crawl exit points. Advances to crawlNextState if set, else SEQ_Advance.
+Sub CRAWL_Finish()
+    Dim cfNext As Integer
+    cfNext = crawlNextState
+    crawlNextState = 0
+    If cfNext > 0 Then
+        gameState = cfNext
+        If cfNext = GS_GAMEOVER Then
+            gameOverDelay = 90
+            StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
+            MUS_SetCue "gameover"
+            SPK_Say sSpkGameOver
+        End If
+    Else
+        SEQ_Advance
+    End If
+End Sub
