@@ -24,6 +24,7 @@
 ' Run:   builds/seq_dispatch_test   (exit 0 = all pass)
 
 $CONSOLE:ONLY
+$EMBED:'assets/sequence.txt':'SEQTXT'
 
 ' ── game-state constants (must match dims.bas) ──────────────────────────────
 Const GS_TITLE     = 0
@@ -84,49 +85,6 @@ Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 ' ── real sequencer ───────────────────────────────────────────────────────────
 '$INCLUDE:'../src/sequence.bas'
 
-' ── test sequence data (matches assets/sequence.txt) ─────────────────────────
-Function TestSeqData$
-    Dim d As String
-    Dim NL As String : NL = Chr$(10)
-    d = "crawl:0"            + NL
-    d = d + "    CRAWL txt=intro mus=crawl"              + NL + NL
-    d = d + "emperor:"                                   + NL
-    d = d + "    CARD img=emperor mus=emperor"           + NL + NL
-    d = d + "title:"                                     + NL
-    d = d + "    TITLE mus=title"                        + NL + NL
-    d = d + "level:1"                                    + NL
-    d = d + "    CRAWL txt=stage1 mus=crawl"             + NL
-    d = d + "    PLAY type=combat mus=game trigger=10"   + NL
-    d = d + "    ARRIVE mus=planet"                      + NL + NL
-    d = d + "level:2"                                    + NL
-    d = d + "    CRAWL txt=stage2 mus=crawl"             + NL
-    d = d + "    PLAY type=combat mus=game trigger=15"   + NL
-    d = d + "    ARRIVE mus=planet"                      + NL + NL
-    d = d + "level:3"                                    + NL
-    d = d + "    CRAWL txt=stage3 mus=crawl"             + NL
-    d = d + "    PLAY type=combat mus=game trigger=10"   + NL
-    d = d + "    PLAY type=boss mus=boss"                + NL
-    d = d + "    ARRIVE mus=planet"                      + NL + NL
-    d = d + "level:4"                                    + NL
-    d = d + "    CRAWL txt=stage4 mus=crawl"             + NL
-    d = d + "    PLAY type=asteroid mus=asteroid"        + NL
-    d = d + "    ARRIVE mus=planet"                      + NL + NL
-    d = d + "level:5"                                    + NL
-    d = d + "    CRAWL txt=stage5 mus=crawl"             + NL
-    d = d + "    PLAY type=combat mus=game trigger=15"   + NL
-    d = d + "    PLAY type=boss mus=boss"                + NL
-    d = d + "    ARRIVE mus=planet"                      + NL + NL
-    d = d + "level:6"                                    + NL
-    d = d + "    CRAWL txt=stage6 mus=crawl"             + NL
-    d = d + "    PLAY type=combat mus=game trigger=20"   + NL
-    d = d + "    PLAY type=boss mus=boss"                + NL
-    d = d + "    ARRIVE mus=planet"                      + NL + NL
-    d = d + "outro:"                                     + NL
-    d = d + "    CRAWL txt=outro mus=crawl"              + NL
-    d = d + "    TITLE mus=title"                        + NL
-    TestSeqData$ = d
-End Function
-
 ' Reset all shared state to defaults before each scenario.
 Sub ST_Reset()
     gameState    = GS_TITLE
@@ -144,8 +102,7 @@ Sub ST_Reset()
     planetTimer  = 0
     boss.warnTimer = 0
     tt           = 0
-    Dim strdSeq As String : strdSeq = TestSeqData$
-    SEQ_Load strdSeq
+    SEQ_Load _EMBEDDED$("SEQTXT")
 End Sub
 
 ' ── test helpers ─────────────────────────────────────────────────────────────
