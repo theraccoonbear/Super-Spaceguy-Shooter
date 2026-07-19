@@ -38,7 +38,7 @@ level:3
 
 level:4
     CRAWL txt=stage4 mus=crawl
-    PLAY type=asteroid mus=asteroid
+    PLAY type=asteroid mus=asteroid trigger=350 
     ARRIVE mus=planet
 
 level:5
