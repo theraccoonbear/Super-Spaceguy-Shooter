@@ -62,8 +62,11 @@ missing=""
 while IFS= read -r word; do
     if ! grep -qx "$word" "$FOUNDTMP"; then
         stem="${word%S}"
+        iestem="${word%IES}Y"
         if [[ "$stem" != "$word" ]] && (grep -q "^${stem} " "$DICT" || grep -v '^#\|^$' "$CUSTOM" | grep -q "^${stem} "); then
-            : # plural fallback covers it
+            : # -S plural fallback covers it
+        elif [[ "${#word}" -gt 3 && "${word: -3}" == "IES" ]] && (grep -q "^${iestem} " "$DICT" || grep -v '^#\|^$' "$CUSTOM" | grep -q "^${iestem} "); then
+            : # -IES plural fallback covers it
         else
             missing="${missing}${word}"$'\n'
         fi

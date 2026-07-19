@@ -599,6 +599,23 @@ SUB SPK_Init()
                         END IF
                     END IF
                 END IF
+                ' IES plural fallback: strip IES, append Y, try stem (GRANARIES->GRANARY).
+                ' IY ending is always voiced so the allophone is always Z.
+                IF spkStemFound = 0 AND LEN(wrd) > 3 AND RIGHT$(wrd, 3) = "IES" THEN
+                    spkStem = LEFT$(wrd, LEN(wrd) - 3) + "Y"
+                    SPK_DictFind spkStem, spkStemIdx
+                    IF spkStemIdx >= 0 THEN
+                        spkStemFound = -1
+                        FOR pi = 0 TO spkDictPhoneLen(spkStemIdx) - 1
+                            IF spkPhoneCount < SPK_PHONE_MAX THEN
+                                spkPhones(spkPhoneCount) = spkDictPh(spkStemIdx, pi)
+                                spkStress(spkPhoneCount) = spkDictSt(spkStemIdx, pi)
+                                spkPhoneCount = spkPhoneCount + 1
+                            END IF
+                        NEXT pi
+                        IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_Z : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
+                    END IF
+                END IF
                 IF spkStemFound = 0 THEN SPK_SpellWord wrd
             END IF
 
