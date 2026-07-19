@@ -34,6 +34,9 @@ $EMBED:'assets/sequence.txt':'SEQTXT'
 '$INCLUDE:'src/dims.bas'
 '$INCLUDE:'src/game.bi'
 
+' --- load sequence before CLI so GAME_Usage can enumerate valid scene names ---
+SEQ_Load _EMBEDDED$("SEQTXT")
+
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 CLI_Parse
 
@@ -96,17 +99,21 @@ SPK_Init
 SETTINGS_Load
 TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
-SEQ_Load _EMBEDDED$("SEQTXT")
 IF cliScene <> "" THEN
-    IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage("scene '" + cliScene + "' not found")
-    IF cliSceneType = "playing" OR cliSceneType = "boss" THEN
+    IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
+    IF cliSceneType = "playing" THEN
         GAME_ResetState
-        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1
+        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1  ' SEQ_Advance +1s on combat step
         IF levelNum < 0 THEN levelNum = 0
-        planetCurrent = levelNum  ' stage-end formula (x Mod 6)+1 then gives the correct planet
+        planetCurrent = levelNum  ' ARRIVE formula: (N Mod 6)+1 gives correct planet
         planetNameIdx = levelNum
+    ELSEIF cliSceneType = "boss" THEN
+        GAME_ResetState
+        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1))  ' boss step doesn't +1 levelNum
+        IF levelNum < 1 THEN levelNum = 1
+        planetCurrent = levelNum - 1   ' ARRIVE: (N-1 Mod 6)+1 = N
+        planetNameIdx = levelNum - 1
     END IF
-    IF cliSceneType = "boss" THEN score = stageScore  ' re-apply after GAME_ResetState zeroed it
     SEQ_Advance
 ELSE
     gameState = GS_LEADIN

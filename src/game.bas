@@ -110,11 +110,7 @@ Sub GAME_Usage(guErr As String)
     Print #guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
     Print #guFH, ""
     Print #guFH, "Scene names:"
-    Print #guFH, "  title                  Title screen (default)"
-    Print #guFH, "  crawl0                 Intro crawl"
-    Print #guFH, "  crawl1..6              Chapter crawls"
-    Print #guFH, "  playing1..6            Gameplay stages"
-    Print #guFH, "  boss1..6               Stage with boss pre-triggered on frame 1"
+    SEQ_PrintScenes guFH
     Close #guFH
     System
 End Sub
