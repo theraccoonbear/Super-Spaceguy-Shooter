@@ -506,6 +506,8 @@ SUB SPK_Init()
                 spkPpI = spkPpI + 2  ' strip possessive 'S entirely
             ELSEIF MID$(text, spkPpI, 1) = "'" THEN
                 spkPpI = spkPpI + 1  ' strip bare apostrophe (contractions: don't->dont)
+            ELSEIF MID$(text, spkPpI, 1) = "-" AND spkPpI > 1 AND MID$(text, spkPpI - 1, 1) = " " AND spkPpI < LEN(text) AND MID$(text, spkPpI + 1, 1) = " " THEN
+                spkPpOut = spkPpOut + " CMAPAUSE " : spkPpI = spkPpI + 1  ' space-hyphen-space = dash pause
             ELSE
                 spkPpOut = spkPpOut + MID$(text, spkPpI, 1) : spkPpI = spkPpI + 1
             END IF

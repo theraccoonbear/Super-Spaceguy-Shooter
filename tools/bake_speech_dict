@@ -32,17 +32,29 @@ printf '%s\n' "$rendered" \
 total=$(wc -l < "$TMP")
 
 # ---- extract matching entries from CMU dict ----
+# When a word isn't in the dict directly but its plural stem is, emit the STEM
+# entry so runtime SPK_Say's -S/-IES fallback can actually find it.
 DATATMP="$(mktemp)"
 found=0
 while IFS= read -r word; do
     entry=$(grep "^${word} " "$DICT" | head -1)
     if [ -n "$entry" ]; then
-        phones="${entry#* }"
-        printf '%s %s\n' "$word" "$phones"
+        printf '%s\n' "$entry"
         found=$((found + 1))
+    else
+        stem="${word%S}"
+        if [[ "$stem" != "$word" ]]; then
+            stementry=$(grep "^${stem} " "$DICT" | head -1)
+            [ -n "$stementry" ] && printf '%s\n' "$stementry"
+        fi
+        if [[ "${#word}" -gt 3 && "${word: -3}" == "IES" ]]; then
+            iestem="${word%IES}Y"
+            stementry=$(grep "^${iestem} " "$DICT" | head -1)
+            [ -n "$stementry" ] && printf '%s\n' "$stementry"
+        fi
     fi
 done < "$TMP" > "$DATATMP"
-sort -k1,1 "$DATATMP" -o "$DATATMP"
+sort -u -k1,1 "$DATATMP" -o "$DATATMP"
 
 # ---- merge custom entries (alien names etc. not in CMU) ----
 CUSTOM="assets/custom_words.txt"
@@ -63,10 +75,10 @@ while IFS= read -r word; do
     if ! grep -qx "$word" "$FOUNDTMP"; then
         stem="${word%S}"
         iestem="${word%IES}Y"
-        if [[ "$stem" != "$word" ]] && (grep -q "^${stem} " "$DICT" || grep -v '^#\|^$' "$CUSTOM" | grep -q "^${stem} "); then
-            : # -S plural fallback covers it
-        elif [[ "${#word}" -gt 3 && "${word: -3}" == "IES" ]] && (grep -q "^${iestem} " "$DICT" || grep -v '^#\|^$' "$CUSTOM" | grep -q "^${iestem} "); then
-            : # -IES plural fallback covers it
+        if [[ "$stem" != "$word" ]] && grep -qx "$stem" "$FOUNDTMP"; then
+            : # -S plural fallback covers it (stem is in dict)
+        elif [[ "${#word}" -gt 3 && "${word: -3}" == "IES" ]] && grep -qx "$iestem" "$FOUNDTMP"; then
+            : # -IES plural fallback covers it (stem is in dict)
         else
             missing="${missing}${word}"$'\n'
         fi

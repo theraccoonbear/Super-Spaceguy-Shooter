@@ -21,8 +21,8 @@ Sub HUD_Draw
 
     _DEST backBuffer
 
-    ' crosshair and target locks — gameplay only
-    If gameState = GS_PLAYING Then
+    ' crosshair and target locks — combat only
+    If gameState = GS_PLAYING And levelType <> LEVEL_ASTEROID Then
         ' project aim point along ship nose — full E3D rotation Rx*Ry*Rz applied to forward (1,0,0)
         Dim hdRx As Single, hdRy As Single, hdRz As Single
         Dim hdAimPX As Single, hdAimPY As Single, hdAimPZ As Single
