@@ -36,10 +36,11 @@ CONST MESH_BOSS         = 13
 CONST MESH_COUNT        = 13
 
 ' --- boss / stage globals ---
-CONST BOSS_MAX_HP      = 30
-CONST BOSS_MAX_HP_NERF = 10
-CONST BOSS_TRIGGER     = 1000
-CONST BOSS_TRIGGER_NERF = 100
+CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
+CONST BOSS_MAX_HP       = 30
+CONST BOSS_MAX_HP_NERF  = BOSS_MAX_HP * NERF_FACTOR  ' 3
+CONST BOSS_TRIGGER      = 1000
+CONST BOSS_TRIGGER_NERF = BOSS_TRIGGER * NERF_FACTOR ' 100
 CONST PLANET_COUNT     = 6
 CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (visual stays unchanged)
 
