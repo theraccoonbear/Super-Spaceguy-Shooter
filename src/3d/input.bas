@@ -28,7 +28,7 @@ Sub E3D_CtrlInit
     DBG_Print "Input devices (" + LTRIM$(STR$(ctrlN)) + "):"
     For ctrlI = 1 To ctrlN
         DBG_Print "  [" + LTRIM$(STR$(ctrlI)) + "] " + _DEVICE$(ctrlI)
-        If InStr(_DEVICE$(ctrlI), "[GAMEPAD]") > 0 Or InStr(_DEVICE$(ctrlI), "[JOYSTICK]") > 0 Then
+        If InStr(_DEVICE$(ctrlI), "[CONTROLLER]") > 0 Or InStr(_DEVICE$(ctrlI), "[GAMEPAD]") > 0 Or InStr(_DEVICE$(ctrlI), "[JOYSTICK]") > 0 Then
             ctrlDev = ctrlI
         End If
     Next ctrlI
