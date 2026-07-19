@@ -11,7 +11,6 @@ Sub SETTINGS_Save ()
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "highscore=" + LTrim$(Str$(highScore))
     If camF.angleLocked Then
-        Print #sfH, "cam_theta=" + LTrim$(Str$(camF.orbitTheta))
         Print #sfH, "cam_phi="   + LTrim$(Str$(camF.orbitPhi))
         Print #sfH, "cam_r="     + LTrim$(Str$(camF.orbitR))
         If debugMode Then DBG_Print "[settings] saved  cam_phi=" + LTrim$(Str$(camF.orbitPhi)) + "  cam_r=" + LTrim$(Str$(camF.orbitR))
@@ -33,13 +32,12 @@ Sub SETTINGS_Load ()
             sfKey = Left$(sfLine, sfEq - 1)
             sfVal = Val(Mid$(sfLine, sfEq + 1))
             Select Case sfKey
-                Case "cam_theta"
-                    camF.orbitTheta = sfVal
-                    camF.angleLocked = -1
                 Case "cam_phi"
                     If sfVal < -1.5 Then sfVal = -1.5
                     If sfVal >  1.5 Then sfVal =  1.5
-                    camF.orbitPhi = sfVal
+                    camF.orbitPhi    = sfVal
+                    camF.orbitTheta  = _PI(1.0)
+                    camF.angleLocked = -1
                 Case "cam_r"
                     If sfVal < 0.5 Then sfVal = 0.5
                     camF.orbitR = sfVal

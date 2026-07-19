@@ -1,7 +1,8 @@
 ' stage.bas — planet arrival, cinematic fly-in, and stage-complete transition
 '
-' STAGE_Update   : call once per frame in main game loop (after timers, before movement)
-' STAGE_DrawPlanet : call once per frame in render section (before scene draw)
+' STAGE_Update              : call once per frame in main game loop (after timers, before movement)
+' STAGE_DrawPlanetBackground: call once per frame before E3D_SceneBegin (pre-reveal during combat)
+' STAGE_DrawPlanet          : call once per frame in render section (before scene draw)
 '
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: st*
@@ -9,7 +10,17 @@
 Sub STAGE_Update
     Dim stI As Integer
 
-    If planetTimer = 0 Then Exit Sub
+    If planetTimer = 0 Then
+        ' tick sprite animation during pre-reveal (combat and boss phases)
+        If levelType = LEVEL_COMBAT Or levelType = LEVEL_BOSS Or levelType = LEVEL_ASTEROID Then
+            planetTick = planetTick + 1
+            If planetTick >= 4 Then
+                planetTick = 0
+                planetSeq  = (planetSeq + 1) Mod 36
+            End If
+        End If
+        Exit Sub
+    End If
 
     planetTimer = planetTimer + 1
     planetTick  = planetTick + 1
@@ -31,13 +42,15 @@ Sub STAGE_Update
     End If
 
     ' glide ship back to lane center before cinematic starts; velocity decays naturally
-    ' asteroids shift by the same delta so they don't appear to slide during recentering
+    ' camera lag and asteroids shift by the same delta so nothing slides relative to the camera
     If gameState = GS_PLANET Then
         Dim stDY As Single, stDZ As Single
         stDY = (0 - player.py) * 0.04
         stDZ = (0 - player.pz) * 0.04
-        player.py = player.py + stDY
-        player.pz = player.pz + stDZ
+        player.py  = player.py  + stDY
+        player.pz  = player.pz  + stDZ
+        camF.lagY  = camF.lagY  + stDY
+        camF.lagZ  = camF.lagZ  + stDZ
         For stI = 1 To MAX_ASTEROIDS
             If asteroids(stI).active Then
                 asteroids(stI).py = asteroids(stI).py + stDY
@@ -98,20 +111,29 @@ End Sub
 
 Sub STAGE_DrawPlanet
     Dim stSeqX As Integer, stSeqY As Integer
-    Dim stRi As Integer, stAlpha As Integer, stMsgAlpha As Integer
+    Dim stRi As Integer, stMsgAlpha As Integer
 
     If planetTimer = 0 Then Exit Sub
 
-    ' planet sprite — fades in and grows after boss defeat
+    ' project the same corridor-centre world point used by pre-reveal so
+    ' the planet position is continuous across the handoff
+    Dim stFwdX As Single, stVpX As Single, stVpY As Single, stVpW As Single
+    Dim stCx As Single, stCy As Single
+    stFwdX = cam.POS.x + 5000.0
+    stVpX  = stFwdX * vpMat.m(0,0) + vpMat.m(0,3)
+    stVpY  = stFwdX * vpMat.m(1,0) + vpMat.m(1,3)
+    stVpW  = stFwdX * vpMat.m(3,0) + vpMat.m(3,3)
+    If stVpW < 0.00001 Then Exit Sub
+    stCx = (stVpX / stVpW + 1.0) * (scrW * 0.5)
+    stCy = (1.0 - stVpY / stVpW) * (scrH * 0.5)
+
+    ' planet sprite — already revealed by pre-reveal; draw at full opacity
     If planetImages(planetCurrent) <> 0 Then
         stSeqX = (planetSeq Mod 6) * 161
         stSeqY = (planetSeq \ 6) * 161
         stRi   = Int(planetR)
-        _PUTIMAGE (scrW\2 - stRi, scrH\2 - 30 - stRi)-(scrW\2 + stRi, scrH\2 - 30 + stRi), _
+        _PUTIMAGE (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _
             planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
-        stAlpha = 240 - planetTimer
-        If stAlpha < 0 Then stAlpha = 0
-        If stAlpha > 0 Then Line (scrW\2 - stRi, scrH\2 - 30 - stRi)-(scrW\2 + stRi, scrH\2 - 30 + stRi), _RGBA(0, 0, 0, stAlpha), BF
     End If
 
     ' "Entering [Planet] Airspace" — fades in, holds, fades out
@@ -129,5 +151,65 @@ Sub STAGE_DrawPlanet
             Color _RGBA(140, 210, 255, stMsgAlpha)
             _PrintString (scrW\2 - stRi, scrH\2 + 50), "Entering " + planetNames(planetNameIdx) + " Airspace"
         End If
+    End If
+End Sub
+
+Sub STAGE_DrawPlanetBackground
+    If planetTimer > 0 Then Exit Sub
+    ' planetCurrent is incremented on ARRIVE; pre-reveal must show the same
+    ' planet that will appear on arrival, which is the next value in the cycle
+    Dim stNextPlanet As Integer
+    stNextPlanet = (planetCurrent Mod PLANET_COUNT) + 1
+    If planetImages(stNextPlanet) = 0 Then Exit Sub
+
+    Dim stProg As Single
+    Dim stAstDur As Single
+    Select Case levelType
+        Case LEVEL_BOSS
+            stProg = 1.0
+        Case LEVEL_COMBAT
+            If stageScore <= stageScoreBase Then Exit Sub
+            stProg = (score - stageScoreBase) / CSng(stageScore - stageScoreBase)
+            If stProg < 0.0 Then stProg = 0.0
+            If stProg > 1.0 Then stProg = 1.0
+        Case LEVEL_ASTEROID
+            If settingNerf Then stAstDur = ASTFIELD_DURATION * NERF_FACTOR Else stAstDur = ASTFIELD_DURATION
+            If stAstDur <= 0 Then Exit Sub
+            stProg = (tt - astFieldStart) / stAstDur
+            If stProg < 0.0 Then stProg = 0.0
+            If stProg > 1.0 Then stProg = 1.0
+        Case Else
+            Exit Sub
+    End Select
+
+    ' ease smoothed radius and overlay toward score-driven targets
+    Dim stTargetR As Single, stTargetAlpha As Single
+    stTargetR     = 3.0 + stProg * 37.0
+    stTargetAlpha = (1.0 - stProg) * 245.0
+    planetBgR     = planetBgR     + (stTargetR     - planetBgR)     * 0.03
+    planetBgAlpha = planetBgAlpha + (stTargetAlpha - planetBgAlpha) * 0.03
+
+    ' project corridor-centre far-ahead world point to screen
+    Dim stFwdX As Single
+    Dim stVpX As Single, stVpY As Single, stVpW As Single
+    Dim stCx As Single, stCy As Single
+    stFwdX = cam.POS.x + 5000.0
+    stVpX  = stFwdX * vpMat.m(0,0) + vpMat.m(0,3)
+    stVpY  = stFwdX * vpMat.m(1,0) + vpMat.m(1,3)
+    stVpW  = stFwdX * vpMat.m(3,0) + vpMat.m(3,3)
+    If stVpW < 0.00001 Then Exit Sub
+    stCx = (stVpX / stVpW + 1.0) * (scrW * 0.5)
+    stCy = (1.0 - stVpY / stVpW) * (scrH * 0.5)
+
+    Dim stR As Integer, stSeqX As Integer, stSeqY As Integer
+    stR    = CInt(planetBgR)
+    stSeqX = (planetSeq Mod 6) * 161
+    stSeqY = (planetSeq \ 6) * 161
+    _PUTIMAGE (stCx - stR, stCy - stR)-(stCx + stR, stCy + stR), _
+        planetImages(stNextPlanet), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
+    Dim stOverlay As Integer
+    stOverlay = CInt(planetBgAlpha)
+    If stOverlay > 0 Then
+        Line (stCx - stR, stCy - stR)-(stCx + stR, stCy + stR), _RGBA(0, 0, 0, stOverlay), BF
     End If
 End Sub
