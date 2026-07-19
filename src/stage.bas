@@ -1,7 +1,8 @@
 ' stage.bas — planet arrival, cinematic fly-in, and stage-complete transition
 '
-' STAGE_Update   : call once per frame in main game loop (after timers, before movement)
-' STAGE_DrawPlanet : call once per frame in render section (before scene draw)
+' STAGE_Update              : call once per frame in main game loop (after timers, before movement)
+' STAGE_DrawPlanetBackground: call once per frame before E3D_SceneBegin (pre-reveal during combat)
+' STAGE_DrawPlanet          : call once per frame in render section (before scene draw)
 '
 ' All persistent state is DIM SHARED in sss.bas.
 ' Local variable prefix: st*
@@ -129,5 +130,32 @@ Sub STAGE_DrawPlanet
             Color _RGBA(140, 210, 255, stMsgAlpha)
             _PrintString (scrW\2 - stRi, scrH\2 + 50), "Entering " + planetNames(planetNameIdx) + " Airspace"
         End If
+    End If
+End Sub
+
+Sub STAGE_DrawPlanetBackground
+    If planetTimer > 0 Then Exit Sub
+    If levelType = LEVEL_ASTEROID Then Exit Sub
+    If planetImages(planetCurrent) = 0 Then Exit Sub
+
+    Dim stProg As Single, stR As Integer, stOverlay As Integer
+    Dim stSeqX As Integer, stSeqY As Integer
+
+    If levelType = LEVEL_BOSS Then
+        stProg = 1.0
+    Else
+        If stageScore <= stageScoreBase Then Exit Sub
+        stProg = (score - stageScoreBase) / CSng(stageScore - stageScoreBase)
+        If stProg < 0.0 Then stProg = 0.0
+        If stProg > 1.0 Then stProg = 1.0
+    End If
+
+    stR      = Int(3.0 + stProg * 37.0)
+    stSeqX   = 0 : stSeqY = 0
+    _PUTIMAGE (scrW\2 - stR, scrH\2 - 30 - stR)-(scrW\2 + stR, scrH\2 - 30 + stR), _
+        planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
+    stOverlay = Int((1.0 - stProg) * 245.0)
+    If stOverlay > 0 Then
+        Line (scrW\2 - stR, scrH\2 - 30 - stR)-(scrW\2 + stR, scrH\2 - 30 + stR), _RGBA(0, 0, 0, stOverlay), BF
     End If
 End Sub
