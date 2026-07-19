@@ -11,7 +11,8 @@ print(d.get('tool_input', {}).get('command', ''))
 
 echo "$COMMAND" | grep -qE "git(\s+-C\s+\S+)?\s+push" || exit 0
 
-REPO="/var/home/don/Downloads/_installers/qb64pe/code/3d"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO=$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)
 BRANCH=$(git -C "$REPO" branch --show-current 2>/dev/null)
 [ -z "$BRANCH" ] || [ "$BRANCH" = "master" ] && exit 0
 
