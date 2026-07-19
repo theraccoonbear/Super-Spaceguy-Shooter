@@ -83,7 +83,7 @@ Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 
 ' ── real sequencer ───────────────────────────────────────────────────────────
-'$INCLUDE:'../src/sequence.bas'
+'$INCLUDE:'../src/sys/sequence.bas'
 
 ' Reset all shared state to defaults before each scenario.
 Sub ST_Reset()

@@ -12,8 +12,8 @@ Dim Shared volSfx    As Single : volSfx    = 0.9
 Dim Shared volSpeech As Single : volSpeech = 0.0
 Dim Shared spkSampleOut As Single
 
-'$INCLUDE:'src/snd.bas'
-'$INCLUDE:'src/music.bas'
+'$INCLUDE:'src/audio/snd.bas'
+'$INCLUDE:'src/audio/music.bas'
 
 ' ---- main ----
 
