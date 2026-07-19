@@ -10,7 +10,17 @@
 Sub STAGE_Update
     Dim stI As Integer
 
-    If planetTimer = 0 Then Exit Sub
+    If planetTimer = 0 Then
+        ' tick sprite animation during pre-reveal (combat and boss phases)
+        If levelType = LEVEL_COMBAT Or levelType = LEVEL_BOSS Then
+            planetTick = planetTick + 1
+            If planetTick >= 4 Then
+                planetTick = 0
+                planetSeq  = (planetSeq + 1) Mod 36
+            End If
+        End If
+        Exit Sub
+    End If
 
     planetTimer = planetTimer + 1
     planetTick  = planetTick + 1
@@ -138,9 +148,7 @@ Sub STAGE_DrawPlanetBackground
     If levelType = LEVEL_ASTEROID Then Exit Sub
     If planetImages(planetCurrent) = 0 Then Exit Sub
 
-    Dim stProg As Single, stR As Integer, stOverlay As Integer
-    Dim stSeqX As Integer, stSeqY As Integer
-
+    Dim stProg As Single
     If levelType = LEVEL_BOSS Then
         stProg = 1.0
     Else
@@ -150,12 +158,34 @@ Sub STAGE_DrawPlanetBackground
         If stProg > 1.0 Then stProg = 1.0
     End If
 
-    stR      = Int(3.0 + stProg * 37.0)
-    stSeqX   = 0 : stSeqY = 0
-    _PUTIMAGE (scrW\2 - stR, scrH\2 - 30 - stR)-(scrW\2 + stR, scrH\2 - 30 + stR), _
+    ' ease smoothed radius and overlay toward score-driven targets
+    Dim stTargetR As Single, stTargetAlpha As Single
+    stTargetR     = 3.0 + stProg * 37.0
+    stTargetAlpha = (1.0 - stProg) * 245.0
+    planetBgR     = planetBgR     + (stTargetR     - planetBgR)     * 0.03
+    planetBgAlpha = planetBgAlpha + (stTargetAlpha - planetBgAlpha) * 0.03
+
+    ' project corridor-centre far-ahead world point to screen
+    Dim stFwdX As Single
+    Dim stVpX As Single, stVpY As Single, stVpW As Single
+    Dim stCx As Single, stCy As Single
+    stFwdX = cam.POS.x + 5000.0
+    stVpX  = stFwdX * vpMat.m(0,0) + vpMat.m(0,3)
+    stVpY  = stFwdX * vpMat.m(1,0) + vpMat.m(1,3)
+    stVpW  = stFwdX * vpMat.m(3,0) + vpMat.m(3,3)
+    If stVpW < 0.00001 Then Exit Sub
+    stCx = (stVpX / stVpW + 1.0) * (scrW * 0.5)
+    stCy = (1.0 - stVpY / stVpW) * (scrH * 0.5)
+
+    Dim stR As Integer, stSeqX As Integer, stSeqY As Integer
+    stR    = CInt(planetBgR)
+    stSeqX = (planetSeq Mod 6) * 161
+    stSeqY = (planetSeq \ 6) * 161
+    _PUTIMAGE (stCx - stR, stCy - stR)-(stCx + stR, stCy + stR), _
         planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
-    stOverlay = Int((1.0 - stProg) * 245.0)
+    Dim stOverlay As Integer
+    stOverlay = CInt(planetBgAlpha)
     If stOverlay > 0 Then
-        Line (scrW\2 - stR, scrH\2 - 30 - stR)-(scrW\2 + stR, scrH\2 - 30 + stR), _RGBA(0, 0, 0, stOverlay), BF
+        Line (stCx - stR, stCy - stR)-(stCx + stR, stCy + stR), _RGBA(0, 0, 0, stOverlay), BF
     End If
 End Sub

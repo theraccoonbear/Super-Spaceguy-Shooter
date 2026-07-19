@@ -312,7 +312,9 @@ Sub SEQ_Advance()
                     bltActive = 0
                     seqaTrig  = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If seqaTrig = 0 Then seqaTrig = 10
-                    stageScoreBase = score
+                    stageScoreBase  = score
+                    planetBgR       = 3.0
+                    planetBgAlpha   = 245.0
                     If settingNerf Then
                         stageScore = score + CLng(seqaTrig * 100 * NERF_FACTOR)
                     Else
