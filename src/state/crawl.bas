@@ -123,7 +123,7 @@ Sub GS_CRAWL_Update ()
         crawlParaIdx = crawlParaCount : SPK_Say ""
         fxVCRActive = 0 : IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
         escWas = held(E3D_KEY_ESCAPE)
-        SEQ_Advance
+        CRAWL_Finish
         EXIT SUB
     END IF
     IF crawlTimer > 60 THEN
@@ -134,7 +134,7 @@ Sub GS_CRAWL_Update ()
             IF held(E3D_KEY_ESCAPE) THEN
                 fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
                 escWas = -1
-                SEQ_Advance : EXIT SUB
+                CRAWL_Finish : EXIT SUB
             END IF
             fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)

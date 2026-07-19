@@ -167,13 +167,13 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
         FX_SpawnBurst player.px, player.py, player.pz, 30, 0.35, 28, 10, _RGB(255, 140, 30)
         FX_SpawnBurst player.px, player.py, player.pz, 20, 0.55, 18,  8, _RGB(255,  60, 20)
         FX_SpawnBurst player.px, player.py, player.pz, 15, 0.15, 40, 12, _RGB(255, 220, 100)
+        deathTimer = 120
         If shipLives <= 0 Then
             gameOver = -1
             TELEM_PlayerDeath
             TELEM_SessionEnd
         Else
             lives = 100 : fuelLevel = 100.0 : fuelStranded = 0
-            deathTimer = 120
         End If
     End If
 End Sub
