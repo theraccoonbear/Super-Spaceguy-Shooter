@@ -1,0 +1,35 @@
+#!/bin/bash
+# Pre-push hook: block if speech_dict.txt is uncommitted or was not
+# updated alongside gametext.txt / gamevalues.ini changes.
+#
+# Install: bash tools/hooks/install.sh
+
+REPO=$(git rev-parse --show-toplevel)
+z40=0000000000000000000000000000000000000000
+
+# Hard block: uncommitted changes to speech_dict.txt
+if ! git -C "$REPO" diff --exit-code assets/speech_dict.txt > /dev/null 2>&1; then
+    echo "PUSH BLOCKED: assets/speech_dict.txt has uncommitted changes." >&2
+    echo "  Run: git add assets/speech_dict.txt && git commit" >&2
+    exit 1
+fi
+
+# Block: commits in this push touch gametext/gamevalues but not speech_dict
+while read local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$z40" ] && continue
+    if [ "$remote_sha" = "$z40" ]; then
+        range="$local_sha"
+    else
+        range="$remote_sha..$local_sha"
+    fi
+    changed=$(git -C "$REPO" diff --name-only "$range" 2>/dev/null)
+    if echo "$changed" | grep -qE "assets/(gametext|gamevalues)\."; then
+        if ! echo "$changed" | grep -q "assets/speech_dict.txt"; then
+            echo "PUSH BLOCKED: gametext.txt or gamevalues.ini changed but speech_dict.txt was not updated." >&2
+            echo "  Run: bash tools/bake_speech_dict && git add assets/speech_dict.txt && git commit" >&2
+            exit 1
+        fi
+    fi
+done
+
+exit 0
