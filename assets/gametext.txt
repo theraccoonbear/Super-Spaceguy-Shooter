@@ -56,9 +56,9 @@ This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage4]
 ~4-~E=~7[ ~3CHAPTER 4 ~7]~E=~4-
 
-~6The data core is aboard. ~4{{the_empire}}~6 knows it exists. They do not know where it is — yet.
+~6The data core is aboard. ~4{{the_empire}}~6 knows it exists. They do not know where it is  --  yet.
 
-~6Every other courier turned the run down. The safe routes around the ~4{{asteroid_belt_name}}~6 add fourteen hundred parsecs — beyond fuel range for any ship with a cargo hold. The direct path cuts three hundred and forty parsecs straight through: crushed moon debris, no nav beacons, and a field dense enough to swallow a frigate.
+~6Every other courier turned the run down. The safe routes around the ~4{{asteroid_belt_name}}~6 add fourteen hundred parsecs  --  beyond fuel range for any ship with a cargo hold. The direct path cuts three hundred and forty parsecs straight through: crushed moon debris, no nav beacons, and a field dense enough to swallow a frigate.
 
 ~6{{the_empire}}'s~6 mass-driver tests shattered those moons a decade ago. Their blockade ends at the belt's edge. Nothing they send in survives cleanly, so they don't bother.
 
