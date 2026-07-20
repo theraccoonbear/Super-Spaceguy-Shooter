@@ -41,7 +41,7 @@ Const DIFF_RAMP_DURATION = 600.0
 Const DIFF_STAGE_COUNT   = 6.0
 Const ASTFIELD_DURATION      = 120.0
 Const ASTFIELD_FUEL_DRAIN_PT = 0.74
-Const ASTFIELD_FUEL_FRAC     = 0.50
+Const ASTFIELD_FUEL_FRAC     = 0.563
 Const CAM_OFFSET_X = 6.5
 Const CAM_OFFSET_Y = 2.0
 
@@ -81,6 +81,7 @@ Sub SETTINGS_Save()                 : End Sub
 Sub BELT_Init(w As Single, h As Single) : End Sub
 Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
+Sub DBG_Print(s As String)          : End Sub
 
 ' ── real sequencer ───────────────────────────────────────────────────────────
 '$INCLUDE:'../src/sys/sequence.bas'
@@ -286,7 +287,7 @@ SEQ_Advance   ' should process ARRIVE (idx 5)
 ST_Assert seqIdx = 5,                                    "6.06  at idx 5 (ARRIVE)"
 ST_Assert gameState = GS_PLANET,                         "6.07  gameState=GS_PLANET (no boss)"
 ST_Assert planetTimer = 1,                               "6.08  planetTimer=1"
-ST_Assert planetCurrent = 1,                             "6.09  planetCurrent = (6 Mod 6)+1 = 1"
+ST_Assert planetCurrent = 1,                             "6.09  planetCurrent = levelNum = 1"
 ST_Assert planetNameIdx = 1,                             "6.10  planetNameIdx = 1"
 
 ' ────────────────────────────────────────────────────────────────────────────
@@ -378,29 +379,38 @@ ST_Assert levelNum = 4,                                  "10.02  levelNum increm
 ST_Assert levelType = LEVEL_ASTEROID,                    "10.03  levelType=LEVEL_ASTEROID"
 ST_Assert stageScore = 2147483647,                       "10.04  stageScore=MAX (no score trigger)"
 ST_Assert gameState = GS_PLAYING,                        "10.05  gameState=GS_PLAYING"
+' simulate asteroid field completion -> ARRIVE
+SEQ_Advance   ' idx 15: ARRIVE
+ST_Assert seqIdx = 15,                                   "10.06  at idx 15 (ARRIVE)"
+ST_Assert gameState = GS_PLANET,                         "10.07  gameState=GS_PLANET"
+ST_Assert planetCurrent = 4,                             "10.08  planetCurrent=levelNum=4 (playing4->planet4)"
+ST_Assert planetNameIdx = 4,                             "10.09  planetNameIdx=4"
 
 ' ────────────────────────────────────────────────────────────────────────────
-' 11. ARRIVE: planet indices wraparound
+' 11. ARRIVE: planet = levelNum (direct mapping, no wraparound)
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
-Print "--- 11. ARRIVE planet index wraparound ---"
+Print "--- 11. ARRIVE planet = levelNum ---"
+' level 6: combat -> boss -> ARRIVE
 ST_Reset
-' simulate being at end of level:6 (planetCurrent=5 after 5 completed levels)
-planetCurrent = 5 : planetNameIdx = 5
-ST_GoTo "boss6"
-SEQ_Advance           ' idx 22: boss PLAY (no arrive yet)
+levelNum = 5
+ST_GoTo "playing6"
+SEQ_Advance           ' idx 21: combat PLAY, levelNum -> 6
+ST_Assert levelNum = 6,                                  "11.01  levelNum=6 after level:6 combat"
+SEQ_Advance           ' idx 22: boss PLAY, levelNum unchanged
+ST_Assert levelNum = 6,                                  "11.02  levelNum=6 unchanged on boss PLAY"
 SEQ_Advance           ' idx 23: ARRIVE
-ST_Assert seqIdx = 23,                                   "11.01  at idx 23 (level:6 ARRIVE)"
-ST_Assert planetCurrent = 6,                             "11.02  planetCurrent = (5 Mod 6)+1 = 6"
-ST_Assert planetNameIdx = 6,                             "11.03  planetNameIdx = 6"
-' after level 6, simulate next arrive (wraparound to 1)
-planetCurrent = 6 : planetNameIdx = 6
-seqIdx = 23 : SEQ_Advance   ' advance to outro CRAWL then manually set planet again
-' test wraparound directly via SEQ_ARRIVE path
-planetCurrent = 6
-Dim st11 As Integer : st11 = seqIdx
-seqIdx = 22 : SEQ_Advance : SEQ_Advance   ' boss then arrive again
-ST_Assert planetCurrent = (6 Mod PLANET_COUNT) + 1,     "11.04  wraparound: (6 Mod 6)+1 = 1"
+ST_Assert seqIdx = 23,                                   "11.03  at idx 23 (level:6 ARRIVE)"
+ST_Assert planetCurrent = 6,                             "11.04  planetCurrent=levelNum=6"
+ST_Assert planetNameIdx = 6,                             "11.05  planetNameIdx=6"
+' level 3: combat -> boss -> ARRIVE
+ST_Reset
+levelNum = 2
+ST_GoTo "playing3"
+SEQ_Advance           ' combat, levelNum -> 3
+SEQ_Advance           ' boss
+SEQ_Advance           ' ARRIVE
+ST_Assert planetCurrent = 3,                             "11.06  planetCurrent=levelNum=3 for level:3"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 12. CARD / EMPEROR backward compat
