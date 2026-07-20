@@ -198,7 +198,7 @@ DIM SHARED levelType     AS INTEGER
 DIM SHARED astParsecs        AS INTEGER                          ' parsec display total for the asteroid stage HUD gauge
 Const ASTFIELD_DURATION      = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
 Const ASTFIELD_FUEL_DRAIN_PT = 0.74   ' fuel units per tt-tick (FUEL_DRAIN 0.0185/frame * 40 frames/tick)
-Const ASTFIELD_FUEL_FRAC     = 0.50   ' fraction of field's base-drain cost on arrival — tune for evasive margin
+Const ASTFIELD_FUEL_FRAC     = 0.563  ' fraction of field's base-drain cost on arrival — calibrated to ~50 fuel units at start
 DIM SHARED astFieldStart AS SINGLE
 DIM SHARED astDestName   AS STRING
 DIM SHARED astNmSndCool   AS INTEGER
