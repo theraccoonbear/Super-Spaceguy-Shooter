@@ -30,6 +30,11 @@ $EMBED:'assets/sequence.txt':'SEQTXT'
 
 DIM SHARED ctrlDev AS INTEGER
 
+' Supabase REST endpoint and anon key for network telemetry (INSERT-only via RLS).
+' Leave both empty to disable network telemetry.
+Const TELEM_NET_URL = ""
+Const TELEM_NET_KEY = ""
+
 '$INCLUDE:'src/sys/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/sys/dims.bas'
