@@ -25,7 +25,7 @@ Sub STAGE_Update
 
     planetTimer = planetTimer + 1
     planetTick  = planetTick + 1
-    If planetTick >= 4 Then
+    If planetTick >= 8 Then
         planetTick = 0
         planetSeq  = (planetSeq + 1) Mod 36
     End If
