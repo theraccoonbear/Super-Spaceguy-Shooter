@@ -156,6 +156,7 @@ Sub PLAYER_CamUpdate
 End Sub
 
 Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
+    If gameState <> GS_PLAYING Then Exit Sub
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit

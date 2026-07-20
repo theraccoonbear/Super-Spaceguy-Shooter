@@ -64,6 +64,8 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6Neither do most pilots. But the data core reaches ~2{{planet4}}~6 or it reaches no one.
 
+~6The approach lane is unpatrolled -- the Empire stopped sending ships this way after the third one vanished. It is also unserviced. No depots, no platforms, nothing between the last outpost and the belt edge. The run burns half the tanks before the first rock appears.
+
 ~6Fly light. Every thruster burn is fuel that does not come back.
 
 [BLOCK:stage5]
