@@ -28,6 +28,8 @@ $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
+DIM SHARED ctrlDev AS INTEGER
+
 '$INCLUDE:'src/sys/version.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/sys/dims.bas'
@@ -95,6 +97,7 @@ IF debugMode THEN dbgOverlay = 1
 
 SND_Init
 SPK_Init
+E3D_CtrlInit
 SETTINGS_Load
 TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
