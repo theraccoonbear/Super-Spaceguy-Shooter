@@ -338,6 +338,7 @@ Sub SEQ_Advance()
                     ' music cue set in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
                     levelNum       = levelNum + 1
+                    DBG_Print "[SEQ] PLAY asteroid fired: levelNum=" + Str$(levelNum) + " seqIdx=" + Str$(seqIdx)
                     levelType      = LEVEL_ASTEROID
                     stageScore     = 2147483647
                     planetBgR      = 3.0
@@ -364,11 +365,13 @@ Sub SEQ_Advance()
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             If Len(seqaMus) > 0 Then MUS_SetCue seqaMus Else MUS_SetCue "title"
         Case SEQ_ARRIVE
+            DBG_Print "[SEQ] ARRIVE fired: levelNum=" + Str$(levelNum) + " seqIdx=" + Str$(seqIdx)
             gameState     = GS_PLANET
             planetTimer   = 1
             planetR       = 40.0
             planetCurrent = levelNum
             planetNameIdx = levelNum
+            DBG_Print "[SEQ] ARRIVE set: planetCurrent=" + Str$(planetCurrent) + " planetNameIdx=" + Str$(planetNameIdx)
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             If Len(seqaMus) > 0 Then MUS_SetCue seqaMus Else MUS_SetCue "planet"
     End Select
