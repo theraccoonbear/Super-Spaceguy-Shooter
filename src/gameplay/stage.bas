@@ -12,9 +12,10 @@ Sub STAGE_Update
 
     If planetTimer = 0 Then
         ' tick sprite animation during pre-reveal (combat and boss phases)
+        ' slower tick rate (8 vs 4) keeps apparent spin subtle while combat is live
         If levelType = LEVEL_COMBAT Or levelType = LEVEL_BOSS Or levelType = LEVEL_ASTEROID Then
             planetTick = planetTick + 1
-            If planetTick >= 4 Then
+            If planetTick >= 8 Then
                 planetTick = 0
                 planetSeq  = (planetSeq + 1) Mod 36
             End If
@@ -127,13 +128,22 @@ Sub STAGE_DrawPlanet
     stCx = (stVpX / stVpW + 1.0) * (scrW * 0.5)
     stCy = (1.0 - stVpY / stVpW) * (scrH * 0.5)
 
-    ' planet sprite — already revealed by pre-reveal; draw at full opacity
+    ' ease any residual overlay to 0 — restores full brightness on arrival
+    If planetBgAlpha > 0 Then
+        planetBgAlpha = planetBgAlpha - planetBgAlpha * 0.08
+        If planetBgAlpha < 1.0 Then planetBgAlpha = 0.0
+    End If
+
+    ' planet sprite
     If planetImages(planetCurrent) <> 0 Then
         stSeqX = (planetSeq Mod 6) * 161
         stSeqY = (planetSeq \ 6) * 161
         stRi   = Int(planetR)
         _PUTIMAGE (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _
             planetImages(planetCurrent), backBuffer, (stSeqX, stSeqY)-(stSeqX + 160, stSeqY + 160)
+        If planetBgAlpha > 0 Then
+            Line (stCx - stRi, stCy - stRi)-(stCx + stRi, stCy + stRi), _RGBA(0, 0, 0, CInt(planetBgAlpha)), BF
+        End If
     End If
 
     ' "Entering [Planet] Airspace" — fades in, holds, fades out
@@ -183,9 +193,11 @@ Sub STAGE_DrawPlanetBackground
     End Select
 
     ' ease smoothed radius and overlay toward score-driven targets
+    ' overlay bottoms out at 128 (~50% dim) during combat so the playfield stays legible;
+    ' STAGE_DrawPlanet fades it to 0 once the player arrives
     Dim stTargetR As Single, stTargetAlpha As Single
     stTargetR     = 3.0 + stProg * 37.0
-    stTargetAlpha = (1.0 - stProg) * 245.0
+    stTargetAlpha = 128.0 + (1.0 - stProg) * 117.0
     planetBgR     = planetBgR     + (stTargetR     - planetBgR)     * 0.03
     planetBgAlpha = planetBgAlpha + (stTargetAlpha - planetBgAlpha) * 0.03
 
