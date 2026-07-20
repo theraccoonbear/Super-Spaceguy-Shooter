@@ -85,9 +85,20 @@ End Sub
 
 Sub TELEM_SessionEnd()
     Dim tlMisses As Long : tlMisses = telemShotsFired - telemShotsHit
-    TELEM_Row "session_end", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
-            + "|boss=" + LTrim$(Str$(telemBossReached)) _
-            + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
-            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
+    Dim tlData As String
+    tlData = "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
+           + "|boss=" + LTrim$(Str$(telemBossReached)) _
+           + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
+           + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
+    TELEM_Row "session_end", tlData
+    If Len(TELEM_NET_URL) > 0 And Len(TELEM_NET_KEY) > 0 And Len(telemSession) > 0 Then
+        Dim tlQ As String : tlQ = Chr$(34)
+        Dim tlJson As String
+        tlJson = "{" + tlQ + "session" + tlQ + ":" + tlQ + telemSession + tlQ _
+               + "," + tlQ + "ev_time" + tlQ + ":" + LTrim$(Str$(Int(Timer))) _
+               + "," + tlQ + "event" + tlQ + ":" + tlQ + "session_end" + tlQ _
+               + "," + tlQ + "data" + tlQ + ":" + tlQ + tlData + tlQ + "}"
+        HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tlJson
+    End If
     telemSession = ""
 End Sub
