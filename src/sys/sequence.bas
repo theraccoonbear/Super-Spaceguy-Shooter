@@ -367,8 +367,8 @@ Sub SEQ_Advance()
             gameState     = GS_PLANET
             planetTimer   = 1
             planetR       = 40.0
-            planetCurrent = (planetCurrent Mod PLANET_COUNT) + 1
-            planetNameIdx = (planetNameIdx Mod PLANET_COUNT) + 1
+            planetCurrent = levelNum
+            planetNameIdx = levelNum
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             If Len(seqaMus) > 0 Then MUS_SetCue seqaMus Else MUS_SetCue "planet"
     End Select

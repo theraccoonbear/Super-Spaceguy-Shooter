@@ -105,16 +105,12 @@ IF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
     IF cliSceneType = "playing" THEN
         GAME_ResetState
-        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1  ' SEQ_Advance +1s on combat step
+        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1  ' SEQ_Advance PLAY +1s to N
         IF levelNum < 0 THEN levelNum = 0
-        planetCurrent = levelNum  ' ARRIVE formula: (N Mod 6)+1 gives correct planet
-        planetNameIdx = levelNum
     ELSEIF cliSceneType = "boss" THEN
         GAME_ResetState
-        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1))  ' boss step doesn't +1 levelNum
+        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1))  ' boss PLAY doesn't +1 levelNum
         IF levelNum < 1 THEN levelNum = 1
-        planetCurrent = levelNum - 1   ' ARRIVE: (N-1 Mod 6)+1 = N
-        planetNameIdx = levelNum - 1
     END IF
     SEQ_Advance
 ELSE

@@ -166,10 +166,8 @@ End Sub
 
 Sub STAGE_DrawPlanetBackground
     If planetTimer > 0 Then Exit Sub
-    ' planetCurrent is incremented on ARRIVE; pre-reveal must show the same
-    ' planet that will appear on arrival, which is the next value in the cycle
     Dim stNextPlanet As Integer
-    stNextPlanet = (planetCurrent Mod PLANET_COUNT) + 1
+    stNextPlanet = levelNum
     If planetImages(stNextPlanet) = 0 Then Exit Sub
 
     Dim stProg As Single
