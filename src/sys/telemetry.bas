@@ -10,6 +10,40 @@
 '
 ' Local variable prefix: tl*
 
+Function TELEM_NewUUID$
+    Dim uuidStr As String
+    Dim uuidByte As Integer
+    Dim uuidI As Integer
+    For uuidI = 1 To 16
+        uuidByte = Int(Rnd * 256)
+        If uuidI = 7 Then uuidByte = (uuidByte And &H0F) Or &H40  ' version 4
+        If uuidI = 9 Then uuidByte = (uuidByte And &H3F) Or &H80  ' variant 10xx
+        uuidStr = uuidStr + Right$("0" + Hex$(uuidByte), 2)
+        Select Case uuidI
+            Case 4, 6, 8, 10 : uuidStr = uuidStr + "-"
+        End Select
+    Next uuidI
+    TELEM_NewUUID$ = LCase$(uuidStr)
+End Function
+
+Sub TELEM_LoadPlayerID()
+    Dim pidPath As String : pidPath = _StartDir$ + "/sss_player.id"
+    Dim pidF As Integer : pidF = FreeFile
+    If _FileExists(pidPath) Then
+        Open pidPath For Input As #pidF
+        Line Input #pidF, telemPlayerID
+        Close #pidF
+        telemPlayerID = RTrim$(LTrim$(telemPlayerID))
+    End If
+    If Len(telemPlayerID) < 32 Then
+        RANDOMIZE TIMER
+        telemPlayerID = TELEM_NewUUID$
+        Open pidPath For Output As #pidF
+        Print #pidF, telemPlayerID
+        Close #pidF
+    End If
+End Sub
+
 Sub TELEM_LoadCredentials (tlcContent As String)
     Dim tlcPos As Long : tlcPos = 1
     Dim tlcNl As Long
@@ -63,7 +97,7 @@ Sub TELEM_SessionStart()
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0
-    TELEM_Row "session_start", "version=" + VERSION$ + "|nerf=" + LTrim$(Str$(settingNerf))
+    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|nerf=" + LTrim$(Str$(settingNerf))
 End Sub
 
 Sub TELEM_EnemyKilled()
