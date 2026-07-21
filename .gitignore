@@ -25,6 +25,7 @@ Thumbs.db
 
 sss_settings.ini
 sss_speech.log
+.env
 builds/
 tests/seq_trace_test
 
