@@ -86,6 +86,16 @@ case "$(uname -s)" in
     ;;
 esac
 
+# On Linux, symlink libcurl.so into QB64_DIR before compile.
+# QB64-PE finds it there, bakes ./libcurl.so (relative) into the binary,
+# and at runtime the bundled copy in builds/ satisfies the dlopen.
+if [ "$(uname -s)" = "Linux" ]; then
+    CURL_SO=$(find /usr/lib -name 'libcurl.so' 2>/dev/null | head -1)
+    if [ -n "$CURL_SO" ]; then
+        ln -sf "$CURL_SO" "$QB64_DIR/libcurl.so"
+    fi
+fi
+
 # Write .env from CI secrets for $EMBED. Empty values disable network telemetry.
 cat > "$REPODIR/assets/.env" <<EOF
 TELEM_NET_URL=${TELEM_NET_URL:-}
@@ -116,3 +126,12 @@ case "$(uname -s)" in
     ;;
 esac
 echo "==> Build complete"
+
+# Bundle libcurl.so into builds/ so dlopen("./libcurl.so") works when game runs.
+if [ "$(uname -s)" = "Linux" ]; then
+    CURL_RUNTIME=$(find /usr/lib -name 'libcurl.so.4' 2>/dev/null | head -1)
+    if [ -n "$CURL_RUNTIME" ]; then
+        cp "$CURL_RUNTIME" "$REPODIR/builds/libcurl.so"
+        echo "==> Bundled $CURL_RUNTIME as builds/libcurl.so"
+    fi
+fi
