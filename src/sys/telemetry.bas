@@ -121,13 +121,16 @@ Sub TELEM_SessionEnd()
            + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
     TELEM_Row "session_end", tlData
+    DBG_Print "TELEM: SessionEnd url=" + LTrim$(Str$(Len(TELEM_NET_URL))) + " key=" + LTrim$(Str$(Len(TELEM_NET_KEY))) + " session=" + LTrim$(Str$(Len(telemSession)))
     If Len(TELEM_NET_URL) > 0 And Len(TELEM_NET_KEY) > 0 And Len(telemSession) > 0 Then
         Dim tlJson As String
         tlJson = JSON_Obj$(JSON_S$("session", telemSession) _
                + "," + JSON_N$("ev_time", LTrim$(Str$(Int(Timer)))) _
                + "," + JSON_S$("event", "session_end") _
                + "," + JSON_S$("data", tlData))
+        DBG_Print "TELEM: POSTing to " + TELEM_NET_URL
         HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tlJson
+        DBG_Print "TELEM: POST enqueued easyH=" + LTrim$(Str$(httpEasyH))
     End If
     telemSession = ""
 End Sub

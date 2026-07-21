@@ -54,6 +54,7 @@ Sub HTTP_Pump
     http_curl_cleanup httpEasyH : httpEasyH = 0
     http_slist_free httpSlistH  : httpSlistH = 0
     httpLastOK = -1
+    DBG_Print "HTTP: transfer complete, httpLastOK=-1"
 End Sub
 
 ' Never called -- triggers DEPENDENCY_SOCKETS so QB64-PE links libcurl
@@ -73,7 +74,7 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     Loop
 
     Dim httpH As _OFFSET : httpH = http_curl_init%&
-    If httpH = 0 Then Exit Sub
+    If httpH = 0 Then DBG_Print "HTTP: curl_easy_init returned 0 -- no libcurl?" : Exit Sub
 
     Dim httpL As _OFFSET
     httpL = http_slist_append%&(0, "Content-Type: application/json")
