@@ -27,6 +27,7 @@ DECLARE LIBRARY "curl_qb64"
     SUB     http_multi_add           ALIAS "curl_multi_add_handle"    (BYVAL httpM%&, BYVAL httpH%&)
     SUB     http_multi_perform       ALIAS "curl_multi_perform"       (BYVAL httpM%&, httpN AS LONG)
     SUB     http_multi_remove        ALIAS "curl_multi_remove_handle" (BYVAL httpM%&, BYVAL httpH%&)
+    FUNCTION http_response_code&     ALIAS "qb64_curl_response_code"  (BYVAL httpH%&)
 END DECLARE
 
 Const CURLOPT_URL         = 10002
@@ -49,12 +50,18 @@ Sub HTTP_Pump
 
     If httpPumpN > 0 Then Exit Sub
 
-    ' Transfer done -- clean up handles and mark success
+    ' Transfer done -- read status before cleanup
+    Dim httpStatus As Long : httpStatus = http_response_code&(httpEasyH)
     http_multi_remove httpMultiH, httpEasyH
     http_curl_cleanup httpEasyH : httpEasyH = 0
     http_slist_free httpSlistH  : httpSlistH = 0
-    httpLastOK = -1
-    DBG_Print "HTTP: transfer complete, httpLastOK=-1"
+    If httpStatus >= 200 And httpStatus < 300 Then
+        httpLastOK = -1
+        DBG_Print "HTTP: complete status=" + LTrim$(Str$(httpStatus)) + " OK"
+    Else
+        httpLastOK = 0
+        DBG_Print "HTTP: complete status=" + LTrim$(Str$(httpStatus)) + " FAILED"
+    End If
 End Sub
 
 ' Never called -- triggers DEPENDENCY_SOCKETS so QB64-PE links libcurl
