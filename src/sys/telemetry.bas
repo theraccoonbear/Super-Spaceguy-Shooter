@@ -37,10 +37,10 @@ End Sub
 
 Sub TELEM_Init()
     If telemOn = 0 Then Exit Sub
-    If httpAvailable Then
+    If Len(TELEM_NET_URL) > 0 Then
         DBG_Print "TELEM: HTTP telemetry enabled"
     Else
-        DBG_Print "TELEM: HTTP telemetry disabled (libcurl not found)"
+        DBG_Print "TELEM: HTTP telemetry local only (no network URL configured)"
     End If
     Dim tlF As Integer : tlF = FreeFile
     If Not _FileExists(_StartDir$ + "/sss_telemetry.csv") Then
