@@ -26,23 +26,6 @@ Function TELEM_NewUUID$
     TELEM_NewUUID$ = LCase$(uuidStr)
 End Function
 
-Sub TELEM_LoadPlayerID()
-    Dim pidPath As String : pidPath = _StartDir$ + "/sss_player.id"
-    Dim pidF As Integer : pidF = FreeFile
-    If _FileExists(pidPath) Then
-        Open pidPath For Input As #pidF
-        Line Input #pidF, telemPlayerID
-        Close #pidF
-        telemPlayerID = RTrim$(LTrim$(telemPlayerID))
-    End If
-    If Len(telemPlayerID) < 32 Then
-        RANDOMIZE TIMER
-        telemPlayerID = TELEM_NewUUID$
-        Open pidPath For Output As #pidF
-        Print #pidF, telemPlayerID
-        Close #pidF
-    End If
-End Sub
 
 Sub TELEM_LoadCredentials (tlcContent As String)
     Dim tlcPos As Long : tlcPos = 1
