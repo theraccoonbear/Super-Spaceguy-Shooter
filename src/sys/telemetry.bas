@@ -1,7 +1,7 @@
 ' telemetry.bas — gameplay event logger
 '
 ' Writes one CSV row per game event to sss_telemetry.csv in _STARTDIR$.
-' telemOn (DIM SHARED in sss.bas) gates all writes; enabled by --telem flag.
+' telemOn (DIM SHARED in sss.bas) gates all writes; disabled by --no-telem flag.
 '
 ' Format: time,session,event,data
 ' time    = seconds since midnight (INT(Timer))

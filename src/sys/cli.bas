@@ -22,7 +22,7 @@ Sub CLI_Parse()
     godMode     = (InStr(cliLine, "--god")   > 0)
     settingNerf = (InStr(cliLine, "--nerf")  > 0)
     debugMode   = (InStr(cliLine, "--debug") > 0)
-    telemOn     = (InStr(cliLine, "--telem") > 0)
+    telemOn     = (InStr(cliLine, "--no-telem") = 0)
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then
