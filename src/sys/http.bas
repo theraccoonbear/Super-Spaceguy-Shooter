@@ -6,10 +6,9 @@
 ' httpLastOK (shared)                 -1 if last completed request succeeded; 0 = failed
 ' httpAvailable (shared)              -1 if libcurl loaded OK; 0 = missing (telemetry off)
 '
-' QB64-PE bakes the libcurl path at compile time via DECLARE DYNAMIC LIBRARY.
-' qb64build.sh / buildqb symlink libcurl.so into QB64_DIR before compile so the
-' binary uses ./libcurl.so (relative), then copies libcurl.so into builds/ so the
-' game finds it at runtime regardless of distro library paths.
+' QB64-PE bakes the system libcurl path at compile time via DECLARE DYNAMIC LIBRARY.
+' If libcurl is missing or not at that path, ON ERROR GOTO catches error 260 and sets
+' httpAvailable=0 -- telemetry silently disables, game continues normally.
 '
 ' Local variable prefix: http*
 
