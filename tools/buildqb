@@ -12,6 +12,10 @@ if [ "$1" == "sss.bas" ]; then
     echo ">>> Baking in-game spoken text..."
     "$(dirname "$0")/bake_speech_dict" || exit 1
     echo ">>> ...done!"
+    # Ensure assets/telem.env exists for $EMBED (empty = no network telemetry)
+    if [ ! -f assets/telem.env ]; then
+        touch assets/telem.env
+    fi
     REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
     if ! git -C "$REPO_ROOT" diff --exit-code assets/speech_dict.txt > /dev/null 2>&1; then
         echo ""
