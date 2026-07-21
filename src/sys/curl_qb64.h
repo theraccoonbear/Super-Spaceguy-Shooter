@@ -13,11 +13,13 @@ int      curl_easy_setopt(intptr_t, int, ...);
 void     curl_easy_cleanup(intptr_t);
 intptr_t curl_slist_append(intptr_t, const char*);
 void     curl_slist_free_all(intptr_t);
-intptr_t curl_multi_init(void);
-int      curl_multi_add_handle(intptr_t, intptr_t);
-int      curl_multi_perform(intptr_t, int*);
-int      curl_multi_remove_handle(intptr_t, intptr_t);
-int      curl_easy_getinfo(intptr_t, int, ...);
+intptr_t    curl_multi_init(void);
+int         curl_multi_add_handle(intptr_t, intptr_t);
+int         curl_multi_perform(intptr_t, int*);
+int         curl_multi_remove_handle(intptr_t, intptr_t);
+void*       curl_multi_info_read(intptr_t, int*);
+int         curl_easy_getinfo(intptr_t, int, ...);
+const char* curl_easy_strerror(int);
 
 #ifdef __cplusplus
 }
@@ -63,6 +65,32 @@ static inline void qb64_curl_enable_capture(intptr_t handle) {
     qbc_hdrs_len = 0; qbc_hdrs[0] = '\0';
     curl_easy_setopt(handle, QBC_WRITEFUNCTION,  (qbc_write_fn)qbc_write_body);
     curl_easy_setopt(handle, QBC_HEADERFUNCTION, (qbc_write_fn)qbc_write_hdrs);
+}
+
+/*
+ * CURLMsg layout on 64-bit (x86-64 / aarch64):
+ *   offset  0: CURLMSG msg      (enum → int, 4 bytes)
+ *   offset  4: padding          (4 bytes)
+ *   offset  8: CURL *easy_handle (pointer, 8 bytes)
+ *   offset 16: union { void*; CURLcode result; } (8-byte slot; result is int at offset 16)
+ * CURLMSG_DONE = 1
+ */
+static inline int qb64_curl_last_curlcode(intptr_t multi_handle) {
+    int msgs = 0;
+    unsigned char *msg = (unsigned char *)curl_multi_info_read(multi_handle, &msgs);
+    if (!msg) return -1;
+    int curlmsg; memcpy(&curlmsg, msg,      sizeof(curlmsg));  /* CURLMSG enum */
+    if (curlmsg != 1) return -2;                                /* not CURLMSG_DONE */
+    int result;  memcpy(&result,  msg + 16, sizeof(result));   /* CURLcode */
+    return result;
+}
+
+static inline void qb64_curl_error_str(int code, char *out, int maxlen) {
+    const char *s = curl_easy_strerror(code);
+    if (!s) s = "(null)";
+    int n = 0;
+    while (s[n] && n < maxlen - 1) { out[n] = s[n]; n++; }
+    out[n] = '\0';
 }
 
 static inline long qb64_curl_response_code(intptr_t handle) {
