@@ -37,15 +37,6 @@ fi
 QB64_DIR="$(dirname "$(realpath "$QB64_BIN")")"
 ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
 
-# Symlink libcurl.so into QB64_DIR so QB64-PE bakes ./libcurl.so (relative path).
-# buildqb then copies the versioned .so.4 into builds/ so dlopen finds it at runtime.
-if [ "$(uname -s)" = "Linux" ]; then
-    CURL_SO=$(find /usr/lib64 /usr/lib -name 'libcurl.so' 2>/dev/null | head -1)
-    if [ -n "$CURL_SO" ]; then
-        ln -sf "$CURL_SO" "$QB64_DIR/libcurl.so"
-    fi
-fi
-
 
 # Remove stale executable so a failed build can't be mistaken for success
 rm -f "$old_exe"
@@ -61,15 +52,6 @@ if [ $build_status -ne 0 ] || echo "$build_output" | grep -Eiq 'error|fatal' || 
 fi
 
 echo ">>> done!"
-
-# Bundle libcurl.so into builds/ so dlopen("./libcurl.so") resolves at runtime.
-# Users run the game from builds/ (or a wrapper script handles the cd).
-if [ "$(uname -s)" = "Linux" ]; then
-    CURL_RT=$(find /usr/lib64 /usr/lib -name 'libcurl.so.4' 2>/dev/null | head -1)
-    if [ -n "$CURL_RT" ]; then
-        cp "$CURL_RT" "./builds/libcurl.so"
-    fi
-fi
 
 if [ "$2" == "/run" ]; then
     "$old_exe" "${@:3}"

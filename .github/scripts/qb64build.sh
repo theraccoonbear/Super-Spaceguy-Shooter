@@ -86,13 +86,15 @@ case "$(uname -s)" in
     ;;
 esac
 
-# On Linux, symlink libcurl.so into QB64_DIR before compile.
-# QB64-PE finds it there, bakes ./libcurl.so (relative) into the binary,
-# and at runtime the bundled copy in builds/ satisfies the dlopen.
-if [ "$(uname -s)" = "Linux" ]; then
+# Ubuntu stores libcurl at /usr/lib/x86_64-linux-gnu/ which is not in QB64-PE's search
+# path list.  Symlink it to /usr/lib/libcurl.so (a path QB64-PE does check) so the
+# compiler finds it and bakes an absolute system path into the binary.
+# On user machines with libcurl installed, that same path exists.  On machines without
+# it, the graceful ON ERROR GOTO in http.bas catches error 260 and disables telemetry.
+if [ "$(uname -s)" = "Linux" ] && [ ! -e /usr/lib/libcurl.so ]; then
     CURL_SO=$(find /usr/lib -name 'libcurl.so' 2>/dev/null | head -1)
     if [ -n "$CURL_SO" ]; then
-        ln -sf "$CURL_SO" "$QB64_DIR/libcurl.so"
+        sudo ln -sf "$CURL_SO" /usr/lib/libcurl.so
     fi
 fi
 
@@ -126,12 +128,3 @@ case "$(uname -s)" in
     ;;
 esac
 echo "==> Build complete"
-
-# Bundle libcurl.so into builds/ so dlopen("./libcurl.so") works when game runs.
-if [ "$(uname -s)" = "Linux" ]; then
-    CURL_RUNTIME=$(find /usr/lib -name 'libcurl.so.4' 2>/dev/null | head -1)
-    if [ -n "$CURL_RUNTIME" ]; then
-        cp "$CURL_RUNTIME" "$REPODIR/builds/libcurl.so"
-        echo "==> Bundled $CURL_RUNTIME as builds/libcurl.so"
-    fi
-fi
