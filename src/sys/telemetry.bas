@@ -92,12 +92,11 @@ Sub TELEM_SessionEnd()
            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
     TELEM_Row "session_end", tlData
     If Len(TELEM_NET_URL) > 0 And Len(TELEM_NET_KEY) > 0 And Len(telemSession) > 0 Then
-        Dim tlQ As String : tlQ = Chr$(34)
         Dim tlJson As String
-        tlJson = "{" + tlQ + "session" + tlQ + ":" + tlQ + telemSession + tlQ _
-               + "," + tlQ + "ev_time" + tlQ + ":" + LTrim$(Str$(Int(Timer))) _
-               + "," + tlQ + "event" + tlQ + ":" + tlQ + "session_end" + tlQ _
-               + "," + tlQ + "data" + tlQ + ":" + tlQ + tlData + tlQ + "}"
+        tlJson = JSON_Obj$(JSON_S$("session", telemSession) _
+               + "," + JSON_N$("ev_time", LTrim$(Str$(Int(Timer)))) _
+               + "," + JSON_S$("event", "session_end") _
+               + "," + JSON_S$("data", tlData))
         HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tlJson
     End If
     telemSession = ""
