@@ -33,6 +33,8 @@ DECLARE LIBRARY "curl_qb64"
     FUNCTION http_resp_hdrs_len&     ALIAS "qb64_resp_hdrs_length"
     SUB     http_get_body            ALIAS "qb64_get_body"            (buf AS STRING, BYVAL maxLen AS LONG)
     SUB     http_get_hdrs            ALIAS "qb64_get_hdrs"            (buf AS STRING, BYVAL maxLen AS LONG)
+    FUNCTION http_last_curlcode&     ALIAS "qb64_curl_last_curlcode"  (BYVAL httpM%&)
+    SUB     http_curl_error_str      ALIAS "qb64_curl_error_str"      (BYVAL httpCode AS LONG, buf AS STRING, BYVAL maxLen AS LONG)
 END DECLARE
 
 Const CURLOPT_URL         = 10002
@@ -55,8 +57,10 @@ Sub HTTP_Pump
 
     If httpPumpN > 0 Then Exit Sub
 
-    ' Transfer done -- read response before cleanup
-    Dim httpStatus As Long : httpStatus = http_response_code&(httpEasyH)
+    ' Transfer done -- read CURLcode BEFORE removing handle (disappears after remove)
+    Dim httpCurlCode As Long : httpCurlCode = http_last_curlcode&(httpMultiH)
+    Dim httpStatus   As Long : httpStatus   = http_response_code&(httpEasyH)
+
     httpLastResp.statusCode = httpStatus
     httpLastResp.bodyLen    = http_resp_body_len&
     httpLastResp.headerLen  = http_resp_hdrs_len&
@@ -72,17 +76,24 @@ Sub HTTP_Pump
     Else
         httpLastHeaders = ""
     End If
+
     http_multi_remove httpMultiH, httpEasyH
     http_curl_cleanup httpEasyH : httpEasyH = 0
     http_slist_free httpSlistH  : httpSlistH = 0
+
+    If httpCurlCode > 0 Then
+        Dim httpErrStr As String : httpErrStr = Space$(256)
+        http_curl_error_str httpCurlCode, httpErrStr, 256
+        DBG_Print "HTTP: CURLcode=" + LTrim$(Str$(httpCurlCode)) + " " + RTrim$(httpErrStr)
+    End If
     If httpStatus >= 200 And httpStatus < 300 Then
         httpLastOK = -1
         DBG_Print "HTTP: status=" + LTrim$(Str$(httpStatus)) + " OK"
     Else
         httpLastOK = 0
         DBG_Print "HTTP: status=" + LTrim$(Str$(httpStatus)) + " FAILED"
-        DBG_Print "HTTP: headers=" + httpLastHeaders
-        DBG_Print "HTTP: body="    + httpLastBody
+        If Len(httpLastHeaders) > 0 Then DBG_Print "HTTP: headers=" + httpLastHeaders
+        If Len(httpLastBody)    > 0 Then DBG_Print "HTTP: body="    + httpLastBody
     End If
 End Sub
 
