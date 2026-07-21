@@ -9,10 +9,6 @@
 ' ESC    -- No thanks; disables telemetry for this session
 
 Sub GS_CONSENT_Update()
-    Dim cnThrobBright As Integer
-    tt = tt + 0.025
-    cnThrobBright = Int(170 + 85 * Sin(tt * 5))
-
     Dim cnPX1 As Integer : cnPX1 = scrW \ 2 - 110
     Dim cnPX2 As Integer : cnPX2 = scrW \ 2 + 110
     Dim cnPY1 As Integer : cnPY1 = scrH \ 2 - 80
@@ -38,8 +34,8 @@ Sub GS_CONSENT_Update()
     Dim cnA1 As String  : cnA1 = "SPACE  OK"
     Dim cnA1Y As Integer : cnA1Y = scrH \ 2 + 18
     Dim cnA1X As Integer : cnA1X = (scrW - Len(cnA1) * FONT_CHAR_W) \ 2
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, cnA1,    cnA1Y, scrW, cnThrobBright
-    FONT_PrintAlpha         fontPalette(15), backBuffer, "SPACE", cnA1X, cnA1Y, cnThrobBright
+    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, cnA1,    cnA1Y, scrW, 255
+    FONT_PrintAlpha         fontPalette(15), backBuffer, "SPACE", cnA1X, cnA1Y, 255
 
     Dim cnA2 As String  : cnA2 = "S  OK, DON'T ASK AGAIN"
     Dim cnA2Y As Integer : cnA2Y = scrH \ 2 + 34
