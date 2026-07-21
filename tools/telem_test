@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# telem_test -- send a synthetic telemetry row via curl to verify credentials and endpoint
+# Usage: tools/telem_test [URL] [KEY]
+# With no args: reads assets/.env from repo root.
+
+set -euo pipefail
+
+REPODIR="$(cd "$(dirname "$0")/.." && pwd)"
+ENV_FILE="$REPODIR/assets/.env"
+
+TELEM_NET_URL="${1:-}"
+TELEM_NET_KEY="${2:-}"
+
+# Load from assets/.env if not passed on command line
+if [ -z "$TELEM_NET_URL" ] || [ -z "$TELEM_NET_KEY" ]; then
+    if [ ! -f "$ENV_FILE" ]; then
+        echo "ERROR: $ENV_FILE not found and no URL/KEY passed as args"
+        echo "Usage: $0 <url> <key>"
+        exit 1
+    fi
+    while IFS='=' read -r key val || [ -n "$key" ]; do
+        [[ "$key" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${key// }" ]] && continue
+        key="${key%%[[:space:]]}"
+        val="${val%%[[:space:]]}"
+        case "$key" in
+            TELEM_NET_URL) [ -z "$TELEM_NET_URL" ] && TELEM_NET_URL="$val" ;;
+            TELEM_NET_KEY) [ -z "$TELEM_NET_KEY" ] && TELEM_NET_KEY="$val" ;;
+        esac
+    done < "$ENV_FILE"
+fi
+
+if [ -z "$TELEM_NET_URL" ]; then
+    echo "ERROR: TELEM_NET_URL is empty (check $ENV_FILE)"
+    exit 1
+fi
+if [ -z "$TELEM_NET_KEY" ]; then
+    echo "ERROR: TELEM_NET_KEY is empty (check $ENV_FILE)"
+    exit 1
+fi
+
+SESSION="tool_test_$(date +%Y%m%d%H%M%S)"
+EV_TIME=$(date +%s 2>/dev/null || echo 0)
+BODY="{\"session\":\"$SESSION\",\"ev_time\":$EV_TIME,\"event\":\"telem_test\",\"data\":\"source=tools/telem_test\"}"
+
+echo "==> Endpoint: $TELEM_NET_URL"
+echo "==> Session:  $SESSION"
+echo "==> Body:     $BODY"
+echo ""
+echo "==> Sending POST..."
+
+HTTP_RESPONSE=$(curl -s -i \
+    -X POST "$TELEM_NET_URL" \
+    -H "Content-Type: application/json" \
+    -H "apikey: $TELEM_NET_KEY" \
+    -H "Authorization: Bearer $TELEM_NET_KEY" \
+    -H "Prefer: return=minimal" \
+    -d "$BODY" 2>&1)
+
+HTTP_STATUS=$(echo "$HTTP_RESPONSE" | grep -m1 "^HTTP/" | awk '{print $2}')
+
+echo "==> HTTP status: $HTTP_STATUS"
+echo ""
+echo "--- Full response headers ---"
+echo "$HTTP_RESPONSE" | head -20
+
+if [[ "$HTTP_STATUS" =~ ^2 ]]; then
+    echo ""
+    echo "SUCCESS -- look for session=$SESSION in Supabase"
+else
+    echo ""
+    echo "FAILED -- check URL (must end with /sss_telemetry) and KEY"
+    exit 1
+fi
