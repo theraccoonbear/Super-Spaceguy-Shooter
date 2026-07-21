@@ -10,6 +10,31 @@
 '
 ' Local variable prefix: tl*
 
+Sub TELEM_LoadCredentials (tlcContent As String)
+    Dim tlcPos As Long : tlcPos = 1
+    Dim tlcNl As Long
+    Dim tlcLine As String
+    Dim tlcEq As Integer
+    Do
+        tlcNl = InStr(tlcPos, tlcContent, Chr$(10))
+        If tlcNl = 0 Then tlcLine = Mid$(tlcContent, tlcPos) _
+                       Else tlcLine = Mid$(tlcContent, tlcPos, tlcNl - tlcPos)
+        tlcLine = RTrim$(LTrim$(tlcLine))
+        If Right$(tlcLine, 1) = Chr$(13) Then tlcLine = Left$(tlcLine, Len(tlcLine) - 1)
+        If Left$(tlcLine, 1) <> "#" And Len(tlcLine) > 0 Then
+            tlcEq = InStr(tlcLine, "=")
+            If tlcEq > 0 Then
+                Select Case Left$(tlcLine, tlcEq - 1)
+                    Case "TELEM_NET_URL" : TELEM_NET_URL = Mid$(tlcLine, tlcEq + 1)
+                    Case "TELEM_NET_KEY" : TELEM_NET_KEY = Mid$(tlcLine, tlcEq + 1)
+                End Select
+            End If
+        End If
+        If tlcNl = 0 Then Exit Do
+        tlcPos = tlcNl + 1
+    Loop
+End Sub
+
 Sub TELEM_Init()
     If telemOn = 0 Then Exit Sub
     Dim tlF As Integer : tlF = FreeFile

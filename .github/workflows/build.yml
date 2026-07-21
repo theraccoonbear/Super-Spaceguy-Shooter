@@ -154,6 +154,9 @@ jobs:
 
       - name: Build sss.bas
         shell: bash
+        env:
+          TELEM_NET_URL: ${{ secrets.TELEM_NET_URL }}
+          TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
       - name: Dump compile log on failure
