@@ -86,17 +86,6 @@ case "$(uname -s)" in
     ;;
 esac
 
-# Ubuntu stores libcurl at /usr/lib/x86_64-linux-gnu/ which is not in QB64-PE's search
-# path list.  Symlink it to /usr/lib/libcurl.so (a path QB64-PE does check) so the
-# compiler finds it and bakes an absolute system path into the binary.
-# On user machines with libcurl installed, that same path exists.  On machines without
-# it, the graceful ON ERROR GOTO in http.bas catches error 260 and disables telemetry.
-if [ "$(uname -s)" = "Linux" ] && [ ! -e /usr/lib/libcurl.so ]; then
-    CURL_SO=$(find /usr/lib -name 'libcurl.so' 2>/dev/null | head -1)
-    if [ -n "$CURL_SO" ]; then
-        sudo ln -sf "$CURL_SO" /usr/lib/libcurl.so
-    fi
-fi
 
 # Write .env from CI secrets for $EMBED. Empty values disable network telemetry.
 cat > "$REPODIR/assets/.env" <<EOF

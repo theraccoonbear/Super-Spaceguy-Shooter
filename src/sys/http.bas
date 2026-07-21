@@ -3,41 +3,19 @@
 ' HTTP_PostJSON url$, apikey$, body$  enqueue POST; returns immediately (non-blocking)
 ' HTTP_Pump                           drive I/O; call each frame while httpEasyH <> 0
 ' httpEasyH (shared)                  non-zero while transfer in flight
-' httpLastOK (shared)                 -1 if last completed request succeeded; 0 = failed
-' httpAvailable (shared)              -1 if libcurl loaded OK; 0 = missing (telemetry off)
+' httpLastOK (shared)                 -1 if last completed request succeeded
 '
-' QB64-PE bakes the system libcurl path at compile time via DECLARE DYNAMIC LIBRARY.
-' If libcurl is missing or not at that path, ON ERROR GOTO catches error 260 and sets
-' httpAvailable=0 -- telemetry silently disables, game continues normally.
+' Uses DECLARE LIBRARY with a C header (curl_qb64.h) so QB64-PE emits proper
+' extern "C" declarations and links via the normal -lcurl / libcurl.a mechanism.
+' No dlopen, no hardcoded paths.  Works on Windows (QB64-PE static curl),
+' Linux, and macOS (system -lcurl).
+'
+' Linkage is triggered by _OPENCLIENT in httpForceLink (never called at runtime),
+' which sets DEPENDENCY_SOCKETS / DEP_HTTP=y so QB64-PE adds -lcurl to the link.
 '
 ' Local variable prefix: http*
 
-' Shared state -- initialized to 0 at program start before any code runs.
-Dim Shared httpMultiH   As _OFFSET
-Dim Shared httpEasyH    As _OFFSET
-Dim Shared httpSlistH   As _OFFSET
-Dim Shared httpLastOK   As Long
-Dim Shared httpAvailable As Long
-
-' Catch error 260 ("Cannot find dynamic library") so a missing libcurl silently
-' disables network telemetry instead of crashing.  The DECLARE block below generates
-' the dlopen() call at this position in the execution stream; the handler must be
-' live before that code runs.
-On Error GoTo httpLibMissing
-httpAvailable = -1
-GoTo httpLibDeclare
-
-httpLibMissing:
-httpAvailable = 0
-Resume httpLibDone
-
-httpLibDeclare:
-
-$IF WIN THEN
-    DECLARE DYNAMIC LIBRARY "libcurl"
-$ELSE
-    DECLARE DYNAMIC LIBRARY "curl"
-$END IF
+DECLARE LIBRARY "curl_qb64"
     FUNCTION http_curl_init%&        ALIAS "curl_easy_init"
     SUB     http_setopt_str          ALIAS "curl_easy_setopt"         (BYVAL httpH%&, BYVAL httpOpt%&, httpVal AS STRING)
     SUB     http_setopt_ptr          ALIAS "curl_easy_setopt"         (BYVAL httpH%&, BYVAL httpOpt%&, BYVAL httpVal%&)
@@ -51,18 +29,20 @@ $END IF
     SUB     http_multi_remove        ALIAS "curl_multi_remove_handle" (BYVAL httpM%&, BYVAL httpH%&)
 END DECLARE
 
-httpLibDone:
-On Error GoTo 0
-
 Const CURLOPT_URL         = 10002
 Const CURLOPT_POSTFIELDS  = 10015
 Const CURLOPT_HTTPHEADER  = 10023
 Const CURLOPT_TIMEOUT     = 13
 Const CURLOPT_FAILONERROR = 45
 
+Dim Shared httpMultiH As _OFFSET  ' curl_multi handle; 0 = not initialized
+Dim Shared httpEasyH  As _OFFSET  ' in-flight easy handle; 0 = idle
+Dim Shared httpSlistH As _OFFSET  ' in-flight header slist
+Dim Shared httpLastOK As Long     ' -1 = last completed request succeeded; 0 = failed
+
 ' Drive the in-flight request; call from the game loop each frame.
 Sub HTTP_Pump
-    If httpAvailable = 0 Or httpMultiH = 0 Or httpEasyH = 0 Then Exit Sub
+    If httpMultiH = 0 Or httpEasyH = 0 Then Exit Sub
 
     Dim httpPumpN As Long
     http_multi_perform httpMultiH, httpPumpN
@@ -76,8 +56,13 @@ Sub HTTP_Pump
     httpLastOK = -1
 End Sub
 
+' Never called -- triggers DEPENDENCY_SOCKETS so QB64-PE links libcurl
+Sub httpForceLink
+    Dim httpDepX As Long : httpDepX = _OPENCLIENT("TCP:localhost:0") : Close httpDepX
+End Sub
+
 Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
-    If httpAvailable = 0 Or Len(httpUrl) = 0 Then Exit Sub
+    If Len(httpUrl) = 0 Then Exit Sub
 
     If httpMultiH = 0 Then httpMultiH = http_multi_init%&
     If httpMultiH = 0 Then Exit Sub
