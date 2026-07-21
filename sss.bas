@@ -122,8 +122,12 @@ IF cliScene <> "" THEN
     END IF
     SEQ_Advance
 ELSE
-    gameState = GS_LEADIN
-    LEADIN_Init
+    If telemOn <> 0 And telemConsent = 0 Then
+        gameState = GS_CONSENT
+    Else
+        gameState = GS_LEADIN
+        LEADIN_Init
+    End If
 END IF
 
 ' ============================================================
@@ -175,6 +179,9 @@ DO
 
     CASE GS_LEADIN
         LEADIN_Update
+
+    CASE GS_CONSENT
+        GS_CONSENT_Update
 
     END SELECT
 
