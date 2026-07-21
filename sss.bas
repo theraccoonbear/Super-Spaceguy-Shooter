@@ -42,6 +42,7 @@ Dim Shared TELEM_NET_KEY As String
 '$INCLUDE:'src/game.bi'
 
 TELEM_LoadCredentials _EMBEDDED$("ENVCONFIG")
+TELEM_LoadPlayerID
 
 ' --- load sequence before CLI so GAME_Usage can enumerate valid scene names ---
 SEQ_Load _EMBEDDED$("SEQTXT")

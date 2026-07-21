@@ -222,6 +222,7 @@ DIM SHARED telemBossReached  AS INTEGER
 DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause   AS STRING
 DIM SHARED telemSession      AS STRING
+DIM SHARED telemPlayerID     AS STRING
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG

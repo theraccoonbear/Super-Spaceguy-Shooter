@@ -1,41 +1,46 @@
 #!/usr/bin/env bash
 # telem_test -- send a synthetic telemetry row via curl to verify credentials and endpoint
 # Usage: tools/telem_test [URL] [KEY]
-# With no args: reads assets/.env from repo root.
+# With no args: checks env vars TELEM_NET_URL / TELEM_NET_KEY, then assets/.env.
+# Exits 0 (skip) when both env vars and .env are absent/empty; exits 1 on partial config or HTTP error.
 
 set -euo pipefail
 
 REPODIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$REPODIR/assets/.env"
 
-TELEM_NET_URL="${1:-}"
-TELEM_NET_KEY="${2:-}"
+# Positional args override env vars; env vars override .env file
+TELEM_NET_URL="${1:-${TELEM_NET_URL:-}}"
+TELEM_NET_KEY="${2:-${TELEM_NET_KEY:-}}"
 
-# Load from assets/.env if not passed on command line
+# Fall back to assets/.env if either value is still missing
 if [ -z "$TELEM_NET_URL" ] || [ -z "$TELEM_NET_KEY" ]; then
-    if [ ! -f "$ENV_FILE" ]; then
-        echo "ERROR: $ENV_FILE not found and no URL/KEY passed as args"
-        echo "Usage: $0 <url> <key>"
-        exit 1
+    if [ -f "$ENV_FILE" ]; then
+        while IFS='=' read -r key val || [ -n "$key" ]; do
+            [[ "$key" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "${key// }" ]] && continue
+            key="${key%%[[:space:]]}"
+            val="${val%%[[:space:]]}"
+            case "$key" in
+                TELEM_NET_URL) [ -z "$TELEM_NET_URL" ] && TELEM_NET_URL="$val" ;;
+                TELEM_NET_KEY) [ -z "$TELEM_NET_KEY" ] && TELEM_NET_KEY="$val" ;;
+            esac
+        done < "$ENV_FILE"
     fi
-    while IFS='=' read -r key val || [ -n "$key" ]; do
-        [[ "$key" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${key// }" ]] && continue
-        key="${key%%[[:space:]]}"
-        val="${val%%[[:space:]]}"
-        case "$key" in
-            TELEM_NET_URL) [ -z "$TELEM_NET_URL" ] && TELEM_NET_URL="$val" ;;
-            TELEM_NET_KEY) [ -z "$TELEM_NET_KEY" ] && TELEM_NET_KEY="$val" ;;
-        esac
-    done < "$ENV_FILE"
+fi
+
+# Both empty: skip gracefully (expected in fork PRs where secrets are unavailable)
+if [ -z "$TELEM_NET_URL" ] && [ -z "$TELEM_NET_KEY" ]; then
+    echo "==> Skipping: no credentials configured (set TELEM_NET_URL + TELEM_NET_KEY or populate assets/.env)"
+    exit 0
 fi
 
 if [ -z "$TELEM_NET_URL" ]; then
-    echo "ERROR: TELEM_NET_URL is empty (check $ENV_FILE)"
+    echo "ERROR: TELEM_NET_URL is empty but TELEM_NET_KEY is set -- check configuration"
     exit 1
 fi
 if [ -z "$TELEM_NET_KEY" ]; then
-    echo "ERROR: TELEM_NET_KEY is empty (check $ENV_FILE)"
+    echo "ERROR: TELEM_NET_KEY is empty but TELEM_NET_URL is set -- check configuration"
     exit 1
 fi
 
