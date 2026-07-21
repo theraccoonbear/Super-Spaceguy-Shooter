@@ -144,6 +144,7 @@ Sub TELEM_SessionEnd()
         tlJson = JSON_Obj$(JSON_S$("session", telemSession) _
                + "," + JSON_N$("ev_time", LTrim$(Str$(Int(Timer)))) _
                + "," + JSON_S$("event", "session_end") _
+               + "," + JSON_S$("player_id", telemPlayerID) _
                + "," + JSON_S$("data", tlData))
         DBG_Print "TELEM: POSTing to " + TELEM_NET_URL
         HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tlJson
