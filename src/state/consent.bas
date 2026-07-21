@@ -1,18 +1,14 @@
 ' consent.bas -- one-time telemetry disclosure screen (GS_CONSENT)
 '
-' Shown before the studio leadin when telemOn is set and telemConsent = 0.
-' Uses _KEYHIT (not held/keydown) so the keypress is consumed and cannot
-' bleed into LEADIN_Update and skip a studio card.
-'
 ' SPACE  -- OK this session; will ask again next launch
 ' S      -- OK, save telem_consent=1 to sss_settings.ini; never asks again
 ' ESC    -- No thanks; disables telemetry for this session
 
 Sub GS_CONSENT_Update()
-    Dim cnPX1 As Integer : cnPX1 = scrW \ 2 - 110
-    Dim cnPX2 As Integer : cnPX2 = scrW \ 2 + 110
-    Dim cnPY1 As Integer : cnPY1 = scrH \ 2 - 80
-    Dim cnPY2 As Integer : cnPY2 = scrH \ 2 + 80
+    Dim cnPX1 As Integer : cnPX1 = scrW \ 2 - 122
+    Dim cnPX2 As Integer : cnPX2 = scrW \ 2 + 122
+    Dim cnPY1 As Integer : cnPY1 = scrH \ 2 - 76
+    Dim cnPY2 As Integer : cnPY2 = scrH \ 2 + 76
 
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
@@ -20,34 +16,33 @@ Sub GS_CONSENT_Update()
 
     UI_DrawPanel cnPX1, cnPY1, cnPX2, cnPY2, "DATA NOTICE"
 
-    ' body text
-    Dim cnBY As Integer : cnBY = scrH \ 2 - 56
+    ' body text (centered)
+    Dim cnBY As Integer : cnBY = scrH \ 2 - 52
     FONT_PrintCenteredAlpha fontPalette(9), backBuffer, "THIS GAME SENDS ANONYMOUS",  cnBY,      scrW, 255
     FONT_PrintCenteredAlpha fontPalette(9), backBuffer, "GAMEPLAY DATA TO THE DEV.",  cnBY + 16, scrW, 255
     FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "NO PERSONAL INFO COLLECTED.", cnBY + 32, scrW, 255
     FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "A RANDOM ID LINKS SESSIONS.", cnBY + 48, scrW, 255
 
-    ' separator
-    LINE (cnPX1 + 8, scrH \ 2 + 12)-(cnPX2 - 8, scrH \ 2 + 12), _RGB(0, 55, 110)
+    LINE (cnPX1 + 8, scrH \ 2 + 16)-(cnPX2 - 8, scrH \ 2 + 16), _RGB(0, 55, 110)
 
-    ' action lines: print full string dim, then overprint key in bright
-    Dim cnA1 As String  : cnA1 = "SPACE  OK"
-    Dim cnA1Y As Integer : cnA1Y = scrH \ 2 + 18
-    Dim cnA1X As Integer : cnA1X = (scrW - Len(cnA1) * FONT_CHAR_W) \ 2
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, cnA1,    cnA1Y, scrW, 255
-    FONT_PrintAlpha         fontPalette(15), backBuffer, "SPACE", cnA1X, cnA1Y, 255
+    ' two-column layout: keys right-aligned to cnDX-16, descs left-aligned at cnDX
+    ' all three key labels in fontPalette(15); right edges share X = cnDX - 2*FONT_CHAR_W
+    Dim cnDX  As Integer : cnDX  = scrW \ 2          ' desc column left edge
+    Dim cnAY1 As Integer : cnAY1 = scrH \ 2 + 22
+    Dim cnAY2 As Integer : cnAY2 = scrH \ 2 + 38
+    Dim cnAY3 As Integer : cnAY3 = scrH \ 2 + 54
 
-    Dim cnA2 As String  : cnA2 = "S  OK, DON'T ASK AGAIN"
-    Dim cnA2Y As Integer : cnA2Y = scrH \ 2 + 34
-    Dim cnA2X As Integer : cnA2X = (scrW - Len(cnA2) * FONT_CHAR_W) \ 2
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, cnA2, cnA2Y, scrW, 255
-    FONT_PrintAlpha         fontPalette(14), backBuffer, "S",   cnA2X, cnA2Y, 255
+    ' SPACE  OK
+    FONT_PrintAlpha fontPalette(15), backBuffer, "SPACE", cnDX - 7 * FONT_CHAR_W, cnAY1, 255
+    FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",    cnDX,                    cnAY1, 255
 
-    Dim cnA3 As String  : cnA3 = "ESC  NO THANKS"
-    Dim cnA3Y As Integer : cnA3Y = scrH \ 2 + 50
-    Dim cnA3X As Integer : cnA3X = (scrW - Len(cnA3) * FONT_CHAR_W) \ 2
-    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, cnA3,  cnA3Y, scrW, 255
-    FONT_PrintAlpha         fontPalette(15), backBuffer, "ESC", cnA3X, cnA3Y, 200
+    ' S  DON'T ASK AGAIN
+    FONT_PrintAlpha fontPalette(15), backBuffer, "S",               cnDX - 3 * FONT_CHAR_W, cnAY2, 255
+    FONT_PrintAlpha fontPalette(9),  backBuffer, "DON'T ASK AGAIN", cnDX,                   cnAY2, 255
+
+    ' ESC  NO THANKS
+    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",       cnDX - 5 * FONT_CHAR_W, cnAY3, 200
+    FONT_PrintAlpha fontPalette(8),  backBuffer, "NO THANKS", cnDX,                   cnAY3, 200
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
