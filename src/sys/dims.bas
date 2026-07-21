@@ -228,6 +228,7 @@ DIM SHARED telemConsent      AS INTEGER
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
+DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP POST
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING
