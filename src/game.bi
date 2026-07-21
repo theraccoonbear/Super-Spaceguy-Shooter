@@ -17,6 +17,7 @@
 '$INCLUDE:'sys/settings.bas'
 '$INCLUDE:'2d/ui.bas'
 '$INCLUDE:'state/leadin.bas'
+'$INCLUDE:'state/consent.bas'
 '$INCLUDE:'gameplay/player.bas'
 '$INCLUDE:'gameplay/enemy.bas'
 '$INCLUDE:'gameplay/boss.bas'

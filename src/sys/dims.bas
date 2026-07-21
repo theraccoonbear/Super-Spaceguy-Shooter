@@ -11,6 +11,7 @@ CONST GS_CRAWL     = 6
 CONST GS_OPTIONS   = 7
 CONST GS_ABOUT     = 8
 CONST GS_LEADIN    = 9
+CONST GS_CONSENT   = 10
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
@@ -223,6 +224,7 @@ DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause   AS STRING
 DIM SHARED telemSession      AS STRING
 DIM SHARED telemPlayerID     AS STRING
+DIM SHARED telemConsent      AS INTEGER
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
