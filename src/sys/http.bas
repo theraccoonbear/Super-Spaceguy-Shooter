@@ -28,6 +28,11 @@ DECLARE LIBRARY "curl_qb64"
     SUB     http_multi_perform       ALIAS "curl_multi_perform"       (BYVAL httpM%&, httpN AS LONG)
     SUB     http_multi_remove        ALIAS "curl_multi_remove_handle" (BYVAL httpM%&, BYVAL httpH%&)
     FUNCTION http_response_code&     ALIAS "qb64_curl_response_code"  (BYVAL httpH%&)
+    SUB     http_enable_capture      ALIAS "qb64_curl_enable_capture" (BYVAL httpH%&)
+    FUNCTION http_resp_body_len&     ALIAS "qb64_resp_body_length"
+    FUNCTION http_resp_hdrs_len&     ALIAS "qb64_resp_hdrs_length"
+    SUB     http_get_body            ALIAS "qb64_get_body"            (buf AS STRING, BYVAL maxLen AS LONG)
+    SUB     http_get_hdrs            ALIAS "qb64_get_hdrs"            (buf AS STRING, BYVAL maxLen AS LONG)
 END DECLARE
 
 Const CURLOPT_URL         = 10002
@@ -50,17 +55,34 @@ Sub HTTP_Pump
 
     If httpPumpN > 0 Then Exit Sub
 
-    ' Transfer done -- read status before cleanup
+    ' Transfer done -- read response before cleanup
     Dim httpStatus As Long : httpStatus = http_response_code&(httpEasyH)
+    httpLastResp.statusCode = httpStatus
+    httpLastResp.bodyLen    = http_resp_body_len&
+    httpLastResp.headerLen  = http_resp_hdrs_len&
+    If httpLastResp.bodyLen > 0 Then
+        httpLastBody = Space$(httpLastResp.bodyLen)
+        http_get_body httpLastBody, httpLastResp.bodyLen
+    Else
+        httpLastBody = ""
+    End If
+    If httpLastResp.headerLen > 0 Then
+        httpLastHeaders = Space$(httpLastResp.headerLen)
+        http_get_hdrs httpLastHeaders, httpLastResp.headerLen
+    Else
+        httpLastHeaders = ""
+    End If
     http_multi_remove httpMultiH, httpEasyH
     http_curl_cleanup httpEasyH : httpEasyH = 0
     http_slist_free httpSlistH  : httpSlistH = 0
     If httpStatus >= 200 And httpStatus < 300 Then
         httpLastOK = -1
-        DBG_Print "HTTP: complete status=" + LTrim$(Str$(httpStatus)) + " OK"
+        DBG_Print "HTTP: status=" + LTrim$(Str$(httpStatus)) + " OK"
     Else
         httpLastOK = 0
-        DBG_Print "HTTP: complete status=" + LTrim$(Str$(httpStatus)) + " FAILED"
+        DBG_Print "HTTP: status=" + LTrim$(Str$(httpStatus)) + " FAILED"
+        DBG_Print "HTTP: headers=" + httpLastHeaders
+        DBG_Print "HTTP: body="    + httpLastBody
     End If
 End Sub
 
@@ -89,6 +111,7 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     httpL = http_slist_append%&(httpL, "Authorization: Bearer " + httpKey)
     httpL = http_slist_append%&(httpL, "Prefer: return=minimal")
 
+    http_enable_capture httpH
     http_setopt_str  httpH, CURLOPT_URL,         httpUrl
     http_setopt_str  httpH, CURLOPT_POSTFIELDS,  httpBody
     http_setopt_ptr  httpH, CURLOPT_HTTPHEADER,  httpL

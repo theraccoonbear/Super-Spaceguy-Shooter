@@ -104,6 +104,12 @@ TYPE BossObj
     warnTimer AS INTEGER
 END TYPE
 
+TYPE HttpResponse
+    statusCode AS LONG
+    bodyLen    AS LONG
+    headerLen  AS LONG
+END TYPE
+
 TYPE CamFollow
     lagY        AS SINGLE
     lagZ        AS SINGLE
@@ -229,6 +235,11 @@ DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
 DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP POST
+
+' --- HTTP response (populated by HTTP_Pump after each transfer) ---
+DIM SHARED httpLastResp    AS HttpResponse
+DIM SHARED httpLastBody    AS STRING
+DIM SHARED httpLastHeaders AS STRING
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING
