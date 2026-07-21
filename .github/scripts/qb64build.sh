@@ -86,9 +86,8 @@ case "$(uname -s)" in
     ;;
 esac
 
-# Write network telemetry credentials from environment into the embedded env file.
-# TELEM_NET_URL and TELEM_NET_KEY come from CI secrets (or are empty, disabling telemetry).
-cat > "$REPODIR/assets/telem.env" <<EOF
+# Write .env from CI secrets for $EMBED. Empty values disable network telemetry.
+cat > "$REPODIR/assets/.env" <<EOF
 TELEM_NET_URL=${TELEM_NET_URL:-}
 TELEM_NET_KEY=${TELEM_NET_KEY:-}
 EOF
