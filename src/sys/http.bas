@@ -17,36 +17,28 @@
 
 DECLARE LIBRARY "curl_qb64"
     FUNCTION http_curl_init%&        ALIAS "curl_easy_init"
-    SUB     http_setopt_str          ALIAS "curl_easy_setopt"         (BYVAL httpH%&, BYVAL httpOpt%&, httpVal AS STRING)
-    SUB     http_setopt_ptr          ALIAS "curl_easy_setopt"         (BYVAL httpH%&, BYVAL httpOpt%&, BYVAL httpVal%&)
-    SUB     http_setopt_long         ALIAS "curl_easy_setopt"         (BYVAL httpH%&, BYVAL httpOpt%&, BYVAL httpVal%&)
-    FUNCTION http_slist_append%&     ALIAS "curl_slist_append"        (BYVAL httpL%&, httpVal AS STRING)
-    SUB     http_slist_free          ALIAS "curl_slist_free_all"      (BYVAL httpL%&)
     SUB     http_curl_cleanup        ALIAS "curl_easy_cleanup"        (BYVAL httpH%&)
     FUNCTION http_multi_init%&       ALIAS "curl_multi_init"
-    SUB     http_multi_add           ALIAS "curl_multi_add_handle"    (BYVAL httpM%&, BYVAL httpH%&)
     SUB     http_multi_perform       ALIAS "curl_multi_perform"       (BYVAL httpM%&, httpN AS LONG)
     SUB     http_multi_remove        ALIAS "curl_multi_remove_handle" (BYVAL httpM%&, BYVAL httpH%&)
     FUNCTION http_response_code&     ALIAS "qb64_curl_response_code"  (BYVAL httpH%&)
-    SUB     http_enable_capture      ALIAS "qb64_curl_enable_capture" (BYVAL httpH%&)
     FUNCTION http_resp_body_len&     ALIAS "qb64_resp_body_length"
     FUNCTION http_resp_hdrs_len&     ALIAS "qb64_resp_hdrs_length"
     SUB     http_get_body            ALIAS "qb64_get_body"            (buf AS STRING, BYVAL maxLen AS LONG)
     SUB     http_get_hdrs            ALIAS "qb64_get_hdrs"            (buf AS STRING, BYVAL maxLen AS LONG)
     FUNCTION http_last_curlcode&     ALIAS "qb64_curl_last_curlcode"  (BYVAL httpM%&)
     SUB     http_curl_error_str      ALIAS "qb64_curl_error_str"      (BYVAL httpCode AS LONG, buf AS STRING, BYVAL maxLen AS LONG)
-    FUNCTION http_set_post_body&     ALIAS "qb64_set_post_body"       (BYVAL httpH%&, httpBody AS STRING, BYVAL httpLen AS LONG)
-    FUNCTION http_multi_add_check&   ALIAS "curl_multi_add_handle"    (BYVAL httpM%&, BYVAL httpH%&)
+    ' qb64_http_post: copies all strings to stable C buffers, then configures curl
+    FUNCTION http_post_setup&        ALIAS "qb64_http_post" _
+        (BYVAL httpEH%&, BYVAL httpMH%&, _
+         httpUrl AS STRING, BYVAL httpUrlLen AS LONG, _
+         httpKey AS STRING, BYVAL httpKeyLen AS LONG, _
+         httpBody AS STRING, BYVAL httpBodyLen AS LONG)
+    SUB     http_cleanup_slist       ALIAS "qb64_http_cleanup_slist"
 END DECLARE
-
-Const CURLOPT_URL         = 10002
-Const CURLOPT_HTTPHEADER  = 10023
-Const CURLOPT_TIMEOUT     = 13
-Const CURLOPT_FAILONERROR = 45
 
 Dim Shared httpMultiH As _OFFSET  ' curl_multi handle; 0 = not initialized
 Dim Shared httpEasyH  As _OFFSET  ' in-flight easy handle; 0 = idle
-Dim Shared httpSlistH As _OFFSET  ' in-flight header slist
 Dim Shared httpLastOK As Long     ' -1 = last completed request succeeded; 0 = failed
 
 ' Drive the in-flight request; call from the game loop each frame.
@@ -79,8 +71,8 @@ Sub HTTP_Pump
     End If
 
     http_multi_remove httpMultiH, httpEasyH
-    http_curl_cleanup httpEasyH : httpEasyH = 0
-    http_slist_free httpSlistH  : httpSlistH = 0
+    http_curl_cleanup httpEasyH  : httpEasyH = 0
+    http_cleanup_slist
 
     If httpCurlCode > 0 Then
         Dim httpErrStr As String : httpErrStr = Space$(256)
@@ -115,32 +107,23 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     Loop
 
     Dim httpH As _OFFSET : httpH = http_curl_init%&
-    If httpH = 0 Then DBG_Print "HTTP: curl_easy_init returned 0 -- no libcurl?" : Exit Sub
-
-    Dim httpL As _OFFSET
-    httpL = http_slist_append%&(0, "Content-Type: application/json")
-    httpL = http_slist_append%&(httpL, "apikey: " + httpKey)
-    httpL = http_slist_append%&(httpL, "Authorization: Bearer " + httpKey)
-    httpL = http_slist_append%&(httpL, "Prefer: return=minimal")
+    If httpH = 0 Then DBG_Print "HTTP: curl_easy_init failed" : Exit Sub
 
     httpPostBody = httpBody
-    DBG_Print "HTTP: url=[" + httpUrl + "] urlLen=" + LTrim$(Str$(Len(httpUrl))) + " bodyLen=" + LTrim$(Str$(Len(httpPostBody)))
-    http_enable_capture httpH
-    http_setopt_long httpH, 41, 1                                     ' CURLOPT_VERBOSE -> stderr
-    http_setopt_str  httpH, CURLOPT_URL, httpUrl
-    Dim httpPostResult As Long : httpPostResult = http_set_post_body&(httpH, httpPostBody, Len(httpPostBody))
-    DBG_Print "HTTP: set_post_body=" + LTrim$(Str$(httpPostResult))
-    If httpPostResult <> 0 Then
-        DBG_Print "HTTP: POST body too large (" + LTrim$(Str$(Len(httpPostBody))) + " bytes) -- skipping"
-        http_curl_cleanup httpH : http_slist_free httpL : Exit Sub
-    End If
-    http_setopt_ptr  httpH, CURLOPT_HTTPHEADER,  httpL
-    http_setopt_long httpH, CURLOPT_TIMEOUT,     5
-    http_setopt_long httpH, CURLOPT_FAILONERROR, 1
+    DBG_Print "HTTP: POST urlLen=" + LTrim$(Str$(Len(httpUrl))) + " bodyLen=" + LTrim$(Str$(Len(httpBody)))
 
-    Dim httpAddResult As Long : httpAddResult = http_multi_add_check&(httpMultiH, httpH)
-    DBG_Print "HTTP: multi_add=" + LTrim$(Str$(httpAddResult))
+    ' All string copies into stable C buffers, all setopt calls, and multi_add happen
+    ' inside qb64_http_post -- no QB64-PE string temps ever outlive their setopt call.
+    Dim httpR As Long
+    httpR = http_post_setup&(httpH, httpMultiH, _
+                             httpUrl, Len(httpUrl), _
+                             httpKey, Len(httpKey), _
+                             httpBody, Len(httpBody))
+    DBG_Print "HTTP: post_setup=" + LTrim$(Str$(httpR))
+    If httpR <> 0 Then
+        http_curl_cleanup httpH : Exit Sub
+    End If
+
     httpEasyH  = httpH
-    httpSlistH = httpL
     httpLastOK = 0
 End Sub
