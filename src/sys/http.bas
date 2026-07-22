@@ -36,6 +36,7 @@ DECLARE LIBRARY "curl_qb64"
     FUNCTION http_last_curlcode&     ALIAS "qb64_curl_last_curlcode"  (BYVAL httpM%&)
     SUB     http_curl_error_str      ALIAS "qb64_curl_error_str"      (BYVAL httpCode AS LONG, buf AS STRING, BYVAL maxLen AS LONG)
     FUNCTION http_set_post_body&     ALIAS "qb64_set_post_body"       (BYVAL httpH%&, httpBody AS STRING, BYVAL httpLen AS LONG)
+    FUNCTION http_multi_add_check&   ALIAS "curl_multi_add_handle"    (BYVAL httpM%&, BYVAL httpH%&)
 END DECLARE
 
 Const CURLOPT_URL         = 10002
@@ -125,8 +126,10 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     httpPostBody = httpBody
     DBG_Print "HTTP: url=[" + httpUrl + "] urlLen=" + LTrim$(Str$(Len(httpUrl))) + " bodyLen=" + LTrim$(Str$(Len(httpPostBody)))
     http_enable_capture httpH
+    http_setopt_long httpH, 41, 1                                     ' CURLOPT_VERBOSE -> stderr
     http_setopt_str  httpH, CURLOPT_URL, httpUrl
     Dim httpPostResult As Long : httpPostResult = http_set_post_body&(httpH, httpPostBody, Len(httpPostBody))
+    DBG_Print "HTTP: set_post_body=" + LTrim$(Str$(httpPostResult))
     If httpPostResult <> 0 Then
         DBG_Print "HTTP: POST body too large (" + LTrim$(Str$(Len(httpPostBody))) + " bytes) -- skipping"
         http_curl_cleanup httpH : http_slist_free httpL : Exit Sub
@@ -135,7 +138,8 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     http_setopt_long httpH, CURLOPT_TIMEOUT,     5
     http_setopt_long httpH, CURLOPT_FAILONERROR, 1
 
-    http_multi_add httpMultiH, httpH
+    Dim httpAddResult As Long : httpAddResult = http_multi_add_check&(httpMultiH, httpH)
+    DBG_Print "HTTP: multi_add=" + LTrim$(Str$(httpAddResult))
     httpEasyH  = httpH
     httpSlistH = httpL
     httpLastOK = 0
