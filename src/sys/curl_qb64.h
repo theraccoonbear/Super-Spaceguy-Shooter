@@ -122,13 +122,76 @@ static inline void qb64_get_hdrs(char *out, int maxlen) {
  * Copying here keeps qbc_post[] valid until the next call to this function.
  * Returns 0 on success, -1 if body exceeds QBC_POST_MAX.
  */
-static inline int qb64_set_post_body(intptr_t handle, const char *body, int len) {
-    if (len < 0 || len >= QBC_POST_MAX) return -1;
-    memcpy(qbc_post, body, len);
-    qbc_post_len = len;
-    curl_easy_setopt(handle, 10015, qbc_post);    /* CURLOPT_POSTFIELDS */
-    curl_easy_setopt(handle, 60,    (long)len);   /* CURLOPT_POSTFIELDSIZE */
-    return 0;
+/*
+ * qb64_http_post — copy ALL strings into stable C buffers, then configure curl.
+ *
+ * QB64-PE DECLARE LIBRARY passes strings as null-terminated temporaries that are
+ * freed the moment the C call returns.  Any curl option that stores a raw pointer
+ * (CURLOPT_POSTFIELDS, and empirically even CURLOPT_URL) reads garbage on the next
+ * frame.  This function copies every string before touching curl, so nothing QB64-PE
+ * allocates is ever referenced after curl_easy_setopt returns.
+ *
+ * Returns 0 on success, negative on validation error, or the CURLMcode from
+ * curl_multi_add_handle on multi failure.
+ */
+
+#define QBC_URL_MAX  2048
+#define QBC_KEY_MAX  1024
+
+static char     qbc_url[QBC_URL_MAX];
+static char     qbc_key[QBC_KEY_MAX];
+static char     qbc_hdr_key[QBC_KEY_MAX  + 10];   /* "apikey: " + key            */
+static char     qbc_hdr_auth[QBC_KEY_MAX + 24];   /* "Authorization: Bearer " + key */
+static intptr_t qbc_slist;
+
+static inline void qb64_http_cleanup_slist(void) {
+    if (qbc_slist) { curl_slist_free_all(qbc_slist); qbc_slist = 0; }
+}
+
+static inline int qb64_http_post(
+    intptr_t easy,   intptr_t multi,
+    const char *url, int url_len,
+    const char *key, int key_len,
+    const char *body, int body_len
+) {
+    if (url_len  <= 0 || url_len  >= QBC_URL_MAX)  return -1;
+    if (key_len  <= 0 || key_len  >= QBC_KEY_MAX)  return -2;
+    if (body_len <= 0 || body_len >= QBC_POST_MAX) return -3;
+
+    /* --- copy every string to stable C storage before any curl call --- */
+    memcpy(qbc_url,  url,  url_len);  qbc_url[url_len]  = '\0';
+    memcpy(qbc_key,  key,  key_len);  qbc_key[key_len]  = '\0';
+    memcpy(qbc_post, body, body_len); qbc_post_len = body_len;
+
+    memcpy(qbc_hdr_key,  "apikey: ",              8);
+    memcpy(qbc_hdr_key  + 8,  qbc_key, key_len); qbc_hdr_key[8  + key_len] = '\0';
+    memcpy(qbc_hdr_auth, "Authorization: Bearer ", 22);
+    memcpy(qbc_hdr_auth + 22, qbc_key, key_len); qbc_hdr_auth[22 + key_len] = '\0';
+
+    /* build slist — curl_slist_append strdup's each header, so local ptrs are fine */
+    qb64_http_cleanup_slist();
+    intptr_t sl = curl_slist_append(0, "Content-Type: application/json");
+    sl = curl_slist_append(sl, qbc_hdr_key);
+    sl = curl_slist_append(sl, qbc_hdr_auth);
+    sl = curl_slist_append(sl, "Prefer: return=minimal");
+    qbc_slist = sl;
+
+    /* reset capture buffers */
+    qbc_body_len = 0; qbc_body[0] = '\0';
+    qbc_hdrs_len = 0; qbc_hdrs[0] = '\0';
+
+    /* configure easy handle — every arg comes from stable C buffers */
+    curl_easy_setopt(easy, QBC_WRITEFUNCTION,  (qbc_write_fn)qbc_write_body);
+    curl_easy_setopt(easy, QBC_HEADERFUNCTION, (qbc_write_fn)qbc_write_hdrs);
+    curl_easy_setopt(easy, 41,    (long)1);            /* CURLOPT_VERBOSE        */
+    curl_easy_setopt(easy, 10002, qbc_url);            /* CURLOPT_URL            */
+    curl_easy_setopt(easy, 10015, qbc_post);           /* CURLOPT_POSTFIELDS     */
+    curl_easy_setopt(easy, 60,    (long)body_len);     /* CURLOPT_POSTFIELDSIZE  */
+    curl_easy_setopt(easy, 10023, (intptr_t)sl);       /* CURLOPT_HTTPHEADER     */
+    curl_easy_setopt(easy, 13,    (long)5);            /* CURLOPT_TIMEOUT        */
+    curl_easy_setopt(easy, 45,    (long)1);            /* CURLOPT_FAILONERROR    */
+
+    return (int)curl_multi_add_handle(multi, easy);
 }
 
 #endif
