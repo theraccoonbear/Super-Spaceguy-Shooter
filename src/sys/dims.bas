@@ -240,6 +240,7 @@ DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP
 DIM SHARED httpLastResp    AS HttpResponse
 DIM SHARED httpLastBody    AS STRING
 DIM SHARED httpLastHeaders AS STRING
+DIM SHARED httpPostBody    AS STRING  ' holds POST body alive across async pump frames
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING
