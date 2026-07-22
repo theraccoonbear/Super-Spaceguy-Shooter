@@ -142,6 +142,7 @@ Sub TELEM_BossDefeated()
 End Sub
 
 Sub TELEM_SessionEnd()
+    If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
     Dim tlMisses As Long : tlMisses = telemShotsFired - telemShotsHit
     Dim tlData As String
     tlData = "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
