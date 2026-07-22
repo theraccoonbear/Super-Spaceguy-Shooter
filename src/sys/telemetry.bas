@@ -91,6 +91,7 @@ Sub TELEM_SessionStart()
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0 : telemBatch = ""
+    telemExitReason = ""
     TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|nerf=" + LTrim$(Str$(settingNerf))
 End Sub
 
@@ -145,7 +146,9 @@ Sub TELEM_SessionEnd()
     If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
     Dim tlMisses As Long : tlMisses = telemShotsFired - telemShotsHit
     Dim tlData As String
-    tlData = "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
+    tlData = "exit=" + telemExitReason _
+           + "|score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
+           + "|wave=" + LTrim$(Str$(waveType)) _
            + "|boss=" + LTrim$(Str$(telemBossReached)) _
            + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
