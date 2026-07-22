@@ -13,6 +13,7 @@ Sub DBG_LogStateChange()
         Case GS_OPTIONS  : dbgStateName = "GS_OPTIONS"
         Case GS_ABOUT    : dbgStateName = "GS_ABOUT"
         Case GS_LEADIN   : dbgStateName = "GS_LEADIN"
+        Case GS_CONSENT  : dbgStateName = "GS_CONSENT"
         Case Else        : dbgStateName = "GS_?" + LTrim$(Str$(gameState))
     End Select
     DBG_Print "[state] " + dbgStateName

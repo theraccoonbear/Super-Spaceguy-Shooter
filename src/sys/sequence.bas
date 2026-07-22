@@ -285,6 +285,8 @@ Sub SEQ_Advance()
     Dim seqaType As String, seqaMus As String, seqaTrig As Integer
     seqIdx = seqIdx + 1
     If seqIdx >= seqCount Then
+        telemExitReason = "win"
+        TELEM_SessionEnd
         SEQ_RewindToTitle
         gameState = GS_TITLE
         MUS_SetCue "title"
@@ -360,6 +362,8 @@ Sub SEQ_Advance()
             End Select
         Case SEQ_TITLE
             If score > highScore Then highScore = score : SETTINGS_Save
+            telemExitReason = "win"
+            TELEM_SessionEnd
             SEQ_RewindToTitle
             gameState = GS_TITLE
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")

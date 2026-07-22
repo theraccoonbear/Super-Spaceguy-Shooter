@@ -131,7 +131,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev
 
       - name: Install QB64-PE (Linux/macOS)
         if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os != 'Windows'
@@ -154,6 +154,9 @@ jobs:
 
       - name: Build sss.bas
         shell: bash
+        env:
+          TELEM_NET_URL: ${{ secrets.TELEM_NET_URL }}
+          TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
       - name: Dump compile log on failure

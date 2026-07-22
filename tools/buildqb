@@ -12,6 +12,10 @@ if [ "$1" == "sss.bas" ]; then
     echo ">>> Baking in-game spoken text..."
     "$(dirname "$0")/bake_speech_dict" || exit 1
     echo ">>> ...done!"
+    # Ensure assets/.env exists for $EMBED (empty = no network telemetry)
+    if [ ! -f assets/.env ]; then
+        touch assets/.env
+    fi
     REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
     if ! git -C "$REPO_ROOT" diff --exit-code assets/speech_dict.txt > /dev/null 2>&1; then
         echo ""
@@ -30,7 +34,9 @@ if [ -z "$QB64_BIN" ]; then
     echo "Error: qb64pe not found in PATH" >&2
     exit 1
 fi
-ln -sfn "$(realpath .)/assets" "$(dirname "$(realpath "$QB64_BIN")")/assets"
+QB64_DIR="$(dirname "$(realpath "$QB64_BIN")")"
+ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
+
 
 # Remove stale executable so a failed build can't be mistaken for success
 rm -f "$old_exe"

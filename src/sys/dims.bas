@@ -11,6 +11,7 @@ CONST GS_CRAWL     = 6
 CONST GS_OPTIONS   = 7
 CONST GS_ABOUT     = 8
 CONST GS_LEADIN    = 9
+CONST GS_CONSENT   = 10
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
@@ -101,6 +102,12 @@ TYPE BossObj
     targetZ   AS SINGLE
     state     AS INTEGER
     warnTimer AS INTEGER
+END TYPE
+
+TYPE HttpResponse
+    statusCode AS LONG
+    bodyLen    AS LONG
+    headerLen  AS LONG
 END TYPE
 
 TYPE CamFollow
@@ -222,9 +229,18 @@ DIM SHARED telemBossReached  AS INTEGER
 DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause   AS STRING
 DIM SHARED telemSession      AS STRING
+DIM SHARED telemPlayerID     AS STRING
+DIM SHARED telemConsent      AS INTEGER
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
+DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP POST
+DIM SHARED telemExitReason   AS STRING  ' "death", "quit", or "win" -- set before TELEM_SessionEnd
+
+' --- HTTP response (populated by HTTP_Pump after each transfer) ---
+DIM SHARED httpLastResp    AS HttpResponse
+DIM SHARED httpLastBody    AS STRING
+DIM SHARED httpLastHeaders AS STRING
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING

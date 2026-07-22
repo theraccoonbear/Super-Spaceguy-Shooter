@@ -86,6 +86,13 @@ case "$(uname -s)" in
     ;;
 esac
 
+
+# Write .env from CI secrets for $EMBED. Empty values disable network telemetry.
+cat > "$REPODIR/assets/.env" <<EOF
+TELEM_NET_URL=${TELEM_NET_URL:-}
+TELEM_NET_KEY=${TELEM_NET_KEY:-}
+EOF
+
 echo "==> Building sss.bas..."
 mkdir -p "$REPODIR/builds"
 case "$(uname -s)" in
