@@ -73,18 +73,6 @@ jobs:
         if: failure()
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
 
-  telem-ping:
-    name: Telemetry endpoint check
-    needs: dict-check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Ping Supabase telemetry endpoint
-        env:
-          TELEM_NET_URL: ${{ secrets.TELEM_NET_URL }}
-          TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
-        run: bash tools/telem_test
-
   build:
     needs: dict-check
     strategy:
@@ -196,7 +184,7 @@ jobs:
           path: ${{ matrix.release-asset-name }}
 
   release:
-    needs: [build, test, telem-ping]
+    needs: [build, test]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
