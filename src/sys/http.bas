@@ -35,14 +35,13 @@ DECLARE LIBRARY "curl_qb64"
     SUB     http_get_hdrs            ALIAS "qb64_get_hdrs"            (buf AS STRING, BYVAL maxLen AS LONG)
     FUNCTION http_last_curlcode&     ALIAS "qb64_curl_last_curlcode"  (BYVAL httpM%&)
     SUB     http_curl_error_str      ALIAS "qb64_curl_error_str"      (BYVAL httpCode AS LONG, buf AS STRING, BYVAL maxLen AS LONG)
+    FUNCTION http_set_post_body&     ALIAS "qb64_set_post_body"       (BYVAL httpH%&, httpBody AS STRING, BYVAL httpLen AS LONG)
 END DECLARE
 
-Const CURLOPT_URL           = 10002
-Const CURLOPT_POSTFIELDS    = 10015  ' pointer -- httpPostBody (DIM SHARED) keeps buffer alive
-Const CURLOPT_HTTPHEADER    = 10023
-Const CURLOPT_POSTFIELDSIZE = 60     ' explicit byte count; avoids strlen on QB64-PE string
-Const CURLOPT_TIMEOUT       = 13
-Const CURLOPT_FAILONERROR   = 45
+Const CURLOPT_URL         = 10002
+Const CURLOPT_HTTPHEADER  = 10023
+Const CURLOPT_TIMEOUT     = 13
+Const CURLOPT_FAILONERROR = 45
 
 Dim Shared httpMultiH As _OFFSET  ' curl_multi handle; 0 = not initialized
 Dim Shared httpEasyH  As _OFFSET  ' in-flight easy handle; 0 = idle
@@ -123,11 +122,15 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     httpL = http_slist_append%&(httpL, "Authorization: Bearer " + httpKey)
     httpL = http_slist_append%&(httpL, "Prefer: return=minimal")
 
-    httpPostBody = httpBody  ' anchor in DIM SHARED; keeps pointer valid across pump frames
+    httpPostBody = httpBody
+    DBG_Print "HTTP: url=[" + httpUrl + "] urlLen=" + LTrim$(Str$(Len(httpUrl))) + " bodyLen=" + LTrim$(Str$(Len(httpPostBody)))
     http_enable_capture httpH
-    http_setopt_str  httpH, CURLOPT_URL,           httpUrl
-    http_setopt_long httpH, CURLOPT_POSTFIELDSIZE, Len(httpPostBody)
-    http_setopt_str  httpH, CURLOPT_POSTFIELDS,    httpPostBody
+    http_setopt_str  httpH, CURLOPT_URL, httpUrl
+    Dim httpPostResult As Long : httpPostResult = http_set_post_body&(httpH, httpPostBody, Len(httpPostBody))
+    If httpPostResult <> 0 Then
+        DBG_Print "HTTP: POST body too large (" + LTrim$(Str$(Len(httpPostBody))) + " bytes) -- skipping"
+        http_curl_cleanup httpH : http_slist_free httpL : Exit Sub
+    End If
     http_setopt_ptr  httpH, CURLOPT_HTTPHEADER,  httpL
     http_setopt_long httpH, CURLOPT_TIMEOUT,     5
     http_setopt_long httpH, CURLOPT_FAILONERROR, 1

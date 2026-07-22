@@ -32,11 +32,14 @@ const char* curl_easy_strerror(int);
 #define QBC_HEADERFUNCTION  20079    /* CURLOPTTYPE_FUNCTIONPOINT + 79 */
 #define QBC_BODY_MAX        32768
 #define QBC_HDR_MAX         8192
+#define QBC_POST_MAX        131072   /* max POST body: 128 KB */
 
 static char qbc_body[QBC_BODY_MAX];
 static int  qbc_body_len;
 static char qbc_hdrs[QBC_HDR_MAX];
 static int  qbc_hdrs_len;
+static char qbc_post[QBC_POST_MAX];  /* stable POST body buffer -- curl reads this during async transfer */
+static int  qbc_post_len;
 
 static size_t qbc_write_body(char *ptr, size_t size, size_t nmemb, void *) {
     size_t n = size * nmemb;
@@ -110,6 +113,22 @@ static inline void qb64_get_body(char *out, int maxlen) {
 static inline void qb64_get_hdrs(char *out, int maxlen) {
     int n = qbc_hdrs_len < maxlen ? qbc_hdrs_len : maxlen;
     memcpy(out, qbc_hdrs, n);
+}
+
+/*
+ * Copy POST body into stable C static buffer, then set CURLOPT_POSTFIELDS + SIZE.
+ * CURLOPT_POSTFIELDS stores the raw pointer -- QB64-PE's string temp is freed after
+ * setopt returns, leaving curl with a dangling pointer for async transfers.
+ * Copying here keeps qbc_post[] valid until the next call to this function.
+ * Returns 0 on success, -1 if body exceeds QBC_POST_MAX.
+ */
+static inline int qb64_set_post_body(intptr_t handle, const char *body, int len) {
+    if (len < 0 || len >= QBC_POST_MAX) return -1;
+    memcpy(qbc_post, body, len);
+    qbc_post_len = len;
+    curl_easy_setopt(handle, 10015, qbc_post);    /* CURLOPT_POSTFIELDS */
+    curl_easy_setopt(handle, 60,    (long)len);   /* CURLOPT_POSTFIELDSIZE */
+    return 0;
 }
 
 #endif
