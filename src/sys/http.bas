@@ -109,7 +109,6 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     Dim httpH As _OFFSET : httpH = http_curl_init%&
     If httpH = 0 Then DBG_Print "HTTP: curl_easy_init failed" : Exit Sub
 
-    httpPostBody = httpBody
     Dim httpR As Long
     httpR = http_post_setup&(httpH, httpMultiH, _
                              httpUrl, Len(httpUrl), _
