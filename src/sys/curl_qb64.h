@@ -183,7 +183,6 @@ static inline int qb64_http_post(
     /* configure easy handle — every arg comes from stable C buffers */
     curl_easy_setopt(easy, QBC_WRITEFUNCTION,  (qbc_write_fn)qbc_write_body);
     curl_easy_setopt(easy, QBC_HEADERFUNCTION, (qbc_write_fn)qbc_write_hdrs);
-    curl_easy_setopt(easy, 41,    (long)1);            /* CURLOPT_VERBOSE        */
     curl_easy_setopt(easy, 10002, qbc_url);            /* CURLOPT_URL            */
     curl_easy_setopt(easy, 10015, qbc_post);           /* CURLOPT_POSTFIELDS     */
     curl_easy_setopt(easy, 60,    (long)body_len);     /* CURLOPT_POSTFIELDSIZE  */

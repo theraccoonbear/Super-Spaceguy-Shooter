@@ -156,7 +156,6 @@ Sub TELEM_SessionEnd()
         tlJson = "[" + telemBatch + "]"
         DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes to " + TELEM_NET_URL
         HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tlJson
-        DBG_Print "TELEM: POST enqueued easyH=" + LTrim$(Str$(httpEasyH))
     End If
     telemSession = "" : telemBatch = ""
 End Sub

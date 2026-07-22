@@ -110,19 +110,16 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     If httpH = 0 Then DBG_Print "HTTP: curl_easy_init failed" : Exit Sub
 
     httpPostBody = httpBody
-    DBG_Print "HTTP: POST urlLen=" + LTrim$(Str$(Len(httpUrl))) + " bodyLen=" + LTrim$(Str$(Len(httpBody)))
-
-    ' All string copies into stable C buffers, all setopt calls, and multi_add happen
-    ' inside qb64_http_post -- no QB64-PE string temps ever outlive their setopt call.
     Dim httpR As Long
     httpR = http_post_setup&(httpH, httpMultiH, _
                              httpUrl, Len(httpUrl), _
                              httpKey, Len(httpKey), _
                              httpBody, Len(httpBody))
-    DBG_Print "HTTP: post_setup=" + LTrim$(Str$(httpR))
     If httpR <> 0 Then
+        DBG_Print "HTTP: post_setup failed rc=" + LTrim$(Str$(httpR))
         http_curl_cleanup httpH : Exit Sub
     End If
+    DBG_Print "HTTP: POST enqueued " + LTrim$(Str$(Len(httpBody))) + " bytes"
 
     httpEasyH  = httpH
     httpLastOK = 0
