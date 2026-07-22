@@ -37,12 +37,12 @@ DECLARE LIBRARY "curl_qb64"
     SUB     http_curl_error_str      ALIAS "qb64_curl_error_str"      (BYVAL httpCode AS LONG, buf AS STRING, BYVAL maxLen AS LONG)
 END DECLARE
 
-Const CURLOPT_URL              = 10002
-Const CURLOPT_POSTFIELDS       = 10015  ' pointer only -- caller must keep buffer alive
-Const CURLOPT_HTTPHEADER       = 10023
-Const CURLOPT_COPYPOSTFIELDS   = 10165  ' libcurl copies body -- safe with QB64-PE async
-Const CURLOPT_TIMEOUT          = 13
-Const CURLOPT_FAILONERROR      = 45
+Const CURLOPT_URL           = 10002
+Const CURLOPT_POSTFIELDS    = 10015  ' pointer -- httpPostBody (DIM SHARED) keeps buffer alive
+Const CURLOPT_HTTPHEADER    = 10023
+Const CURLOPT_POSTFIELDSIZE = 60     ' explicit byte count; avoids strlen on QB64-PE string
+Const CURLOPT_TIMEOUT       = 13
+Const CURLOPT_FAILONERROR   = 45
 
 Dim Shared httpMultiH As _OFFSET  ' curl_multi handle; 0 = not initialized
 Dim Shared httpEasyH  As _OFFSET  ' in-flight easy handle; 0 = idle
@@ -123,9 +123,11 @@ Sub HTTP_PostJSON (httpUrl As String, httpKey As String, httpBody As String)
     httpL = http_slist_append%&(httpL, "Authorization: Bearer " + httpKey)
     httpL = http_slist_append%&(httpL, "Prefer: return=minimal")
 
+    httpPostBody = httpBody  ' anchor in DIM SHARED; keeps pointer valid across pump frames
     http_enable_capture httpH
-    http_setopt_str  httpH, CURLOPT_URL,            httpUrl
-    http_setopt_str  httpH, CURLOPT_COPYPOSTFIELDS, httpBody
+    http_setopt_str  httpH, CURLOPT_URL,           httpUrl
+    http_setopt_long httpH, CURLOPT_POSTFIELDSIZE, Len(httpPostBody)
+    http_setopt_str  httpH, CURLOPT_POSTFIELDS,    httpPostBody
     http_setopt_ptr  httpH, CURLOPT_HTTPHEADER,  httpL
     http_setopt_long httpH, CURLOPT_TIMEOUT,     5
     http_setopt_long httpH, CURLOPT_FAILONERROR, 1
