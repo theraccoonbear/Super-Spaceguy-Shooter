@@ -156,6 +156,16 @@ jobs:
         shell: bash
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
+      - name: Smoke test -- --version
+        shell: bash
+        run: |
+          OUT=$("${{ matrix.artifact-path }}" --version)
+          echo "$OUT"
+          echo "$OUT" | grep -q "Super Spaceguy Shooter" || {
+            echo "::error::--version smoke test failed: unexpected output"
+            exit 1
+          }
+
       - name: Dump compile log on failure
         if: failure()
         shell: bash

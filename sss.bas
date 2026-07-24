@@ -10,6 +10,7 @@
 ' ============================================================
 OPTION _EXPLICIT
 $Resize:stretch
+$CONSOLE
 $EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
 $EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
 $EMBED:'assets/sss-title-final.png':'TITLEIMG'

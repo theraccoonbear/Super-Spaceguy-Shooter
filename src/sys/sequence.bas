@@ -246,7 +246,7 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
             Next seqpJ
             seqpOut = seqpOut + "]"
         End If
-        Print #seqpFH, "  crawl" + seqpOut
+        CLI_Emit seqpFH, "  crawl" + seqpOut
     End If
     If seqpPCnt > 0 Then
         seqpMin = seqpPNums(0) : seqpMax = seqpPNums(seqpPCnt - 1)
@@ -260,7 +260,7 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
             Next seqpJ
             seqpOut = seqpOut + "]"
         End If
-        Print #seqpFH, "  playing" + seqpOut
+        CLI_Emit seqpFH, "  playing" + seqpOut
     End If
     If seqpBCnt > 0 Then
         seqpMin = seqpBNums(0) : seqpMax = seqpBNums(seqpBCnt - 1)
@@ -274,10 +274,10 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
             Next seqpJ
             seqpOut = seqpOut + "]"
         End If
-        Print #seqpFH, "  boss" + seqpOut
+        CLI_Emit seqpFH, "  boss" + seqpOut
     End If
-    If seqpHasTitle Then Print #seqpFH, "  title"
-    If seqpHasEmp Then Print #seqpFH, "  emperor"
+    If seqpHasTitle Then CLI_Emit seqpFH, "  title"
+    If seqpHasEmp Then CLI_Emit seqpFH, "  emperor"
 End Sub
 
 ' Advance to the next sequence step and execute it.

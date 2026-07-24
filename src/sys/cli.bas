@@ -1,3 +1,15 @@
+' Writes a line to the CLI output stream. On Windows the QB64-PE console has no
+' Win32 CON: device to OPEN, so output must go through _DEST _CONSOLE + PRINT
+' instead of a file handle; the caller is expected to have already done
+' _CONSOLE ON / _DEST _CONSOLE on Windows before calling this.
+Sub CLI_Emit(ceFH As Integer, ceMsg As String)
+    If InStr(_OS$, "WIN") Then
+        Print ceMsg
+    Else
+        Print #ceFH, ceMsg
+    End If
+End Sub
+
 Sub CLI_Parse()
     Dim cliLine As String : cliLine = Command$
     Dim cliFH As Integer
@@ -6,12 +18,13 @@ Sub CLI_Parse()
     If InStr(cliLine, "--version") > 0 Or cliLine = "-v" Or Left$(cliLine, 3) = "-v " Then
         cliFH = FreeFile
         If InStr(_OS$, "WIN") Then
-            Open "CON:" For Output As #cliFH
+            _Console On
+            _Dest _Console
         Else
             Open "/dev/stdout" For Output As #cliFH
         End If
-        Print #cliFH, "Super Spaceguy Shooter " + VERSION$
-        Close #cliFH
+        CLI_Emit cliFH, "Super Spaceguy Shooter " + VERSION$
+        If InStr(_OS$, "WIN") = 0 Then Close #cliFH
         System
     End If
 
