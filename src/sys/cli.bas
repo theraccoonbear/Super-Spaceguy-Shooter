@@ -6,12 +6,13 @@ Sub CLI_Parse()
     If InStr(cliLine, "--version") > 0 Or cliLine = "-v" Or Left$(cliLine, 3) = "-v " Then
         cliFH = FreeFile
         If InStr(_OS$, "WIN") Then
-            Open "CON:" For Output As #cliFH
+            _Console On
+            _Dest _Console
         Else
             Open "/dev/stdout" For Output As #cliFH
         End If
-        Print #cliFH, "Super Spaceguy Shooter " + VERSION$
-        Close #cliFH
+        CLI_Emit cliFH, "Super Spaceguy Shooter " + VERSION$
+        If InStr(_OS$, "WIN") = 0 Then Close #cliFH
         System
     End If
 
