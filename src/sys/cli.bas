@@ -1,15 +1,3 @@
-' Writes a line to the CLI output stream. On Windows the QB64-PE console has no
-' Win32 CON: device to OPEN, so output must go through _DEST _CONSOLE + PRINT
-' instead of a file handle; the caller is expected to have already done
-' _CONSOLE ON / _DEST _CONSOLE on Windows before calling this.
-Sub CLI_Emit(ceFH As Integer, ceMsg As String)
-    If InStr(_OS$, "WIN") Then
-        Print ceMsg
-    Else
-        Print #ceFH, ceMsg
-    End If
-End Sub
-
 Sub CLI_Parse()
     Dim cliLine As String : cliLine = Command$
     Dim cliFH As Integer
