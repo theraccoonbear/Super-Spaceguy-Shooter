@@ -13,6 +13,7 @@ $Resize:stretch
 $IF WIN THEN
     $CONSOLE
 $END IF
+$SCREENHIDE
 $EMBED:'assets/ctut_game_studios.png':'CTUTPNG'
 $EMBED:'assets/cogikel_heavy_industries.png':'COGIKELPNG'
 $EMBED:'assets/sss-title-final.png':'TITLEIMG'
@@ -60,6 +61,7 @@ dbgTtyDone:
 ' --- screen ---
 scrW = 320 : scrH = 240
 SCREEN _NEWIMAGE(scrW, scrH, 32)
+_SCREENSHOW
 backBuffer = _NEWIMAGE(scrW, scrH, 32)
 titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")

@@ -159,7 +159,11 @@ jobs:
       - name: Smoke test -- --version
         shell: bash
         run: |
-          OUT=$("${{ matrix.artifact-path }}" --version)
+          if [ "${{ runner.os }}" == "Linux" ] && command -v xvfb-run &>/dev/null; then
+            OUT=$(xvfb-run -a "${{ matrix.artifact-path }}" --version)
+          else
+            OUT=$("${{ matrix.artifact-path }}" --version)
+          fi
           echo "$OUT"
           echo "$OUT" | grep -q "Super Spaceguy Shooter" || {
             echo "::error::--version smoke test failed: unexpected output"
