@@ -28,5 +28,9 @@ sss_speech.log
 builds/
 tests/seq_trace_test
 
+# Telemetry credentials (gitignored; inject via CI secrets or create locally)
+assets/.env
+.env
+
 # Claude Code session memory
 memory/

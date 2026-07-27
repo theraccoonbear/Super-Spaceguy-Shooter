@@ -131,7 +131,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev
 
       - name: Install QB64-PE (Linux/macOS)
         if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os != 'Windows'
@@ -151,6 +151,18 @@ jobs:
           Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.7z
           7z x qb64pe.7z
           Rename-Item qb64pe qb64pe-bin
+
+      - name: Write telemetry credentials
+        shell: bash
+        env:
+          TELEM_NET_URL: ${{ secrets.TELEM_NET_URL }}
+          TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
+        run: |
+          if [ -n "${TELEM_NET_URL:-}" ] && [ -n "${TELEM_NET_KEY:-}" ]; then
+            printf 'TELEM_NET_URL=%s\nTELEM_NET_KEY=%s\n' "$TELEM_NET_URL" "$TELEM_NET_KEY" > assets/.env
+          else
+            touch assets/.env
+          fi
 
       - name: Build sss.bas
         shell: bash

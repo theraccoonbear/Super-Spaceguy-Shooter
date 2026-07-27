@@ -31,6 +31,7 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
+$EMBED:'assets/.env':'ENVCONFIG'
 
 DIM SHARED ctrlDev AS INTEGER
 
@@ -38,6 +39,8 @@ DIM SHARED ctrlDev AS INTEGER
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/sys/dims.bas'
 '$INCLUDE:'src/game.bi'
+
+TELEM_LoadCredentials _EMBEDDED$("ENVCONFIG")
 
 ' --- load sequence before CLI so GAME_Usage can enumerate valid scene names ---
 SEQ_Load _EMBEDDED$("SEQTXT")
@@ -177,6 +180,7 @@ DO
 
     DBG_Overlay
 
+    If httpEasyH <> 0 Or httpQCount > 0 Then HTTP_Pump
     _LIMIT 60
     _DISPLAY
 LOOP
