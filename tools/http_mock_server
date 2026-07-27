@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""http_mock_server -- programmable HTTP mock for QB64-PE HTTP queue tests.
+
+Endpoints:
+  POST /fast          200 immediately
+  POST /slow/<ms>     sleep N ms, then 200
+  POST /fail          500 immediately
+  GET  /get_ok        200 {"ok":true}
+  GET  /requests      JSON log of all received requests in order
+  DELETE /requests    clear the log
+
+Prints the bound port to stdout on startup so the wrapper can read it.
+Usage: tools/http_mock_server [--port N]
+"""
+import argparse
+import json
+import time
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+_lock = threading.Lock()
+_log  = []   # {"seq": N, "method": str, "path": str, "body": str, "t": float}
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *_):
+        pass  # silence default access log
+
+    def _record(self, body=b""):
+        with _lock:
+            entry = {
+                "seq":    len(_log),
+                "method": self.command,
+                "path":   self.path,
+                "body":   body.decode("utf-8", errors="replace"),
+                "t":      time.time(),
+            }
+            _log.append(entry)
+        return entry
+
+    def _read_body(self):
+        n = int(self.headers.get("Content-Length", 0))
+        return self.rfile.read(n) if n > 0 else b""
+
+    def _send(self, status, body=b"", ct="application/json"):
+        self.send_response(status)
+        self.send_header("Content-Type", ct)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        body = self._read_body()
+        self._record(body)
+        if self.path == "/fast":
+            self._send(200, b'{"ok":true}')
+        elif self.path.startswith("/slow/"):
+            try:
+                ms = int(self.path.split("/")[2])
+            except (IndexError, ValueError):
+                ms = 100
+            time.sleep(ms / 1000.0)
+            self._send(200, b'{"ok":true}')
+        elif self.path == "/fail":
+            self._send(500, b'{"error":"mock failure"}')
+        else:
+            self._send(404, b'{"error":"not found"}')
+
+    def do_GET(self):
+        if self.path == "/get_ok":
+            self._record()
+            self._send(200, b'{"ok":true}')
+        elif self.path == "/requests":
+            with _lock:
+                data = json.dumps(_log).encode()
+            self._send(200, data)
+        else:
+            self._send(404, b'{"error":"not found"}')
+
+    def do_DELETE(self):
+        if self.path == "/requests":
+            with _lock:
+                _log.clear()
+            self._send(200, b'{"reset":true}')
+        else:
+            self._send(404, b'{"error":"not found"}')
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=0,
+                    help="TCP port (0 = pick a free one)")
+    args = ap.parse_args()
+
+    srv = HTTPServer(("127.0.0.1", args.port), Handler)
+    actual_port = srv.server_address[1]
+    print(actual_port, flush=True)   # wrapper reads this line to learn the port
+    srv.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
