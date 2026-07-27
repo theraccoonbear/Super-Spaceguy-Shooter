@@ -158,7 +158,7 @@ Sub TELEM_SessionEnd()
         Dim tlJson As String
         tlJson = "[" + telemBatch + "]"
         DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes to " + TELEM_NET_URL
-        HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tlJson
+        HTTP_Post TELEM_NET_URL, TELEM_NET_KEY, tlJson, "telem_batch"
     End If
     telemSession = "" : telemBatch = ""
 End Sub

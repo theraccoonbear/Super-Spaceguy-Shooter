@@ -192,7 +192,7 @@ DO
 
     DBG_Overlay
 
-    If httpEasyH <> 0 Then HTTP_Pump
+    If httpEasyH <> 0 Or httpQCount > 0 Then HTTP_Pump
     _LIMIT 60
     _DISPLAY
 LOOP
