@@ -159,6 +159,20 @@ jobs:
           TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
+      - name: Smoke test -- --version
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Linux" ] && command -v xvfb-run &>/dev/null; then
+            OUT=$(xvfb-run -a "${{ matrix.artifact-path }}" --version)
+          else
+            OUT=$("${{ matrix.artifact-path }}" --version)
+          fi
+          echo "$OUT"
+          echo "$OUT" | grep -q "Super Spaceguy Shooter" || {
+            echo "::error::--version smoke test failed: unexpected output"
+            exit 1
+          }
+
       - name: Dump compile log on failure
         if: failure()
         shell: bash
