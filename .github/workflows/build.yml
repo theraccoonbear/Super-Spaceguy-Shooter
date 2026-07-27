@@ -197,6 +197,20 @@ jobs:
           name: release-${{ matrix.artifact-name }}
           path: ${{ matrix.release-asset-name }}
 
+  gate:
+    name: All checks pass
+    needs: [dict-check, test, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Require all jobs to succeed
+        run: |
+          fail=0
+          [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
+          [[ "${{ needs.test.result }}"       != "success" ]] && echo "FAIL test:       ${{ needs.test.result }}"       && fail=1
+          [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
+          [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
+
   release:
     needs: [build, test]
     runs-on: ubuntu-latest

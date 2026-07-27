@@ -61,6 +61,7 @@ Dim Shared scrH         As Single
 Dim Shared boss         As BossState
 Dim Shared tt           As Single
 Dim Shared planetNames(1 To PLANET_COUNT) As String
+Dim Shared telemExitReason As String
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
