@@ -18,7 +18,7 @@ END TYPE
 DIM SHARED httpLastResp    AS HttpResponse
 DIM SHARED httpLastBody    AS STRING
 DIM SHARED httpLastHeaders AS STRING
-DIM SHARED httpPostBody    AS STRING
+DIM SHARED httpLastTag     AS STRING
 DIM SHARED TELEM_NET_URL   AS STRING
 DIM SHARED TELEM_NET_KEY   AS STRING
 
@@ -79,10 +79,10 @@ Print "Batch:     " + LTrim$(Str$(Len(tbBatch))) + " bytes, 4 rows"
 Print ""
 Print "POSTing via QB64-PE libcurl binding..."
 
-HTTP_PostJSON TELEM_NET_URL, TELEM_NET_KEY, tbBatch
+HTTP_Post TELEM_NET_URL, TELEM_NET_KEY, tbBatch, "telem_batch"
 
 Dim tbDeadline As Double : tbDeadline = Timer + 10
-Do While httpEasyH <> 0
+Do While httpEasyH <> 0 Or httpQCount > 0
     HTTP_Pump
     _Delay 0.05
     If Timer > tbDeadline Then

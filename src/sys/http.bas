@@ -34,10 +34,7 @@ DECLARE LIBRARY "curl_qb64"
          httpUrl AS STRING, BYVAL httpUrlLen AS LONG, _
          httpKey AS STRING, BYVAL httpKeyLen AS LONG, _
          httpBody AS STRING, BYVAL httpBodyLen AS LONG)
-    FUNCTION http_get_setup&         ALIAS "qb64_http_get" _
-        (BYVAL httpEH%&, BYVAL httpMH%&, _
-         httpUrl AS STRING, BYVAL httpUrlLen AS LONG, _
-         httpKey AS STRING, BYVAL httpKeyLen AS LONG)
+    FUNCTION http_get_setup&  ALIAS "qb64_http_get" (BYVAL httpGEH%&, BYVAL httpGMH%&, httpGUrl AS STRING, BYVAL httpGUrlLen AS LONG, httpGKey AS STRING, BYVAL httpGKeyLen AS LONG)
     SUB     http_cleanup_slist       ALIAS "qb64_http_cleanup_slist"
 END DECLARE
 
