@@ -18,6 +18,10 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
+# QB64-PE resolves $EMBED paths relative to its binary directory.
+# Mirror the symlink that buildqb creates so $EMBED:'assets/...' resolves.
+ln -sfn "$REPODIR/assets" "$QB64_DIR/assets"
+
 run_test() {
   local name="$1"
   local src="$REPODIR/tests/${name}.bas"
