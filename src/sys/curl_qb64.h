@@ -193,4 +193,43 @@ static inline int qb64_http_post(
     return (int)curl_multi_add_handle(multi, easy);
 }
 
+/*
+ * qb64_http_get -- configure curl for an authenticated GET request.
+ * Same stable-buffer pattern as qb64_http_post; no request body.
+ */
+static inline int qb64_http_get(
+    intptr_t easy,   intptr_t multi,
+    const char *url, int url_len,
+    const char *key, int key_len
+) {
+    if (url_len <= 0 || url_len >= QBC_URL_MAX) return -1;
+    if (key_len <= 0 || key_len >= QBC_KEY_MAX) return -2;
+
+    memcpy(qbc_url, url, url_len); qbc_url[url_len] = '\0';
+    memcpy(qbc_key, key, key_len); qbc_key[key_len] = '\0';
+
+    memcpy(qbc_hdr_key,  "apikey: ",              8);
+    memcpy(qbc_hdr_key  + 8,  qbc_key, key_len); qbc_hdr_key[8  + key_len] = '\0';
+    memcpy(qbc_hdr_auth, "Authorization: Bearer ", 22);
+    memcpy(qbc_hdr_auth + 22, qbc_key, key_len); qbc_hdr_auth[22 + key_len] = '\0';
+
+    qb64_http_cleanup_slist();
+    intptr_t sl = curl_slist_append(0, "Accept: application/json");
+    sl = curl_slist_append(sl, qbc_hdr_key);
+    sl = curl_slist_append(sl, qbc_hdr_auth);
+    qbc_slist = sl;
+
+    qbc_body_len = 0; qbc_body[0] = '\0';
+    qbc_hdrs_len = 0; qbc_hdrs[0] = '\0';
+
+    curl_easy_setopt(easy, QBC_WRITEFUNCTION,  (qbc_write_fn)qbc_write_body);
+    curl_easy_setopt(easy, QBC_HEADERFUNCTION, (qbc_write_fn)qbc_write_hdrs);
+    curl_easy_setopt(easy, 10002, qbc_url);            /* CURLOPT_URL            */
+    curl_easy_setopt(easy, 10023, (intptr_t)sl);       /* CURLOPT_HTTPHEADER     */
+    curl_easy_setopt(easy, 80,    (long)1);            /* CURLOPT_FOLLOWLOCATION */
+    curl_easy_setopt(easy, 13,    (long)10);           /* CURLOPT_TIMEOUT        */
+
+    return (int)curl_multi_add_handle(multi, easy);
+}
+
 #endif

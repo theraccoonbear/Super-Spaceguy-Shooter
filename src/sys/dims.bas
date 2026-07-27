@@ -241,6 +241,7 @@ DIM SHARED telemExitReason   AS STRING  ' "death", "quit", or "win" -- set befor
 DIM SHARED httpLastResp    AS HttpResponse
 DIM SHARED httpLastBody    AS STRING
 DIM SHARED httpLastHeaders AS STRING
+DIM SHARED httpLastTag     AS STRING
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING
