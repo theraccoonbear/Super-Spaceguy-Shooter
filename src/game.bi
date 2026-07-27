@@ -20,4 +20,5 @@
 '$INCLUDE:'gameplay/player.bas'
 '$INCLUDE:'gameplay/enemy.bas'
 '$INCLUDE:'gameplay/boss.bas'
+'$INCLUDE:'sys/http.bas'
 '$INCLUDE:'sys/telemetry.bas'

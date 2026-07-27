@@ -225,6 +225,22 @@ DIM SHARED telemSession      AS STRING
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
+DIM SHARED telemExitReason   AS STRING
+DIM SHARED telemBatch        AS STRING
+DIM SHARED telemPlayerID     AS STRING
+DIM SHARED TELEM_NET_URL     AS STRING
+DIM SHARED TELEM_NET_KEY     AS STRING
+
+' --- HTTP response (set by HTTP_Pump after each completed transfer) ---
+TYPE HttpResponse
+    statusCode AS LONG
+    bodyLen    AS LONG
+    headerLen  AS LONG
+END TYPE
+DIM SHARED httpLastResp    AS HttpResponse
+DIM SHARED httpLastBody    AS STRING
+DIM SHARED httpLastHeaders AS STRING
+DIM SHARED httpLastTag     AS STRING
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING

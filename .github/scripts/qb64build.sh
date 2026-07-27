@@ -86,6 +86,10 @@ case "$(uname -s)" in
     ;;
 esac
 
+# Ensure assets/.env exists so $EMBED:'assets/.env' resolves.
+# CI writes credentials via a preceding step; local dev creates the file manually.
+[ -f "$REPODIR/assets/.env" ] || touch "$REPODIR/assets/.env"
+
 echo "==> Building sss.bas..."
 mkdir -p "$REPODIR/builds"
 case "$(uname -s)" in
