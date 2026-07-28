@@ -233,6 +233,7 @@ DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause   AS STRING
 DIM SHARED telemSession      AS STRING
 DIM SHARED telemPlayerID     AS STRING
+DIM SHARED leaderboardPlayerID AS STRING
 DIM SHARED telemPlayerName   AS STRING
 DIM SHARED telemConsent      AS INTEGER
 DIM SHARED telemShotsFired   AS LONG
