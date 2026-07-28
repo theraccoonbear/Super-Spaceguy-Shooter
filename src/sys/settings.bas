@@ -11,6 +11,7 @@ Sub SETTINGS_Save ()
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "highscore="  + LTrim$(Str$(highScore))
     If Len(telemPlayerID) > 0 Then Print #sfH, "player_id=" + telemPlayerID
+    If Len(leaderboardPlayerID) > 0 Then Print #sfH, "lb_player_id=" + leaderboardPlayerID
     If Len(telemPlayerName) > 0 Then Print #sfH, "player_name=" + telemPlayerName
     If telemConsent Then Print #sfH, "telem_consent=1"
     If camF.angleLocked Then
@@ -39,6 +40,8 @@ Sub SETTINGS_Load ()
                 Select Case sfKey
                     Case "player_id"
                         If Len(sfRaw) >= 32 Then telemPlayerID = sfRaw
+                    Case "lb_player_id"
+                        If Len(sfRaw) >= 32 Then leaderboardPlayerID = sfRaw
                     Case "player_name"
                         If Len(sfRaw) > 0 And Len(sfRaw) <= UN_MAX_LEN Then telemPlayerName = sfRaw
                     Case "telem_consent"
@@ -79,6 +82,10 @@ Sub SETTINGS_Load ()
     If Len(telemPlayerID) < 32 Then
         RANDOMIZE TIMER
         telemPlayerID = TELEM_NewUUID$
+        SETTINGS_Save
+    End If
+    If Len(leaderboardPlayerID) < 32 Then
+        leaderboardPlayerID = TELEM_NewUUID$
         SETTINGS_Save
     End If
 End Sub

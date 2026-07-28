@@ -164,7 +164,7 @@ Sub TELEM_SessionEnd()
     End If
     If Len(LB_BASE_URL) > 0 And Len(LB_KEY) > 0 And telemConsent <> 0 And score > 0 Then
         Dim tlScoreJson As String
-        tlScoreJson = JSON_Obj$(JSON_S$("player_id",   telemPlayerID) + "," _
+        tlScoreJson = JSON_Obj$(JSON_S$("player_id",   leaderboardPlayerID) + "," _
                               + JSON_S$("player_name", telemPlayerName) + "," _
                               + JSON_N$("score",       LTrim$(Str$(score))) + "," _
                               + JSON_N$("wave",        LTrim$(Str$(waveType))) + "," _
