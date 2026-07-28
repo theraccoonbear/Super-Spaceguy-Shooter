@@ -104,6 +104,10 @@ Sub GS_PLAYING_Update ()
         spawnTimer = spawnTimer + 0.025
         IF fireTimer > 0 THEN fireTimer = fireTimer - 0.025
         IF invTimer > 0 THEN invTimer = invTimer - 1
+        IF planetTransitionTimer > 0 THEN
+            planetTransitionTimer = planetTransitionTimer - 1
+            IF planetTransitionTimer = 0 THEN SEQ_Advance
+        END IF
         IF laserEnergy < 100.0 THEN
             laserEnergy = laserEnergy + LASER_REGEN
             IF laserEnergy > 100.0 THEN laserEnergy = 100.0
