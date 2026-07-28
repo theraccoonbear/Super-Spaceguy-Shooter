@@ -162,13 +162,20 @@ Sub TELEM_SessionEnd()
         DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes to " + TELEM_NET_URL
         HTTP_Post TELEM_NET_URL, TELEM_NET_KEY, tlJson, "telem_batch"
     End If
-    If Len(LB_BASE_URL) > 0 And Len(LB_KEY) > 0 And telemConsent <> 0 And score > 0 Then
+    If Len(LB_BASE_URL) = 0 Or Len(LB_KEY) = 0 Then
+        DBG_Print "LBRD: score POST skipped -- LB_BASE_URL/LB_KEY not set in .env"
+    ElseIf telemConsent = 0 Then
+        DBG_Print "LBRD: score POST skipped -- no consent"
+    ElseIf score = 0 Then
+        DBG_Print "LBRD: score POST skipped -- score=0"
+    Else
         Dim tlScoreJson As String
         tlScoreJson = JSON_Obj$(JSON_S$("player_id",   leaderboardPlayerID) + "," _
                               + JSON_S$("player_name", telemPlayerName) + "," _
                               + JSON_N$("score",       LTrim$(Str$(score))) + "," _
                               + JSON_N$("wave",        LTrim$(Str$(waveType))) + "," _
                               + JSON_S$("session",     telemSession))
+        DBG_Print "LBRD: POST score=" + LTrim$(Str$(score)) + " player=" + telemPlayerName
         HTTP_Post LB_BASE_URL + "/scores", LB_KEY, tlScoreJson, "score_post"
     End If
     telemSession = "" : telemBatch = ""
