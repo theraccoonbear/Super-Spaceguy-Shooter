@@ -18,6 +18,7 @@
 '  15.  EMPEROR task parses as SEQ_EMPEROR (backward compat)
 '  16.  outro: end-of-sequence falls back to title
 '  17.  SEQ_RewindToTitle idempotent from title position
+'  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -456,6 +457,22 @@ SEQ_Advance : SEQ_Advance : SEQ_Advance   ' -> title (idx=2)
 ST_Assert seqIdx = 2 And seqKind(seqIdx) = SEQ_TITLE,   "14.01  at title (idx=2)"
 SEQ_RewindToTitle
 ST_Assert seqIdx = 2,                                   "14.02  RewindToTitle from title is idempotent"
+
+' ────────────────────────────────────────────────────────────────────────────
+' 15. --scene boss3 regression: gameState must be GS_PLAYING after boss dispatch
+'     from a cold start (gameState=GS_TITLE).  Prior to the fix the Case "boss"
+'     branch in SEQ_Advance was missing `gameState = GS_PLAYING`, so the game
+'     looped on the title screen instead of entering combat.
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 15. --scene boss3 regression (issue #187) ---"
+ST_Reset   ' gameState = GS_TITLE, boss.warnTimer = 0
+Dim st15R As Integer : st15R = SEQ_JumpToScene("boss3")
+ST_Assert st15R = 11,                                    "15.01  boss3 positioned at idx 11"
+SEQ_Advance
+ST_Assert gameState = GS_PLAYING,                        "15.02  gameState=GS_PLAYING after boss dispatch"
+ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "15.03  boss.warnTimer set"
+ST_Assert stageScore = 2147483647,                       "15.04  stageScore=MAX (combat trigger disabled)"
 
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
