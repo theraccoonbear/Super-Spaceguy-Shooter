@@ -11,7 +11,7 @@
 Sub LBRD_Poll ()
     If Len(LB_BASE_URL) = 0 Then Exit Sub
     Dim lbUrl As String
-    lbUrl = LB_BASE_URL + "/scores?order=score.desc&limit=" + LTrim$(Str$(LBRD_MAX)) + "&select=player_name,score"
+    lbUrl = LB_BASE_URL + "/top_scores?order=score.desc&limit=" + LTrim$(Str$(LBRD_MAX)) + "&select=player_name,score"
     HTTP_Get lbUrl, LB_KEY, "leaderboard_poll"
     lbrdPollDone = -1
 End Sub
