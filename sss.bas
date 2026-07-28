@@ -39,6 +39,8 @@ DIM SHARED ctrlDev AS INTEGER
 ' Empty strings disable network telemetry.
 Dim Shared TELEM_NET_URL As String
 Dim Shared TELEM_NET_KEY As String
+Dim Shared LB_BASE_URL   As String
+Dim Shared LB_KEY        As String
 
 '$INCLUDE:'src/sys/version.bas'
 '$INCLUDE:'src/engine3d.bi'
@@ -153,6 +155,7 @@ DO
     ' Detect state transitions for speech triggers
     IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
         SPK_Say sSpkTitle
+        If lbrdPollDone = 0 Then LBRD_Poll
     END IF
     DBG_LogStateChange
     prevGameState = gameState
@@ -188,11 +191,23 @@ DO
     CASE GS_CONSENT
         GS_CONSENT_Update
 
+    CASE GS_USERNAME
+        GS_USERNAME_Update
+
+    CASE GS_LEADERBOARD
+        GS_LEADERBOARD_Update
+
     END SELECT
 
     DBG_Overlay
 
-    If httpEasyH <> 0 Or httpQCount > 0 Then HTTP_Pump
+    If httpEasyH <> 0 Or httpQCount > 0 Then
+        HTTP_Pump
+        If httpLastTag = "leaderboard_poll" And httpLastOK Then
+            LBRD_Parse httpLastBody
+            httpLastTag = ""
+        End If
+    End If
     _LIMIT 60
     _DISPLAY
 LOOP
