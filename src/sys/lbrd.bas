@@ -3,16 +3,16 @@
 ' LBRD_Poll              enqueue a GET for the top-N scores (call once per title entry)
 ' LBRD_Parse body$       parse Supabase JSON array into lbrdName$/lbrdScore arrays
 '
-' Reads LB_BASE_URL, LB_KEY from sss.bas (empty = feature disabled)
+' Reads DB_URL, DB_KEY from sss.bas (empty = feature disabled)
 ' Writes lbrdName$(), lbrdScore(), lbrdCount, lbrdPollDone
 '
 ' Local variable prefix: lb*
 
 Sub LBRD_Poll ()
-    If Len(LB_BASE_URL) = 0 Then Exit Sub
+    If Len(DB_URL) = 0 Then Exit Sub
     Dim lbUrl As String
-    lbUrl = LB_BASE_URL + "/top_scores?order=score.desc&limit=" + LTrim$(Str$(LBRD_MAX)) + "&select=player_name,score"
-    HTTP_Get lbUrl, LB_KEY, "leaderboard_poll"
+    lbUrl = DB_URL + "/top_scores?order=score.desc&limit=" + LTrim$(Str$(LBRD_MAX)) + "&select=player_name,score"
+    HTTP_Get lbUrl, DB_KEY, "leaderboard_poll"
     lbrdPollDone = -1
 End Sub
 
