@@ -279,6 +279,8 @@ DIM SHARED camUpWas        AS INTEGER
 DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
+DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
+DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER

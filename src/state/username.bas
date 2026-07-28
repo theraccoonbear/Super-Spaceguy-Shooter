@@ -20,8 +20,8 @@ Sub GS_USERNAME_Update ()
     UI_DrawPanel unPX1, unPY1, unPX2, unPY2, "PILOT CALLSIGN"
 
     Dim unBY As Integer : unBY = scrH \ 2 - 46
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "ENTER YOUR CALLSIGN.",        unBY,      scrW, 255
-    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "THIS APPEARS ON LEADERBOARDS.", unBY + 16, scrW, 255
+    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "ENTER YOUR CALLSIGN.",           unBY,      scrW, 255
+    FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "3-12 CHARS. APPEARS ON BOARDS.", unBY + 16, scrW, 255
 
     ' input box
     Dim unBoxX1 As Integer : unBoxX1 = scrW \ 2 - 78
@@ -49,15 +49,26 @@ Sub GS_USERNAME_Update ()
 
     Dim unKey As Long : unKey = _KEYHIT
     Select Case unKey
-        Case 13, 32  ' ENTER or SPACE -- confirm
+        Case 13, 32  ' ENTER or SPACE -- confirm (requires >= 3 chars or empty for auto-name)
             If Len(telemPlayerName) = 0 Then telemPlayerName = UN_AutoName$
-            SETTINGS_Save
-            LEADIN_Init : gameState = GS_LEADIN
+            If Len(telemPlayerName) >= 3 Then
+                SETTINGS_Save
+                If unFromSettings Then
+                    unFromSettings = 0 : gameState = GS_OPTIONS
+                Else
+                    LEADIN_Init : gameState = GS_LEADIN
+                End If
+            End If
 
-        Case 27  ' ESC -- skip, auto-name
-            telemPlayerName = UN_AutoName$
-            SETTINGS_Save
-            LEADIN_Init : gameState = GS_LEADIN
+        Case 27  ' ESC
+            If unFromSettings Then
+                telemPlayerName = unSavedName  ' cancel: restore old name
+                unFromSettings = 0 : gameState = GS_OPTIONS
+            Else
+                telemPlayerName = UN_AutoName$  ' first-time flow: auto-assign
+                SETTINGS_Save
+                LEADIN_Init : gameState = GS_LEADIN
+            End If
 
         Case 8  ' backspace
             If Len(telemPlayerName) > 0 Then
