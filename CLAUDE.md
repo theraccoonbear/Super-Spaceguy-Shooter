@@ -29,13 +29,27 @@
 - Every PR body must include `Closes #N` (or `Fixes #N`) for each GitHub issue the PR resolves. Without it the issue will not auto-close on merge.
 - After every commit on a PR branch, push immediately. The user tests from a separate working copy and cannot see local commits.
 
+## Pre-commit checklist — run ALL of these locally before every commit/push
+1. **Build**: `./tools/buildqb sss.bas` — must complete with no errors
+2. **Smoke test**: `builds/sss --version` — must print the version and exit 0
+3. **All automated tests**: build and run every test binary in `tests/`:
+   ```
+   ./tools/buildqb tests/seq_trace_test.bas    && builds/seq_trace_test
+   ./tools/buildqb tests/seq_dispatch_test.bas  && builds/seq_dispatch_test
+   ./tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
+   ```
+   All tests must pass (exit 0) before committing. No exceptions.
+4. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
+
+> Adding a new `$INCLUDE` to sequence.bas, dims.bas, or any file that test stubs replicate
+> means updating every test file that declares shared vars. Grep for the variable name in
+> `tests/` to find which stubs need it.
+
 ## Definition of done — a task is NOT complete until ALL of these are true
-1. Code builds locally with no new errors (`./tools/buildqb sss.bas`)
-2. Smoke test passes (`builds/sss --version` prints version and exits)
-3. If `assets/gametext.txt` or `assets/gamevalues.ini` changed: `bash tools/bake_speech_dict` has been run AND `assets/speech_dict.txt` is committed
-4. All changes are committed and pushed to the PR branch
-5. A PR is open against master with `Closes #N`
-6. **CI is green** — check with `gh pr checks <number>` and wait for all checks to pass before reporting the task complete to the user
+1. Pre-commit checklist above is fully satisfied locally
+2. All changes are committed and pushed to the PR branch
+3. A PR is open against master with `Closes #N`
+4. **CI is green** — check with `gh pr checks <number>` and wait for all checks to pass before reporting the task complete to the user
 
 Never tell the user a task is done while CI is still running or red. Silence is better than a premature "done."
 

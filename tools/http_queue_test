@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# http_queue_test -- start mock server, build and run the HTTP queue integration test
+# Usage: tools/http_queue_test
+# No arguments needed; starts its own mock server on a free localhost port.
+
+set -euo pipefail
+
+REPODIR="$(dirname "$0")/.."
+MOCK_PID=""
+
+cleanup() {
+    if [ -n "$MOCK_PID" ]; then
+        kill "$MOCK_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
+
+# --- start mock server ---
+echo "==> Starting HTTP mock server..."
+# Read the port it prints to stdout; use a temp file to avoid blocking pipe
+PORTFILE="$(mktemp)"
+python3 "$REPODIR/tools/http_mock_server" --port 0 > "$PORTFILE" &
+MOCK_PID=$!
+
+# Wait for the server to print its port (up to 5s)
+MOCK_PORT=""
+for i in $(seq 1 50); do
+    MOCK_PORT="$(cat "$PORTFILE" 2>/dev/null | tr -d '[:space:]')"
+    [ -n "$MOCK_PORT" ] && break
+    sleep 0.1
+done
+rm -f "$PORTFILE"
+
+if [ -z "$MOCK_PORT" ]; then
+    echo "ERROR: mock server did not print a port within 5s"
+    exit 1
+fi
+
+# Verify it responds
+for i in $(seq 1 20); do
+    curl -sf "http://127.0.0.1:$MOCK_PORT/requests" > /dev/null 2>&1 && break
+    sleep 0.1
+done
+if ! curl -sf "http://127.0.0.1:$MOCK_PORT/requests" > /dev/null 2>&1; then
+    echo "ERROR: mock server not reachable on port $MOCK_PORT"
+    exit 1
+fi
+
+echo "    Listening on http://127.0.0.1:$MOCK_PORT"
+echo ""
+
+# --- build the test binary ---
+echo "==> Building tests/http_queue_test.bas..."
+"$REPODIR/tools/buildqb" tests/http_queue_test.bas
+echo ""
+
+# --- run the test ---
+echo "==> Running http_queue_test..."
+echo ""
+"$REPODIR/builds/http_queue_test" "http://127.0.0.1:$MOCK_PORT"
+RC=$?
+
+echo ""
+if [ $RC -eq 0 ]; then
+    echo "==> PASSED"
+else
+    echo "==> FAILED (exit $RC)"
+    echo ""
+    echo "--- requests received by mock server ---"
+    curl -sf "http://127.0.0.1:$MOCK_PORT/requests" | python3 -m json.tool 2>/dev/null || true
+fi
+exit $RC
