@@ -131,6 +131,8 @@ IF cliScene <> "" THEN
 ELSE
     If telemOn <> 0 And telemConsent = 0 Then
         gameState = GS_CONSENT
+    ElseIf telemOn <> 0 And Len(telemPlayerName) = 0 Then
+        gameState = GS_USERNAME
     Else
         gameState = GS_LEADIN
         LEADIN_Init

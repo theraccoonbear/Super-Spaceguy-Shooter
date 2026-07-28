@@ -46,8 +46,13 @@ Sub GS_LEADERBOARD_Update ()
     _DEST 0
     _PUTIMAGE , backBuffer, 0
 
-    Dim lbdKey As Long : lbdKey = _KEYHIT
-    If lbdKey = 32 Or lbdKey = 27 Then gameState = GS_TITLE
+    Static lbdSpaceWas As Integer
+    Static lbdEscWas   As Integer
+    Dim lbdSpc As Integer : lbdSpc = _KEYDOWN(32)
+    Dim lbdEsc As Integer : lbdEsc = _KEYDOWN(27)
+    If (lbdSpc And lbdSpaceWas = 0) Or (lbdEsc And lbdEscWas = 0) Then gameState = GS_TITLE
+    lbdSpaceWas = lbdSpc
+    lbdEscWas   = lbdEsc
 
     MUS_Fill 0
 End Sub
