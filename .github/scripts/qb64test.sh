@@ -47,5 +47,6 @@ run_test seq_trace_test
 run_test seq_dispatch_test
 run_test scene_jump_planet_test
 run_test snd_init_test
+run_test telem_creds_test
 
 echo "==> All tests passed"
