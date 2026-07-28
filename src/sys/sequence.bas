@@ -347,6 +347,7 @@ Sub SEQ_Advance()
                     levelType      = LEVEL_BOSS
                     stageScore     = 2147483647
                     boss.warnTimer = BOSS_WARN_FRAMES
+                    gameState      = GS_PLAYING
                     Dim seqaBossWarn As String : seqaBossWarn = GTEXT_Get$("speech_boss_warning")
                     SPK_Say seqaBossWarn
                     ' music cue set in boss.bas when warn timer expires and boss spawns
