@@ -14,6 +14,8 @@ Sub GS_PLAYING_Update ()
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
         IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
+            telemExitReason = "quit"
+            TELEM_SessionEnd
             SEQ_RewindToTitle
             gameState = GS_TITLE
             planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
@@ -36,8 +38,11 @@ Sub GS_PLAYING_Update ()
         escWas = held(E3D_KEY_ESCAPE)
         IF escConfirm THEN
             IF (_KEYDOWN(89) OR _KEYDOWN(121)) AND escYWas = 0 THEN
-                escConfirm = 0 : gameState = GS_TITLE
+                escConfirm = 0
+                telemExitReason = "quit"
+                TELEM_SessionEnd
                 SEQ_RewindToTitle
+                gameState = GS_TITLE
                 MUS_SetCue "title"
             END IF
             escYWas = _KEYDOWN(89) OR _KEYDOWN(121)

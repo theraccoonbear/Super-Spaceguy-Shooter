@@ -61,6 +61,7 @@ Dim Shared scrH         As Single
 Dim Shared boss         As BossState
 Dim Shared tt           As Single
 Dim Shared planetNames(1 To PLANET_COUNT) As String
+Dim Shared telemExitReason As String
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ Sub BELT_Init(w As Single, h As Single) : End Sub
 Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 Sub DBG_Print(s As String)          : End Sub
+Sub TELEM_SessionEnd()              : End Sub
 
 ' ── real sequencer ───────────────────────────────────────────────────────────
 '$INCLUDE:'../src/sys/sequence.bas'

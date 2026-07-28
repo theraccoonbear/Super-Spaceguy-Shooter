@@ -172,6 +172,7 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
         If shipLives <= 0 Then
             gameOver = -1
             TELEM_PlayerDeath
+            telemExitReason = "death"
             TELEM_SessionEnd
         Else
             lives = 100 : fuelLevel = 100.0 : fuelStranded = 0
