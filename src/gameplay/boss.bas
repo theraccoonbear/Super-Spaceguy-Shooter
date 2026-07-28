@@ -25,9 +25,9 @@ Sub BOSS_Update
     Dim bssVY As Single, bssVZ As Single
     Dim bssTgtRx As Single, bssTgtRy As Single, bssTgtRz As Single
 
-    ' combat phase complete: advance sequence (-> boss step or arrive)
-    If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore Then
-        SEQ_Advance
+    ' combat phase complete: hold off one second so the kill explosion plays out, then advance
+    If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore And planetTransitionTimer = 0 Then
+        planetTransitionTimer = 75
     End If
 
     If boss.warnTimer > 0 Then
@@ -178,7 +178,7 @@ Sub BOSS_Update
                     If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
                     TELEM_BossDefeated
                     boss.active  = 0
-                    SEQ_Advance   ' -> SEQ_ARRIVE: sets GS_PLANET, planet indices, music
+                    planetTransitionTimer = 75
                     score = score + 2000
                     scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
                     bssPK = 0
