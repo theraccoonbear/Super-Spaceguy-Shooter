@@ -11,7 +11,10 @@ CONST GS_CRAWL     = 6
 CONST GS_OPTIONS   = 7
 CONST GS_ABOUT     = 8
 CONST GS_LEADIN    = 9
-CONST GS_CONSENT   = 10
+CONST GS_CONSENT     = 10
+CONST GS_USERNAME    = 11
+CONST GS_LEADERBOARD = 12
+CONST UN_MAX_LEN     = 12
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
@@ -230,6 +233,7 @@ DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause   AS STRING
 DIM SHARED telemSession      AS STRING
 DIM SHARED telemPlayerID     AS STRING
+DIM SHARED telemPlayerName   AS STRING
 DIM SHARED telemConsent      AS INTEGER
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
@@ -242,6 +246,13 @@ DIM SHARED httpLastResp    AS HttpResponse
 DIM SHARED httpLastBody    AS STRING
 DIM SHARED httpLastHeaders AS STRING
 DIM SHARED httpLastTag     AS STRING
+
+' --- leaderboard ---
+Const LBRD_MAX = 10
+DIM SHARED lbrdName(1 To LBRD_MAX)  AS STRING
+DIM SHARED lbrdScore(1 To LBRD_MAX) AS LONG
+DIM SHARED lbrdCount  AS INTEGER
+DIM SHARED lbrdPollDone AS INTEGER
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING

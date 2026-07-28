@@ -44,6 +44,8 @@ Sub TELEM_LoadCredentials (tlcContent As String)
                 Select Case Left$(tlcLine, tlcEq - 1)
                     Case "TELEM_NET_URL" : TELEM_NET_URL = Mid$(tlcLine, tlcEq + 1)
                     Case "TELEM_NET_KEY" : TELEM_NET_KEY = Mid$(tlcLine, tlcEq + 1)
+                    Case "LB_BASE_URL"   : LB_BASE_URL   = Mid$(tlcLine, tlcEq + 1)
+                    Case "LB_KEY"        : LB_KEY        = Mid$(tlcLine, tlcEq + 1)
                 End Select
             End If
         End If
@@ -159,6 +161,15 @@ Sub TELEM_SessionEnd()
         tlJson = "[" + telemBatch + "]"
         DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes to " + TELEM_NET_URL
         HTTP_Post TELEM_NET_URL, TELEM_NET_KEY, tlJson, "telem_batch"
+    End If
+    If Len(LB_BASE_URL) > 0 And Len(LB_KEY) > 0 And telemConsent <> 0 And score > 0 Then
+        Dim tlScoreJson As String
+        tlScoreJson = JSON_Obj$(JSON_S$("player_id",   telemPlayerID) + "," _
+                              + JSON_S$("player_name", telemPlayerName) + "," _
+                              + JSON_N$("score",       LTrim$(Str$(score))) + "," _
+                              + JSON_N$("wave",        LTrim$(Str$(waveType))) + "," _
+                              + JSON_S$("session",     telemSession))
+        HTTP_Post LB_BASE_URL + "/scores", LB_KEY, tlScoreJson, "score_post"
     End If
     telemSession = "" : telemBatch = ""
 End Sub

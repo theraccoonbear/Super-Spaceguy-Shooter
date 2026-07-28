@@ -10,17 +10,19 @@ Sub GS_TITLE_Update ()
     FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
     IF titleEscConfirm THEN
         Dim gstKX As Integer
-        UI_DrawPanel scrW\2 - 76, scrH\2 - 52, scrW\2 + 76, scrH\2 + 52, "COMMAND CONSOLE"
+        UI_DrawPanel scrW\2 - 76, scrH\2 - 62, scrW\2 + 76, scrH\2 + 62, "COMMAND CONSOLE"
         ' key column: dim full label first, then overwrite hotkey in bright
         gstKX = scrW\2 - 44
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",      gstKX, scrH\2 - 26, 255
-        FONT_PrintAlpha fontPalette(15), backBuffer, "A",          gstKX, scrH\2 - 26, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "SETTINGS",   gstKX, scrH\2 -  6, 255
-        FONT_PrintAlpha fontPalette(15), backBuffer, "S",          gstKX, scrH\2 -  6, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "QUIT GAME",  gstKX, scrH\2 + 14, 255
-        FONT_PrintAlpha fontPalette(15), backBuffer, "Q",          gstKX, scrH\2 + 14, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "ESC CANCEL", gstKX, scrH\2 + 34, 255
-        FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",        gstKX, scrH\2 + 34, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",       gstKX, scrH\2 - 36, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "A",           gstKX, scrH\2 - 36, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "SETTINGS",    gstKX, scrH\2 - 16, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "S",           gstKX, scrH\2 - 16, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "LEADERBOARD", gstKX, scrH\2 +  4, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "L",           gstKX, scrH\2 +  4, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "QUIT GAME",   gstKX, scrH\2 + 24, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "Q",           gstKX, scrH\2 + 24, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "ESC CANCEL",  gstKX, scrH\2 + 44, 255
+        FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",         gstKX, scrH\2 + 44, 255
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
@@ -33,6 +35,9 @@ Sub GS_TITLE_Update ()
         IF _KEYDOWN(83) OR _KEYDOWN(115) THEN
             gameState = GS_OPTIONS : titleEscConfirm = 0
             optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
+        END IF
+        IF _KEYDOWN(76) OR _KEYDOWN(108) THEN
+            gameState = GS_LEADERBOARD : titleEscConfirm = 0
         END IF
         IF _KEYDOWN(81) OR _KEYDOWN(113) THEN SYSTEM
         IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0

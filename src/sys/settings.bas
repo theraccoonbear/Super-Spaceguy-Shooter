@@ -11,6 +11,7 @@ Sub SETTINGS_Save ()
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "highscore="  + LTrim$(Str$(highScore))
     If Len(telemPlayerID) > 0 Then Print #sfH, "player_id=" + telemPlayerID
+    If Len(telemPlayerName) > 0 Then Print #sfH, "player_name=" + telemPlayerName
     If telemConsent Then Print #sfH, "telem_consent=1"
     If camF.angleLocked Then
         Print #sfH, "cam_phi="   + LTrim$(Str$(camF.orbitPhi))
@@ -38,6 +39,8 @@ Sub SETTINGS_Load ()
                 Select Case sfKey
                     Case "player_id"
                         If Len(sfRaw) >= 32 Then telemPlayerID = sfRaw
+                    Case "player_name"
+                        If Len(sfRaw) > 0 And Len(sfRaw) <= UN_MAX_LEN Then telemPlayerName = sfRaw
                     Case "telem_consent"
                         telemConsent = Int(sfVal + 0.5)
                     Case "cam_phi"
