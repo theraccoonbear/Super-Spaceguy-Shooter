@@ -155,8 +155,8 @@ jobs:
       - name: Build sss.bas
         shell: bash
         env:
-          TELEM_NET_URL: ${{ secrets.TELEM_NET_URL }}
-          TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_KEY: ${{ secrets.DB_KEY }}
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
       - name: Smoke test -- --version
