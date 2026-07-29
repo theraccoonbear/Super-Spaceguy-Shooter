@@ -1,6 +1,5 @@
 Sub TOOL_Init(tiTitle As String)
     _Title tiTitle
-    _ScreenMove 80, 40
 End Sub
 
 Sub TOOL_Cls(tcBgCol As Long)
