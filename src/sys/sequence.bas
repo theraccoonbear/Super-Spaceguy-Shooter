@@ -371,6 +371,8 @@ Sub SEQ_Advance()
                         bossSpeechCnt = bossSpeechCnt + 1
                         seqaBossSpeechStart = seqaBossSpeechComma + 1
                     Loop
+                    ' parse seek= bullet homing strength
+                    bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))
                     ' music cue applied in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
                     levelNum       = levelNum + 1

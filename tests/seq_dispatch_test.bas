@@ -20,6 +20,7 @@
 '  17.  SEQ_RewindToTitle idempotent from title position
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
 '  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
+'  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -78,6 +79,7 @@ Dim Shared bossMusList$(0 To 7)
 Dim Shared bossMusCnt      As Integer
 Dim Shared bossSpeechList$(0 To 7)
 Dim Shared bossSpeechCnt   As Integer
+Dim Shared bossSeekStr     As Single
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
@@ -112,6 +114,7 @@ Sub ST_Reset()
     boss.warnTimer = 0
     bossMusCnt     = 0
     bossSpeechCnt  = 0
+    bossSeekStr    = 0
     tt           = 0
     SEQ_Load _EMBEDDED$("SEQTXT")
 End Sub
@@ -497,6 +500,29 @@ ST_Assert bossSpeechCnt = 3,                     "16.05  bossSpeechCnt=3 from sp
 ST_Assert bossSpeechList$(0) = "",               "16.06  phase 1 speech=empty (boss warning handles it)"
 ST_Assert bossSpeechList$(1) = "speech_boss_phase2", "16.07  phase 2 speech key"
 ST_Assert bossSpeechList$(2) = "speech_boss_phase3", "16.08  phase 3 speech key"
+
+' ────────────────────────────────────────────────────────────────────────────
+' 17. PLAY boss seek= populates bossSeekStr
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 17. boss seek= parsed into bossSeekStr ---"
+' level:3 boss has seek=0.015
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance
+ST_Assert bossSeekStr > 0.014 And bossSeekStr < 0.016, "17.01  level3 boss seek=0.015"
+' level:5 boss has seek=0.035
+ST_Reset
+levelNum = 4
+ST_GoTo "boss5"
+SEQ_Advance
+ST_Assert bossSeekStr > 0.034 And bossSeekStr < 0.036, "17.02  level5 boss seek=0.035"
+' level:6 boss has seek=0.055
+ST_Reset
+levelNum = 5
+ST_GoTo "boss6"
+SEQ_Advance
+ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=0.055"
 
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""

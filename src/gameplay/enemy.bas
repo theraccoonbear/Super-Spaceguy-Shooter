@@ -168,9 +168,20 @@ Sub EBULLET_Update
     Dim ebI As Integer
     Dim ebHit As Integer
     Dim ebDY As Single, ebDZ As Single
+    Dim ebSeekDY As Single, ebSeekDZ As Single, ebSeekMag As Single
 
     For ebI = 1 To MAX_EBULLETS
         If ebullets(ebI).active Then
+            ' boss bullets: apply homing nudge before position update
+            If ebullets(ebI).meshIdx = MESH_BOSS And bossSeekStr > 0 Then
+                ebSeekDY = player.py - ebullets(ebI).py
+                ebSeekDZ = player.pz - ebullets(ebI).pz
+                ebSeekMag = SQR(ebSeekDY * ebSeekDY + ebSeekDZ * ebSeekDZ)
+                If ebSeekMag > 0.1 Then
+                    ebullets(ebI).vy = ebullets(ebI).vy + (ebSeekDY / ebSeekMag) * bossSeekStr
+                    ebullets(ebI).vz = ebullets(ebI).vz + (ebSeekDZ / ebSeekMag) * bossSeekStr
+                End If
+            End If
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
             ebullets(ebI).py = ebullets(ebI).py + ebullets(ebI).vy
             ebullets(ebI).pz = ebullets(ebI).pz + ebullets(ebI).vz
