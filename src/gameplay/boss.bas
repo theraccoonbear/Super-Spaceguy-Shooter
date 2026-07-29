@@ -105,6 +105,10 @@ Sub BOSS_Update
     bssTgtRx = bssVZ * 90 - bssVX * 15 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
     bssTgtRy = -bssVZ * 35              : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
     bssTgtRz = bssVY * 60              : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
+    ' flyover: override yaw to 180 when behind player (facing same dir), 0 when back in front
+    If boss.state >= 6 Then
+        If boss.px < player.px Then bssTgtRy = 180 Else bssTgtRy = 0
+    End If
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
