@@ -25,7 +25,7 @@ jobs:
           }
 
   test:
-    name: Sequence state tests
+    name: Tests
     needs: dict-check
     runs-on: ubuntu-latest
 
@@ -56,7 +56,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev
 
       - name: Install QB64-PE
         if: steps.cache_qb64pe.outputs.cache-hit != 'true'
@@ -66,7 +66,7 @@ jobs:
           cd qb64pe && bash setup_lnx.sh 1 && cd ..
           mv qb64pe qb64pe-bin
 
-      - name: Build and run seq_trace_test
+      - name: Build and run all tests
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
 
       - name: Dump compile log on failure
@@ -155,8 +155,8 @@ jobs:
       - name: Build sss.bas
         shell: bash
         env:
-          TELEM_NET_URL: ${{ secrets.TELEM_NET_URL }}
-          TELEM_NET_KEY: ${{ secrets.TELEM_NET_KEY }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_KEY: ${{ secrets.DB_KEY }}
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
       - name: Smoke test -- --version

@@ -11,7 +11,10 @@ CONST GS_CRAWL     = 6
 CONST GS_OPTIONS   = 7
 CONST GS_ABOUT     = 8
 CONST GS_LEADIN    = 9
-CONST GS_CONSENT   = 10
+CONST GS_CONSENT     = 10
+CONST GS_USERNAME    = 11
+CONST GS_LEADERBOARD = 12
+CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
@@ -231,6 +234,8 @@ DIM SHARED telemBossPhaseLog AS INTEGER
 DIM SHARED telemDeathCause   AS STRING
 DIM SHARED telemSession      AS STRING
 DIM SHARED telemPlayerID     AS STRING
+DIM SHARED leaderboardPlayerID AS STRING
+DIM SHARED telemPlayerName   AS STRING
 DIM SHARED telemConsent      AS INTEGER
 DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
@@ -243,6 +248,13 @@ DIM SHARED httpLastResp    AS HttpResponse
 DIM SHARED httpLastBody    AS STRING
 DIM SHARED httpLastHeaders AS STRING
 DIM SHARED httpLastTag     AS STRING
+
+' --- leaderboard ---
+Const LBRD_MAX = 10
+DIM SHARED lbrdName(1 To LBRD_MAX)  AS STRING
+DIM SHARED lbrdScore(1 To LBRD_MAX) AS LONG
+DIM SHARED lbrdCount  AS INTEGER
+DIM SHARED lbrdPollDone AS INTEGER
 
 ' --- speech cues ---
 DIM SHARED sSpkTitle    AS STRING
@@ -268,6 +280,10 @@ DIM SHARED camUpWas        AS INTEGER
 DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
+DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
+DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
+DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)
+DIM SHARED unScrollOff     AS INTEGER  ' raw-string scroll offset for input box display
 
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER
