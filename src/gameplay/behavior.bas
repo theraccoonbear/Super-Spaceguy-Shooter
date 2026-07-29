@@ -5,9 +5,10 @@
 '   3 retreat    -- back to BOSS_COMBAT_DIST on X
 '   4 arc        -- sweep Y/Z arc around player's position at mode-pick time
 '   5 xyzrush   -- charge on X + arc sweep simultaneously
-'   6 flyover   -- dive past player to rear position (no fire)
-'   7 flyover-rear -- hold behind player and fire from behind
-'   8 flyover-sweep -- parametric half-circle sweep in XZ plane back to combat distance
+'   6 flyover-dive   -- charge past player to px-20 (behind camera); yaw spins toward 180
+'   7 flyover-rear   -- hold behind player, fire; yaw=180 (facing same dir as player)
+'   8 flyover-fwd    -- charge forward from px-20 to px+44; player sees thruster flare
+'   9 flyover-turn   -- wide banking arc at px+44; yaw 180->0 proportional to arc; dramatic!
 '
 ' Hunt mode uses continuous soft-tracking so the boss stays in the player's
 ' engagement zone.  Rate is low enough that player movement is meaningful.
@@ -15,7 +16,7 @@
 '
 ' Arc entry: arcAngle is initialised from the boss's current position so the
 ' transition is smooth (no teleport).  boss.py/pz lerps toward the arc circle.
-' Flyover states 6/7/8 form a three-part sequence: dive -> rear fire -> Z-plane sweep.
+' Flyover states 6/7/8/9: dive -> rear fire -> fwd charge (thruster) -> dramatic turn.
 
 ' BOSS_COMBAT_DIST defined here (behavior.bas included before boss.bas)
 Const BOSS_COMBAT_DIST = 20    ' standard X distance for combat
@@ -38,13 +39,15 @@ Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
-Const BOSS_FLYOVER_SPD    = 0.55  ' X dive speed past player
+Const BOSS_FLYOVER_SPD    = 0.55  ' X dive speed past player (state 6)
 Const BOSS_FLYOVER_REAR   = 20.0  ' units behind player where boss holds for rear fire
-Const BOSS_FLYOVER_FRAMES = 80    ' frames of rear-fire dwell before sweep
-Const BOSS_SWEEP_SPD      = 0.020 ' rad/frame for return sweep (pi/0.020 ~157 frames)
-Const BOSS_SWEEP_CX_OFF   = 0.0   ' sweep arc center at player.px (symmetric: px-20 to px+20)
-Const BOSS_SWEEP_RAD_X    = 20.0  ' X radius matches BOSS_FLYOVER_REAR and BOSS_COMBAT_DIST
-Const BOSS_SWEEP_RAD_Z    = 14.0  ' Z bank width at the apex of the turn
+Const BOSS_FLYOVER_FRAMES = 80    ' frames of rear-fire dwell before state 8
+Const BOSS_FWD_CHG_SPD    = 0.60  ' forward charge speed in state 8
+Const BOSS_FWD_CHG_X      = 44.0  ' target X units ahead of player where state 9 begins
+Const BOSS_TURN_SPD       = 0.018 ' rad/frame for dramatic turn (pi/0.018 ~175 frames)
+Const BOSS_TURN_CX_OFF    = 32.0  ' turn arc X center offset from player.px
+Const BOSS_TURN_RAD_X     = 12.0  ' X radius (center ± 12 = px+20 to px+44)
+Const BOSS_TURN_RAD_Z     = 20.0  ' Z bank width -- make it BIG for the cinematic
 
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
@@ -154,14 +157,25 @@ Sub BOSS_UpdateMovement()
             boss.state = 8
         End If
 
-    Case 8  ' flyover sweep: parametric half-circle in XZ plane back to combat distance
-        boss.arcAngle = boss.arcAngle - BOSS_SWEEP_SPD
-        bsmSweepTgtX = player.px + BOSS_SWEEP_CX_OFF + COS(boss.arcAngle) * BOSS_SWEEP_RAD_X
-        bsmSweepTgtZ = player.pz + SIN(boss.arcAngle) * BOSS_SWEEP_RAD_Z
+    Case 8  ' flyover fwd charge: rush from behind, past player, to px+44 (player sees thruster)
+        boss.py = boss.py + (player.py - boss.py) * 0.06
+        boss.pz = boss.pz + (player.pz - boss.pz) * 0.06
+        boss.px = boss.px + BOSS_FWD_CHG_SPD
+        If boss.px >= player.px + BOSS_FWD_CHG_X Then
+            boss.px = player.px + BOSS_FWD_CHG_X
+            boss.arcAngle = 0    ' arc starts at 0 (forward) and sweeps to pi (facing player)
+            boss.fireTimer = 0.5 ' fire quickly once the turn begins
+            boss.state = 9
+        End If
+
+    Case 9  ' flyover dramatic turn: wide banking arc from px+44 back to combat facing player
+        boss.arcAngle = boss.arcAngle + BOSS_TURN_SPD
+        bsmSweepTgtX = player.px + BOSS_TURN_CX_OFF + COS(boss.arcAngle) * BOSS_TURN_RAD_X
+        bsmSweepTgtZ = player.pz + SIN(boss.arcAngle) * BOSS_TURN_RAD_Z
         boss.px = boss.px + (bsmSweepTgtX - boss.px) * 0.14
         boss.pz = boss.pz + (bsmSweepTgtZ - boss.pz) * 0.14
         boss.py = boss.py + (player.py - boss.py) * 0.04
-        If boss.arcAngle <= 0 Then
+        If boss.arcAngle >= 3.14159 Then
             boss.px = player.px + BOSS_COMBAT_DIST
             boss.pz = player.pz
             Select Case boss.phase
