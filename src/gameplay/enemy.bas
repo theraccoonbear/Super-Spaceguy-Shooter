@@ -185,7 +185,11 @@ Sub EBULLET_Update
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
             ebullets(ebI).py = ebullets(ebI).py + ebullets(ebI).vy
             ebullets(ebI).pz = ebullets(ebI).pz + ebullets(ebI).vz
-            If ebullets(ebI).px < player.px - EBULLET_CULL Then ebullets(ebI).active = 0
+            If ebullets(ebI).vx < 0 Then
+                If ebullets(ebI).px < player.px - EBULLET_CULL Then ebullets(ebI).active = 0
+            Else
+                If ebullets(ebI).px > player.px + EBULLET_CULL * 2 Then ebullets(ebI).active = 0
+            End If
 
             E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
             ebullets(ebI).px, ebullets(ebI).py, ebullets(ebI).pz, boxLib(MESH_EBULLET), ebHit
