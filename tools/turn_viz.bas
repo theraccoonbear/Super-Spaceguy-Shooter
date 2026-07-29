@@ -17,7 +17,7 @@ Const VZPI = 3.14159265358979
 Const VZ_TRAIL_MAX = 600
 Const VZ_CAM_SPD = 0.30
 Const VZ_LOOK_SPD = 0.025   ' arrow-key look speed (rad/frame)
-Const VZ_MOUSE_SPD = 0.003  ' mouse sensitivity (rad/pixel)
+Const VZ_MOUSE_SPD = 0.0008 ' mouse sensitivity (rad/pixel)
 
 ' ── viz state ─────────────────────────────────────────────────────────────────
 Dim Shared vzCamX As Single, vzCamY As Single, vzCamZ As Single
@@ -242,14 +242,16 @@ Do
     vz1Now   = _KeyDown(Asc("1"))
     vz2Now   = _KeyDown(Asc("2"))
 
-    ' ── mouse look ─────────────────────────────────────────────────────
+    ' ── mouse look (left-button drag only) ────────────────────────────
     vzMX = 0 : vzMY = 0
     Do While _MouseInput
         vzMX = vzMX + _MouseMovementX
         vzMY = vzMY + _MouseMovementY
     Loop
-    vzCamYaw   = vzCamYaw   + vzMX * VZ_MOUSE_SPD
-    vzCamPitch = vzCamPitch + vzMY * VZ_MOUSE_SPD
+    If _MouseButton(1) Then
+        vzCamYaw   = vzCamYaw   + vzMX * VZ_MOUSE_SPD
+        vzCamPitch = vzCamPitch + vzMY * VZ_MOUSE_SPD
+    End If
     If vzCamPitch >  1.5 Then vzCamPitch =  1.5
     If vzCamPitch < -1.5 Then vzCamPitch = -1.5
 
