@@ -105,17 +105,19 @@ Sub BOSS_Update
     bssTgtRx = bssVZ * 90 - bssVX * 15 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
     bssTgtRy = -bssVZ * 35              : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
     bssTgtRz = bssVY * 60              : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
-    ' flyover: override yaw to 180 when behind player (facing same dir), 0 when back in front
-    If boss.state >= 6 Then
-        If boss.px < player.px Then bssTgtRy = 180 Else bssTgtRy = 0
+    ' flyover yaw: 180 while behind/charging fwd; proportional 180->0 during dramatic turn
+    If boss.state >= 6 And boss.state <= 8 Then
+        bssTgtRy = 180   ' facing same direction as player: dive, rear-fire, fwd charge
+    ElseIf boss.state = 9 Then
+        bssTgtRy = 180 * (1 - boss.arcAngle / 3.14159)  ' sweeps 180->0 as arc runs 0->pi
     End If
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
 
-    ' fire patterns (suppressed during state 6 dive; rear-fire in state 7 uses normal aim)
+    ' fire patterns (suppressed during dive and fwd charge; rear/turn fire normally)
     boss.fireTimer = boss.fireTimer - 0.025
-    If boss.fireTimer <= 0 And boss.state <> 6 Then
+    If boss.fireTimer <= 0 And boss.state <> 6 And boss.state <> 8 Then
         bssDX = player.px - boss.px
         bssDY = player.py - boss.py
         bssDZ = player.pz - boss.pz
