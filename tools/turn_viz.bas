@@ -1,3 +1,6 @@
+$RESIZE:ON
+'$INCLUDE:'tool_shell.bas'
+
 ' turn_viz.bas -- 2D top-down visualizer for boss flyover turn (states 7-9)
 '
 ' Simulates the state-machine math from behavior.bas / boss.bas in a top-down
@@ -5,7 +8,7 @@
 ' without launching the full game.
 '
 ' Build: from repo root:
-'   ./tools/buildqb tests/turn_viz.bas
+'   ./tools/buildqb tools/turn_viz.bas
 ' Run:   builds/turn_viz
 '
 ' Controls:
@@ -15,8 +18,6 @@
 '   1 / 2       force turn RIGHT (+Z) or LEFT (-Z)
 '   F           toggle fast mode (10x speed)
 '   ESC         quit
-
-$RESIZE:ON
 
 ' ── constants (mirror behavior.bas / boss.bas) ───────────────────────────────
 Const BOSS_FLYOVER_REAR   = 20.0
@@ -196,7 +197,7 @@ End Sub
 
 ' ── draw the full scene ───────────────────────────────────────────────────────
 Sub VizDraw()
-    Line (0, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(10, 10, 20), BF
+    TOOL_Cls _RGB(10, 10, 20)
 
     Line (VIZ_W - 260, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(20, 20, 35), BF
     Line (VIZ_W - 260, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(60, 60, 90), B
@@ -312,8 +313,7 @@ End Sub
 
 ' ── main ─────────────────────────────────────────────────────────────────────
 Screen _NewImage(VIZ_W, VIZ_H, 32)
-_Title "Boss Flyover Turn Visualizer"
-_ScreenMove 80, 40
+TOOL_Init "Boss Flyover Turn Visualizer"
 
 vizTurnDir = 1
 VizReset
