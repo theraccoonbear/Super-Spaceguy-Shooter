@@ -39,12 +39,12 @@ Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
 Const BOSS_FLYOVER_SPD    = 0.55  ' X dive speed past player
-Const BOSS_FLYOVER_REAR   = 7.0   ' units behind player where boss holds for rear fire
+Const BOSS_FLYOVER_REAR   = 20.0  ' units behind player where boss holds for rear fire
 Const BOSS_FLYOVER_FRAMES = 80    ' frames of rear-fire dwell before sweep
 Const BOSS_SWEEP_SPD      = 0.020 ' rad/frame for return sweep (pi/0.020 ~157 frames)
-Const BOSS_SWEEP_CX_OFF   = 6.0   ' sweep arc X center offset from player.px
-Const BOSS_SWEEP_RAD_X    = 13.0  ' X radius: center +/- 13 covers px-7 to px+19
-Const BOSS_SWEEP_RAD_Z    = 10.0  ' Z bank width at the apex of the turn
+Const BOSS_SWEEP_CX_OFF   = 0.0   ' sweep arc center at player.px (symmetric: px-20 to px+20)
+Const BOSS_SWEEP_RAD_X    = 20.0  ' X radius matches BOSS_FLYOVER_REAR and BOSS_COMBAT_DIST
+Const BOSS_SWEEP_RAD_Z    = 14.0  ' Z bank width at the apex of the turn
 
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
