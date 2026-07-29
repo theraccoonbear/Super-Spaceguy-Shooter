@@ -16,6 +16,8 @@
 '   F           toggle fast mode (10x speed)
 '   ESC         quit
 
+$RESIZE:ON
+
 ' ── constants (mirror behavior.bas / boss.bas) ───────────────────────────────
 Const BOSS_FLYOVER_REAR   = 20.0
 Const BOSS_FLYOVER_FRAMES = 80
@@ -194,7 +196,7 @@ End Sub
 
 ' ── draw the full scene ───────────────────────────────────────────────────────
 Sub VizDraw()
-    Cls _RGB(10, 10, 20)
+    Line (0, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(10, 10, 20), BF
 
     Line (VIZ_W - 260, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(20, 20, 35), BF
     Line (VIZ_W - 260, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(60, 60, 90), B
