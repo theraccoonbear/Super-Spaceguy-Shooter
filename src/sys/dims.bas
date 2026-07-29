@@ -293,6 +293,7 @@ DIM SHARED bossMusCnt      AS INTEGER
 DIM SHARED bossSpeechList$(0 To 7)
 DIM SHARED bossSpeechCnt   AS INTEGER
 DIM SHARED bossSeekStr     AS SINGLE   ' bullet homing strength per frame (0=straight, >0=curves)
+DIM SHARED bsmTurnDir      AS INTEGER  ' flyover dramatic turn direction: +1=right arc, -1=left arc; alternates each flyover
 
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER
