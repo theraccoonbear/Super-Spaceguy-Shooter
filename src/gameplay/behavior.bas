@@ -1,10 +1,13 @@
 ' Boss movement modes (boss.state):
-'   0 hunt    -- soft-track player Y/Z at a rate just below player max velocity
-'   1 evade   -- dart to small world-space Y/Z offset, then return to hunt
-'   2 charge  -- close on X, Y/Z toward snapshot target set at charge start
-'   3 retreat -- back to BOSS_COMBAT_DIST on X
-'   4 arc     -- sweep Y/Z arc around player's position at mode-pick time
-'   5 xyzrush -- charge on X + arc sweep simultaneously
+'   0 hunt       -- soft-track player Y/Z at a rate just below player max velocity
+'   1 evade      -- dart to small world-space Y/Z offset, then return to hunt
+'   2 charge     -- close on X, Y/Z toward snapshot target set at charge start
+'   3 retreat    -- back to BOSS_COMBAT_DIST on X
+'   4 arc        -- sweep Y/Z arc around player's position at mode-pick time
+'   5 xyzrush   -- charge on X + arc sweep simultaneously
+'   6 flyover   -- dive past player to rear position (no fire)
+'   7 flyover-rear -- hold behind player and fire from behind
+'   8 flyover-sweep -- parametric half-circle sweep in XZ plane back to combat distance
 '
 ' Hunt mode uses continuous soft-tracking so the boss stays in the player's
 ' engagement zone.  Rate is low enough that player movement is meaningful.
@@ -12,6 +15,7 @@
 '
 ' Arc entry: arcAngle is initialised from the boss's current position so the
 ' transition is smooth (no teleport).  boss.py/pz lerps toward the arc circle.
+' Flyover states 6/7/8 form a three-part sequence: dive -> rear fire -> Z-plane sweep.
 
 ' BOSS_COMBAT_DIST defined here (behavior.bas included before boss.bas)
 Const BOSS_COMBAT_DIST = 20    ' standard X distance for combat
@@ -34,9 +38,18 @@ Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
+Const BOSS_FLYOVER_SPD    = 0.55  ' X dive speed past player
+Const BOSS_FLYOVER_REAR   = 7.0   ' units behind player where boss holds for rear fire
+Const BOSS_FLYOVER_FRAMES = 80    ' frames of rear-fire dwell before sweep
+Const BOSS_SWEEP_SPD      = 0.020 ' rad/frame for return sweep (pi/0.020 ~157 frames)
+Const BOSS_SWEEP_CX_OFF   = 6.0   ' sweep arc X center offset from player.px
+Const BOSS_SWEEP_RAD_X    = 13.0  ' X radius: center +/- 13 covers px-7 to px+19
+Const BOSS_SWEEP_RAD_Z    = 10.0  ' Z bank width at the apex of the turn
+
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
     Dim bsmArcTgtY As Single, bsmArcTgtZ As Single
+    Dim bsmSweepTgtX As Single, bsmSweepTgtZ As Single
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -121,12 +134,50 @@ Sub BOSS_UpdateMovement()
             If boss.moveTimer <= 0 Then boss.state = 3
         End If
 
+    Case 6  ' flyover dive: rush past player to rear; fire is suppressed in boss.bas
+        boss.py = boss.py + (player.py - boss.py) * 0.08
+        boss.pz = boss.pz + (player.pz - boss.pz) * 0.08
+        boss.px = boss.px - BOSS_FLYOVER_SPD
+        If boss.px <= player.px - BOSS_FLYOVER_REAR Then
+            boss.px = player.px - BOSS_FLYOVER_REAR
+            boss.fireTimer = 0.3   ' first rear burst fires quickly
+            boss.moveTimer = BOSS_FLYOVER_FRAMES
+            boss.state = 7
+        End If
+
+    Case 7  ' flyover rear: hold behind player; fire handled normally by boss.bas
+        boss.py = boss.py + (player.py - boss.py) * 0.05
+        boss.pz = boss.pz + (player.pz - boss.pz) * 0.05
+        boss.moveTimer = boss.moveTimer - 1
+        If boss.moveTimer <= 0 Then
+            boss.arcAngle = 3.14159   ' sweep begins at pi (behind) and decrements to 0 (in front)
+            boss.state = 8
+        End If
+
+    Case 8  ' flyover sweep: parametric half-circle in XZ plane back to combat distance
+        boss.arcAngle = boss.arcAngle - BOSS_SWEEP_SPD
+        bsmSweepTgtX = player.px + BOSS_SWEEP_CX_OFF + COS(boss.arcAngle) * BOSS_SWEEP_RAD_X
+        bsmSweepTgtZ = player.pz + SIN(boss.arcAngle) * BOSS_SWEEP_RAD_Z
+        boss.px = boss.px + (bsmSweepTgtX - boss.px) * 0.14
+        boss.pz = boss.pz + (bsmSweepTgtZ - boss.pz) * 0.14
+        boss.py = boss.py + (player.py - boss.py) * 0.04
+        If boss.arcAngle <= 0 Then
+            boss.px = player.px + BOSS_COMBAT_DIST
+            boss.pz = player.pz
+            Select Case boss.phase
+                Case 1 : boss.chargeTimer = BOSS_CHARGE_CD1
+                Case 2 : boss.chargeTimer = BOSS_CHARGE_CD2
+                Case 3 : boss.chargeTimer = BOSS_CHARGE_CD3
+            End Select
+            boss.state = 0
+        End If
+
     End Select
 End Sub
 
 ' Called each time the boss fires to pick the next movement mode.
 ' Hunt uses live player tracking; all other modes snapshot player.py/pz at pick time.
-' States 2/3/5 run to completion; only call when boss.state is 0, 1, or 4.
+' States 2/3/5/6/7/8 run to completion; only call when boss.state is 0, 1, or 4.
 Sub BOSS_PickMode(bpmPhase As Integer)
     Dim bpmRoll As Single : bpmRoll = Rnd
 
@@ -154,18 +205,18 @@ Sub BOSS_PickMode(bpmPhase As Integer)
         End If
 
     Case 2
-        ' 15% hunt, 20% evade, 30% arc, 25% charge, 10% XYZ rush
-        If bpmRoll < 0.15 Then
+        ' 12% hunt, 18% evade, 25% arc, 22% charge, 8% XYZ rush, 15% flyover
+        If bpmRoll < 0.12 Then
             boss.state = 0
-        ElseIf bpmRoll < 0.35 Then
+        ElseIf bpmRoll < 0.30 Then
             BOSS_SetEvadeTarget
             boss.state = 1
-        ElseIf bpmRoll < 0.65 Then
+        ElseIf bpmRoll < 0.55 Then
             boss.targetY = player.py : boss.targetZ = player.pz
             boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)
             boss.moveTimer = 160
             boss.state = 4
-        ElseIf bpmRoll < 0.90 Then
+        ElseIf bpmRoll < 0.77 Then
             If boss.chargeTimer <= 0 Then
                 boss.targetY = player.py : boss.targetZ = player.pz
                 boss.moveTimer = 25
@@ -176,7 +227,7 @@ Sub BOSS_PickMode(bpmPhase As Integer)
                 boss.moveTimer = 160
                 boss.state = 4
             End If
-        Else
+        ElseIf bpmRoll < 0.85 Then
             If boss.chargeTimer <= 0 Then
                 boss.targetY = player.py : boss.targetZ = player.pz
                 boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)
@@ -188,10 +239,19 @@ Sub BOSS_PickMode(bpmPhase As Integer)
                 boss.moveTimer = 160
                 boss.state = 4
             End If
+        Else
+            If boss.chargeTimer <= 0 Then
+                boss.state = 6
+            Else
+                boss.targetY = player.py : boss.targetZ = player.pz
+                boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)
+                boss.moveTimer = 160
+                boss.state = 4
+            End If
         End If
 
     Case 3
-        ' 10% hunt, 10% evade, 20% arc, 30% charge, 30% XYZ rush
+        ' 10% hunt, 10% evade, 20% arc, 25% charge, 20% XYZ rush, 15% flyover
         If bpmRoll < 0.10 Then
             boss.state = 0
         ElseIf bpmRoll < 0.20 Then
@@ -202,7 +262,7 @@ Sub BOSS_PickMode(bpmPhase As Integer)
             boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)
             boss.moveTimer = 120
             boss.state = 4
-        ElseIf bpmRoll < 0.70 Then
+        ElseIf bpmRoll < 0.65 Then
             If boss.chargeTimer <= 0 Then
                 boss.targetY = player.py : boss.targetZ = player.pz
                 boss.moveTimer = 30
@@ -213,12 +273,21 @@ Sub BOSS_PickMode(bpmPhase As Integer)
                 boss.moveTimer = 120
                 boss.state = 4
             End If
-        Else
+        ElseIf bpmRoll < 0.85 Then
             If boss.chargeTimer <= 0 Then
                 boss.targetY = player.py : boss.targetZ = player.pz
                 boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)
                 boss.moveTimer = 30
                 boss.state = 5
+            Else
+                boss.targetY = player.py : boss.targetZ = player.pz
+                boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)
+                boss.moveTimer = 120
+                boss.state = 4
+            End If
+        Else
+            If boss.chargeTimer <= 0 Then
+                boss.state = 6
             Else
                 boss.targetY = player.py : boss.targetZ = player.pz
                 boss.arcAngle = _ATAN2(boss.py - player.py, boss.pz - player.pz)

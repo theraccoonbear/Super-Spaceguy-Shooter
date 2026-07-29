@@ -87,8 +87,8 @@ Sub BOSS_Update
         telemBossPhaseLog = boss.phase
     End If
 
-    ' initial approach: close to combat range (inactive once at BOSS_COMBAT_DIST or during charge/retreat)
-    If boss.state <> 2 And boss.state <> 3 And boss.state <> 5 Then
+    ' initial approach: close to combat range (hunt/evade/arc only; charge/flyover handle own X)
+    If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then
         If boss.px > player.px + BOSS_COMBAT_DIST Then
             boss.px = boss.px + boss.vx * (1.0 + (boss.phase - 1) * 0.4)
         End If
@@ -109,9 +109,9 @@ Sub BOSS_Update
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
 
-    ' fire patterns (fire during all states including charge)
+    ' fire patterns (suppressed during state 6 dive; rear-fire in state 7 uses normal aim)
     boss.fireTimer = boss.fireTimer - 0.025
-    If boss.fireTimer <= 0 Then
+    If boss.fireTimer <= 0 And boss.state <> 6 Then
         bssDX = player.px - boss.px
         bssDY = player.py - boss.py
         bssDZ = player.pz - boss.pz
@@ -134,7 +134,7 @@ Sub BOSS_Update
                 End If
             Next bssEJ
             boss.fireTimer = BOSS_FIRE1
-            If boss.state <> 2 And boss.state <> 3 And boss.state <> 5 Then BOSS_PickMode boss.phase
+            If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then BOSS_PickMode boss.phase
 
         Case 2  ' 5-shot aimed cross
             bssShots = 0
@@ -156,7 +156,7 @@ Sub BOSS_Update
                 End If
             Next bssEJ
             boss.fireTimer = BOSS_FIRE2
-            If boss.state <> 2 And boss.state <> 3 And boss.state <> 5 Then BOSS_PickMode boss.phase
+            If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then BOSS_PickMode boss.phase
 
         Case 3  ' 7-shot diagonal fan, fast
             bssShots = 0
@@ -173,7 +173,7 @@ Sub BOSS_Update
                 End If
             Next bssEJ
             boss.fireTimer = BOSS_FIRE3
-            If boss.state <> 2 And boss.state <> 3 And boss.state <> 5 Then BOSS_PickMode boss.phase
+            If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then BOSS_PickMode boss.phase
         End Select
     End If
 
