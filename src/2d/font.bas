@@ -249,6 +249,43 @@ Sub FONT_PrintRichAlpha(sheets() As Long, dest As Long, txt As String, x As Inte
     _Dest dest
 End Sub
 
+Function FONT_RichVisLen% (txt As String)
+    Dim frvI As Integer : frvI = 1
+    Dim frvN As Integer : frvN = 0
+    Dim frvC As Integer, frvH As Integer, frvSkip As Integer
+    Do While frvI <= Len(txt)
+        frvC = Asc(Mid$(txt, frvI, 1))
+        frvSkip = 0
+        If frvC = 126 And frvI < Len(txt) Then
+            frvH = Asc(UCase$(Mid$(txt, frvI + 1, 1)))
+            If (frvH >= 48 And frvH <= 57) Or (frvH >= 65 And frvH <= 70) Then
+                frvI = frvI + 2 : frvSkip = -1
+            End If
+        End If
+        If frvSkip = 0 Then frvN = frvN + 1 : frvI = frvI + 1
+    Loop
+    FONT_RichVisLen% = frvN
+End Function
+
+Function FONT_RichTrunc$ (txt As String, maxVis As Integer)
+    Dim frtI As Integer : frtI = 1
+    Dim frtV As Integer : frtV = 0
+    Dim frtC As Integer, frtH As Integer, frtSkip As Integer
+    Do While frtI <= Len(txt)
+        If frtV >= maxVis Then Exit Do
+        frtC = Asc(Mid$(txt, frtI, 1))
+        frtSkip = 0
+        If frtC = 126 And frtI < Len(txt) Then
+            frtH = Asc(UCase$(Mid$(txt, frtI + 1, 1)))
+            If (frtH >= 48 And frtH <= 57) Or (frtH >= 65 And frtH <= 70) Then
+                frtI = frtI + 2 : frtSkip = -1
+            End If
+        End If
+        If frtSkip = 0 Then frtV = frtV + 1 : frtI = frtI + 1
+    Loop
+    FONT_RichTrunc$ = Left$(txt, frtI - 1)
+End Function
+
 Sub FONT_PrintCenteredRichAlpha(sheets() As Long, dest As Long, txt As String, y As Integer, scrW As Integer, alpha As Integer)
     Dim fcraI As Integer, fcraC As Integer, fcraHex As Integer, fcraLen As Integer, fcraSkip As Integer
     fcraLen = 0 : fcraI = 1

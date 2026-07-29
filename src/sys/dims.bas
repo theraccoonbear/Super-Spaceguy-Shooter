@@ -14,7 +14,7 @@ CONST GS_LEADIN    = 9
 CONST GS_CONSENT     = 10
 CONST GS_USERNAME    = 11
 CONST GS_LEADERBOARD = 12
-CONST UN_MAX_LEN     = 12
+CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
@@ -281,6 +281,8 @@ DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
 DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
+DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)
+DIM SHARED unScrollOff     AS INTEGER  ' raw-string scroll offset for input box display
 
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER
