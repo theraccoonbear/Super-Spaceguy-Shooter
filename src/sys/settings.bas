@@ -166,6 +166,7 @@ Sub OPTS_Update ()
         unSavedName    = telemPlayerName
         unFromSettings = -1
         Do While _KEYHIT <> 0 : Loop  ' drain ENTER from _KEYHIT buffer before username reads it
+        GS_USERNAME_Init
         gameState      = GS_USERNAME
     End If
     oEnterWas = oEnter

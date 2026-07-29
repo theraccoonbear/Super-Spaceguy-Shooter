@@ -15,7 +15,7 @@ Sub GS_LEADERBOARD_Update ()
 
     UI_DrawPanel lbdPX1, lbdPY1, lbdPX2, lbdPY2, "TOP PILOTS"
 
-    Dim lbdY As Integer : lbdY = scrH \ 2 - 88
+    Dim lbdY As Integer : lbdY = scrH \ 2 - 82  ' 4px below title bar (UI_TITLE_H=20, was -88 which overlapped)
     Dim lbdI As Integer
 
     If lbrdCount = 0 Then
@@ -24,19 +24,21 @@ Sub GS_LEADERBOARD_Update ()
         Dim lbdRankX  As Integer : lbdRankX  = scrW \ 2 - 118
         Dim lbdNameX  As Integer : lbdNameX  = scrW \ 2 - 96
         Dim lbdScoreX As Integer : lbdScoreX = scrW \ 2 + 20
+        Dim lbdClr    As Long
+        Dim lbdRowY   As Integer
+        Dim lbdPfx    As String
         For lbdI = 1 To lbrdCount
-            Dim lbdRowY As Integer : lbdRowY = lbdY + (lbdI - 1) * 16
-            Dim lbdClr  As Long
+            lbdRowY = lbdY + (lbdI - 1) * 16
             If lbdI = 1 Then
-                lbdClr = fontPalette(14)  ' gold tint for #1
+                lbdClr = fontPalette(14) : lbdPfx = "~E"  ' gold
             ElseIf lbdI <= 3 Then
-                lbdClr = fontPalette(15)  ' bright for top 3
+                lbdClr = fontPalette(15) : lbdPfx = "~F"  ' bright white
             Else
-                lbdClr = fontPalette(9)
+                lbdClr = fontPalette(9)  : lbdPfx = "~9"  ' blue-gray
             End If
-            FONT_PrintAlpha fontPalette(8), backBuffer, LTrim$(Str$(lbdI)) + ".", lbdRankX, lbdRowY, 200
-            FONT_PrintAlpha lbdClr,         backBuffer, lbrdName(lbdI),           lbdNameX, lbdRowY, 255
-            FONT_PrintAlpha lbdClr,         backBuffer, LTrim$(Str$(lbrdScore(lbdI))), lbdScoreX, lbdRowY, 255
+            FONT_PrintAlpha    fontPalette(8), backBuffer, LTrim$(Str$(lbdI)) + ".", lbdRankX, lbdRowY, 200
+            FONT_PrintRichAlpha fontPalette(), backBuffer, lbdPfx + FONT_RichTrunc$(lbrdName(lbdI), 14), lbdNameX, lbdRowY, 255
+            FONT_PrintAlpha    lbdClr,         backBuffer, LTrim$(Str$(lbrdScore(lbdI))), lbdScoreX, lbdRowY, 255
         Next lbdI
     End If
 
