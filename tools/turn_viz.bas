@@ -1,357 +1,283 @@
 $RESIZE:ON
+$SCREENHIDE
+$Resize:stretch
+$EMBED:'assets/models.e3d':'MODELS'
+
+' DBG_Print stub -- input.bas calls this; we don't need real debug output
+Sub DBG_Print(dbgMsg As String)
+End Sub
+
 '$INCLUDE:'tool_shell.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+'$INCLUDE:'../src/gameplay/behavior.bas'
 
-' turn_viz.bas -- 2D top-down visualizer for boss flyover turn (states 7-9)
-'
-' Simulates the state-machine math from behavior.bas / boss.bas in a top-down
-' XZ view so you can inspect the path, yaw, AABB clearance, and fire windows
-' without launching the full game.
-'
-' Build: from repo root:
-'   ./tools/buildqb tools/turn_viz.bas
-' Run:   builds/turn_viz
-'
-' Controls:
-'   SPACE       pause / resume
-'   N           step one frame while paused
-'   R           reset simulation
-'   1 / 2       force turn RIGHT (+Z) or LEFT (-Z)
-'   F           toggle fast mode (10x speed)
-'   ESC         quit
-
-' ── constants (mirror behavior.bas / boss.bas) ───────────────────────────────
-Const BOSS_FLYOVER_REAR   = 20.0
-Const BOSS_FLYOVER_FRAMES = 80
-Const BOSS_FWD_CHG_SPD    = 0.60
-Const BOSS_FWD_CHG_X      = 44.0
-Const BOSS_TURN_SPD       = 0.018
-Const BOSS_TURN_CX_OFF    = 32.0
-Const BOSS_TURN_RAD_X     = 12.0
-Const BOSS_TURN_RAD_Z     = 20.0
-Const BOSS_COMBAT_DIST    = 20.0
-Const BOSS_ATTITUDE_LERP  = 0.07
+' ── viz constants ─────────────────────────────────────────────────────────────
 Const VZPI = 3.14159265358979
+Const VZ_TRAIL_MAX = 600
 
-' Approximate AABB half-extents (update if you know the real values)
-Const VIZ_BOSS_HY  = 2.0
-Const VIZ_BOSS_HZ  = 2.5
-Const VIZ_PLAYER_HY = 0.8
-Const VIZ_PLAYER_HZ = 0.8
+' ── viz state (prefixed vz to avoid collisions with behavior.bas bsm/bpm vars) ─
+Dim Shared vzOrbitTheta As Single
+Dim Shared vzOrbitPhi   As Single
+Dim Shared vzOrbitR     As Single
+Dim Shared vzPaused     As Integer
+Dim Shared vzFastMode   As Integer
+Dim Shared vzFrame      As Long
+Dim Shared vzPrevBX     As Single, vzPrevBY As Single, vzPrevBZ As Single
+Dim Shared vzCurTgtRy   As Single
+Dim Shared vzTrailPX(1 To VZ_TRAIL_MAX) As Single
+Dim Shared vzTrailPY(1 To VZ_TRAIL_MAX) As Single
+Dim Shared vzTrailPZ(1 To VZ_TRAIL_MAX) As Single
+Dim Shared vzTrailSt(1 To VZ_TRAIL_MAX) As Integer
+Dim Shared vzTrailHead  As Integer
+Dim Shared vzSpaceWas   As Integer, vzNWas As Integer, vzRWas As Integer
+Dim Shared vzFWas       As Integer, vzEscWas As Integer
+Dim Shared vz1Was       As Integer, vz2Was As Integer
 
-' Screen layout
-Const VIZ_W = 1100
-Const VIZ_H = 720
-Const VIZ_PX_SC = 200.0    ' screen X of player (world origin)
-Const VIZ_PZ_SC = 360.0    ' screen Y of player (world Z=0)
-Const VIZ_SCALE = 10.0     ' pixels per world unit
+' ── sim reset ─────────────────────────────────────────────────────────────────
+Sub VIZ_SimReset
+    player.px = 0 : player.py = 0 : player.pz = 0
+    player.rx = 0 : player.ry = 0 : player.rz = 0
+    player.scl = 1.0 : player.active = -1 : player.meshIdx = MESH_PLAYER
 
-' ── shared simulation state ───────────────────────────────────────────────────
-Dim Shared vizBossX As Single, vizBossZ As Single
-Dim Shared vizBossRy As Single
-Dim Shared vizBossMoveTimer As Single
-Dim Shared vizBossArcAngle As Single
-Dim Shared vizBossState As Integer
-Dim Shared vizBossFireTimer As Single
-Dim Shared vizTurnDir As Integer
-Dim Shared vizPrevX As Single, vizPrevZ As Single
-Dim Shared vizVx As Single, vizVz As Single
-Dim Shared vizTgtRy As Single
-Dim Shared vizPlayerX As Single, vizPlayerZ As Single
-Dim Shared vizFrame As Integer
-Dim Shared vizPaused As Integer
-Dim Shared vizFastMode As Integer
-Dim Shared vizFireFlash As Integer
+    boss.px = BOSS_COMBAT_DIST
+    boss.py = 0 : boss.pz = 0
+    boss.rx = 0 : boss.ry = 0 : boss.rz = 0
+    boss.vx = 0 : boss.vy = 0 : boss.vz = 0
+    boss.scl = 1.0 : boss.active = -1 : boss.meshIdx = MESH_BOSS
+    boss.state = 6 : boss.phase = 1
+    boss.arcAngle = 0 : boss.moveTimer = 0 : boss.chargeTimer = 0
+    boss.fireTimer = 0 : boss.targetY = 0 : boss.targetZ = 0
+    boss.hp = 30 : boss.warnTimer = 0
+    bsmTurnDir = 1
 
-Const VIZ_TRAIL_MAX = 400
-Dim Shared vizTrailX(1 To VIZ_TRAIL_MAX) As Single
-Dim Shared vizTrailZ(1 To VIZ_TRAIL_MAX) As Single
-Dim Shared vizTrailState(1 To VIZ_TRAIL_MAX) As Integer
-Dim Shared vizTrailFire(1 To VIZ_TRAIL_MAX) As Integer
-Dim Shared vizTrailHead As Integer
+    vzOrbitTheta = VZPI * 0.25
+    vzOrbitPhi   = 0.5
+    vzOrbitR     = 55.0
+    vzFrame      = 0 : vzPaused = 0 : vzFastMode = 0
+    vzTrailHead  = 0 : vzCurTgtRy = 0
+    vzPrevBX = boss.px : vzPrevBY = boss.py : vzPrevBZ = boss.pz
 
-' coordinate helpers: inlined as macros -- SX(world_x), SZ(world_z)
-' SX = VIZ_PX_SC + x * VIZ_SCALE
-' SZ = VIZ_PZ_SC - z * VIZ_SCALE
-
-' ── draw helpers ─────────────────────────────────────────────────────────────
-Sub VizAABB(acx As Single, acz As Single, ahw As Single, ahh As Single, acol As Long)
-    Dim aSX As Single : aSX = VIZ_PX_SC + acx * VIZ_SCALE
-    Dim aSZ As Single : aSZ = VIZ_PZ_SC - acz * VIZ_SCALE
-    Dim aSW As Single : aSW = ahw * VIZ_SCALE
-    Dim aSH As Single : aSH = ahh * VIZ_SCALE
-    Line (aSX - aSW, aSZ - aSH)-(aSX + aSW, aSZ + aSH), acol, B
+    Dim vzRi As Integer
+    For vzRi = 1 To VZ_TRAIL_MAX
+        vzTrailPX(vzRi) = 0 : vzTrailPY(vzRi) = 0 : vzTrailPZ(vzRi) = 0
+        vzTrailSt(vzRi) = 0
+    Next vzRi
 End Sub
 
-Sub VizArrow(arCX As Single, arCZ As Single, arAngleDeg As Single, arCol As Long)
-    Dim arRad As Single : arRad = arAngleDeg * (VZPI / 180.0)
-    Dim arNdx As Single : arNdx = -Cos(-arRad)
-    Dim arNdz As Single : arNdz = Sin(-arRad)
-    Dim arSX As Single : arSX = VIZ_PX_SC + arCX * VIZ_SCALE
-    Dim arSZ As Single : arSZ = VIZ_PZ_SC - arCZ * VIZ_SCALE
-    Dim arEx As Single : arEx = arSX + arNdx * 18
-    Dim arEz As Single : arEz = arSZ + arNdz * 18
-    Line (arSX, arSZ)-(arEx, arEz), arCol
-    Dim arP2X As Single : arP2X = arEx - arNdx * 5 + arNdz * 4
-    Dim arP2Z As Single : arP2Z = arEz - arNdz * 5 - arNdx * 4
-    Dim arP3X As Single : arP3X = arEx - arNdx * 5 - arNdz * 4
-    Dim arP3Z As Single : arP3Z = arEz - arNdz * 5 + arNdx * 4
-    Line (arEx, arEz)-(arP2X, arP2Z), arCol
-    Line (arEx, arEz)-(arP3X, arP3Z), arCol
-End Sub
+' ── one sim frame ─────────────────────────────────────────────────────────────
+Sub VIZ_Step
+    vzFrame = vzFrame + 1
+    vzPrevBX = boss.px : vzPrevBY = boss.py : vzPrevBZ = boss.pz
 
-' ── simulation reset ─────────────────────────────────────────────────────────
-Sub VizReset()
-    vizPlayerX = 0.0 : vizPlayerZ = 0.0
-    vizBossX = vizPlayerX - BOSS_FLYOVER_REAR
-    vizBossZ = vizPlayerZ
-    vizBossRy = 180.0
-    vizBossMoveTimer = BOSS_FLYOVER_FRAMES
-    vizBossArcAngle = 0.0
-    vizBossState = 7
-    vizBossFireTimer = 0.3
-    vizTrailHead = 0
-    vizFrame = 0
-    vizFireFlash = 0
-    Dim vri As Integer
-    For vri = 1 To VIZ_TRAIL_MAX
-        vizTrailX(vri) = 0 : vizTrailZ(vri) = 0
-        vizTrailState(vri) = 0 : vizTrailFire(vri) = 0
-    Next vri
-End Sub
+    BOSS_UpdateMovement
 
-' ── one simulation step ───────────────────────────────────────────────────────
-Sub VizStep()
-    vizFrame = vizFrame + 1
-    vizPrevX = vizBossX : vizPrevZ = vizBossZ
-
-    Dim vstFlyOff As Single
-    Dim vstTgtX As Single, vstTgtZ As Single
-    Dim vstFired As Integer : vstFired = 0
-
-    Select Case vizBossState
-    Case 7  ' rear dwell
-        vizBossZ = vizBossZ + (vizPlayerZ - vizBossZ) * 0.05
-        vizBossMoveTimer = vizBossMoveTimer - 1
-        If vizBossMoveTimer <= 0 Then
-            vizBossArcAngle = VZPI
-            vizBossState = 8
-        End If
-        vizBossFireTimer = vizBossFireTimer - 0.025
-        If vizBossFireTimer <= 0 Then vstFired = -1 : vizBossFireTimer = 1.5
-
-    Case 8  ' forward charge -- fly ABOVE player; fire only after overtaking
-        vstFlyOff = VIZ_BOSS_HY + VIZ_PLAYER_HY + 1.0   ' Y clearance (not shown in top-down, but noted)
-        vizBossZ = vizBossZ + (vizPlayerZ - vizBossZ) * 0.06
-        vizBossX = vizBossX + BOSS_FWD_CHG_SPD
-        If vizBossX >= vizPlayerX + BOSS_FWD_CHG_X Then
-            vizBossX = vizPlayerX + BOSS_FWD_CHG_X
-            vizBossArcAngle = 0
-            vizBossFireTimer = 0.5
-            vizBossState = 9
-        End If
-        If vizBossX > vizPlayerX Then
-            vizBossFireTimer = vizBossFireTimer - 0.025
-            If vizBossFireTimer <= 0 Then vstFired = -1 : vizBossFireTimer = 1.2
-        End If
-
-    Case 9  ' dramatic turn
-        vizBossArcAngle = vizBossArcAngle + BOSS_TURN_SPD
-        vstTgtX = vizPlayerX + BOSS_TURN_CX_OFF + Cos(vizBossArcAngle) * BOSS_TURN_RAD_X
-        vstTgtZ = vizPlayerZ + Sin(vizBossArcAngle) * BOSS_TURN_RAD_Z * vizTurnDir
-        vizBossX = vizBossX + (vstTgtX - vizBossX) * 0.14
-        vizBossZ = vizBossZ + (vstTgtZ - vizBossZ) * 0.14
-        If vizBossArcAngle >= VZPI Then
-            vizBossX = vizPlayerX + BOSS_COMBAT_DIST
-            vizBossZ = vizPlayerZ
-            vizTurnDir = vizTurnDir * -1
-            If vizTurnDir = 0 Then vizTurnDir = 1
-            vizBossMoveTimer = BOSS_FLYOVER_FRAMES
-            vizBossFireTimer = 0.3
-            vizBossState = 7
-        End If
-    End Select
-
-    vizVx = vizBossX - vizPrevX
-    vizVz = vizBossZ - vizPrevZ
-
-    If vizBossState >= 7 And vizBossState <= 8 Then
-        vizTgtRy = 180
-    ElseIf vizBossState = 9 Then
-        vizTgtRy = -_ATAN2(Cos(vizBossArcAngle) * BOSS_TURN_RAD_Z * vizTurnDir, Sin(vizBossArcAngle) * BOSS_TURN_RAD_X) * (180.0 / VZPI)
-    Else
-        vizTgtRy = -vizVz * 35
-        If vizTgtRy > 28 Then vizTgtRy = 28
-        If vizTgtRy < -28 Then vizTgtRy = -28
+    ' state 9 arc completes -> state 0; restart flyover to keep looping
+    If boss.state = 0 Then
+        boss.state    = 6
+        boss.px       = BOSS_COMBAT_DIST
+        boss.py       = player.py : boss.pz = player.pz
+        boss.chargeTimer = 0
     End If
-    vizBossRy = vizBossRy + (vizTgtRy - vizBossRy) * BOSS_ATTITUDE_LERP
 
-    vizTrailHead = vizTrailHead + 1
-    If vizTrailHead > VIZ_TRAIL_MAX Then vizTrailHead = 1
-    vizTrailX(vizTrailHead) = vizBossX
-    vizTrailZ(vizTrailHead) = vizBossZ
-    vizTrailState(vizTrailHead) = vizBossState
-    vizTrailFire(vizTrailHead) = vstFired
-    If vstFired Then vizFireFlash = 8
-    If vizFireFlash > 0 Then vizFireFlash = vizFireFlash - 1
+    ' attitude mirrors boss.bas logic exactly
+    Dim vzDX As Single : vzDX = boss.px - vzPrevBX
+    Dim vzDY As Single : vzDY = boss.py - vzPrevBY
+    Dim vzDZ As Single : vzDZ = boss.pz - vzPrevBZ
+    Dim vzTRx As Single, vzTRy As Single, vzTRz As Single
+    vzTRx = vzDZ * 90 - vzDX * 15
+    If vzTRx >  70 Then vzTRx =  70
+    If vzTRx < -70 Then vzTRx = -70
+    vzTRy = -vzDZ * 35
+    If vzTRy >  28 Then vzTRy =  28
+    If vzTRy < -28 Then vzTRy = -28
+    vzTRz = vzDY * 60
+    If vzTRz >  50 Then vzTRz =  50
+    If vzTRz < -50 Then vzTRz = -50
+    If boss.state >= 6 And boss.state <= 8 Then
+        vzTRy = 180
+    ElseIf boss.state = 9 Then
+        vzTRy = -_ATAN2(Cos(boss.arcAngle) * BOSS_TURN_RAD_Z * bsmTurnDir, Sin(boss.arcAngle) * BOSS_TURN_RAD_X) * 57.2958
+    End If
+    vzCurTgtRy = vzTRy
+    boss.rx = boss.rx + (vzTRx - boss.rx) * BOSS_ATTITUDE_LERP
+    boss.ry = boss.ry + (vzTRy - boss.ry) * BOSS_ATTITUDE_LERP
+    boss.rz = boss.rz + (vzTRz - boss.rz) * BOSS_ATTITUDE_LERP
+
+    vzTrailHead = vzTrailHead + 1
+    If vzTrailHead > VZ_TRAIL_MAX Then vzTrailHead = 1
+    vzTrailPX(vzTrailHead) = boss.px
+    vzTrailPY(vzTrailHead) = boss.py
+    vzTrailPZ(vzTrailHead) = boss.pz
+    vzTrailSt(vzTrailHead) = boss.state
+
+    tt = tt + 1
 End Sub
 
-' ── draw the full scene ───────────────────────────────────────────────────────
-Sub VizDraw()
-    TOOL_Cls _RGB(10, 10, 20)
+' ── world -> screen projection using current vpMat ─────────────────────────────
+Sub VIZ_Project(vprWX As Single, vprWY As Single, vprWZ As Single, vprSX As Single, vprSY As Single, vprVis As Integer)
+    Dim vprCX As Single, vprCY As Single, vprCW As Single
+    vprCX = vprWX * vpMat.m(0,0) + vprWY * vpMat.m(0,1) + vprWZ * vpMat.m(0,2) + vpMat.m(0,3)
+    vprCY = vprWX * vpMat.m(1,0) + vprWY * vpMat.m(1,1) + vprWZ * vpMat.m(1,2) + vpMat.m(1,3)
+    vprCW = vprWX * vpMat.m(3,0) + vprWY * vpMat.m(3,1) + vprWZ * vpMat.m(3,2) + vpMat.m(3,3)
+    If vprCW > 0.00001 Then
+        vprSX  = (vprCX / vprCW + 1.0) * scrW * 0.5
+        vprSY  = (1.0 - vprCY / vprCW) * scrH * 0.5
+        vprVis = -1
+    Else
+        vprVis = 0
+    End If
+End Sub
 
-    Line (VIZ_W - 260, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(20, 20, 35), BF
-    Line (VIZ_W - 260, 0)-(VIZ_W - 1, VIZ_H - 1), _RGB(60, 60, 90), B
+' ── render one frame ──────────────────────────────────────────────────────────
+Sub VIZ_Draw
+    ' place orbit camera around player origin
+    Dim vdCX As Single, vdCY As Single, vdCZ As Single
+    vdCX = player.px + vzOrbitR * Cos(vzOrbitPhi) * Sin(vzOrbitTheta)
+    vdCY = player.py + vzOrbitR * Sin(vzOrbitPhi)
+    vdCZ = player.pz + vzOrbitR * Cos(vzOrbitPhi) * Cos(vzOrbitTheta)
+    E3D_MakeCamera cam, vdCX, vdCY, vdCZ, player.px, player.py, player.pz, GAME_FOV
+    E3D_MatLookAt cam, viewMat
+    E3D_MatMul projMat, viewMat, vpMat
 
-    _PrintString (10, 10), "BOSS FLYOVER VISUALIZER  [top-down: X right, Z up]"
-    _PrintString (10, 28), "SPACE=pause  N=step  R=reset  1/2=force dir  F=fast  ESC=quit"
+    _DEST backBuffer
+    Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 8), BF
 
-    Dim dsGi As Integer
-    For dsGi = -6 To 6
-        Dim dsGx As Single : dsGx = VIZ_PX_SC + dsGi * 10 * VIZ_SCALE
-        Dim dsGz As Single : dsGz = VIZ_PZ_SC - dsGi * 10 * VIZ_SCALE
-        Line (dsGx, 0)-(dsGx, VIZ_H), _RGB(30, 30, 50)
-        Line (0, dsGz)-(VIZ_W - 270, dsGz), _RGB(30, 30, 50)
-    Next dsGi
-    Line (VIZ_PX_SC - 70*VIZ_SCALE, VIZ_PZ_SC)-(VIZ_PX_SC + 70*VIZ_SCALE, VIZ_PZ_SC), _RGB(50, 50, 70)
-    Line (VIZ_PX_SC, VIZ_PZ_SC + 40*VIZ_SCALE)-(VIZ_PX_SC, VIZ_PZ_SC - 40*VIZ_SCALE), _RGB(50, 50, 70)
-    _PrintString (VIZ_PX_SC + 65*VIZ_SCALE + 2, VIZ_PZ_SC - 8), "X"
-    _PrintString (VIZ_PX_SC + 2, VIZ_PZ_SC - 38*VIZ_SCALE - 8), "Z"
+    E3D_SceneBegin
 
-    ' combat range ring
-    Dim dsCi As Integer
-    Dim dsPrevCSX As Single, dsPrevCSZ As Single
-    For dsCi = 0 To 360 Step 5
-        Dim dsAng As Single : dsAng = dsCi * (VZPI / 180.0)
-        Dim dsCpWX As Single : dsCpWX = vizPlayerX + Cos(dsAng) * BOSS_COMBAT_DIST
-        Dim dsCpWZ As Single : dsCpWZ = vizPlayerZ + Sin(dsAng) * BOSS_COMBAT_DIST
-        Dim dsCpSX As Single : dsCpSX = VIZ_PX_SC + dsCpWX * VIZ_SCALE
-        Dim dsCpSZ As Single : dsCpSZ = VIZ_PZ_SC - dsCpWZ * VIZ_SCALE
-        If dsCi > 0 Then Line (dsPrevCSX, dsPrevCSZ)-(dsCpSX, dsCpSZ), _RGB(40, 55, 40)
-        dsPrevCSX = dsCpSX : dsPrevCSZ = dsCpSZ
-    Next dsCi
+    ' player ship
+    pPos.x = player.px : pPos.y = player.py : pPos.z = player.pz
+    pRot.x = player.rx : pRot.y = player.ry : pRot.z = player.rz
+    E3D_BuildObjectMat pPos, pRot, player.scl, objMat
+    E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.pos, tt, lightDir
 
-    ' AABB clearance boundary (Z axis)
-    Dim dsClrZ As Single : dsClrZ = VIZ_BOSS_HZ + VIZ_PLAYER_HZ + 0.5
-    Line (VIZ_PX_SC - 5*VIZ_SCALE, VIZ_PZ_SC - dsClrZ*VIZ_SCALE)-(VIZ_PX_SC + (BOSS_FWD_CHG_X+5)*VIZ_SCALE, VIZ_PZ_SC - dsClrZ*VIZ_SCALE), _RGBA(180, 60, 60, 120)
-    Line (VIZ_PX_SC - 5*VIZ_SCALE, VIZ_PZ_SC + dsClrZ*VIZ_SCALE)-(VIZ_PX_SC + (BOSS_FWD_CHG_X+5)*VIZ_SCALE, VIZ_PZ_SC + dsClrZ*VIZ_SCALE), _RGBA(180, 60, 60, 120)
+    ' boss ship
+    Dim vdBPos As E3D_Coord, vdBRot As E3D_Coord
+    vdBPos.x = boss.px : vdBPos.y = boss.py : vdBPos.z = boss.pz
+    vdBRot.x = boss.rx : vdBRot.y = boss.ry : vdBRot.z = boss.rz
+    E3D_BuildObjectMat vdBPos, vdBRot, boss.scl, objMat
+    E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.pos, tt, lightDir
 
-    ' player
-    VizAABB vizPlayerX, vizPlayerZ, VIZ_PLAYER_HZ, VIZ_PLAYER_HY, _RGB(60, 200, 80)
-    _PrintString (VIZ_PX_SC + vizPlayerX*VIZ_SCALE + 5, VIZ_PZ_SC - vizPlayerZ*VIZ_SCALE - 6), "PLAYER"
+    E3D_SceneFlush vpMat, scrW, scrH
 
-    ' trail
-    Dim dsTi As Integer
-    For dsTi = 1 To VIZ_TRAIL_MAX
-        If vizTrailX(dsTi) <> 0 Or vizTrailZ(dsTi) <> 0 Then
-            Dim dsTCol As Long
-            Select Case vizTrailState(dsTi)
-            Case 7 : dsTCol = _RGBA(80, 80, 255, 160)
-            Case 8
-                If vizTrailX(dsTi) > vizPlayerX Then
-                    dsTCol = _RGBA(255, 120, 0, 180)
-                Else
-                    dsTCol = _RGBA(255, 220, 0, 120)
-                End If
-            Case 9 : dsTCol = _RGBA(200, 80, 200, 180)
-            Case Else : dsTCol = _RGBA(60, 60, 60, 80)
+    ' trail dots projected into screen space
+    Dim vdTi As Integer
+    For vdTi = 1 To VZ_TRAIL_MAX
+        If vzTrailSt(vdTi) > 0 Then
+            Dim vdTC As Long
+            Select Case vzTrailSt(vdTi)
+            Case 6  : vdTC = _RGBA(255, 80,  0,   180)
+            Case 7  : vdTC = _RGBA(60,  80,  255, 180)
+            Case 8  : vdTC = _RGBA(255, 220, 30,  180)
+            Case 9  : vdTC = _RGBA(200, 60,  220, 200)
+            Case Else : vdTC = _RGBA(80, 80, 80, 120)
             End Select
-            Dim dsTSX As Single : dsTSX = VIZ_PX_SC + vizTrailX(dsTi) * VIZ_SCALE
-            Dim dsTSZ As Single : dsTSZ = VIZ_PZ_SC - vizTrailZ(dsTi) * VIZ_SCALE
-            If vizTrailFire(dsTi) Then
-                Circle (dsTSX, dsTSZ), 5, _RGB(255, 255, 0)
-            Else
-                PSet (dsTSX, dsTSZ), dsTCol
-            End If
+            Dim vdTSX As Single, vdTSY As Single, vdTVis As Integer
+            VIZ_Project vzTrailPX(vdTi), vzTrailPY(vdTi), vzTrailPZ(vdTi), vdTSX, vdTSY, vdTVis
+            If vdTVis Then PSet (vdTSX, vdTSY), vdTC
         End If
-    Next dsTi
+    Next vdTi
 
-    ' boss
-    Dim dsBCol As Long
-    If vizFireFlash > 0 Then dsBCol = _RGB(255, 255, 80) Else dsBCol = _RGB(200, 200, 255)
-    VizAABB vizBossX, vizBossZ, VIZ_BOSS_HZ, VIZ_BOSS_HY, dsBCol
-    VizArrow vizBossX, vizBossZ, vizBossRy, _RGB(255, 80, 80)
-
-    ' info panel
-    Dim dsIPX As Integer : dsIPX = VIZ_W - 252
-    Dim dsIPY As Integer : dsIPY = 16
-    Dim dsStName As String
-    Select Case vizBossState
-    Case 7 : dsStName = "7 REAR-FIRE"
-    Case 8 : dsStName = "8 FWD-CHARGE"
-    Case 9 : dsStName = "9 DRAMATIC-TURN"
-    Case Else : dsStName = Str$(vizBossState)
+    ' HUD overlay
+    Dim vdSN As String
+    Select Case boss.state
+    Case 6  : vdSN = "6 DIVE"
+    Case 7  : vdSN = "7 REAR"
+    Case 8  : vdSN = "8 FWD"
+    Case 9  : vdSN = "9 TURN"
+    Case Else : vdSN = LTrim$(Str$(boss.state))
     End Select
-    _PrintString (dsIPX, dsIPY), "State:     " + dsStName : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "Frame:     " + LTrim$(Str$(vizFrame)) : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "arcAngle:  " + Left$(Str$(vizBossArcAngle), 7) : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "bossX-plr: " + Left$(Str$(vizBossX - vizPlayerX), 7) : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "bossZ-plr: " + Left$(Str$(vizBossZ - vizPlayerZ), 7) : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "bossRy:    " + Left$(Str$(vizBossRy), 7) + " deg" : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "tgtRy:     " + Left$(Str$(vizTgtRy), 7) + " deg" : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "vx:        " + Left$(Str$(vizVx), 8) : dsIPY = dsIPY + 18
-    _PrintString (dsIPX, dsIPY), "vz:        " + Left$(Str$(vizVz), 8) : dsIPY = dsIPY + 18
-    dsIPY = dsIPY + 8
-    Dim dsTDirLabel As String
-    If vizTurnDir > 0 Then dsTDirLabel = "+1 (RIGHT/+Z)" Else dsTDirLabel = "-1 (LEFT/-Z)"
-    _PrintString (dsIPX, dsIPY), "TurnDir:   " + dsTDirLabel : dsIPY = dsIPY + 18
-    dsIPY = dsIPY + 8
-    If vizPaused Then _PrintString (dsIPX, dsIPY), "** PAUSED **" : dsIPY = dsIPY + 18
-    If vizFastMode Then _PrintString (dsIPX, dsIPY), "** FAST x10 **" : dsIPY = dsIPY + 18
-    dsIPY = dsIPY + 12
-    _PrintString (dsIPX, dsIPY), "Legend:" : dsIPY = dsIPY + 18
-    Line (dsIPX, dsIPY + 6)-(dsIPX + 12, dsIPY + 6), _RGB(80, 80, 255) : _PrintString (dsIPX + 16, dsIPY), "State 7 rear" : dsIPY = dsIPY + 18
-    Line (dsIPX, dsIPY + 6)-(dsIPX + 12, dsIPY + 6), _RGB(255, 220, 0) : _PrintString (dsIPX + 16, dsIPY), "State 8 approach" : dsIPY = dsIPY + 18
-    Line (dsIPX, dsIPY + 6)-(dsIPX + 12, dsIPY + 6), _RGB(255, 120, 0) : _PrintString (dsIPX + 16, dsIPY), "State 8 post-overtake" : dsIPY = dsIPY + 18
-    Line (dsIPX, dsIPY + 6)-(dsIPX + 12, dsIPY + 6), _RGB(200, 80, 200) : _PrintString (dsIPX + 16, dsIPY), "State 9 dramatic turn" : dsIPY = dsIPY + 18
-    Circle (dsIPX + 6, dsIPY + 6), 5, _RGB(255, 255, 0) : _PrintString (dsIPX + 16, dsIPY), "Fire event" : dsIPY = dsIPY + 18
-    Line (dsIPX, dsIPY + 6)-(dsIPX + 12, dsIPY + 6), _RGB(255, 80, 80) : _PrintString (dsIPX + 16, dsIPY), "Nose arrow" : dsIPY = dsIPY + 18
-    dsIPY = dsIPY + 8
-    Line (dsIPX, dsIPY + 6)-(dsIPX + 60, dsIPY + 6), _RGBA(180, 60, 60, 120) : _PrintString (dsIPX + 64, dsIPY), "AABB clr zone"
+    Dim vdDirS As String
+    If bsmTurnDir > 0 Then vdDirS = "+1 R" Else vdDirS = "-1 L"
 
+    Color _RGB(200, 200, 200)
+    _PrintString (2, 2),  "ST: " + vdSN
+    _PrintString (2, 12), "ARC:" + Left$(Str$(boss.arcAngle + 1000), 6)
+    _PrintString (2, 22), "RY: " + Left$(Str$(boss.ry + 1000), 7)
+    _PrintString (2, 32), "DIR:" + vdDirS
+    _PrintString (2, 42), "F:  " + LTrim$(Str$(vzFrame))
+    If vzPaused   Then _PrintString (2, 54), "PAUSED"
+    If vzFastMode Then _PrintString (60, 54), "FAST"
+
+    Color _RGB(100, 100, 100)
+    _PrintString (2, scrH - 10), "ARR=cam SPC=pause R=reset 1/2=dir F=fast -/+=zoom"
+
+    _DEST 0
+    _PutImage , backBuffer, 0
     _Display
 End Sub
 
 ' ── main ─────────────────────────────────────────────────────────────────────
-Screen _NewImage(VIZ_W, VIZ_H, 32)
-TOOL_Init "Boss Flyover Turn Visualizer"
+scrW = 320 : scrH = 240
+Screen _NewImage(scrW, scrH, 32)
+backBuffer = _NewImage(scrW, scrH, 32)
+TOOL_Init "Boss Flyover Visualizer"
 
-vizTurnDir = 1
-VizReset
+lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
 
-Dim mlSpaceWas As Integer, mlNWas As Integer, mlRWas As Integer
-Dim mlF1Was As Integer, mlF2Was As Integer, mlFWas As Integer, mlEscWas As Integer
+Dim vzMdl As String
+vzMdl = _EMBEDDED$("MODELS")
+E3D_LoadMesh vzMdl, "PLAYER", meshLib(MESH_PLAYER), boxLib(MESH_PLAYER)
+E3D_LoadMesh vzMdl, "BOSS",   meshLib(MESH_BOSS),   boxLib(MESH_BOSS)
+E3D_BakeMeshNormals meshLib(MESH_PLAYER)
+E3D_BakeMeshNormals meshLib(MESH_BOSS)
+
+E3D_MakeCamera cam, 0, 20, 30, 0, 0, 0, GAME_FOV
+E3D_MatPerspective cam, scrW / scrH, projMat
+
+VIZ_SimReset
+_SCREENSHOW
+
+Dim vzSpNow As Integer, vzNNow As Integer, vzRNow As Integer
+Dim vzFNow As Integer, vzEscNow As Integer
+Dim vz1Now As Integer, vz2Now As Integer
+Dim vzPlusNow As Integer, vzMinusNow As Integer
+Dim vzFLi As Integer
 
 Do
-    Dim mlSpaceNow As Integer : mlSpaceNow = _KeyDown(32)
-    Dim mlNNow As Integer     : mlNNow     = _KeyDown(Asc("n"))
-    Dim mlRNow As Integer     : mlRNow     = _KeyDown(Asc("r"))
-    Dim mlF1Now As Integer    : mlF1Now    = _KeyDown(Asc("1"))
-    Dim mlF2Now As Integer    : mlF2Now    = _KeyDown(Asc("2"))
-    Dim mlFNow As Integer     : mlFNow     = _KeyDown(Asc("f"))
-    Dim mlEscNow As Integer   : mlEscNow   = _KeyDown(27)
+    vzSpNow    = _KeyDown(E3D_KEY_SPACE)
+    vzNNow     = _KeyDown(Asc("n"))
+    vzRNow     = _KeyDown(Asc("r"))
+    vzFNow     = _KeyDown(Asc("f"))
+    vzEscNow   = _KeyDown(E3D_KEY_ESCAPE)
+    vz1Now     = _KeyDown(Asc("1"))
+    vz2Now     = _KeyDown(Asc("2"))
+    vzPlusNow  = _KeyDown(43) Or _KeyDown(61)
+    vzMinusNow = _KeyDown(45)
 
-    If mlSpaceNow And Not mlSpaceWas Then vizPaused = Not vizPaused
-    If mlNNow And Not mlNWas And vizPaused Then VizStep
-    If mlRNow And Not mlRWas Then VizReset
-    If mlF1Now And Not mlF1Was Then vizTurnDir = 1
-    If mlF2Now And Not mlF2Was Then vizTurnDir = -1
-    If mlFNow And Not mlFWas Then vizFastMode = Not vizFastMode
-    If mlEscNow And Not mlEscWas Then System
+    If _KeyDown(E3D_KEY_LEFT)  Then vzOrbitTheta = vzOrbitTheta - 0.02
+    If _KeyDown(E3D_KEY_RIGHT) Then vzOrbitTheta = vzOrbitTheta + 0.02
+    If _KeyDown(E3D_KEY_UP)    Then vzOrbitPhi = vzOrbitPhi + 0.02
+    If _KeyDown(E3D_KEY_DOWN)  Then vzOrbitPhi = vzOrbitPhi - 0.02
+    If vzOrbitPhi >  1.5 Then vzOrbitPhi =  1.5
+    If vzOrbitPhi < -1.5 Then vzOrbitPhi = -1.5
+    If vzPlusNow  Then vzOrbitR = vzOrbitR - 0.5
+    If vzMinusNow Then vzOrbitR = vzOrbitR + 0.5
+    If vzOrbitR <   5 Then vzOrbitR =   5
+    If vzOrbitR > 200 Then vzOrbitR = 200
 
-    mlSpaceWas = mlSpaceNow : mlNWas = mlNNow : mlRWas = mlRNow
-    mlF1Was = mlF1Now : mlF2Was = mlF2Now : mlFWas = mlFNow : mlEscWas = mlEscNow
+    If vzSpNow  And vzSpaceWas = 0 Then vzPaused   = Not vzPaused
+    If vzNNow   And vzNWas    = 0 And vzPaused Then VIZ_Step
+    If vzRNow   And vzRWas    = 0 Then VIZ_SimReset
+    If vz1Now   And vz1Was    = 0 Then bsmTurnDir = 1
+    If vz2Now   And vz2Was    = 0 Then bsmTurnDir = -1
+    If vzFNow   And vzFWas    = 0 Then vzFastMode  = Not vzFastMode
+    If vzEscNow And vzEscWas  = 0 Then System
 
-    If vizPaused = 0 Then
-        If vizFastMode Then
-            Dim mlFi As Integer
-            For mlFi = 1 To 10
-                VizStep
-            Next mlFi
+    vzSpaceWas = vzSpNow : vzNWas = vzNNow   : vzRWas = vzRNow
+    vzFWas     = vzFNow  : vzEscWas = vzEscNow
+    vz1Was     = vz1Now  : vz2Was = vz2Now
+
+    If vzPaused = 0 Then
+        If vzFastMode Then
+            For vzFLi = 1 To 10
+                VIZ_Step
+            Next vzFLi
         Else
-            VizStep
+            VIZ_Step
         End If
     End If
 
-    VizDraw
+    VIZ_Draw
     _Limit 60
 Loop
