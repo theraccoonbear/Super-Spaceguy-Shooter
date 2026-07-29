@@ -50,9 +50,10 @@ Sub GS_CONSENT_Update()
     Dim cnKey As Long : cnKey = _KEYHIT
     Select Case cnKey
         Case 32          ' SPACE -- OK this session
-            LEADIN_Init : gameState = GS_LEADIN
+            If Len(telemPlayerName) = 0 Then gameState = GS_USERNAME Else LEADIN_Init : gameState = GS_LEADIN
         Case 83, 115     ' S -- OK, save preference
-            telemConsent = -1 : SETTINGS_Save : LEADIN_Init : gameState = GS_LEADIN
+            telemConsent = -1 : SETTINGS_Save
+            If Len(telemPlayerName) = 0 Then gameState = GS_USERNAME Else LEADIN_Init : gameState = GS_LEADIN
         Case 27          ' ESC -- No thanks, disable telemetry this session
             telemOn = 0 : LEADIN_Init : gameState = GS_LEADIN
     End Select

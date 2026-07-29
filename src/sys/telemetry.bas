@@ -42,8 +42,8 @@ Sub TELEM_LoadCredentials (tlcContent As String)
             tlcEq = InStr(tlcLine, "=")
             If tlcEq > 0 Then
                 Select Case Left$(tlcLine, tlcEq - 1)
-                    Case "TELEM_NET_URL" : TELEM_NET_URL = Mid$(tlcLine, tlcEq + 1)
-                    Case "TELEM_NET_KEY" : TELEM_NET_KEY = Mid$(tlcLine, tlcEq + 1)
+                    Case "DB_URL" : DB_URL = Mid$(tlcLine, tlcEq + 1)
+                    Case "DB_KEY" : DB_KEY = Mid$(tlcLine, tlcEq + 1)
                 End Select
             End If
         End If
@@ -54,10 +54,10 @@ End Sub
 
 Sub TELEM_Init()
     If telemOn = 0 Then Exit Sub
-    If Len(TELEM_NET_URL) > 0 Then
+    If Len(DB_URL) > 0 Then
         DBG_Print "TELEM: HTTP telemetry enabled"
     Else
-        DBG_Print "TELEM: HTTP telemetry local only (no network URL configured)"
+        DBG_Print "TELEM: HTTP telemetry local only (no DB_URL configured)"
     End If
     Dim tlF As Integer : tlF = FreeFile
     If Not _FileExists(_StartDir$ + "/sss_telemetry.csv") Then
@@ -74,7 +74,7 @@ Sub TELEM_Row(tlEvent As String, tlData As String)
     Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData
     Close #tlF
     ' accumulate for bulk HTTP POST in TELEM_SessionEnd
-    If Len(TELEM_NET_URL) > 0 And Len(telemSession) > 0 Then
+    If Len(DB_URL) > 0 And Len(telemSession) > 0 Then
         Dim tlRowJson As String
         tlRowJson = JSON_Obj$(JSON_S$("session", telemSession) _
                  + "," + JSON_N$("ev_time", LTrim$(Str$(Int(Timer)))) _
@@ -154,11 +154,27 @@ Sub TELEM_SessionEnd()
            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
     TELEM_Row "session_end", tlData  ' also appends to telemBatch
     DBG_Print "TELEM: SessionEnd rows=" + LTrim$(Str$(Len(telemBatch))) + " bytes"
-    If Len(TELEM_NET_URL) > 0 And Len(TELEM_NET_KEY) > 0 And Len(telemBatch) > 0 Then
+    If Len(DB_URL) > 0 And Len(DB_KEY) > 0 And Len(telemBatch) > 0 Then
         Dim tlJson As String
         tlJson = "[" + telemBatch + "]"
-        DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes to " + TELEM_NET_URL
-        HTTP_Post TELEM_NET_URL, TELEM_NET_KEY, tlJson, "telem_batch"
+        DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes"
+        HTTP_Post DB_URL + "/sss_telemetry", DB_KEY, tlJson, "telem_batch"
+    End If
+    If Len(DB_URL) = 0 Or Len(DB_KEY) = 0 Then
+        DBG_Print "LBRD: score POST skipped -- DB_URL/DB_KEY not set in .env"
+    ElseIf telemConsent = 0 Then
+        DBG_Print "LBRD: score POST skipped -- no consent"
+    ElseIf score = 0 Then
+        DBG_Print "LBRD: score POST skipped -- score=0"
+    Else
+        Dim tlScoreJson As String
+        tlScoreJson = JSON_Obj$(JSON_S$("player_id",   leaderboardPlayerID) + "," _
+                              + JSON_S$("player_name", telemPlayerName) + "," _
+                              + JSON_N$("score",       LTrim$(Str$(score))) + "," _
+                              + JSON_N$("wave",        LTrim$(Str$(waveType))) + "," _
+                              + JSON_S$("session",     telemSession))
+        DBG_Print "LBRD: POST score=" + LTrim$(Str$(score)) + " player=" + telemPlayerName
+        HTTP_Post DB_URL + "/scores", DB_KEY, tlScoreJson, "score_post"
     End If
     telemSession = "" : telemBatch = ""
 End Sub

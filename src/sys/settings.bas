@@ -11,6 +11,8 @@ Sub SETTINGS_Save ()
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "highscore="  + LTrim$(Str$(highScore))
     If Len(telemPlayerID) > 0 Then Print #sfH, "player_id=" + telemPlayerID
+    If Len(leaderboardPlayerID) > 0 Then Print #sfH, "lb_player_id=" + leaderboardPlayerID
+    If Len(telemPlayerName) > 0 Then Print #sfH, "player_name=" + telemPlayerName
     If telemConsent Then Print #sfH, "telem_consent=1"
     If camF.angleLocked Then
         Print #sfH, "cam_phi="   + LTrim$(Str$(camF.orbitPhi))
@@ -38,6 +40,10 @@ Sub SETTINGS_Load ()
                 Select Case sfKey
                     Case "player_id"
                         If Len(sfRaw) >= 32 Then telemPlayerID = sfRaw
+                    Case "lb_player_id"
+                        If Len(sfRaw) >= 32 Then leaderboardPlayerID = sfRaw
+                    Case "player_name"
+                        If Len(sfRaw) > 0 And Len(sfRaw) <= UN_MAX_LEN Then telemPlayerName = sfRaw
                     Case "telem_consent"
                         telemConsent = Int(sfVal + 0.5)
                     Case "cam_phi"
@@ -78,6 +84,10 @@ Sub SETTINGS_Load ()
         telemPlayerID = TELEM_NewUUID$
         SETTINGS_Save
     End If
+    If Len(leaderboardPlayerID) < 32 Then
+        leaderboardPlayerID = TELEM_NewUUID$
+        SETTINGS_Save
+    End If
 End Sub
 
 Sub OPTS_Update ()
@@ -97,11 +107,11 @@ Sub OPTS_Update ()
 
     ' navigate: edge-detect on up/down
     If oUp And Not optUpWas Then
-        optSel = (optSel + 4) Mod 5
+        optSel = (optSel + 5) Mod 6
         optLfRpt = 0 : optRtRpt = 0
     End If
     If oDn And Not optDnWas Then
-        optSel = (optSel + 1) Mod 5
+        optSel = (optSel + 1) Mod 6
         optLfRpt = 0 : optRtRpt = 0
     End If
 
@@ -114,6 +124,7 @@ Sub OPTS_Update ()
                 Case 2 : volSpeech        = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
                 Case 3 : settingNarration = 0
                 Case 4 : settingFullscreen = 0 : _FULLSCREEN OFF
+                Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
@@ -132,6 +143,7 @@ Sub OPTS_Update ()
                 Case 2 : volSpeech        = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
                 Case 3 : settingNarration = 1
                 Case 4 : settingFullscreen = 1 : _FULLSCREEN _SQUAREPIXELS
+                Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
@@ -146,6 +158,18 @@ Sub OPTS_Update ()
         SETTINGS_Save
         gameState = GS_TITLE
     End If
+
+    Static oEnterWas As Integer
+    Dim oEnter As Integer : oEnter = _KEYDOWN(13) Or _KEYDOWN(32)
+    If oEnter And oEnterWas = 0 And optSel = 5 Then
+        SETTINGS_Save
+        unSavedName    = telemPlayerName
+        unFromSettings = -1
+        Do While _KEYHIT <> 0 : Loop  ' drain ENTER from _KEYHIT buffer before username reads it
+        GS_USERNAME_Init
+        gameState      = GS_USERNAME
+    End If
+    oEnterWas = oEnter
 
     Dim oAbout As Integer : oAbout = _KEYDOWN(65) Or _KEYDOWN(97)
     If oAbout And Not optAboutWas Then
@@ -171,11 +195,11 @@ Sub OPTS_Update ()
     ' main content panel
     UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
 
-    Dim oLabels(0 To 4) As String
-    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN"
+    Dim oLabels(0 To 5) As String
+    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "CALLSIGN"
 
-    For oI = 0 To 4
-        oY = 44 + oI * 34
+    For oI = 0 To 5
+        oY = 40 + oI * 28
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
@@ -192,31 +216,42 @@ Sub OPTS_Update ()
             FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oI), 38, oY, 255
         End If
 
-        ' bar trough — centered in 16px label glyph (oY+4 to oY+12)
-        LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(4, 8, 28), BF
-        LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(0, 55, 110), B
-        ' bar fill
-        oFill = Int(OPT_BAR_W * oVols(oI) + 0.5)
-        If oFill > 0 Then
-            LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 11), _RGB(0, 130, 210), BF
-            LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 7),  _RGBA(100, 200, 255, 80), BF
-        End If
-        ' tick marks at 25% intervals
-        Dim oT As Integer
-        For oT = 1 To 3
-            LINE (OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 5)-(OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 11), _RGBA(0, 0, 0, 100), , 0
-        Next oT
+        If oI < 5 Then
+            ' bar trough — centered in 16px label glyph (oY+4 to oY+12)
+            LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(4, 8, 28), BF
+            LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(0, 55, 110), B
+            ' bar fill
+            oFill = Int(OPT_BAR_W * oVols(oI) + 0.5)
+            If oFill > 0 Then
+                LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 11), _RGB(0, 130, 210), BF
+                LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 7),  _RGBA(100, 200, 255, 80), BF
+            End If
+            ' tick marks at 25% intervals
+            Dim oT As Integer
+            For oT = 1 To 3
+                LINE (OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 5)-(OPT_BAR_X + (OPT_BAR_W * oT \ 4), oY + 11), _RGBA(0, 0, 0, 100), , 0
+            Next oT
 
-        ' percentage / state label
-        Dim oPct As String
-        If oI = 3 Then
-            If settingNarration Then oPct = "ON" Else oPct = "OFF"
-        ElseIf oI = 4 Then
-            If settingFullscreen Then oPct = "ON" Else oPct = "OFF"
+            ' percentage / state label
+            Dim oPct As String
+            If oI = 3 Then
+                If settingNarration Then oPct = "ON" Else oPct = "OFF"
+            ElseIf oI = 4 Then
+                If settingFullscreen Then oPct = "ON" Else oPct = "OFF"
+            Else
+                oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
+            End If
+            FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
         Else
-            oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
+            ' callsign row: show current name (or prompt) instead of a slider
+            Dim oCallName As String
+            If Len(telemPlayerName) > 0 Then oCallName = telemPlayerName Else oCallName = "(NONE)"
+            If oI = optSel Then
+                FONT_PrintAlpha fontPalette(15), backBuffer, oCallName + " [ENTER]", OPT_BAR_X, oY, 255
+            Else
+                FONT_PrintAlpha fontPalette(9),  backBuffer, oCallName,             OPT_BAR_X, oY, 200
+            End If
         End If
-        FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
     Next oI
 
     If highScore > 0 Then

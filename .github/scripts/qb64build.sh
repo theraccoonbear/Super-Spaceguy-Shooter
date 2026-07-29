@@ -87,10 +87,10 @@ case "$(uname -s)" in
 esac
 
 
-# Write .env from CI secrets for $EMBED. Empty values disable network telemetry.
+# Write .env from CI secrets for $EMBED. Empty values disable all network features.
 cat > "$REPODIR/assets/.env" <<EOF
-TELEM_NET_URL=${TELEM_NET_URL:-}
-TELEM_NET_KEY=${TELEM_NET_KEY:-}
+DB_URL=${DB_URL:-}
+DB_KEY=${DB_KEY:-}
 EOF
 
 echo "==> Building sss.bas..."
