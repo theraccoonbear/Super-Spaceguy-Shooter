@@ -32,8 +32,10 @@ Type BossObj
     moveTimer As Single
     targetY   As Single
     targetZ   As Single
-    state     As Integer
-    warnTimer As Integer
+    state       As Integer
+    warnTimer   As Integer
+    chargeTimer As Single
+    arcAngle    As Single
 End Type
 
 ' Vars referenced by telemetry.bas but not under test

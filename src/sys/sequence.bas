@@ -348,9 +348,30 @@ Sub SEQ_Advance()
                     stageScore     = 2147483647
                     boss.warnTimer = BOSS_WARN_FRAMES
                     gameState      = GS_PLAYING
-                    Dim seqaBossWarn As String : seqaBossWarn = GTEXT_Get$("speech_boss_warning")
-                    SPK_Say seqaBossWarn
-                    ' music cue set in boss.bas when warn timer expires and boss spawns
+                    SPK_Say GTEXT_Get$("speech_boss_warning")
+                    ' parse mus=cue1,cue2,... phase music tickable
+                    Dim seqaBossMusStr As String : seqaBossMusStr = SEQ_GetKV$(seqSval$(seqIdx), "mus")
+                    Dim seqaBossMusStart As Integer, seqaBossMusComma As Integer
+                    bossMusCnt = 0 : seqaBossMusStart = 1
+                    Do While seqaBossMusStart <= Len(seqaBossMusStr) And bossMusCnt < 8
+                        seqaBossMusComma = InStr(seqaBossMusStart, seqaBossMusStr, ",")
+                        If seqaBossMusComma = 0 Then seqaBossMusComma = Len(seqaBossMusStr) + 1
+                        bossMusList$(bossMusCnt) = Mid$(seqaBossMusStr, seqaBossMusStart, seqaBossMusComma - seqaBossMusStart)
+                        bossMusCnt = bossMusCnt + 1
+                        seqaBossMusStart = seqaBossMusComma + 1
+                    Loop
+                    ' parse speech=key1,key2,... phase speech tickable
+                    Dim seqaBossSpeechStr As String : seqaBossSpeechStr = SEQ_GetKV$(seqSval$(seqIdx), "speech")
+                    Dim seqaBossSpeechStart As Integer, seqaBossSpeechComma As Integer
+                    bossSpeechCnt = 0 : seqaBossSpeechStart = 1
+                    Do While seqaBossSpeechStart <= Len(seqaBossSpeechStr) And bossSpeechCnt < 8
+                        seqaBossSpeechComma = InStr(seqaBossSpeechStart, seqaBossSpeechStr, ",")
+                        If seqaBossSpeechComma = 0 Then seqaBossSpeechComma = Len(seqaBossSpeechStr) + 1
+                        bossSpeechList$(bossSpeechCnt) = Mid$(seqaBossSpeechStr, seqaBossSpeechStart, seqaBossSpeechComma - seqaBossSpeechStart)
+                        bossSpeechCnt = bossSpeechCnt + 1
+                        seqaBossSpeechStart = seqaBossSpeechComma + 1
+                    Loop
+                    ' music cue applied in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
                     levelNum       = levelNum + 1
                     DBG_Print "[SEQ] PLAY asteroid fired: levelNum=" + Str$(levelNum) + " seqIdx=" + Str$(seqIdx)
