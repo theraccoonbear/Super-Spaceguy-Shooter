@@ -83,7 +83,7 @@ run_http_test() {
     echo "==> TESTS FAILED — ${name} — see output above"
   fi
   kill "$mock_pid" 2>/dev/null || true
-  [ $rc -ne 0 ] && exit 1
+  if [ $rc -ne 0 ]; then exit 1; fi
 }
 
 run_test seq_trace_test
