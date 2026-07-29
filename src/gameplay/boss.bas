@@ -37,6 +37,7 @@ Sub BOSS_Update
             If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score)) + "  aabb=" + LTrim$(Str$(boxLib(MESH_BOSS).hx)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hy)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hz)) + "  verts=" + LTrim$(Str$(meshLib(MESH_BOSS).vCount))
             boss.active  = -1
             boss.meshIdx = MESH_BOSS
+            bsmTurnDir   = 1
             boss.px = player.px + BOSS_SPAWN_DIST
             boss.py = player.py
             boss.pz = player.pz
@@ -105,19 +106,20 @@ Sub BOSS_Update
     bssTgtRx = bssVZ * 90 - bssVX * 15 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
     bssTgtRy = -bssVZ * 35              : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
     bssTgtRz = bssVY * 60              : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
-    ' flyover yaw: 180 while behind/charging fwd; proportional 180->0 during dramatic turn
+    ' flyover yaw: 180 while behind/charging fwd; arc-tangent-based during dramatic turn
     If boss.state >= 6 And boss.state <= 8 Then
         bssTgtRy = 180   ' facing same direction as player: dive, rear-fire, fwd charge
     ElseIf boss.state = 9 Then
-        bssTgtRy = 180 * (1 - boss.arcAngle / 3.14159)  ' sweeps 180->0 as arc runs 0->pi
+        ' yaw = heading direction of the arc tangent; -atan2 maps the convention: ry=0 faces player (-X)
+        bssTgtRy = -_ATAN2(COS(boss.arcAngle) * BOSS_TURN_RAD_Z * bsmTurnDir, SIN(boss.arcAngle) * BOSS_TURN_RAD_X) * 57.2958
     End If
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
 
-    ' fire patterns (suppressed during dive and fwd charge; rear/turn fire normally)
+    ' fire patterns: suppressed during dive (6), dramatic turn (9), and fwd charge approach (8 before overtake)
     boss.fireTimer = boss.fireTimer - 0.025
-    If boss.fireTimer <= 0 And boss.state <> 6 And boss.state <> 8 Then
+    If boss.fireTimer <= 0 And boss.state <> 6 And boss.state <> 9 And (boss.state <> 8 Or boss.px > player.px) Then
         bssDX = player.px - boss.px
         bssDY = player.py - boss.py
         bssDZ = player.pz - boss.pz

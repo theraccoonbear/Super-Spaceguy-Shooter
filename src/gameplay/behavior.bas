@@ -53,6 +53,7 @@ Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
     Dim bsmArcTgtY As Single, bsmArcTgtZ As Single
     Dim bsmSweepTgtX As Single, bsmSweepTgtZ As Single
+    Dim bsmFlyOverY As Single
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -157,27 +158,31 @@ Sub BOSS_UpdateMovement()
             boss.state = 8
         End If
 
-    Case 8  ' flyover fwd charge: rush from behind, past player, to px+44 (player sees thruster)
-        boss.py = boss.py + (player.py - boss.py) * 0.06
+    Case 8  ' flyover fwd charge: rush from behind, past player, to px+44 (player sees thruster flare)
+        ' fly over the player with guaranteed AABB clearance; fire is gated in boss.bas by px vs player.px
+        bsmFlyOverY = player.py + boxLib(MESH_BOSS).hy + boxLib(MESH_PLAYER).hy + 1.0
+        boss.py = boss.py + (bsmFlyOverY - boss.py) * 0.06
         boss.pz = boss.pz + (player.pz - boss.pz) * 0.06
         boss.px = boss.px + BOSS_FWD_CHG_SPD
         If boss.px >= player.px + BOSS_FWD_CHG_X Then
             boss.px = player.px + BOSS_FWD_CHG_X
-            boss.arcAngle = 0    ' arc starts at 0 (forward) and sweeps to pi (facing player)
-            boss.fireTimer = 0.5 ' fire quickly once the turn begins
+            boss.arcAngle = 0
+            boss.fireTimer = 0.5
             boss.state = 9
         End If
 
     Case 9  ' flyover dramatic turn: wide banking arc from px+44 back to combat facing player
         boss.arcAngle = boss.arcAngle + BOSS_TURN_SPD
         bsmSweepTgtX = player.px + BOSS_TURN_CX_OFF + COS(boss.arcAngle) * BOSS_TURN_RAD_X
-        bsmSweepTgtZ = player.pz + SIN(boss.arcAngle) * BOSS_TURN_RAD_Z
+        bsmSweepTgtZ = player.pz + SIN(boss.arcAngle) * BOSS_TURN_RAD_Z * bsmTurnDir
         boss.px = boss.px + (bsmSweepTgtX - boss.px) * 0.14
         boss.pz = boss.pz + (bsmSweepTgtZ - boss.pz) * 0.14
         boss.py = boss.py + (player.py - boss.py) * 0.04
         If boss.arcAngle >= 3.14159 Then
             boss.px = player.px + BOSS_COMBAT_DIST
             boss.pz = player.pz
+            bsmTurnDir = bsmTurnDir * -1           ' alternate direction next flyover
+            If bsmTurnDir = 0 Then bsmTurnDir = 1
             Select Case boss.phase
                 Case 1 : boss.chargeTimer = BOSS_CHARGE_CD1
                 Case 2 : boss.chargeTimer = BOSS_CHARGE_CD2
@@ -210,7 +215,7 @@ Sub BOSS_PickMode(bpmPhase As Integer)
             boss.state = 4
         Else
             If boss.chargeTimer <= 0 Then
-                boss.targetY = player.py : boss.targetZ = player.pz
+                BOSS_SetChargeTarget
                 boss.moveTimer = 20
                 boss.state = 2
             Else
@@ -232,7 +237,7 @@ Sub BOSS_PickMode(bpmPhase As Integer)
             boss.state = 4
         ElseIf bpmRoll < 0.77 Then
             If boss.chargeTimer <= 0 Then
-                boss.targetY = player.py : boss.targetZ = player.pz
+                BOSS_SetChargeTarget
                 boss.moveTimer = 25
                 boss.state = 2
             Else
@@ -278,7 +283,7 @@ Sub BOSS_PickMode(bpmPhase As Integer)
             boss.state = 4
         ElseIf bpmRoll < 0.65 Then
             If boss.chargeTimer <= 0 Then
-                boss.targetY = player.py : boss.targetZ = player.pz
+                BOSS_SetChargeTarget
                 boss.moveTimer = 30
                 boss.state = 2
             Else
@@ -311,6 +316,24 @@ Sub BOSS_PickMode(bpmPhase As Integer)
         End If
 
     End Select
+End Sub
+
+Sub BOSS_SetChargeTarget()
+    ' Set boss.targetY/Z to a position guaranteed to clear both AABBs.
+    ' Boss will fly past the player without AABB overlap.
+    Dim bsctClrY As Single, bsctClrZ As Single
+    bsctClrY = boxLib(MESH_BOSS).hy + boxLib(MESH_PLAYER).hy + 0.5
+    bsctClrZ = boxLib(MESH_BOSS).hz + boxLib(MESH_PLAYER).hz + 0.5
+    If Rnd < 0.5 Then
+        boss.targetY = player.py + bsctClrY + Rnd * 1.5
+    Else
+        boss.targetY = player.py - bsctClrY - Rnd * 1.5
+    End If
+    If Rnd < 0.5 Then
+        boss.targetZ = player.pz + bsctClrZ + Rnd * 1.0
+    Else
+        boss.targetZ = player.pz - bsctClrZ - Rnd * 1.0
+    End If
 End Sub
 
 Sub BOSS_SetEvadeTarget()
