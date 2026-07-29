@@ -105,6 +105,8 @@ TYPE BossObj
     targetZ   AS SINGLE
     state     AS INTEGER
     warnTimer AS INTEGER
+    chargeTimer AS SINGLE
+    arcAngle    AS SINGLE
 END TYPE
 
 TYPE HttpResponse
@@ -284,6 +286,12 @@ DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from setti
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)
 DIM SHARED unScrollOff     AS INTEGER  ' raw-string scroll offset for input box display
+
+' --- boss phase tickables (populated by SEQ_Advance from sequence.txt mus=/speech= CSV) ---
+DIM SHARED bossMusList$(0 To 7)
+DIM SHARED bossMusCnt      AS INTEGER
+DIM SHARED bossSpeechList$(0 To 7)
+DIM SHARED bossSpeechCnt   AS INTEGER
 
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER

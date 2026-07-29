@@ -19,6 +19,7 @@
 '  16.  outro: end-of-sequence falls back to title
 '  17.  SEQ_RewindToTitle idempotent from title position
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
+'  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -73,6 +74,10 @@ Dim Shared boss         As BossState
 Dim Shared tt           As Single
 Dim Shared planetNames(1 To PLANET_COUNT) As String
 Dim Shared telemExitReason As String
+Dim Shared bossMusList$(0 To 7)
+Dim Shared bossMusCnt      As Integer
+Dim Shared bossSpeechList$(0 To 7)
+Dim Shared bossSpeechCnt   As Integer
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
@@ -105,6 +110,8 @@ Sub ST_Reset()
     planetNameIdx = PLANET_COUNT
     planetTimer  = 0
     boss.warnTimer = 0
+    bossMusCnt     = 0
+    bossSpeechCnt  = 0
     tt           = 0
     SEQ_Load _EMBEDDED$("SEQTXT")
 End Sub
@@ -473,6 +480,23 @@ SEQ_Advance
 ST_Assert gameState = GS_PLAYING,                        "15.02  gameState=GS_PLAYING after boss dispatch"
 ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "15.03  boss.warnTimer set"
 ST_Assert stageScore = 2147483647,                       "15.04  stageScore=MAX (combat trigger disabled)"
+
+' ────────────────────────────────────────────────────────────────────────────
+' 16. PLAY boss mus= CSV populates phase music tickable
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 16. boss mus= CSV tickable ---"
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance   ' dispatch boss PLAY at level:3
+ST_Assert bossMusCnt = 3,                        "16.01  bossMusCnt=3 from mus=boss,boss2,boss3"
+ST_Assert bossMusList$(0) = "boss",              "16.02  phase 1 cue=boss"
+ST_Assert bossMusList$(1) = "boss2",             "16.03  phase 2 cue=boss2"
+ST_Assert bossMusList$(2) = "boss3",             "16.04  phase 3 cue=boss3"
+ST_Assert bossSpeechCnt = 3,                     "16.05  bossSpeechCnt=3 from speech=,key2,key3"
+ST_Assert bossSpeechList$(0) = "",               "16.06  phase 1 speech=empty (boss warning handles it)"
+ST_Assert bossSpeechList$(1) = "speech_boss_phase2", "16.07  phase 2 speech key"
+ST_Assert bossSpeechList$(2) = "speech_boss_phase3", "16.08  phase 3 speech key"
 
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
