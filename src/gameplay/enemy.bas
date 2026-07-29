@@ -172,14 +172,14 @@ Sub EBULLET_Update
 
     For ebI = 1 To MAX_EBULLETS
         If ebullets(ebI).active Then
-            ' boss bullets: apply homing nudge before position update
+            ' boss bullets: steer vy/vz toward player using lerp so speed stays bounded
             If ebullets(ebI).meshIdx = MESH_BOSS And bossSeekStr > 0 Then
                 ebSeekDY = player.py - ebullets(ebI).py
                 ebSeekDZ = player.pz - ebullets(ebI).pz
                 ebSeekMag = SQR(ebSeekDY * ebSeekDY + ebSeekDZ * ebSeekDZ)
                 If ebSeekMag > 0.1 Then
-                    ebullets(ebI).vy = ebullets(ebI).vy + (ebSeekDY / ebSeekMag) * bossSeekStr
-                    ebullets(ebI).vz = ebullets(ebI).vz + (ebSeekDZ / ebSeekMag) * bossSeekStr
+                    ebullets(ebI).vy = ebullets(ebI).vy + ((ebSeekDY / ebSeekMag) * 0.12 - ebullets(ebI).vy) * bossSeekStr
+                    ebullets(ebI).vz = ebullets(ebI).vz + ((ebSeekDZ / ebSeekMag) * 0.12 - ebullets(ebI).vz) * bossSeekStr
                 End If
             End If
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
