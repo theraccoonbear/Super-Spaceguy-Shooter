@@ -43,10 +43,54 @@ run_test() {
   fi
 }
 
+run_http_test() {
+  local name="$1"
+  local src="$REPODIR/tests/${name}.bas"
+  local bin="$REPODIR/tests/${name}"
+
+  echo "==> Building tests/${name}.bas..."
+  if command -v xvfb-run &>/dev/null; then
+    xvfb-run "$QB64" -x "$src" -o "$bin"
+  else
+    "$QB64" -x "$src" -o "$bin"
+  fi
+
+  echo "==> Starting HTTP mock server..."
+  local portfile
+  portfile="$(mktemp)"
+  python3 "$REPODIR/tools/http_mock_server" --port 0 > "$portfile" &
+  local mock_pid=$!
+  local mock_port=""
+  for i in $(seq 1 50); do
+    mock_port="$(cat "$portfile" 2>/dev/null | tr -d '[:space:]')"
+    [ -n "$mock_port" ] && break
+    sleep 0.1
+  done
+  rm -f "$portfile"
+
+  if [ -z "$mock_port" ]; then
+    echo "ERROR: mock server failed to start"
+    kill "$mock_pid" 2>/dev/null || true
+    exit 1
+  fi
+  echo "    Mock listening on port $mock_port"
+
+  local rc=0
+  if "$bin" "http://127.0.0.1:$mock_port"; then
+    echo "==> ${name} passed"
+  else
+    rc=$?
+    echo "==> TESTS FAILED — ${name} — see output above"
+  fi
+  kill "$mock_pid" 2>/dev/null || true
+  [ $rc -ne 0 ] && exit 1
+}
+
 run_test seq_trace_test
 run_test seq_dispatch_test
 run_test scene_jump_planet_test
 run_test snd_init_test
 run_test telem_creds_test
+run_http_test http_queue_test
 
 echo "==> All tests passed"
