@@ -25,7 +25,7 @@ jobs:
           }
 
   test:
-    name: Sequence state tests
+    name: Tests
     needs: dict-check
     runs-on: ubuntu-latest
 
@@ -66,7 +66,7 @@ jobs:
           cd qb64pe && bash setup_lnx.sh 1 && cd ..
           mv qb64pe qb64pe-bin
 
-      - name: Build and run seq_trace_test
+      - name: Build and run all tests
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
 
       - name: Dump compile log on failure
