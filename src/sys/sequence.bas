@@ -373,6 +373,9 @@ Sub SEQ_Advance()
                     Loop
                     ' parse seek= bullet homing strength
                     bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))
+                    ' parse maneuver= flight pattern name (falls back to "flyover" if absent)
+                    Dim seqaManeuver As String : seqaManeuver = SEQ_GetKV$(seqSval$(seqIdx), "maneuver")
+                    If Len(seqaManeuver) > 0 Then bsmManeuverName = seqaManeuver Else bsmManeuverName = "flyover"
                     ' music cue applied in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
                     levelNum       = levelNum + 1
