@@ -94,7 +94,8 @@ Sub VIZ_Step
         If vzHSpd > 0.0002 Then
             boss.rx = _Atan2(-vzDY, vzHSpd) * 57.2958
         End If
-        boss.rz = 0
+        ' banking roll: lean into the turn proportional to lateral Z velocity
+        boss.rz = -(vzDZ / vzSpd) * 50.0
     End If
 
     vzTrailHead = vzTrailHead + 1
