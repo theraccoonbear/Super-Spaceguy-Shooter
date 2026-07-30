@@ -60,6 +60,7 @@ Sub VIZ_LoadManeuver
     boss.py = player.py : boss.pz = player.pz
     boss.rx = 0 : boss.ry = 0 : boss.rz = 0
     boss.vx = 0 : boss.vy = 0 : boss.vz = 0
+    boss.scl = 1.0 : boss.active = -1 : boss.meshIdx = MESH_BOSS
     boss.state = 6 : boss.phase = 1
     boss.arcAngle = 0 : boss.moveTimer = 0 : boss.chargeTimer = 0
     boss.fireTimer = 0 : boss.targetY = 0 : boss.targetZ = 0
