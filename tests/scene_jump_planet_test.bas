@@ -58,9 +58,11 @@ Dim Shared tt           As Single
 Dim Shared planetNames(1 To PLANET_COUNT) As String
 Dim Shared telemExitReason As String
 Dim Shared bossMusList$(0 To 7)
-Dim Shared bossMusCnt      As Integer
+Dim Shared bossMusCnt        As Integer
 Dim Shared bossSpeechList$(0 To 7)
-Dim Shared bossSpeechCnt   As Integer
+Dim Shared bossSpeechCnt     As Integer
+Dim Shared bossManeuverList$(0 To 7)
+Dim Shared bossManeuverCnt   As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim introTimer As Integer

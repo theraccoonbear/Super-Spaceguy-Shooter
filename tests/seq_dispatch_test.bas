@@ -77,9 +77,11 @@ Dim Shared tt           As Single
 Dim Shared planetNames(1 To PLANET_COUNT) As String
 Dim Shared telemExitReason As String
 Dim Shared bossMusList$(0 To 7)
-Dim Shared bossMusCnt      As Integer
+Dim Shared bossMusCnt        As Integer
 Dim Shared bossSpeechList$(0 To 7)
-Dim Shared bossSpeechCnt   As Integer
+Dim Shared bossSpeechCnt     As Integer
+Dim Shared bossManeuverList$(0 To 7)
+Dim Shared bossManeuverCnt   As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim introTimer As Integer
@@ -114,9 +116,10 @@ Sub ST_Reset()
     planetNameIdx = PLANET_COUNT
     planetTimer  = 0
     boss.warnTimer = 0
-    bossMusCnt     = 0
-    bossSpeechCnt  = 0
-    bossSeekStr    = 0
+    bossMusCnt      = 0
+    bossSpeechCnt   = 0
+    bossManeuverCnt = 0
+    bossSeekStr     = 0
     tt           = 0
     SEQ_Load _EMBEDDED$("SEQTXT")
 End Sub
@@ -530,12 +533,13 @@ ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=
 ' 18. PLAY boss maneuver= populates bsmManeuverName; defaults to "flyover"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
-Print "--- 18. boss maneuver= parsed into bsmManeuverName ---"
-' level:3 has no maneuver= key -> should default to "flyover"
+Print "--- 18. boss maneuver= parsed into bossManeuverList$ ---"
+' level:3 has no maneuver= key -> list should contain single "flyover" entry
 ST_Reset
 ST_GoTo "boss3"
 SEQ_Advance
-ST_Assert bsmManeuverName = "flyover", "18.01  no maneuver= defaults to flyover"
+ST_Assert bossManeuverCnt = 1,                    "18.01  no maneuver= -> count=1"
+ST_Assert bossManeuverList$(0) = "flyover",       "18.02  no maneuver= -> [0]=flyover"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
