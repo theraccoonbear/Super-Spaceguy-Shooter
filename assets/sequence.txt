@@ -8,8 +8,9 @@
 ; CARD   img=<image-key>  mus=<cue>   (EMPEROR is a backward-compat alias)
 ; TITLE  mus=<cue>
 ; PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
-;   type=boss: mus=cue1,cue2,cue3 -- comma list, one cue per boss phase (tickable)
-;              speech=key1,key2,key3 -- comma list of gametext keys (empty entry = no speech)
+;   type=boss: mus=cue1,cue2,cue3       -- comma list, one cue per boss phase (tickable)
+;              speech=key1,key2,key3  -- comma list of gametext keys (empty entry = no speech)
+;              maneuver=name1,name2,name3 -- comma list of flight patterns per phase (maneuvers.txt)
 ;              seek=N -- boss bullet homing strength per frame (0=straight, 0.05=moderate curve)
 ;   trigger=n: score threshold in units of 100 pts (nerf: * NERF_FACTOR)
 ; ARRIVE mus=<cue>
@@ -36,7 +37,7 @@ level:2
 level:3
     CRAWL txt=stage3 mus=crawl
     PLAY type=combat mus=game trigger=10
-    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015
+    PLAY type=boss maneuver=drift mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015
     ARRIVE mus=planet
 
 level:4
@@ -47,13 +48,13 @@ level:4
 level:5
     CRAWL txt=stage5 mus=crawl
     PLAY type=combat mus=game trigger=15
-    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035
+    PLAY type=boss maneuver=drift,weave mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035
     ARRIVE mus=planet
 
 level:6
     CRAWL txt=stage6 mus=crawl
     PLAY type=combat mus=game trigger=20
-    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055
+    PLAY type=boss maneuver=weave,flyover,plotted mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055
     ARRIVE mus=planet
 
 outro:
