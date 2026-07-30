@@ -106,20 +106,26 @@ Sub BOSS_Update
     bssTgtRx = bssVZ * 90 - bssVX * 15 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
     bssTgtRy = -bssVZ * 35              : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
     bssTgtRz = bssVY * 60              : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
-    ' flyover yaw: 180 while behind/charging fwd; arc-tangent-based during dramatic turn
-    If boss.state >= 6 And boss.state <= 8 Then
-        bssTgtRy = 180   ' facing same direction as player: dive, rear-fire, fwd charge
-    ElseIf boss.state = 9 Then
-        ' yaw = heading direction of the arc tangent; -atan2 maps the convention: ry=0 faces player (-X)
-        bssTgtRy = -_ATAN2(COS(boss.arcAngle) * BOSS_TURN_RAD_Z * bsmTurnDir, SIN(boss.arcAngle) * BOSS_TURN_RAD_X) * 57.2958
+    ' flyover: derive yaw/pitch/roll from spline tangent (the actual velocity vector)
+    If boss.state = 6 Then
+        Dim bssFlySpdH As Single : bssFlySpdH = Sqr(bssVX*bssVX + bssVZ*bssVZ)
+        Dim bssFlySpdT As Single : bssFlySpdT = Sqr(bssVX*bssVX + bssVY*bssVY + bssVZ*bssVZ)
+        If bssFlySpdT > 0.001 Then
+            bssTgtRy = _ATAN2(bssVZ, -bssVX) * 57.2958
+            If bssFlySpdH > 0.001 Then bssTgtRx = _ATAN2(-bssVY, bssFlySpdH) * 57.2958
+            bssTgtRz = -(bssVZ / bssFlySpdT) * 55.0  ' bank into the turn
+        End If
     End If
-    boss.rx = boss.rx + (bssTgtRx - boss.rx) * BOSS_ATTITUDE_LERP
-    boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
-    boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
+    Dim bssAttLerp As Single : bssAttLerp = BOSS_ATTITUDE_LERP
+    If boss.state = 6 Then bssAttLerp = 0.18  ' faster tracking during spline flight
+    boss.rx = boss.rx + (bssTgtRx - boss.rx) * bssAttLerp
+    boss.ry = boss.ry + (bssTgtRy - boss.ry) * bssAttLerp
+    boss.rz = boss.rz + (bssTgtRz - boss.rz) * bssAttLerp
 
     ' fire patterns: suppressed during dive (6), dramatic turn (9), and fwd charge approach (8 before overtake)
     boss.fireTimer = boss.fireTimer - 0.025
-    If boss.fireTimer <= 0 And boss.state <> 6 And boss.state <> 9 And (boss.state <> 8 Or boss.px > player.px) Then
+    ' fire: suppress during flyover except when boss is behind player (rear-fire zone)
+    If boss.fireTimer <= 0 And (boss.state <> 6 Or boss.px < player.px) Then
         bssDX = player.px - boss.px
         bssDY = player.py - boss.py
         bssDZ = player.pz - boss.pz

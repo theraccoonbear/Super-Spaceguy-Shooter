@@ -51,6 +51,7 @@ Sub VIZ_SimReset
     boss.fireTimer = 0 : boss.targetY = 0 : boss.targetZ = 0
     boss.hp = 30 : boss.warnTimer = 0
     bsmTurnDir = 1
+    BOSS_FlyoverInit
 
     ' camera: above and side, looking at the action zone (x=0..20, y=0, z=0)
     vzCamX = 10.0 : vzCamY = 12.0 : vzCamZ = 32.0
@@ -73,12 +74,14 @@ Sub VIZ_Step
 
     BOSS_UpdateMovement
 
-    ' arc completes (state 9 -> 0): restart flyover to loop continuously
+    ' flyover completes (state 6 -> 0): restart to loop continuously in the viz
     If boss.state = 0 Then
-        boss.state = 6
-        boss.px = BOSS_COMBAT_DIST
+        boss.px = player.px + BOSS_COMBAT_DIST
         boss.py = player.py : boss.pz = player.pz
+        boss.arcAngle = 0
         boss.chargeTimer = 0
+        BOSS_FlyoverInit   ' recompute waypoints with updated bsmTurnDir
+        boss.state = 6
     End If
 
     ' orientation = direction of travel; nose always points the way it moves
@@ -160,13 +163,14 @@ Sub VIZ_Draw
     For vdTi = 1 To VZ_TRAIL_MAX
         If vzTrailSt(vdTi) > 0 Then
             Dim vdTC As Long
-            Select Case vzTrailSt(vdTi)
-            Case 6  : vdTC = _RGBA(255, 80,  0,  200)
-            Case 7  : vdTC = _RGBA(60,  80,  255, 200)
-            Case 8  : vdTC = _RGBA(255, 220, 30, 200)
-            Case 9  : vdTC = _RGBA(200, 60,  220, 200)
-            Case Else : vdTC = _RGBA(80, 80, 80, 120)
-            End Select
+            ' color trail by boss position relative to player: behind=blue, ahead=orange
+            If vzTrailPX(vdTi) < player.px Then
+                vdTC = _RGBA(60, 80, 255, 200)   ' behind player
+            ElseIf vzTrailPX(vdTi) < player.px + 25 Then
+                vdTC = _RGBA(255, 220, 30, 200)  ' passing / overhead zone
+            Else
+                vdTC = _RGBA(200, 60, 220, 200)  ' far ahead / banking arc
+            End If
             Dim vdTSX As Single, vdTSY As Single, vdTVis As Integer
             VIZ_Project vzTrailPX(vdTi), vzTrailPY(vdTi), vzTrailPZ(vdTi), vdTSX, vdTSY, vdTVis
             If vdTVis Then PSet (vdTSX, vdTSY), vdTC
@@ -186,10 +190,7 @@ Sub VIZ_Draw
     ' HUD -- state info top-left, controls bottom
     Dim vdSN As String
     Select Case boss.state
-    Case 6  : vdSN = "6 DIVE"
-    Case 7  : vdSN = "7 REAR"
-    Case 8  : vdSN = "8 FWD"
-    Case 9  : vdSN = "9 TURN"
+    Case 6  : vdSN = "6 FLY"
     Case Else : vdSN = LTrim$(Str$(boss.state))
     End Select
     Dim vdDirS As String
@@ -197,7 +198,7 @@ Sub VIZ_Draw
 
     Color _RGB(220, 220, 220)
     _PrintString (2, 2),  "ST:" + vdSN
-    _PrintString (2, 12), "ARC" + Left$(Str$(boss.arcAngle + 1000), 6)
+    _PrintString (2, 12), "T:" + Left$(Str$(boss.arcAngle + 1000), 6)
     _PrintString (2, 22), "RY:" + Left$(Str$(boss.ry + 1000), 7)
     _PrintString (2, 32), "DIR" + vdDirS
     _PrintString (2, 42), "F:" + LTrim$(Str$(vzFrame))
