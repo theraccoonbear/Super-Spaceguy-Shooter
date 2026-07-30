@@ -534,12 +534,29 @@ ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "--- 18. boss maneuver= parsed into bossManeuverList$ ---"
-' level:3 has no maneuver= key -> list should contain single "flyover" entry
+' level:3 boss has maneuver=drift (single entry)
 ST_Reset
 ST_GoTo "boss3"
 SEQ_Advance
-ST_Assert bossManeuverCnt = 1,                    "18.01  no maneuver= -> count=1"
-ST_Assert bossManeuverList$(0) = "flyover",       "18.02  no maneuver= -> [0]=flyover"
+ST_Assert bossManeuverCnt = 1,                    "18.01  level3 maneuver=drift -> count=1"
+ST_Assert bossManeuverList$(0) = "drift",         "18.02  level3 maneuver=drift -> [0]=drift"
+' level:5 boss has maneuver=drift,weave (two entries)
+ST_Reset
+levelNum = 4
+ST_GoTo "boss5"
+SEQ_Advance
+ST_Assert bossManeuverCnt = 2,                    "18.03  level5 maneuver=drift,weave -> count=2"
+ST_Assert bossManeuverList$(0) = "drift",         "18.04  level5 phase1=drift"
+ST_Assert bossManeuverList$(1) = "weave",         "18.05  level5 phase2=weave"
+' level:6 boss has maneuver=weave,flyover,plotted (three entries)
+ST_Reset
+levelNum = 5
+ST_GoTo "boss6"
+SEQ_Advance
+ST_Assert bossManeuverCnt = 3,                    "18.06  level6 maneuver=weave,flyover,plotted -> count=3"
+ST_Assert bossManeuverList$(0) = "weave",         "18.07  level6 phase1=weave"
+ST_Assert bossManeuverList$(1) = "flyover",       "18.08  level6 phase2=flyover"
+ST_Assert bossManeuverList$(2) = "plotted",       "18.09  level6 phase3=plotted"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
