@@ -215,10 +215,10 @@ Sub VIZ_DrawSplinePath
         vdspFu  = vdspT - vdspSeg
         vdspFu2 = vdspFu * vdspFu
         vdspFu3 = vdspFu2 * vdspFu
-        vdspI0 = vdspSeg - 1 : If vdspI0 < 0 Then vdspI0 = 0
+        vdspI0 = vdspSeg - 1 : If vdspI0 < 0 Then vdspI0 = bsmWpCount - 2
         vdspI1 = vdspSeg
         vdspI2 = vdspSeg + 1 : If vdspI2 >= bsmWpCount Then vdspI2 = bsmWpCount - 1
-        vdspI3 = vdspSeg + 2 : If vdspI3 >= bsmWpCount Then vdspI3 = bsmWpCount - 1
+        vdspI3 = vdspSeg + 2 : If vdspI3 >= bsmWpCount Then vdspI3 = vdspI3 - (bsmWpCount - 1)
         vdspW0 = -vdspFu3 + 2*vdspFu2 - vdspFu
         vdspW1 =  3*vdspFu3 - 5*vdspFu2 + 2
         vdspW2 = -3*vdspFu3 + 4*vdspFu2 + vdspFu

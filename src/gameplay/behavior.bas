@@ -153,10 +153,10 @@ Sub BOSS_UpdateMovement()
             bsmFu  = bsmFt - bsmFseg
             bsmFu2 = bsmFu * bsmFu
             bsmFu3 = bsmFu2 * bsmFu
-            bsmFi0 = bsmFseg - 1 : If bsmFi0 < 0 Then bsmFi0 = 0
+            bsmFi0 = bsmFseg - 1 : If bsmFi0 < 0 Then bsmFi0 = bsmWpCount - 2
             bsmFi1 = bsmFseg
             bsmFi2 = bsmFseg + 1
-            bsmFi3 = bsmFseg + 2 : If bsmFi3 >= bsmWpCount Then bsmFi3 = bsmWpCount - 1
+            bsmFi3 = bsmFseg + 2 : If bsmFi3 >= bsmWpCount Then bsmFi3 = bsmFi3 - (bsmWpCount - 1)
             bsmFw0 = -bsmFu3 + 2*bsmFu2 - bsmFu
             bsmFw1 =  3*bsmFu3 - 5*bsmFu2 + 2
             bsmFw2 = -3*bsmFu3 + 4*bsmFu2 + bsmFu
