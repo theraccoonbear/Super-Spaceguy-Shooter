@@ -5,18 +5,12 @@
 '   3 retreat    -- back to BOSS_COMBAT_DIST on X
 '   4 arc        -- sweep Y/Z arc around player's position at mode-pick time
 '   5 xyzrush   -- charge on X + arc sweep simultaneously
-'   6 flyover-dive   -- charge past player to px-20 (behind camera); yaw spins toward 180
-'   7 flyover-rear   -- hold behind player, fire; yaw=180 (facing same dir as player)
-'   8 flyover-fwd    -- charge forward from px-20 to px+44; player sees thruster flare
-'   9 flyover-turn   -- wide banking arc at px+44; yaw 180->0 proportional to arc; dramatic!
+'   6 flyover    -- Catmull-Rom spline: dive past player, rear fire, charge ahead, banking arc return
 '
-' Hunt mode uses continuous soft-tracking so the boss stays in the player's
-' engagement zone.  Rate is low enough that player movement is meaningful.
-' All other modes commit to a fixed snapshot of player.py/pz at pick time.
-'
-' Arc entry: arcAngle is initialised from the boss's current position so the
-' transition is smooth (no teleport).  boss.py/pz lerps toward the arc circle.
-' Flyover states 6/7/8/9: dive -> rear fire -> fwd charge (thruster) -> dramatic turn.
+' Flyover path (state 6): boss.arcAngle is repurposed as the spline t parameter (0..bsmWpCount-1).
+' Waypoints are player-relative and set by BOSS_FlyoverInit at state entry; Z column is signed
+' by bsmTurnDir so the arc alternates sides each pass.  Attitude (yaw/pitch/roll) is derived
+' from the spline tangent (velocity vector) each frame, so banking follows the curve naturally.
 
 ' BOSS_COMBAT_DIST defined here (behavior.bas included before boss.bas)
 Const BOSS_COMBAT_DIST = 20    ' standard X distance for combat
@@ -39,22 +33,21 @@ Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
-Const BOSS_FLYOVER_SPD    = 0.55  ' X dive speed past player (state 6)
-Const BOSS_FLYOVER_REAR   = 20.0  ' units behind player where boss holds for rear fire
-Const BOSS_FLYOVER_FRAMES = 80    ' frames of rear-fire dwell before state 8
-Const BOSS_FWD_CHG_SPD    = 0.60  ' forward charge speed in state 8
-Const BOSS_FWD_CHG_X      = 44.0  ' target X units ahead of player where state 9 begins
-Const BOSS_TURN_SPD       = 0.018 ' rad/frame for dramatic turn (pi/0.018 ~175 frames)
-Const BOSS_TURN_CX_OFF    = 32.0  ' turn arc X center offset from player.px
-Const BOSS_TURN_RAD_X     = 12.0  ' X radius (center ± 12 = px+20 to px+44)
-Const BOSS_TURN_RAD_Z     = 20.0  ' Z bank width -- make it BIG for the cinematic
-Const BOSS_TURN_ENTRY_FRAMES = 20.0  ' frames to blend charge momentum into arc entry
+Const BOSS_FLY_SPD = 0.025  ' t-advance per frame along flyover spline (12 segs / 0.025 ≈ 480 frames)
+
+' ── flyover waypoint arrays -- populated by BOSS_FlyoverInit at state-6 entry ─
+Dim Shared bsmWpX(0 To 15) As Single
+Dim Shared bsmWpY(0 To 15) As Single
+Dim Shared bsmWpZ(0 To 15) As Single
+Dim Shared bsmWpCount As Integer
 
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
     Dim bsmArcTgtY As Single, bsmArcTgtZ As Single
-    Dim bsmSweepTgtX As Single, bsmSweepTgtZ As Single
-    Dim bsmFlyOverY As Single
+    Dim bsmFt As Single, bsmFseg As Integer
+    Dim bsmFu As Single, bsmFu2 As Single, bsmFu3 As Single
+    Dim bsmFi0 As Integer, bsmFi1 As Integer, bsmFi2 As Integer, bsmFi3 As Integer
+    Dim bsmFw0 As Single, bsmFw1 As Single, bsmFw2 As Single, bsmFw3 As Single
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -139,55 +132,15 @@ Sub BOSS_UpdateMovement()
             If boss.moveTimer <= 0 Then boss.state = 3
         End If
 
-    Case 6  ' flyover dive: rush past player to rear; fire is suppressed in boss.bas
-        boss.py = boss.py + (player.py - boss.py) * 0.08
-        boss.pz = boss.pz + (player.pz - boss.pz) * 0.08
-        boss.px = boss.px - BOSS_FLYOVER_SPD
-        If boss.px <= player.px - BOSS_FLYOVER_REAR Then
-            boss.px = player.px - BOSS_FLYOVER_REAR
-            boss.fireTimer = 0.3   ' first rear burst fires quickly
-            boss.moveTimer = BOSS_FLYOVER_FRAMES
-            boss.state = 7
-        End If
-
-    Case 7  ' flyover rear: hold behind player; fire handled normally by boss.bas
-        boss.py = boss.py + (player.py - boss.py) * 0.05
-        boss.pz = boss.pz + (player.pz - boss.pz) * 0.05
-        boss.moveTimer = boss.moveTimer - 1
-        If boss.moveTimer <= 0 Then
-            boss.arcAngle = 3.14159   ' sweep begins at pi (behind) and decrements to 0 (in front)
-            boss.state = 8
-        End If
-
-    Case 8  ' flyover fwd charge: rush from behind, past player, to px+44 (player sees thruster flare)
-        ' fly over the player with guaranteed AABB clearance; fire is gated in boss.bas by px vs player.px
-        bsmFlyOverY = player.py + boxLib(MESH_BOSS).hy + boxLib(MESH_PLAYER).hy + 1.0
-        boss.py = boss.py + (bsmFlyOverY - boss.py) * 0.06
-        boss.pz = boss.pz + (player.pz - boss.pz) * 0.06
-        boss.px = boss.px + BOSS_FWD_CHG_SPD
-        If boss.px >= player.px + BOSS_FWD_CHG_X Then
-            boss.px = player.px + BOSS_FWD_CHG_X
-            boss.arcAngle = 0
-            boss.fireTimer = 0.5
-            boss.moveTimer = BOSS_TURN_ENTRY_FRAMES
-            boss.state = 9
-        End If
-
-    Case 9  ' flyover dramatic turn: wide banking arc from px+44 back to combat facing player
-        boss.arcAngle = boss.arcAngle + BOSS_TURN_SPD
-        bsmSweepTgtX = player.px + BOSS_TURN_CX_OFF + COS(boss.arcAngle) * BOSS_TURN_RAD_X
-        bsmSweepTgtZ = player.pz + SIN(boss.arcAngle) * BOSS_TURN_RAD_Z * bsmTurnDir
-        boss.px = boss.px + (bsmSweepTgtX - boss.px) * 0.14
-        boss.pz = boss.pz + (bsmSweepTgtZ - boss.pz) * 0.14
-        boss.py = boss.py + (player.py - boss.py) * 0.04
-        If boss.moveTimer > 0 Then
-            boss.px = boss.px + BOSS_FWD_CHG_SPD * (boss.moveTimer / BOSS_TURN_ENTRY_FRAMES)
-            boss.moveTimer = boss.moveTimer - 1
-        End If
-        If boss.arcAngle >= 3.14159 Then
-            boss.px = player.px + BOSS_COMBAT_DIST
-            boss.pz = player.pz
-            bsmTurnDir = bsmTurnDir * -1           ' alternate direction next flyover
+    Case 6  ' flyover: Catmull-Rom spline through dive, rear fire, charge, banking arc return
+        bsmFt   = boss.arcAngle
+        bsmFseg = Int(bsmFt)
+        If bsmFseg >= bsmWpCount - 1 Then
+            ' path complete: land on final waypoint, flip arc dir, return to combat
+            boss.px = player.px + bsmWpX(bsmWpCount - 1)
+            boss.py = player.py + bsmWpY(bsmWpCount - 1)
+            boss.pz = player.pz + bsmWpZ(bsmWpCount - 1)
+            bsmTurnDir = bsmTurnDir * -1
             If bsmTurnDir = 0 Then bsmTurnDir = 1
             Select Case boss.phase
                 Case 1 : boss.chargeTimer = BOSS_CHARGE_CD1
@@ -195,9 +148,50 @@ Sub BOSS_UpdateMovement()
                 Case 3 : boss.chargeTimer = BOSS_CHARGE_CD3
             End Select
             boss.state = 0
+        Else
+            bsmFu  = bsmFt - bsmFseg
+            bsmFu2 = bsmFu * bsmFu
+            bsmFu3 = bsmFu2 * bsmFu
+            bsmFi0 = bsmFseg - 1 : If bsmFi0 < 0 Then bsmFi0 = 0
+            bsmFi1 = bsmFseg
+            bsmFi2 = bsmFseg + 1
+            bsmFi3 = bsmFseg + 2 : If bsmFi3 >= bsmWpCount Then bsmFi3 = bsmWpCount - 1
+            bsmFw0 = -bsmFu3 + 2*bsmFu2 - bsmFu
+            bsmFw1 =  3*bsmFu3 - 5*bsmFu2 + 2
+            bsmFw2 = -3*bsmFu3 + 4*bsmFu2 + bsmFu
+            bsmFw3 =  bsmFu3 - bsmFu2
+            boss.px = player.px + 0.5 * (bsmWpX(bsmFi0)*bsmFw0 + bsmWpX(bsmFi1)*bsmFw1 + bsmWpX(bsmFi2)*bsmFw2 + bsmWpX(bsmFi3)*bsmFw3)
+            boss.py = player.py + 0.5 * (bsmWpY(bsmFi0)*bsmFw0 + bsmWpY(bsmFi1)*bsmFw1 + bsmWpY(bsmFi2)*bsmFw2 + bsmWpY(bsmFi3)*bsmFw3)
+            boss.pz = player.pz + 0.5 * (bsmWpZ(bsmFi0)*bsmFw0 + bsmWpZ(bsmFi1)*bsmFw1 + bsmWpZ(bsmFi2)*bsmFw2 + bsmWpZ(bsmFi3)*bsmFw3)
+            boss.arcAngle = boss.arcAngle + BOSS_FLY_SPD
         End If
 
     End Select
+End Sub
+
+' Build flyover waypoints in player-relative space.  Call before setting boss.state = 6.
+' P0 is set from the boss's actual position so there is no entry snap.
+' Z column is pre-multiplied by bsmTurnDir; call after flipping it for the next pass.
+Sub BOSS_FlyoverInit
+    Dim bfiD As Single : bfiD = bsmTurnDir
+    bsmWpCount = 13
+    '          X (fwd of player)     Y (up)    Z (lateral * turn dir)
+    ' A -- dive approach: from combat range, over/past player, into rear zone
+    bsmWpX(0)  = boss.px - player.px : bsmWpY(0)  = boss.py - player.py : bsmWpZ(0)  = boss.pz - player.pz
+    bsmWpX(1)  =  8 : bsmWpY(1)  =  1 : bsmWpZ(1)  =           0
+    bsmWpX(2)  =  0 : bsmWpY(2)  =  2 : bsmWpZ(2)  =           0
+    bsmWpX(3)  =-12 : bsmWpY(3)  =  0 : bsmWpZ(3)  =           0
+    bsmWpX(4)  =-22 : bsmWpY(4)  = -1 : bsmWpZ(4)  =           0  ' deep behind (rear fire)
+    ' B -- forward charge: drift lateral, arc back over player with clearance
+    bsmWpX(5)  =-12 : bsmWpY(5)  =  0 : bsmWpZ(5)  = bfiD *  5
+    bsmWpX(6)  = -2 : bsmWpY(6)  =  3 : bsmWpZ(6)  = bfiD *  6   ' altitude clears AABB
+    bsmWpX(7)  = 14 : bsmWpY(7)  =  2 : bsmWpZ(7)  = bfiD *  4
+    bsmWpX(8)  = 30 : bsmWpY(8)  =  0 : bsmWpZ(8)  = bfiD *  2   ' surging ahead
+    ' C -- banking arc: sweep wide in Z, return to combat position
+    bsmWpX(9)  = 40 : bsmWpY(9)  = -1 : bsmWpZ(9)  = bfiD * 12
+    bsmWpX(10) = 36 : bsmWpY(10) = -2 : bsmWpZ(10) = bfiD * 24
+    bsmWpX(11) = 22 : bsmWpY(11) = -1 : bsmWpZ(11) = bfiD * 22
+    bsmWpX(12) = 20 : bsmWpY(12) =  0 : bsmWpZ(12) =           0  ' combat return
 End Sub
 
 ' Called each time the boss fires to pick the next movement mode.
@@ -266,6 +260,8 @@ Sub BOSS_PickMode(bpmPhase As Integer)
             End If
         Else
             If boss.chargeTimer <= 0 Then
+                boss.arcAngle = 0
+                BOSS_FlyoverInit
                 boss.state = 6
             Else
                 boss.targetY = player.py : boss.targetZ = player.pz
@@ -312,6 +308,8 @@ Sub BOSS_PickMode(bpmPhase As Integer)
             End If
         Else
             If boss.chargeTimer <= 0 Then
+                boss.arcAngle = 0
+                BOSS_FlyoverInit
                 boss.state = 6
             Else
                 boss.targetY = player.py : boss.targetZ = player.pz
