@@ -1,0 +1,27 @@
+# Boss attack maneuvers
+# Format:
+#   [name]           section header
+#   speed=<value>    t-advance per frame (segments / speed = total frames)
+#   X  Y  Z          one waypoint per line, player-relative units
+#                    Z is unsigned here; bsmTurnDir applies the sign at runtime
+#   # comment        ignored
+#   blank lines      ignored
+
+[flyover]
+speed=0.025
+# A -- dive approach: from combat range, overhead player, into rear fire zone
+ 20   0   0
+  8   1   0
+  0   2   0
+-12   0   0
+-22  -1   0
+# B -- forward charge: lateral drift, overhead clearance, surge ahead of player
+-12   0   5
+ -2   3   6
+ 14   2   4
+ 30   0   2
+# C -- banking arc: sweep wide in Z, return to combat position
+ 40  -1  12
+ 36  -2  24
+ 22  -1  22
+ 20   0   0

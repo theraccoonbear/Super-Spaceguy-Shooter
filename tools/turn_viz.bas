@@ -2,6 +2,7 @@ $RESIZE:ON
 $SCREENHIDE
 $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
+$EMBED:'assets/maneuvers.txt':'MANEUVERS'
 
 ' DBG_Print stub -- input.bas calls this; we don't need real debug output
 Sub DBG_Print(dbgMsg As String)
@@ -11,6 +12,7 @@ End Sub
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/gameplay/behavior.bas'
+'$INCLUDE:'../src/gameplay/maneuvers.bas'
 
 ' ── viz constants ─────────────────────────────────────────────────────────────
 Const VZPI = 3.14159265358979
@@ -219,6 +221,7 @@ scrW = 320 : scrH = 240
 Screen _NewImage(scrW, scrH, 32)
 backBuffer = _NewImage(scrW, scrH, 32)
 TOOL_Init "Boss Flyover Visualizer"
+MNV_Init _EMBEDDED$("MANEUVERS")
 
 lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
 
