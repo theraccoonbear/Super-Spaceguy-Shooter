@@ -67,6 +67,7 @@ Dim Shared bossMusCnt      As Integer
 Dim Shared bossSpeechList$(0 To 7)
 Dim Shared bossSpeechCnt   As Integer
 Dim Shared bossSeekStr     As Single
+Dim Shared bsmManeuverName As String
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────

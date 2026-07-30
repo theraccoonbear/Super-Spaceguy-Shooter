@@ -21,6 +21,7 @@
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
 '  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
 '  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
+'  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -80,6 +81,7 @@ Dim Shared bossMusCnt      As Integer
 Dim Shared bossSpeechList$(0 To 7)
 Dim Shared bossSpeechCnt   As Integer
 Dim Shared bossSeekStr     As Single
+Dim Shared bsmManeuverName As String
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
@@ -524,6 +526,16 @@ ST_GoTo "boss6"
 SEQ_Advance
 ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=0.055"
 
+' ────────────────────────────────────────────────────────────────────────────
+' 18. PLAY boss maneuver= populates bsmManeuverName; defaults to "flyover"
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 18. boss maneuver= parsed into bsmManeuverName ---"
+' level:3 has no maneuver= key -> should default to "flyover"
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance
+ST_Assert bsmManeuverName = "flyover", "18.01  no maneuver= defaults to flyover"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
