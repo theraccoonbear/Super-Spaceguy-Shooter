@@ -373,9 +373,18 @@ Sub SEQ_Advance()
                     Loop
                     ' parse seek= bullet homing strength
                     bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))
-                    ' parse maneuver= flight pattern name (falls back to "flyover" if absent)
-                    Dim seqaManeuver As String : seqaManeuver = SEQ_GetKV$(seqSval$(seqIdx), "maneuver")
-                    If Len(seqaManeuver) > 0 Then bsmManeuverName = seqaManeuver Else bsmManeuverName = "flyover"
+                    ' parse maneuver= per-phase flight patterns (CSV, same shape as mus=)
+                    Dim seqaMnvStr As String : seqaMnvStr = SEQ_GetKV$(seqSval$(seqIdx), "maneuver")
+                    If Len(seqaMnvStr) = 0 Then seqaMnvStr = "flyover"
+                    Dim seqaMnvStart As Integer, seqaMnvComma As Integer
+                    bossManeuverCnt = 0 : seqaMnvStart = 1
+                    Do While seqaMnvStart <= Len(seqaMnvStr) And bossManeuverCnt < 8
+                        seqaMnvComma = InStr(seqaMnvStart, seqaMnvStr, ",")
+                        If seqaMnvComma = 0 Then seqaMnvComma = Len(seqaMnvStr) + 1
+                        bossManeuverList$(bossManeuverCnt) = Mid$(seqaMnvStr, seqaMnvStart, seqaMnvComma - seqaMnvStart)
+                        bossManeuverCnt = bossManeuverCnt + 1
+                        seqaMnvStart = seqaMnvComma + 1
+                    Loop
                     ' music cue applied in boss.bas when warn timer expires and boss spawns
                 Case "asteroid"
                     levelNum       = levelNum + 1

@@ -187,6 +187,12 @@ End Sub
 ' position so there is no positional snap at flyover entry.
 Sub BOSS_FlyoverInit
     Dim bfiI As Integer
+    ' pick maneuver for current phase; wrap to last entry if phase exceeds list length
+    Dim bfiPIdx As Integer : bfiPIdx = boss.phase - 1
+    If bossManeuverCnt > 0 Then
+        If bfiPIdx >= bossManeuverCnt Then bfiPIdx = bossManeuverCnt - 1
+        bsmManeuverName = bossManeuverList$(bfiPIdx)
+    End If
     MNV_Load bsmManeuverName
     For bfiI = 0 To bsmWpCount - 1
         bsmWp(bfiI).z = bsmWp(bfiI).z * bsmTurnDir
