@@ -47,10 +47,12 @@ Dim Shared vzFWas     As Integer, vzEscWas As Integer
 Dim Shared vz1Was     As Integer, vz2Was   As Integer
 Dim Shared vzTabWas   As Integer, vzHWas   As Integer
 Dim Shared vzPgUpWas  As Integer, vzPgDnWas As Integer
-Dim Shared vzPWas     As Integer, vzVWas   As Integer
+Dim Shared vzPWas      As Integer, vzVWas      As Integer
+Dim Shared vzCWas      As Integer
 Dim Shared vzShowHelp  As Integer
 Dim Shared vzShowPath  As Integer
 Dim Shared vzShowNodes As Integer
+Dim Shared vzFollowBoss As Integer
 
 ' maneuver block list for TAB cycling
 Dim Shared vzBlockNames(0 To 15) As String
@@ -108,18 +110,24 @@ Sub VIZ_Step
         boss.state = 6
     End If
 
-    ' orientation = direction of travel; nose always points the way it moves
+    ' orientation = direction of travel, lerped at 0.18 to match actual game
     Dim vzDX As Single : vzDX = boss.px - vzPrevBX
     Dim vzDY As Single : vzDY = boss.py - vzPrevBY
     Dim vzDZ As Single : vzDZ = boss.pz - vzPrevBZ
     Dim vzSpd As Single : vzSpd = Sqr(vzDX*vzDX + vzDY*vzDY + vzDZ*vzDZ)
     If vzSpd > 0.0002 Then
-        boss.ry = _Atan2(vzDZ, -vzDX) * 57.2958
+        Dim vzTgtRy As Single : vzTgtRy = _Atan2(vzDZ, -vzDX) * 57.2958
+        Dim vzTgtRx As Single : vzTgtRx = boss.rx
         Dim vzHSpd As Single : vzHSpd = Sqr(vzDX*vzDX + vzDZ*vzDZ)
-        If vzHSpd > 0.0002 Then
-            boss.rx = _Atan2(-vzDY, vzHSpd) * 57.2958
-        End If
-        boss.rz = -(vzDZ / vzSpd) * 50.0
+        If vzHSpd > 0.0002 Then vzTgtRx = _Atan2(-vzDY, vzHSpd) * 57.2958
+        Dim vzTgtRz As Single : vzTgtRz = -(vzDZ / vzSpd) * 50.0
+        ' yaw wrap: always take the short arc across ±180
+        Dim vzRyDiff As Single : vzRyDiff = vzTgtRy - boss.ry
+        If vzRyDiff >  180 Then vzRyDiff = vzRyDiff - 360
+        If vzRyDiff < -180 Then vzRyDiff = vzRyDiff + 360
+        boss.ry = boss.ry + vzRyDiff          * 0.18
+        boss.rx = boss.rx + (vzTgtRx - boss.rx) * 0.18
+        boss.rz = boss.rz + (vzTgtRz - boss.rz) * 0.18
     End If
 
     vzTrailHead = vzTrailHead + 1
@@ -290,8 +298,12 @@ Sub VIZ_Draw
     _PrintString (2, 30), "T:" + Left$(Str$(boss.arcAngle + 1000), 6)
     _PrintString (2, 44), "DIR" + vdDirS
     _PrintString (2, 58), "F:" + LTrim$(Str$(vzFrame))
-    If vzPaused   Then _PrintString (2, 72), "PAUSED"
-    If vzFastMode Then _PrintString (50, 72), "FAST"
+    If vzPaused    Then _PrintString (2,  72), "PAUSED"
+    If vzFastMode  Then _PrintString (50, 72), "FAST"
+    If vzFollowBoss Then
+        Color _RGB(80, 200, 255)
+        _PrintString (2, 86), "FOLLOW"
+    End If
 
     ' help toggle hint at bottom right
     Color _RGB(80, 80, 80)
@@ -322,11 +334,11 @@ Sub VIZ_Draw
         _PrintString (vdHX + 8, vdHLY + 42), "PgDn/PgUp    elevator down / up"
         _PrintString (vdHX + 8, vdHLY + 56), "arrows       look"
         _PrintString (vdHX + 8, vdHLY + 70), "mouse drag   look"
-        _PrintString (vdHX + 8, vdHLY + 84), "TAB / Sh-TAB next / prev maneuver"
-        _PrintString (vdHX + 8, vdHLY + 98), "1 / 2        turn direction +/-"
-        _PrintString (vdHX + 8, vdHLY + 112), "SPC          pause   N=step"
-        _PrintString (vdHX + 8, vdHLY + 126), "P=path  V=nodes  F=fast  R=reset"
-        _PrintString (vdHX + 8, vdHLY + 140), "H=help  ESC=quit"
+        _PrintString (vdHX + 8, vdHLY + 84),  "TAB / Sh-TAB next / prev maneuver"
+        _PrintString (vdHX + 8, vdHLY + 98),  "1 / 2        turn direction +/-"
+        _PrintString (vdHX + 8, vdHLY + 112), "C            follow boss camera"
+        _PrintString (vdHX + 8, vdHLY + 126), "SPC=pause  N=step  F=fast"
+        _PrintString (vdHX + 8, vdHLY + 140), "P=path  V=nodes  R=reset  ESC=quit"
     End If
 
     _DEST 0
@@ -369,6 +381,7 @@ Dim vz1Now As Integer, vz2Now As Integer
 Dim vzTabNow As Integer, vzHNow As Integer
 Dim vzPgUpNow As Integer, vzPgDnNow As Integer
 Dim vzPNow As Integer, vzVNow As Integer
+Dim vzCNow As Integer
 Dim vzFwdX As Single, vzFwdY As Single, vzFwdZ As Single
 Dim vzRgtX As Single, vzRgtZ As Single
 Dim vzFLi As Integer
@@ -389,6 +402,7 @@ Do
     vzPgDnNow = _KeyDown(VZ_KEY_PGDN)
     vzPNow    = _KeyDown(Asc("p"))
     vzVNow    = _KeyDown(Asc("v"))
+    vzCNow    = _KeyDown(Asc("c"))
 
     ' ── mouse look (left-button drag only) ────────────────────────────
     vzMX = 0 : vzMY = 0
@@ -411,43 +425,43 @@ Do
     If vzCamPitch >  1.5 Then vzCamPitch =  1.5
     If vzCamPitch < -1.5 Then vzCamPitch = -1.5
 
-    ' ── WASD fly ───────────────────────────────────────────────────────
-    vzFwdX = Sin(vzCamYaw) * Cos(vzCamPitch)
-    vzFwdY = -Sin(vzCamPitch)
-    vzFwdZ = -Cos(vzCamYaw) * Cos(vzCamPitch)
-    vzRgtX = Cos(vzCamYaw)
-    vzRgtZ = Sin(vzCamYaw)
-
-    If _KeyDown(119) Then   ' W forward
-        vzCamX = vzCamX + vzFwdX * VZ_CAM_SPD
-        vzCamY = vzCamY + vzFwdY * VZ_CAM_SPD
-        vzCamZ = vzCamZ + vzFwdZ * VZ_CAM_SPD
+    ' ── WASD fly + elevator (free-cam only) ───────────────────────────
+    If vzFollowBoss = 0 Then
+        vzFwdX = Sin(vzCamYaw) * Cos(vzCamPitch)
+        vzFwdY = -Sin(vzCamPitch)
+        vzFwdZ = -Cos(vzCamYaw) * Cos(vzCamPitch)
+        vzRgtX = Cos(vzCamYaw)
+        vzRgtZ = Sin(vzCamYaw)
+        If _KeyDown(119) Then   ' W forward
+            vzCamX = vzCamX + vzFwdX * VZ_CAM_SPD
+            vzCamY = vzCamY + vzFwdY * VZ_CAM_SPD
+            vzCamZ = vzCamZ + vzFwdZ * VZ_CAM_SPD
+        End If
+        If _KeyDown(115) Then   ' S back
+            vzCamX = vzCamX - vzFwdX * VZ_CAM_SPD
+            vzCamY = vzCamY - vzFwdY * VZ_CAM_SPD
+            vzCamZ = vzCamZ - vzFwdZ * VZ_CAM_SPD
+        End If
+        If _KeyDown(97) Then    ' A strafe left
+            vzCamX = vzCamX - vzRgtX * VZ_CAM_SPD
+            vzCamZ = vzCamZ - vzRgtZ * VZ_CAM_SPD
+        End If
+        If _KeyDown(100) Then   ' D strafe right
+            vzCamX = vzCamX + vzRgtX * VZ_CAM_SPD
+            vzCamZ = vzCamZ + vzRgtZ * VZ_CAM_SPD
+        End If
+        If _KeyDown(113) Or vzPgDnNow Then vzCamY = vzCamY - VZ_CAM_SPD  ' Q/PgDn down
+        If _KeyDown(101) Or vzPgUpNow Then vzCamY = vzCamY + VZ_CAM_SPD  ' E/PgUp up
     End If
-    If _KeyDown(115) Then   ' S back
-        vzCamX = vzCamX - vzFwdX * VZ_CAM_SPD
-        vzCamY = vzCamY - vzFwdY * VZ_CAM_SPD
-        vzCamZ = vzCamZ - vzFwdZ * VZ_CAM_SPD
-    End If
-    If _KeyDown(97) Then    ' A strafe left
-        vzCamX = vzCamX - vzRgtX * VZ_CAM_SPD
-        vzCamZ = vzCamZ - vzRgtZ * VZ_CAM_SPD
-    End If
-    If _KeyDown(100) Then   ' D strafe right
-        vzCamX = vzCamX + vzRgtX * VZ_CAM_SPD
-        vzCamZ = vzCamZ + vzRgtZ * VZ_CAM_SPD
-    End If
-
-    ' ── elevator: Q/E and PgUp/PgDn ────────────────────────────────────
-    If _KeyDown(113) Or vzPgDnNow Then vzCamY = vzCamY - VZ_CAM_SPD   ' Q / PgDn: down
-    If _KeyDown(101) Or vzPgUpNow Then vzCamY = vzCamY + VZ_CAM_SPD   ' E / PgUp: up
 
     ' ── edge-triggered sim controls ────────────────────────────────────
     If vzSpNow And vzSpaceWas = 0 Then vzPaused   = Not vzPaused
     If vzNNow  And vzNWas    = 0 And vzPaused Then VIZ_Step
     If vzFNow  And vzFWas    = 0 Then vzFastMode  = Not vzFastMode
     If vzHNow  And vzHWas    = 0 Then vzShowHelp  = Not vzShowHelp
-    If vzPNow  And vzPWas    = 0 Then vzShowPath  = Not vzShowPath
-    If vzVNow  And vzVWas    = 0 Then vzShowNodes = Not vzShowNodes
+    If vzPNow  And vzPWas    = 0 Then vzShowPath   = Not vzShowPath
+    If vzVNow  And vzVWas    = 0 Then vzShowNodes  = Not vzShowNodes
+    If vzCNow  And vzCWas    = 0 Then vzFollowBoss = Not vzFollowBoss
     If vzRNow  And vzRWas    = 0 Then VIZ_SimReset
     If vz1Now  And vz1Was    = 0 Then bsmTurnDir = 1
     If vz2Now  And vz2Was    = 0 Then bsmTurnDir = -1
@@ -471,6 +485,7 @@ Do
     vz1Was     = vz1Now   : vz2Was   = vz2Now
     vzTabWas   = vzTabNow : vzHWas   = vzHNow
     vzPWas     = vzPNow   : vzVWas   = vzVNow
+    vzCWas     = vzCNow
 
     ' ── sim advance ────────────────────────────────────────────────────
     If vzPaused = 0 Then
@@ -480,6 +495,25 @@ Do
             Next vzFLi
         Else
             VIZ_Step
+        End If
+    End If
+
+    ' ── follow-boss camera override ────────────────────────────────────
+    If vzFollowBoss Then
+        ' position 12 units behind the boss (opposite its nose direction)
+        Dim vzBFwdX As Single : vzBFwdX = -Cos(boss.ry * VZPI / 180.0)
+        Dim vzBFwdZ As Single : vzBFwdZ =  Sin(boss.ry * VZPI / 180.0)
+        vzCamX = boss.px - vzBFwdX * 12.0
+        vzCamY = boss.py + 3.0
+        vzCamZ = boss.pz - vzBFwdZ * 12.0
+        ' point camera at boss
+        Dim vzFCDX As Single : vzFCDX = boss.px - vzCamX
+        Dim vzFCDY As Single : vzFCDY = boss.py - vzCamY
+        Dim vzFCDZ As Single : vzFCDZ = boss.pz - vzCamZ
+        Dim vzFCHL As Single : vzFCHL = Sqr(vzFCDX * vzFCDX + vzFCDZ * vzFCDZ)
+        If vzFCHL > 0.001 Then
+            vzCamYaw   = _Atan2(vzFCDX, -vzFCDZ)
+            vzCamPitch = _Atan2(-vzFCDY, vzFCHL)
         End If
     End If
 
