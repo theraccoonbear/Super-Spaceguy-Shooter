@@ -36,10 +36,9 @@ Const BOSS_CHARGE_CD3 = 110    ' phase 3
 Dim Shared bsmFlySpd      As Single   ' t-advance per frame; set by MNV_Load from maneuvers.txt
 Dim Shared bsmManeuverName As String   ' which [block] to load; set before BOSS_FlyoverInit
 
-' ── flyover waypoint arrays -- populated by BOSS_FlyoverInit at state-6 entry ─
-Dim Shared bsmWpX(0 To 15) As Single
-Dim Shared bsmWpY(0 To 15) As Single
-Dim Shared bsmWpZ(0 To 15) As Single
+' ── flyover waypoint array -- populated by BOSS_FlyoverInit at state-6 entry ──
+Const BSM_WP_MAX = 128
+Dim Shared bsmWp(0 To BSM_WP_MAX - 1) As E3D_Coord
 Dim Shared bsmWpCount As Integer
 
 Sub BOSS_UpdateMovement()
@@ -138,9 +137,9 @@ Sub BOSS_UpdateMovement()
         bsmFseg = Int(bsmFt)
         If bsmFseg >= bsmWpCount - 1 Then
             ' path complete: land on final waypoint, flip arc dir, return to combat
-            boss.px = player.px + bsmWpX(bsmWpCount - 1)
-            boss.py = player.py + bsmWpY(bsmWpCount - 1)
-            boss.pz = player.pz + bsmWpZ(bsmWpCount - 1)
+            boss.px = player.px + bsmWp(bsmWpCount - 1).x
+            boss.py = player.py + bsmWp(bsmWpCount - 1).y
+            boss.pz = player.pz + bsmWp(bsmWpCount - 1).z
             bsmTurnDir = bsmTurnDir * -1
             If bsmTurnDir = 0 Then bsmTurnDir = 1
             Select Case boss.phase
@@ -161,9 +160,9 @@ Sub BOSS_UpdateMovement()
             bsmFw1 =  3*bsmFu3 - 5*bsmFu2 + 2
             bsmFw2 = -3*bsmFu3 + 4*bsmFu2 + bsmFu
             bsmFw3 =  bsmFu3 - bsmFu2
-            boss.px = player.px + 0.5 * (bsmWpX(bsmFi0)*bsmFw0 + bsmWpX(bsmFi1)*bsmFw1 + bsmWpX(bsmFi2)*bsmFw2 + bsmWpX(bsmFi3)*bsmFw3)
-            boss.py = player.py + 0.5 * (bsmWpY(bsmFi0)*bsmFw0 + bsmWpY(bsmFi1)*bsmFw1 + bsmWpY(bsmFi2)*bsmFw2 + bsmWpY(bsmFi3)*bsmFw3)
-            boss.pz = player.pz + 0.5 * (bsmWpZ(bsmFi0)*bsmFw0 + bsmWpZ(bsmFi1)*bsmFw1 + bsmWpZ(bsmFi2)*bsmFw2 + bsmWpZ(bsmFi3)*bsmFw3)
+            boss.px = player.px + 0.5 * (bsmWp(bsmFi0).x*bsmFw0 + bsmWp(bsmFi1).x*bsmFw1 + bsmWp(bsmFi2).x*bsmFw2 + bsmWp(bsmFi3).x*bsmFw3)
+            boss.py = player.py + 0.5 * (bsmWp(bsmFi0).y*bsmFw0 + bsmWp(bsmFi1).y*bsmFw1 + bsmWp(bsmFi2).y*bsmFw2 + bsmWp(bsmFi3).y*bsmFw3)
+            boss.pz = player.pz + 0.5 * (bsmWp(bsmFi0).z*bsmFw0 + bsmWp(bsmFi1).z*bsmFw1 + bsmWp(bsmFi2).z*bsmFw2 + bsmWp(bsmFi3).z*bsmFw3)
             boss.arcAngle = boss.arcAngle + bsmFlySpd
         End If
 
@@ -177,12 +176,12 @@ Sub BOSS_FlyoverInit
     Dim bfiI As Integer
     MNV_Load bsmManeuverName
     For bfiI = 0 To bsmWpCount - 1
-        bsmWpZ(bfiI) = bsmWpZ(bfiI) * bsmTurnDir
+        bsmWp(bfiI).z = bsmWp(bfiI).z * bsmTurnDir
     Next bfiI
     If bsmWpCount > 0 Then
-        bsmWpX(0) = boss.px - player.px
-        bsmWpY(0) = boss.py - player.py
-        bsmWpZ(0) = boss.pz - player.pz
+        bsmWp(0).x = boss.px - player.px
+        bsmWp(0).y = boss.py - player.py
+        bsmWp(0).z = boss.pz - player.pz
     End If
 End Sub
 

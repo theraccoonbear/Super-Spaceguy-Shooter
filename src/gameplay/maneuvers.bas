@@ -67,15 +67,15 @@ Sub MNV_Load(mnvlName As String)
             GoTo mnvldNext
         End If
 
-        If bsmWpCount <= 15 Then
+        If bsmWpCount < BSM_WP_MAX Then
             mnvldSp = InStr(mnvldLine, " ")
             If mnvldSp > 0 Then
-                bsmWpX(bsmWpCount) = Val(Left$(mnvldLine, mnvldSp))
+                bsmWp(bsmWpCount).x = Val(Left$(mnvldLine, mnvldSp))
                 mnvldRest = LTrim$(Mid$(mnvldLine, mnvldSp))
                 mnvldSp   = InStr(mnvldRest, " ")
                 If mnvldSp > 0 Then
-                    bsmWpY(bsmWpCount) = Val(Left$(mnvldRest, mnvldSp))
-                    bsmWpZ(bsmWpCount) = Val(Mid$(mnvldRest, mnvldSp))
+                    bsmWp(bsmWpCount).y = Val(Left$(mnvldRest, mnvldSp))
+                    bsmWp(bsmWpCount).z = Val(Mid$(mnvldRest, mnvldSp))
                     bsmWpCount = bsmWpCount + 1
                 End If
             End If
