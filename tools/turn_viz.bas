@@ -53,6 +53,8 @@ Dim Shared vzShowHelp  As Integer
 Dim Shared vzShowPath  As Integer
 Dim Shared vzShowNodes As Integer
 Dim Shared vzFollowBoss As Integer
+' boss velocity stored each sim step for matrix-based rendering
+Dim Shared vzBossVX As Single, vzBossVY As Single, vzBossVZ As Single, vzBossSpd As Single
 
 ' maneuver block list for TAB cycling
 Dim Shared vzBlockNames(0 To 15) As String
@@ -110,24 +112,13 @@ Sub VIZ_Step
         boss.state = 6
     End If
 
-    ' orientation = direction of travel, lerped at 0.18 to match actual game
+    ' store velocity for matrix-based rendering (see VIZ_BuildBossObjMat)
     Dim vzDX As Single : vzDX = boss.px - vzPrevBX
     Dim vzDY As Single : vzDY = boss.py - vzPrevBY
     Dim vzDZ As Single : vzDZ = boss.pz - vzPrevBZ
     Dim vzSpd As Single : vzSpd = Sqr(vzDX*vzDX + vzDY*vzDY + vzDZ*vzDZ)
     If vzSpd > 0.0002 Then
-        Dim vzTgtRy As Single : vzTgtRy = _Atan2(vzDZ, -vzDX) * 57.2958
-        Dim vzTgtRx As Single : vzTgtRx = boss.rx
-        Dim vzHSpd As Single : vzHSpd = Sqr(vzDX*vzDX + vzDZ*vzDZ)
-        If vzHSpd > 0.0002 Then vzTgtRx = _Atan2(-vzDY, vzHSpd) * 57.2958
-        Dim vzTgtRz As Single : vzTgtRz = -(vzDZ / vzSpd) * 50.0
-        ' yaw wrap: always take the short arc across ±180
-        Dim vzRyDiff As Single : vzRyDiff = vzTgtRy - boss.ry
-        If vzRyDiff >  180 Then vzRyDiff = vzRyDiff - 360
-        If vzRyDiff < -180 Then vzRyDiff = vzRyDiff + 360
-        boss.ry = boss.ry + vzRyDiff          * 0.18
-        boss.rx = boss.rx + (vzTgtRx - boss.rx) * 0.18
-        boss.rz = boss.rz + (vzTgtRz - boss.rz) * 0.18
+        vzBossVX = vzDX : vzBossVY = vzDY : vzBossVZ = vzDZ : vzBossSpd = vzSpd
     End If
 
     vzTrailHead = vzTrailHead + 1
@@ -138,6 +129,55 @@ Sub VIZ_Step
     vzTrailSt(vzTrailHead) = boss.state
 
     tt = tt + 1
+End Sub
+
+' ── build boss object matrix from forward vector + banking ────────────────────
+' Euler angles cannot bank the wings at arbitrary yaw in this rotation order;
+' we build T*S*R directly from orthonormal forward/up/right vectors instead.
+Sub VIZ_BuildBossObjMat(bx As Single, by As Single, bz As Single, bScl As Single, _
+                         vx As Single, vy As Single, vz As Single, spd As Single, _
+                         mx As E3D_Matrix4)
+    E3D_MatIdentity mx
+    mx.m(0,3) = bx : mx.m(1,3) = by : mx.m(2,3) = bz  ' translation
+    If spd < 0.0002 Then Exit Sub
+
+    ' forward = normalized velocity (nose direction)
+    Dim bfX As Single : bfX = vx / spd
+    Dim bfY As Single : bfY = vy / spd
+    Dim bfZ As Single : bfZ = vz / spd
+
+    ' right = (0,1,0) × forward  -- gives right wing direction for nose-at-(-X) model
+    Dim brX As Single : brX = bfZ
+    Dim brY As Single : brY = 0
+    Dim brZ As Single : brZ = -bfX
+    Dim brLen As Single : brLen = Sqr(brX*brX + brZ*brZ)
+    If brLen < 0.001 Then  ' flying straight up/down
+        brX = 1 : brZ = 0 : brLen = 1
+    Else
+        brX = brX / brLen : brZ = brZ / brLen
+    End If
+
+    ' level up = forward × right (perpendicular to both, pointing "up" of the ship)
+    Dim buX As Single : buX = bfY*brZ - bfZ*brY
+    Dim buY As Single : buY = bfZ*brX - bfX*brZ
+    Dim buZ As Single : buZ = bfX*brY - bfY*brX
+
+    ' bank: rotate up and right around the forward axis by angle (vz/spd)*50°
+    ' positive bank = top leans toward +Z (into the arc when bsmTurnDir=1)
+    Dim bkRad As Single : bkRad = (vz / spd) * 50.0 * VZPI / 180.0
+    Dim bkCos As Single : bkCos = Cos(bkRad)
+    Dim bkSin As Single : bkSin = Sin(bkRad)
+    Dim bbUX As Single : bbUX = buX*bkCos + brX*bkSin
+    Dim bbUY As Single : bbUY = buY*bkCos + brY*bkSin
+    Dim bbUZ As Single : bbUZ = buZ*bkCos + brZ*bkSin
+    Dim bbRX As Single : bbRX = -buX*bkSin + brX*bkCos
+    Dim bbRY As Single : bbRY = -buY*bkSin + brY*bkCos
+    Dim bbRZ As Single : bbRZ = -buZ*bkSin + brZ*bkCos
+
+    ' rotation columns * scale:  col0=model+X=tail(-fwd), col1=model+Y=up, col2=model+Z=right
+    mx.m(0,0) = -bfX*bScl : mx.m(1,0) = -bfY*bScl : mx.m(2,0) = -bfZ*bScl
+    mx.m(0,1) =  bbUX*bScl : mx.m(1,1) =  bbUY*bScl : mx.m(2,1) =  bbUZ*bScl
+    mx.m(0,2) =  bbRX*bScl : mx.m(1,2) =  bbRY*bScl : mx.m(2,2) =  bbRZ*bScl
 End Sub
 
 ' ── world-to-screen projection ─────────────────────────────────────────────────
@@ -238,11 +278,9 @@ Sub VIZ_Draw
     E3D_BuildObjectMat pPos, pRot, player.scl, objMat
     E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.pos, tt, lightDir
 
-    ' boss ship
-    Dim vdBPos As E3D_Coord, vdBRot As E3D_Coord
-    vdBPos.x = boss.px : vdBPos.y = boss.py : vdBPos.z = boss.pz
-    vdBRot.x = boss.rx : vdBRot.y = boss.ry : vdBRot.z = boss.rz
-    E3D_BuildObjectMat vdBPos, vdBRot, boss.scl, objMat
+    ' boss ship -- built from forward/up/right vectors to get correct banking
+    VIZ_BuildBossObjMat boss.px, boss.py, boss.pz, boss.scl, _
+                        vzBossVX, vzBossVY, vzBossVZ, vzBossSpd, objMat
     E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.pos, tt, lightDir
 
     E3D_SceneFlush vpMat, scrW, scrH
@@ -499,12 +537,13 @@ Do
     End If
 
     ' ── follow-boss camera override ────────────────────────────────────
-    If vzFollowBoss Then
-        ' position 12 units behind the boss (opposite its nose direction)
-        Dim vzBFwdX As Single : vzBFwdX = -Cos(boss.ry * VZPI / 180.0)
-        Dim vzBFwdZ As Single : vzBFwdZ =  Sin(boss.ry * VZPI / 180.0)
+    If vzFollowBoss And vzBossSpd > 0.0002 Then
+        ' 12 units behind boss along its actual velocity vector
+        Dim vzBFwdX As Single : vzBFwdX = vzBossVX / vzBossSpd
+        Dim vzBFwdY As Single : vzBFwdY = vzBossVY / vzBossSpd
+        Dim vzBFwdZ As Single : vzBFwdZ = vzBossVZ / vzBossSpd
         vzCamX = boss.px - vzBFwdX * 12.0
-        vzCamY = boss.py + 3.0
+        vzCamY = boss.py - vzBFwdY * 12.0 + 1.5
         vzCamZ = boss.pz - vzBFwdZ * 12.0
         ' point camera at boss
         Dim vzFCDX As Single : vzFCDX = boss.px - vzCamX
