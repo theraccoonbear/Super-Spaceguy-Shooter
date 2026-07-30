@@ -172,6 +172,16 @@ Sub VIZ_Draw
         End If
     Next vdTi
 
+    ' player position screen marker -- always shows where the player ship is
+    Dim vdPSX As Single, vdPSY As Single, vdPVis As Integer
+    VIZ_Project player.px, player.py, player.pz, vdPSX, vdPSY, vdPVis
+    If vdPVis Then
+        Circle (vdPSX, vdPSY), 6, _RGB(0, 240, 80)
+        Circle (vdPSX, vdPSY), 5, _RGB(0, 240, 80)
+        Color _RGB(0, 240, 80)
+        _PrintString (vdPSX - 8, vdPSY - 14), "YOU"
+    End If
+
     ' HUD -- state info top-left, controls bottom
     Dim vdSN As String
     Select Case boss.state
