@@ -47,7 +47,10 @@ Dim Shared vzFWas     As Integer, vzEscWas As Integer
 Dim Shared vz1Was     As Integer, vz2Was   As Integer
 Dim Shared vzTabWas   As Integer, vzHWas   As Integer
 Dim Shared vzPgUpWas  As Integer, vzPgDnWas As Integer
-Dim Shared vzShowHelp As Integer
+Dim Shared vzPWas     As Integer, vzVWas   As Integer
+Dim Shared vzShowHelp  As Integer
+Dim Shared vzShowPath  As Integer
+Dim Shared vzShowNodes As Integer
 
 ' maneuver block list for TAB cycling
 Dim Shared vzBlockNames(0 To 15) As String
@@ -84,6 +87,7 @@ Sub VIZ_SimReset
     player.scl = 1.0 : player.active = -1 : player.meshIdx = MESH_PLAYER
     vzCamX = VZ_GCAM_X : vzCamY = VZ_GCAM_Y : vzCamZ = VZ_GCAM_Z
     vzCamYaw = VZ_GCAM_YAW : vzCamPitch = VZ_GCAM_PITCH
+    vzShowPath = -1 : vzShowNodes = -1
     VIZ_LoadManeuver
 End Sub
 
@@ -236,7 +240,7 @@ Sub VIZ_Draw
     E3D_SceneFlush vpMat, scrW, scrH
 
     ' static spline path in teal/cyan
-    VIZ_DrawSplinePath
+    If vzShowPath Then VIZ_DrawSplinePath
 
     ' simulation trail dots, colored by boss X relative to player
     Dim vdTi As Integer
@@ -257,7 +261,7 @@ Sub VIZ_Draw
     Next vdTi
 
     ' waypoint nodes -- prominent circles with index labels
-    VIZ_DrawNodes
+    If vzShowNodes Then VIZ_DrawNodes
 
     ' player screen marker
     Dim vdPSX As Single, vdPSY As Single, vdPVis As Integer
@@ -321,7 +325,8 @@ Sub VIZ_Draw
         _PrintString (vdHX + 8, vdHLY + 84), "TAB / Sh-TAB next / prev maneuver"
         _PrintString (vdHX + 8, vdHLY + 98), "1 / 2        turn direction +/-"
         _PrintString (vdHX + 8, vdHLY + 112), "SPC          pause   N=step"
-        _PrintString (vdHX + 8, vdHLY + 126), "F=fast  R=reset  H=help  ESC=quit"
+        _PrintString (vdHX + 8, vdHLY + 126), "P=path  V=nodes  F=fast  R=reset"
+        _PrintString (vdHX + 8, vdHLY + 140), "H=help  ESC=quit"
     End If
 
     _DEST 0
@@ -363,6 +368,7 @@ Dim vzFNow As Integer, vzEscNow As Integer
 Dim vz1Now As Integer, vz2Now As Integer
 Dim vzTabNow As Integer, vzHNow As Integer
 Dim vzPgUpNow As Integer, vzPgDnNow As Integer
+Dim vzPNow As Integer, vzVNow As Integer
 Dim vzFwdX As Single, vzFwdY As Single, vzFwdZ As Single
 Dim vzRgtX As Single, vzRgtZ As Single
 Dim vzFLi As Integer
@@ -381,6 +387,8 @@ Do
     vzHNow    = _KeyDown(Asc("h"))
     vzPgUpNow = _KeyDown(VZ_KEY_PGUP)
     vzPgDnNow = _KeyDown(VZ_KEY_PGDN)
+    vzPNow    = _KeyDown(Asc("p"))
+    vzVNow    = _KeyDown(Asc("v"))
 
     ' ── mouse look (left-button drag only) ────────────────────────────
     vzMX = 0 : vzMY = 0
@@ -438,6 +446,8 @@ Do
     If vzNNow  And vzNWas    = 0 And vzPaused Then VIZ_Step
     If vzFNow  And vzFWas    = 0 Then vzFastMode  = Not vzFastMode
     If vzHNow  And vzHWas    = 0 Then vzShowHelp  = Not vzShowHelp
+    If vzPNow  And vzPWas    = 0 Then vzShowPath  = Not vzShowPath
+    If vzVNow  And vzVWas    = 0 Then vzShowNodes = Not vzShowNodes
     If vzRNow  And vzRWas    = 0 Then VIZ_SimReset
     If vz1Now  And vz1Was    = 0 Then bsmTurnDir = 1
     If vz2Now  And vz2Was    = 0 Then bsmTurnDir = -1
@@ -460,6 +470,7 @@ Do
     vzFWas     = vzFNow   : vzEscWas = vzEscNow
     vz1Was     = vz1Now   : vz2Was   = vz2Now
     vzTabWas   = vzTabNow : vzHWas   = vzHNow
+    vzPWas     = vzPNow   : vzVWas   = vzVNow
 
     ' ── sim advance ────────────────────────────────────────────────────
     If vzPaused = 0 Then
