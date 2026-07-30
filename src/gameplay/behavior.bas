@@ -163,7 +163,20 @@ Sub BOSS_UpdateMovement()
             boss.px = player.px + 0.5 * (bsmWp(bsmFi0).x*bsmFw0 + bsmWp(bsmFi1).x*bsmFw1 + bsmWp(bsmFi2).x*bsmFw2 + bsmWp(bsmFi3).x*bsmFw3)
             boss.py = player.py + 0.5 * (bsmWp(bsmFi0).y*bsmFw0 + bsmWp(bsmFi1).y*bsmFw1 + bsmWp(bsmFi2).y*bsmFw2 + bsmWp(bsmFi3).y*bsmFw3)
             boss.pz = player.pz + 0.5 * (bsmWp(bsmFi0).z*bsmFw0 + bsmWp(bsmFi1).z*bsmFw1 + bsmWp(bsmFi2).z*bsmFw2 + bsmWp(bsmFi3).z*bsmFw3)
-            boss.arcAngle = boss.arcAngle + bsmFlySpd
+            ' arc-length reparameterization: advance t by speed/|dq/dt| for constant world speed
+            Dim bsmDw0 As Single : bsmDw0 = 0.5 * (-3*bsmFu2 + 4*bsmFu - 1)
+            Dim bsmDw1 As Single : bsmDw1 = 0.5 * ( 9*bsmFu2 - 10*bsmFu)
+            Dim bsmDw2 As Single : bsmDw2 = 0.5 * (-9*bsmFu2 +  8*bsmFu + 1)
+            Dim bsmDw3 As Single : bsmDw3 = 0.5 * ( 3*bsmFu2 -  2*bsmFu)
+            Dim bsmDX As Single : bsmDX = bsmWp(bsmFi0).x*bsmDw0 + bsmWp(bsmFi1).x*bsmDw1 + bsmWp(bsmFi2).x*bsmDw2 + bsmWp(bsmFi3).x*bsmDw3
+            Dim bsmDY As Single : bsmDY = bsmWp(bsmFi0).y*bsmDw0 + bsmWp(bsmFi1).y*bsmDw1 + bsmWp(bsmFi2).y*bsmDw2 + bsmWp(bsmFi3).y*bsmDw3
+            Dim bsmDZ As Single : bsmDZ = bsmWp(bsmFi0).z*bsmDw0 + bsmWp(bsmFi1).z*bsmDw1 + bsmWp(bsmFi2).z*bsmDw2 + bsmWp(bsmFi3).z*bsmDw3
+            Dim bsmTanLen As Single : bsmTanLen = Sqr(bsmDX*bsmDX + bsmDY*bsmDY + bsmDZ*bsmDZ)
+            If bsmTanLen > 0.001 Then
+                boss.arcAngle = boss.arcAngle + bsmFlySpd / bsmTanLen
+            Else
+                boss.arcAngle = boss.arcAngle + bsmFlySpd
+            End If
         End If
 
     End Select
