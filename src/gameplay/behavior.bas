@@ -33,7 +33,7 @@ Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
-Const BOSS_FLY_SPD = 0.025  ' t-advance per frame along flyover spline (12 segs / 0.025 ≈ 480 frames)
+Dim Shared bsmFlySpd As Single  ' t-advance per frame; set by MNV_Load from maneuvers.txt
 
 ' ── flyover waypoint arrays -- populated by BOSS_FlyoverInit at state-6 entry ─
 Dim Shared bsmWpX(0 To 15) As Single
@@ -163,35 +163,26 @@ Sub BOSS_UpdateMovement()
             boss.px = player.px + 0.5 * (bsmWpX(bsmFi0)*bsmFw0 + bsmWpX(bsmFi1)*bsmFw1 + bsmWpX(bsmFi2)*bsmFw2 + bsmWpX(bsmFi3)*bsmFw3)
             boss.py = player.py + 0.5 * (bsmWpY(bsmFi0)*bsmFw0 + bsmWpY(bsmFi1)*bsmFw1 + bsmWpY(bsmFi2)*bsmFw2 + bsmWpY(bsmFi3)*bsmFw3)
             boss.pz = player.pz + 0.5 * (bsmWpZ(bsmFi0)*bsmFw0 + bsmWpZ(bsmFi1)*bsmFw1 + bsmWpZ(bsmFi2)*bsmFw2 + bsmWpZ(bsmFi3)*bsmFw3)
-            boss.arcAngle = boss.arcAngle + BOSS_FLY_SPD
+            boss.arcAngle = boss.arcAngle + bsmFlySpd
         End If
 
     End Select
 End Sub
 
-' Build flyover waypoints in player-relative space.  Call before setting boss.state = 6.
-' P0 is set from the boss's actual position so there is no entry snap.
-' Z column is pre-multiplied by bsmTurnDir; call after flipping it for the next pass.
+' Load the named flyover maneuver from assets/maneuvers.txt (via MNV_Load),
+' apply bsmTurnDir sign to the Z column, then anchor P0 to the boss's actual
+' position so there is no positional snap at flyover entry.
 Sub BOSS_FlyoverInit
-    Dim bfiD As Single : bfiD = bsmTurnDir
-    bsmWpCount = 13
-    '          X (fwd of player)     Y (up)    Z (lateral * turn dir)
-    ' A -- dive approach: from combat range, over/past player, into rear zone
-    bsmWpX(0)  = boss.px - player.px : bsmWpY(0)  = boss.py - player.py : bsmWpZ(0)  = boss.pz - player.pz
-    bsmWpX(1)  =  8 : bsmWpY(1)  =  1 : bsmWpZ(1)  =           0
-    bsmWpX(2)  =  0 : bsmWpY(2)  =  2 : bsmWpZ(2)  =           0
-    bsmWpX(3)  =-12 : bsmWpY(3)  =  0 : bsmWpZ(3)  =           0
-    bsmWpX(4)  =-22 : bsmWpY(4)  = -1 : bsmWpZ(4)  =           0  ' deep behind (rear fire)
-    ' B -- forward charge: drift lateral, arc back over player with clearance
-    bsmWpX(5)  =-12 : bsmWpY(5)  =  0 : bsmWpZ(5)  = bfiD *  5
-    bsmWpX(6)  = -2 : bsmWpY(6)  =  3 : bsmWpZ(6)  = bfiD *  6   ' altitude clears AABB
-    bsmWpX(7)  = 14 : bsmWpY(7)  =  2 : bsmWpZ(7)  = bfiD *  4
-    bsmWpX(8)  = 30 : bsmWpY(8)  =  0 : bsmWpZ(8)  = bfiD *  2   ' surging ahead
-    ' C -- banking arc: sweep wide in Z, return to combat position
-    bsmWpX(9)  = 40 : bsmWpY(9)  = -1 : bsmWpZ(9)  = bfiD * 12
-    bsmWpX(10) = 36 : bsmWpY(10) = -2 : bsmWpZ(10) = bfiD * 24
-    bsmWpX(11) = 22 : bsmWpY(11) = -1 : bsmWpZ(11) = bfiD * 22
-    bsmWpX(12) = 20 : bsmWpY(12) =  0 : bsmWpZ(12) =           0  ' combat return
+    Dim bfiI As Integer
+    MNV_Load "flyover"
+    For bfiI = 0 To bsmWpCount - 1
+        bsmWpZ(bfiI) = bsmWpZ(bfiI) * bsmTurnDir
+    Next bfiI
+    If bsmWpCount > 0 Then
+        bsmWpX(0) = boss.px - player.px
+        bsmWpY(0) = boss.py - player.py
+        bsmWpZ(0) = boss.pz - player.pz
+    End If
 End Sub
 
 ' Called each time the boss fires to pick the next movement mode.

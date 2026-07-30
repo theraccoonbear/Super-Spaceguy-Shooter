@@ -4,6 +4,7 @@
 '$INCLUDE:'audio/snd.bas'
 '$INCLUDE:'audio/music.bas'
 '$INCLUDE:'gameplay/behavior.bas'
+'$INCLUDE:'gameplay/maneuvers.bas'
 '$INCLUDE:'2d/font.bas'
 '$INCLUDE:'sys/gametext.bas'
 '$INCLUDE:'2d/crawl.bas'
