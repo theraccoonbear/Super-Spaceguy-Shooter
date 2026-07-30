@@ -10,6 +10,28 @@ Sub MNV_Init(mnviData As String)
     mnvRawData = mnviData
 End Sub
 
+Sub MNV_ListBlocks(mnvlbNames() As String, mnvlbCount As Integer)
+    mnvlbCount = 0
+    Dim mnvlbI As Integer, mnvlbNL As Integer
+    Dim mnvlbRaw As String, mnvlbLine As String, mnvlbClose As Integer
+    mnvlbI = 1
+    Do While mnvlbI <= Len(mnvRawData)
+        mnvlbNL = InStr(mnvlbI, mnvRawData, Chr$(10))
+        If mnvlbNL = 0 Then mnvlbNL = Len(mnvRawData) + 1
+        mnvlbRaw  = Mid$(mnvRawData, mnvlbI, mnvlbNL - mnvlbI)
+        mnvlbI    = mnvlbNL + 1
+        If Right$(mnvlbRaw, 1) = Chr$(13) Then mnvlbRaw = Left$(mnvlbRaw, Len(mnvlbRaw) - 1)
+        mnvlbLine = LTrim$(RTrim$(mnvlbRaw))
+        If Left$(mnvlbLine, 1) = "[" Then
+            mnvlbClose = InStr(mnvlbLine, "]")
+            If mnvlbClose > 2 And mnvlbCount <= 15 Then
+                mnvlbNames(mnvlbCount) = Mid$(mnvlbLine, 2, mnvlbClose - 2)
+                mnvlbCount = mnvlbCount + 1
+            End If
+        End If
+    Loop
+End Sub
+
 Sub MNV_Load(mnvlName As String)
     Dim mnvldI As Integer, mnvldNL As Integer
     Dim mnvldRaw As String, mnvldLine As String

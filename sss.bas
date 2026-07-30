@@ -77,6 +77,7 @@ emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
 MNV_Init _EMBEDDED$("MANEUVERS")
+bsmManeuverName = "flyover"
 GTEXT_Load _EMBEDDED$("GAMETEXT")
 GTEXT_Diag
 sSpkTitle    = GTEXT_Get$("speech_title")

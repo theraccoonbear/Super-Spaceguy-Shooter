@@ -33,7 +33,8 @@ Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
-Dim Shared bsmFlySpd As Single  ' t-advance per frame; set by MNV_Load from maneuvers.txt
+Dim Shared bsmFlySpd      As Single   ' t-advance per frame; set by MNV_Load from maneuvers.txt
+Dim Shared bsmManeuverName As String   ' which [block] to load; set before BOSS_FlyoverInit
 
 ' ── flyover waypoint arrays -- populated by BOSS_FlyoverInit at state-6 entry ─
 Dim Shared bsmWpX(0 To 15) As Single
@@ -174,7 +175,7 @@ End Sub
 ' position so there is no positional snap at flyover entry.
 Sub BOSS_FlyoverInit
     Dim bfiI As Integer
-    MNV_Load "flyover"
+    MNV_Load bsmManeuverName
     For bfiI = 0 To bsmWpCount - 1
         bsmWpZ(bfiI) = bsmWpZ(bfiI) * bsmTurnDir
     Next bfiI
