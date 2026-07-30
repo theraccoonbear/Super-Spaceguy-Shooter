@@ -48,6 +48,7 @@ Const BOSS_TURN_SPD       = 0.018 ' rad/frame for dramatic turn (pi/0.018 ~175 f
 Const BOSS_TURN_CX_OFF    = 32.0  ' turn arc X center offset from player.px
 Const BOSS_TURN_RAD_X     = 12.0  ' X radius (center ± 12 = px+20 to px+44)
 Const BOSS_TURN_RAD_Z     = 20.0  ' Z bank width -- make it BIG for the cinematic
+Const BOSS_TURN_ENTRY_FRAMES = 20.0  ' frames to blend charge momentum into arc entry
 
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
@@ -168,6 +169,7 @@ Sub BOSS_UpdateMovement()
             boss.px = player.px + BOSS_FWD_CHG_X
             boss.arcAngle = 0
             boss.fireTimer = 0.5
+            boss.moveTimer = BOSS_TURN_ENTRY_FRAMES
             boss.state = 9
         End If
 
@@ -178,6 +180,10 @@ Sub BOSS_UpdateMovement()
         boss.px = boss.px + (bsmSweepTgtX - boss.px) * 0.14
         boss.pz = boss.pz + (bsmSweepTgtZ - boss.pz) * 0.14
         boss.py = boss.py + (player.py - boss.py) * 0.04
+        If boss.moveTimer > 0 Then
+            boss.px = boss.px + BOSS_FWD_CHG_SPD * (boss.moveTimer / BOSS_TURN_ENTRY_FRAMES)
+            boss.moveTimer = boss.moveTimer - 1
+        End If
         If boss.arcAngle >= 3.14159 Then
             boss.px = player.px + BOSS_COMBAT_DIST
             boss.pz = player.pz
