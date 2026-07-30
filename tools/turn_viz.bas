@@ -223,9 +223,9 @@ Sub VIZ_DrawSplinePath
         vdspW1 =  3*vdspFu3 - 5*vdspFu2 + 2
         vdspW2 = -3*vdspFu3 + 4*vdspFu2 + vdspFu
         vdspW3 = vdspFu3 - vdspFu2
-        vdspWX = player.px + 0.5*(bsmWpX(vdspI0)*vdspW0 + bsmWpX(vdspI1)*vdspW1 + bsmWpX(vdspI2)*vdspW2 + bsmWpX(vdspI3)*vdspW3)
-        vdspWY = player.py + 0.5*(bsmWpY(vdspI0)*vdspW0 + bsmWpY(vdspI1)*vdspW1 + bsmWpY(vdspI2)*vdspW2 + bsmWpY(vdspI3)*vdspW3)
-        vdspWZ = player.pz + 0.5*(bsmWpZ(vdspI0)*vdspW0 + bsmWpZ(vdspI1)*vdspW1 + bsmWpZ(vdspI2)*vdspW2 + bsmWpZ(vdspI3)*vdspW3)
+        vdspWX = player.px + 0.5*(bsmWp(vdspI0).x*vdspW0 + bsmWp(vdspI1).x*vdspW1 + bsmWp(vdspI2).x*vdspW2 + bsmWp(vdspI3).x*vdspW3)
+        vdspWY = player.py + 0.5*(bsmWp(vdspI0).y*vdspW0 + bsmWp(vdspI1).y*vdspW1 + bsmWp(vdspI2).y*vdspW2 + bsmWp(vdspI3).y*vdspW3)
+        vdspWZ = player.pz + 0.5*(bsmWp(vdspI0).z*vdspW0 + bsmWp(vdspI1).z*vdspW1 + bsmWp(vdspI2).z*vdspW2 + bsmWp(vdspI3).z*vdspW3)
         VIZ_Project vdspWX, vdspWY, vdspWZ, vdspSX, vdspSY, vdspVis
         If vdspVis And vdspPVis Then
             Line (vdspPX, vdspPY)-(vdspSX, vdspSY), _RGBA(0, 220, 200, 160)
@@ -242,9 +242,9 @@ Sub VIZ_DrawNodes
     Dim vdnSX As Single, vdnSY As Single, vdnVis As Integer
     Dim vdnWX As Single, vdnWY As Single, vdnWZ As Single
     For vdnI = 0 To bsmWpCount - 1
-        vdnWX = player.px + bsmWpX(vdnI)
-        vdnWY = player.py + bsmWpY(vdnI)
-        vdnWZ = player.pz + bsmWpZ(vdnI)
+        vdnWX = player.px + bsmWp(vdnI).x
+        vdnWY = player.py + bsmWp(vdnI).y
+        vdnWZ = player.pz + bsmWp(vdnI).z
         VIZ_Project vdnWX, vdnWY, vdnWZ, vdnSX, vdnSY, vdnVis
         If vdnVis Then
             Circle (vdnSX, vdnSY), 5, _RGB(255, 200, 0)
