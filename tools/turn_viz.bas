@@ -15,11 +15,20 @@ End Sub
 '$INCLUDE:'../src/gameplay/maneuvers.bas'
 
 ' ── viz constants ─────────────────────────────────────────────────────────────
-Const VZPI = 3.14159265358979
+Const VZPI        = 3.14159265358979
 Const VZ_TRAIL_MAX = 600
-Const VZ_CAM_SPD = 0.30
-Const VZ_LOOK_SPD = 0.025   ' arrow-key look speed (rad/frame)
-Const VZ_MOUSE_SPD = 0.0008 ' mouse sensitivity (rad/pixel)
+Const VZ_CAM_SPD  = 0.30
+Const VZ_LOOK_SPD = 0.025    ' arrow-key look speed (rad/frame)
+Const VZ_MOUSE_SPD = 0.0008  ' mouse sensitivity (rad/pixel)
+Const VZ_KEY_PGUP = 18688
+Const VZ_KEY_PGDN = 20736
+
+' gameplay camera defaults: behind player, looking along +X toward boss
+Const VZ_GCAM_X     = -8.0
+Const VZ_GCAM_Y     =  3.0
+Const VZ_GCAM_Z     =  0.0
+Const VZ_GCAM_YAW   = 1.5708    ' VZPI/2 -- faces +X (toward boss)
+Const VZ_GCAM_PITCH = 0.22      ' slight downward angle
 
 ' ── viz state ─────────────────────────────────────────────────────────────────
 Dim Shared vzCamX As Single, vzCamY As Single, vzCamZ As Single
@@ -35,38 +44,46 @@ Dim Shared vzTrailSt(1 To VZ_TRAIL_MAX) As Integer
 Dim Shared vzTrailHead As Integer
 Dim Shared vzSpaceWas As Integer, vzNWas As Integer, vzRWas As Integer
 Dim Shared vzFWas     As Integer, vzEscWas As Integer
-Dim Shared vz1Was     As Integer, vz2Was As Integer
+Dim Shared vz1Was     As Integer, vz2Was   As Integer
+Dim Shared vzTabWas   As Integer, vzHWas   As Integer
+Dim Shared vzPgUpWas  As Integer, vzPgDnWas As Integer
+Dim Shared vzShowHelp As Integer
 
-' ── reset sim + camera to known start ─────────────────────────────────────────
-Sub VIZ_SimReset
-    player.px = 0 : player.py = 0 : player.pz = 0
-    player.rx = 0 : player.ry = 0 : player.rz = 0
-    player.scl = 1.0 : player.active = -1 : player.meshIdx = MESH_PLAYER
+' maneuver block list for TAB cycling
+Dim Shared vzBlockNames(0 To 15) As String
+Dim Shared vzBlockCount As Integer
+Dim Shared vzBlockIdx   As Integer
 
-    boss.px = BOSS_COMBAT_DIST
-    boss.py = 0 : boss.pz = 0
+' ── load the current block into bsmWp* and reset boss+trail (camera unchanged) ─
+Sub VIZ_LoadManeuver
+    boss.px = player.px + BOSS_COMBAT_DIST
+    boss.py = player.py : boss.pz = player.pz
     boss.rx = 0 : boss.ry = 0 : boss.rz = 0
     boss.vx = 0 : boss.vy = 0 : boss.vz = 0
-    boss.scl = 1.0 : boss.active = -1 : boss.meshIdx = MESH_BOSS
     boss.state = 6 : boss.phase = 1
     boss.arcAngle = 0 : boss.moveTimer = 0 : boss.chargeTimer = 0
     boss.fireTimer = 0 : boss.targetY = 0 : boss.targetZ = 0
     boss.hp = 30 : boss.warnTimer = 0
     bsmTurnDir = 1
+    If vzBlockCount > 0 Then bsmManeuverName = vzBlockNames(vzBlockIdx)
     BOSS_FlyoverInit
-
-    ' camera: above and side, looking at the action zone (x=0..20, y=0, z=0)
-    vzCamX = 10.0 : vzCamY = 12.0 : vzCamZ = 32.0
-    vzCamYaw = -0.28 : vzCamPitch = 0.32
-
     vzFrame = 0 : vzPaused = 0 : vzFastMode = 0 : vzTrailHead = 0
     vzPrevBX = boss.px : vzPrevBY = boss.py : vzPrevBZ = boss.pz
+    Dim vzLMi As Integer
+    For vzLMi = 1 To VZ_TRAIL_MAX
+        vzTrailPX(vzLMi) = 0 : vzTrailPY(vzLMi) = 0 : vzTrailPZ(vzLMi) = 0
+        vzTrailSt(vzLMi) = 0
+    Next vzLMi
+End Sub
 
-    Dim vzRi As Integer
-    For vzRi = 1 To VZ_TRAIL_MAX
-        vzTrailPX(vzRi) = 0 : vzTrailPY(vzRi) = 0 : vzTrailPZ(vzRi) = 0
-        vzTrailSt(vzRi) = 0
-    Next vzRi
+' ── full reset: also resets player and camera to gameplay defaults ─────────────
+Sub VIZ_SimReset
+    player.px = 0 : player.py = 0 : player.pz = 0
+    player.rx = 0 : player.ry = 0 : player.rz = 0
+    player.scl = 1.0 : player.active = -1 : player.meshIdx = MESH_PLAYER
+    vzCamX = VZ_GCAM_X : vzCamY = VZ_GCAM_Y : vzCamZ = VZ_GCAM_Z
+    vzCamYaw = VZ_GCAM_YAW : vzCamPitch = VZ_GCAM_PITCH
+    VIZ_LoadManeuver
 End Sub
 
 ' ── one simulation frame ──────────────────────────────────────────────────────
@@ -92,14 +109,11 @@ Sub VIZ_Step
     Dim vzDZ As Single : vzDZ = boss.pz - vzPrevBZ
     Dim vzSpd As Single : vzSpd = Sqr(vzDX*vzDX + vzDY*vzDY + vzDZ*vzDZ)
     If vzSpd > 0.0002 Then
-        ' yaw: atan2(dz, -dx) because model nose is at -X when ry=0
         boss.ry = _Atan2(vzDZ, -vzDX) * 57.2958
-        ' pitch: nose tilts up/down with vertical component
         Dim vzHSpd As Single : vzHSpd = Sqr(vzDX*vzDX + vzDZ*vzDZ)
         If vzHSpd > 0.0002 Then
             boss.rx = _Atan2(-vzDY, vzHSpd) * 57.2958
         End If
-        ' banking roll: lean into the turn proportional to lateral Z velocity
         boss.rz = -(vzDZ / vzSpd) * 50.0
     End If
 
@@ -128,6 +142,66 @@ Sub VIZ_Project(vprWX As Single, vprWY As Single, vprWZ As Single, vprSX As Sing
     End If
 End Sub
 
+' ── draw the static Catmull-Rom spline through the loaded waypoints ────────────
+Sub VIZ_DrawSplinePath
+    If bsmWpCount < 2 Then Exit Sub
+    Dim vdspT As Single, vdspStep As Single, vdspN As Integer
+    Dim vdspSeg As Integer
+    Dim vdspFu As Single, vdspFu2 As Single, vdspFu3 As Single
+    Dim vdspI0 As Integer, vdspI1 As Integer, vdspI2 As Integer, vdspI3 As Integer
+    Dim vdspW0 As Single, vdspW1 As Single, vdspW2 As Single, vdspW3 As Single
+    Dim vdspWX As Single, vdspWY As Single, vdspWZ As Single
+    Dim vdspSX As Single, vdspSY As Single, vdspVis As Integer
+    Dim vdspPX As Single, vdspPY As Single, vdspPVis As Integer
+
+    vdspStep = (bsmWpCount - 1) / 200.0
+    vdspT = 0 : vdspPVis = 0
+    For vdspN = 0 To 200
+        vdspSeg = Int(vdspT)
+        If vdspSeg >= bsmWpCount - 1 Then vdspSeg = bsmWpCount - 2
+        vdspFu  = vdspT - vdspSeg
+        vdspFu2 = vdspFu * vdspFu
+        vdspFu3 = vdspFu2 * vdspFu
+        vdspI0 = vdspSeg - 1 : If vdspI0 < 0 Then vdspI0 = 0
+        vdspI1 = vdspSeg
+        vdspI2 = vdspSeg + 1 : If vdspI2 >= bsmWpCount Then vdspI2 = bsmWpCount - 1
+        vdspI3 = vdspSeg + 2 : If vdspI3 >= bsmWpCount Then vdspI3 = bsmWpCount - 1
+        vdspW0 = -vdspFu3 + 2*vdspFu2 - vdspFu
+        vdspW1 =  3*vdspFu3 - 5*vdspFu2 + 2
+        vdspW2 = -3*vdspFu3 + 4*vdspFu2 + vdspFu
+        vdspW3 = vdspFu3 - vdspFu2
+        vdspWX = player.px + 0.5*(bsmWpX(vdspI0)*vdspW0 + bsmWpX(vdspI1)*vdspW1 + bsmWpX(vdspI2)*vdspW2 + bsmWpX(vdspI3)*vdspW3)
+        vdspWY = player.py + 0.5*(bsmWpY(vdspI0)*vdspW0 + bsmWpY(vdspI1)*vdspW1 + bsmWpY(vdspI2)*vdspW2 + bsmWpY(vdspI3)*vdspW3)
+        vdspWZ = player.pz + 0.5*(bsmWpZ(vdspI0)*vdspW0 + bsmWpZ(vdspI1)*vdspW1 + bsmWpZ(vdspI2)*vdspW2 + bsmWpZ(vdspI3)*vdspW3)
+        VIZ_Project vdspWX, vdspWY, vdspWZ, vdspSX, vdspSY, vdspVis
+        If vdspVis And vdspPVis Then
+            Line (vdspPX, vdspPY)-(vdspSX, vdspSY), _RGBA(0, 220, 200, 160)
+        End If
+        vdspPX = vdspSX : vdspPY = vdspSY : vdspPVis = vdspVis
+        vdspT = vdspT + vdspStep
+    Next vdspN
+End Sub
+
+' ── draw waypoint nodes as labeled circles ─────────────────────────────────────
+Sub VIZ_DrawNodes
+    If bsmWpCount < 1 Then Exit Sub
+    Dim vdnI As Integer
+    Dim vdnSX As Single, vdnSY As Single, vdnVis As Integer
+    Dim vdnWX As Single, vdnWY As Single, vdnWZ As Single
+    For vdnI = 0 To bsmWpCount - 1
+        vdnWX = player.px + bsmWpX(vdnI)
+        vdnWY = player.py + bsmWpY(vdnI)
+        vdnWZ = player.pz + bsmWpZ(vdnI)
+        VIZ_Project vdnWX, vdnWY, vdnWZ, vdnSX, vdnSY, vdnVis
+        If vdnVis Then
+            Circle (vdnSX, vdnSY), 5, _RGB(255, 200, 0)
+            Circle (vdnSX, vdnSY), 4, _RGB(255, 200, 0)
+            Color _RGB(255, 200, 0)
+            _PrintString (vdnSX + 6, vdnSY - 4), LTrim$(Str$(vdnI))
+        End If
+    Next vdnI
+End Sub
+
 ' ── render one frame ──────────────────────────────────────────────────────────
 Sub VIZ_Draw
     Dim vdFX As Single, vdFY As Single, vdFZ As Single
@@ -145,13 +219,13 @@ Sub VIZ_Draw
 
     E3D_SceneBegin
 
-    ' player ship (stationary at origin)
+    ' player ship at origin
     pPos.x = player.px : pPos.y = player.py : pPos.z = player.pz
     pRot.x = player.rx : pRot.y = player.ry : pRot.z = player.rz
     E3D_BuildObjectMat pPos, pRot, player.scl, objMat
     E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.pos, tt, lightDir
 
-    ' boss ship -- orientation derived from velocity (nose = direction of travel)
+    ' boss ship
     Dim vdBPos As E3D_Coord, vdBRot As E3D_Coord
     vdBPos.x = boss.px : vdBPos.y = boss.py : vdBPos.z = boss.pz
     vdBRot.x = boss.rx : vdBRot.y = boss.ry : vdBRot.z = boss.rz
@@ -160,16 +234,18 @@ Sub VIZ_Draw
 
     E3D_SceneFlush vpMat, scrW, scrH
 
-    ' trail dots projected into screen space, colored by flyover state
+    ' static spline path in teal/cyan
+    VIZ_DrawSplinePath
+
+    ' simulation trail dots, colored by boss X relative to player
     Dim vdTi As Integer
     For vdTi = 1 To VZ_TRAIL_MAX
         If vzTrailSt(vdTi) > 0 Then
             Dim vdTC As Long
-            ' color trail by boss position relative to player: behind=blue, ahead=orange
             If vzTrailPX(vdTi) < player.px Then
                 vdTC = _RGBA(60, 80, 255, 200)   ' behind player
             ElseIf vzTrailPX(vdTi) < player.px + 25 Then
-                vdTC = _RGBA(255, 220, 30, 200)  ' passing / overhead zone
+                vdTC = _RGBA(255, 220, 30, 200)  ' overhead zone
             Else
                 vdTC = _RGBA(200, 60, 220, 200)  ' far ahead / banking arc
             End If
@@ -179,7 +255,10 @@ Sub VIZ_Draw
         End If
     Next vdTi
 
-    ' player position screen marker -- always shows where the player ship is
+    ' waypoint nodes -- prominent circles with index labels
+    VIZ_DrawNodes
+
+    ' player screen marker
     Dim vdPSX As Single, vdPSY As Single, vdPVis As Integer
     VIZ_Project player.px, player.py, player.pz, vdPSX, vdPSY, vdPVis
     If vdPVis Then
@@ -189,27 +268,60 @@ Sub VIZ_Draw
         _PrintString (vdPSX - 8, vdPSY - 14), "YOU"
     End If
 
-    ' HUD -- state info top-left, controls bottom
+    ' block name -- top center
+    Dim vdBlkName As String
+    If vzBlockCount > 0 Then vdBlkName = vzBlockNames(vzBlockIdx) Else vdBlkName = "?"
+    Dim vdBlkX As Integer : vdBlkX = (scrW - Len(vdBlkName) * 8) \ 2
+    Color _RGB(255, 240, 80)
+    _PrintString (vdBlkX, 2), vdBlkName
+
+    ' telemetry strip: top-left, 14px line spacing
+    Color _RGB(180, 180, 180)
     Dim vdSN As String
-    Select Case boss.state
-    Case 6  : vdSN = "6 FLY"
-    Case Else : vdSN = LTrim$(Str$(boss.state))
-    End Select
+    If boss.state = 6 Then vdSN = "6 FLY" Else vdSN = LTrim$(Str$(boss.state))
     Dim vdDirS As String
     If bsmTurnDir > 0 Then vdDirS = "+1 R" Else vdDirS = "-1 L"
+    _PrintString (2, 16), "ST:" + vdSN
+    _PrintString (2, 30), "T:" + Left$(Str$(boss.arcAngle + 1000), 6)
+    _PrintString (2, 44), "DIR" + vdDirS
+    _PrintString (2, 58), "F:" + LTrim$(Str$(vzFrame))
+    If vzPaused   Then _PrintString (2, 72), "PAUSED"
+    If vzFastMode Then _PrintString (50, 72), "FAST"
 
-    Color _RGB(220, 220, 220)
-    _PrintString (2, 2),  "ST:" + vdSN
-    _PrintString (2, 12), "T:" + Left$(Str$(boss.arcAngle + 1000), 6)
-    _PrintString (2, 22), "RY:" + Left$(Str$(boss.ry + 1000), 7)
-    _PrintString (2, 32), "DIR" + vdDirS
-    _PrintString (2, 42), "F:" + LTrim$(Str$(vzFrame))
-    If vzPaused   Then _PrintString (2, 54), "PAUSED"
-    If vzFastMode Then _PrintString (60, 54), "FAST"
+    ' help toggle hint at bottom right
+    Color _RGB(80, 80, 80)
+    _PrintString (scrW - 48, scrH - 10), "[H] help"
 
-    Color _RGB(90, 90, 90)
-    _PrintString (2, scrH-20), "WASD/QE=fly  arrows=look  mouse=look"
-    _PrintString (2, scrH-10), "SPC=pause  R=reset  1/2=dir  F=fast  ESC=quit"
+    ' block cycling hint
+    Dim vdCycHint As String
+    If vzBlockCount > 1 Then
+        vdCycHint = LTrim$(Str$(vzBlockIdx + 1)) + "/" + LTrim$(Str$(vzBlockCount))
+        _PrintString (2, scrH - 10), "TAB " + vdCycHint
+    End If
+
+    ' ── help popup ────────────────────────────────────────────────────────────
+    If vzShowHelp Then
+        Dim vdHX As Integer : vdHX = 20
+        Dim vdHY As Integer : vdHY = 20
+        Dim vdHW As Integer : vdHW = 280
+        Dim vdHH As Integer : vdHH = 180
+        Line (vdHX, vdHY)-(vdHX + vdHW, vdHY + vdHH), _RGBA(0, 0, 0, 220), BF
+        Line (vdHX, vdHY)-(vdHX + vdHW, vdHY + vdHH), _RGB(100, 100, 100), B
+        Color _RGB(255, 240, 80)
+        _PrintString (vdHX + 8, vdHY + 6), "CONTROLS"
+        Color _RGB(200, 200, 200)
+        Dim vdHLY As Integer : vdHLY = vdHY + 22
+        _PrintString (vdHX + 8, vdHLY),      "W/S          fly forward / back"
+        _PrintString (vdHX + 8, vdHLY + 14), "A/D          strafe left / right"
+        _PrintString (vdHX + 8, vdHLY + 28), "Q/E          elevator down / up"
+        _PrintString (vdHX + 8, vdHLY + 42), "PgDn/PgUp    elevator down / up"
+        _PrintString (vdHX + 8, vdHLY + 56), "arrows       look"
+        _PrintString (vdHX + 8, vdHLY + 70), "mouse drag   look"
+        _PrintString (vdHX + 8, vdHLY + 84), "TAB / Sh-TAB next / prev maneuver"
+        _PrintString (vdHX + 8, vdHLY + 98), "1 / 2        turn direction +/-"
+        _PrintString (vdHX + 8, vdHLY + 112), "SPC          pause   N=step"
+        _PrintString (vdHX + 8, vdHLY + 126), "F=fast  R=reset  H=help  ESC=quit"
+    End If
 
     _DEST 0
     _PutImage , backBuffer, 0
@@ -222,6 +334,12 @@ Screen _NewImage(scrW, scrH, 32)
 backBuffer = _NewImage(scrW, scrH, 32)
 TOOL_Init "Boss Flyover Visualizer"
 MNV_Init _EMBEDDED$("MANEUVERS")
+
+' enumerate block names from data file
+MNV_ListBlocks vzBlockNames(), vzBlockCount
+vzBlockIdx = 0
+bsmManeuverName = "flyover"
+If vzBlockCount > 0 Then bsmManeuverName = vzBlockNames(0)
 
 lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
 
@@ -242,6 +360,8 @@ _SCREENSHOW
 Dim vzSpNow As Integer, vzNNow As Integer, vzRNow As Integer
 Dim vzFNow As Integer, vzEscNow As Integer
 Dim vz1Now As Integer, vz2Now As Integer
+Dim vzTabNow As Integer, vzHNow As Integer
+Dim vzPgUpNow As Integer, vzPgDnNow As Integer
 Dim vzFwdX As Single, vzFwdY As Single, vzFwdZ As Single
 Dim vzRgtX As Single, vzRgtZ As Single
 Dim vzFLi As Integer
@@ -249,13 +369,17 @@ Dim vzMX As Long, vzMY As Long
 
 Do
     ' ── key state ──────────────────────────────────────────────────────
-    vzSpNow  = _KeyDown(E3D_KEY_SPACE)
-    vzNNow   = _KeyDown(Asc("n"))
-    vzRNow   = _KeyDown(Asc("r"))
-    vzFNow   = _KeyDown(Asc("f"))
-    vzEscNow = _KeyDown(E3D_KEY_ESCAPE)
-    vz1Now   = _KeyDown(Asc("1"))
-    vz2Now   = _KeyDown(Asc("2"))
+    vzSpNow   = _KeyDown(E3D_KEY_SPACE)
+    vzNNow    = _KeyDown(Asc("n"))
+    vzRNow    = _KeyDown(Asc("r"))
+    vzFNow    = _KeyDown(Asc("f"))
+    vzEscNow  = _KeyDown(E3D_KEY_ESCAPE)
+    vz1Now    = _KeyDown(Asc("1"))
+    vz2Now    = _KeyDown(Asc("2"))
+    vzTabNow  = _KeyDown(E3D_KEY_TAB)
+    vzHNow    = _KeyDown(Asc("h"))
+    vzPgUpNow = _KeyDown(VZ_KEY_PGUP)
+    vzPgDnNow = _KeyDown(VZ_KEY_PGDN)
 
     ' ── mouse look (left-button drag only) ────────────────────────────
     vzMX = 0 : vzMY = 0
@@ -278,7 +402,7 @@ Do
     If vzCamPitch >  1.5 Then vzCamPitch =  1.5
     If vzCamPitch < -1.5 Then vzCamPitch = -1.5
 
-    ' ── WASD + Q/E fly ─────────────────────────────────────────────────
+    ' ── WASD fly ───────────────────────────────────────────────────────
     vzFwdX = Sin(vzCamYaw) * Cos(vzCamPitch)
     vzFwdY = -Sin(vzCamPitch)
     vzFwdZ = -Cos(vzCamYaw) * Cos(vzCamPitch)
@@ -303,21 +427,38 @@ Do
         vzCamX = vzCamX + vzRgtX * VZ_CAM_SPD
         vzCamZ = vzCamZ + vzRgtZ * VZ_CAM_SPD
     End If
-    If _KeyDown(113) Then vzCamY = vzCamY - VZ_CAM_SPD  ' Q down
-    If _KeyDown(101) Then vzCamY = vzCamY + VZ_CAM_SPD  ' E up
+
+    ' ── elevator: Q/E and PgUp/PgDn ────────────────────────────────────
+    If _KeyDown(113) Or vzPgDnNow Then vzCamY = vzCamY - VZ_CAM_SPD   ' Q / PgDn: down
+    If _KeyDown(101) Or vzPgUpNow Then vzCamY = vzCamY + VZ_CAM_SPD   ' E / PgUp: up
 
     ' ── edge-triggered sim controls ────────────────────────────────────
-    If vzSpNow  And vzSpaceWas = 0 Then vzPaused   = Not vzPaused
-    If vzNNow   And vzNWas    = 0 And vzPaused Then VIZ_Step
-    If vzRNow   And vzRWas    = 0 Then VIZ_SimReset
-    If vz1Now   And vz1Was    = 0 Then bsmTurnDir = 1
-    If vz2Now   And vz2Was    = 0 Then bsmTurnDir = -1
-    If vzFNow   And vzFWas    = 0 Then vzFastMode  = Not vzFastMode
-    If vzEscNow And vzEscWas  = 0 Then System
+    If vzSpNow And vzSpaceWas = 0 Then vzPaused   = Not vzPaused
+    If vzNNow  And vzNWas    = 0 And vzPaused Then VIZ_Step
+    If vzFNow  And vzFWas    = 0 Then vzFastMode  = Not vzFastMode
+    If vzHNow  And vzHWas    = 0 Then vzShowHelp  = Not vzShowHelp
+    If vzRNow  And vzRWas    = 0 Then VIZ_SimReset
+    If vz1Now  And vz1Was    = 0 Then bsmTurnDir = 1
+    If vz2Now  And vz2Was    = 0 Then bsmTurnDir = -1
+    If vzEscNow And vzEscWas = 0 Then System
 
-    vzSpaceWas = vzSpNow : vzNWas = vzNNow  : vzRWas = vzRNow
-    vzFWas     = vzFNow  : vzEscWas = vzEscNow
-    vz1Was     = vz1Now  : vz2Was = vz2Now
+    ' TAB / SHIFT+TAB: cycle through maneuver blocks
+    If vzTabNow And vzTabWas = 0 And vzBlockCount > 1 Then
+        If _KeyDown(100304) Or _KeyDown(100303) Then  ' shift held = go back
+            vzBlockIdx = vzBlockIdx - 1
+            If vzBlockIdx < 0 Then vzBlockIdx = vzBlockCount - 1
+        Else
+            vzBlockIdx = vzBlockIdx + 1
+            If vzBlockIdx >= vzBlockCount Then vzBlockIdx = 0
+        End If
+        bsmManeuverName = vzBlockNames(vzBlockIdx)
+        VIZ_LoadManeuver
+    End If
+
+    vzSpaceWas = vzSpNow  : vzNWas   = vzNNow    : vzRWas   = vzRNow
+    vzFWas     = vzFNow   : vzEscWas = vzEscNow
+    vz1Was     = vz1Now   : vz2Was   = vz2Now
+    vzTabWas   = vzTabNow : vzHWas   = vzHNow
 
     ' ── sim advance ────────────────────────────────────────────────────
     If vzPaused = 0 Then
