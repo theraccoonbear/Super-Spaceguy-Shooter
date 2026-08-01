@@ -97,28 +97,34 @@ run_http_test() {
   local run_bin="$RUN_BIN"
 
   echo "==> Starting HTTP mock server..."
-  local portfile errfile
-  portfile="$(mktemp)"
+  # Use a fixed port and poll for reachability via curl instead of reading a
+  # printed port back from redirected stdout -- that read was silently never
+  # satisfied on macOS CI (untested there before this branch; no diagnosis
+  # possible, not even stderr, so this sidesteps whatever the cause is).
+  local mock_port=18752
+  local errfile
   errfile="$(mktemp)"
-  python3 "$REPODIR/tools/http_mock_server" --port 0 > "$portfile" 2> "$errfile" &
+  python3 "$REPODIR/tools/http_mock_server" --port "$mock_port" > /dev/null 2> "$errfile" &
   local mock_pid=$!
-  local mock_port=""
+  local ready=0
   for i in $(seq 1 150); do
-    mock_port="$(cat "$portfile" 2>/dev/null | tr -d '[:space:]')"
-    [ -n "$mock_port" ] && break
+    if curl -sf "http://127.0.0.1:${mock_port}/requests" > /dev/null 2>&1; then
+      ready=1
+      break
+    fi
     sleep 0.1
   done
 
-  if [ -z "$mock_port" ]; then
-    echo "ERROR: mock server failed to start"
+  if [ "$ready" -ne 1 ]; then
+    echo "ERROR: mock server not reachable on port $mock_port"
     echo "--- stderr ---"
     cat "$errfile" 2>/dev/null || true
-    rm -f "$portfile" "$errfile"
+    rm -f "$errfile"
     kill "$mock_pid" 2>/dev/null || true
     exit 1
   fi
-  rm -f "$portfile" "$errfile"
-  echo "    Mock listening on port $mock_port"
+  rm -f "$errfile"
+  echo "    Mock listening on http://127.0.0.1:${mock_port}"
 
   local rc=0
   if "$run_bin" "http://127.0.0.1:$mock_port"; then
