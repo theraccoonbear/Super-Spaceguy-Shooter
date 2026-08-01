@@ -12,6 +12,8 @@ if [ "$1" == "sss.bas" ]; then
     echo ">>> Baking in-game spoken text..."
     "$(dirname "$0")/bake_speech_dict" || exit 1
     echo ">>> ...done!"
+    echo ">>> Generating version..."
+    "$(dirname "$0")/make-version.sh" || exit 1
     # Ensure assets/.env exists for $EMBED (empty = no network telemetry)
     if [ ! -f assets/.env ]; then
         touch assets/.env
@@ -35,7 +37,21 @@ if [ -z "$QB64_BIN" ]; then
     exit 1
 fi
 QB64_DIR="$(dirname "$(realpath "$QB64_BIN")")"
-ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
+# On native Windows, plain `ln -sfn` can't replace an existing real directory --
+# it links *inside* it instead, leaving a stale nested assets/assets that $EMBED
+# resolves against instead of the real repo assets. Mirror the PowerShell Junction
+# approach .github/scripts/qb64build.sh already uses for CI's Windows runner.
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        WIN_LINK=$(cygpath -w "$QB64_DIR/assets")
+        WIN_TARGET=$(cygpath -w "$(realpath .)/assets")
+        WIN_LINK="$WIN_LINK" WIN_TARGET="$WIN_TARGET" \
+            powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET' > /dev/null
+        ;;
+    *)
+        ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
+        ;;
+esac
 
 
 # Remove stale executable so a failed build can't be mistaken for success

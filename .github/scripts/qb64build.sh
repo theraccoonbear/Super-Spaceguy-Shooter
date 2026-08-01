@@ -93,6 +93,9 @@ DB_URL=${DB_URL:-}
 DB_KEY=${DB_KEY:-}
 EOF
 
+echo "==> Generating version..."
+"$REPODIR/tools/make-version.sh"
+
 echo "==> Building sss.bas..."
 mkdir -p "$REPODIR/builds"
 case "$(uname -s)" in
