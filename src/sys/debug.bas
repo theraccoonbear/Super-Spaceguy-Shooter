@@ -1,25 +1,17 @@
-' Enable debug/diagnostic output where possible; DBG_Print and GTEXT_Log check dbgTtyOK.
-' Unix: probe for a controlling terminal (/dev/tty). Silently skips terminal output
-'   when launched without one (e.g. double-click from a GUI file manager) instead of
-'   popping error dialogs.
 ' Windows: there is no /dev/tty and no reliable way to detect a controlling console,
-'   so use --debug as the signal instead -- only show the $CONSOLE window (and log)
-'   when the user explicitly asked for it, so double-click launches stay silent.
+' so use --debug as the signal instead -- only show the $CONSOLE window (and log)
+' when the user explicitly asked for it, so double-click launches stay silent.
+' DBG_Print and GTEXT_Log check dbgTtyOK.
+'
+' Unix's /dev/tty probe stays inline in sss.bas rather than living here: QB64-PE
+' rejects the ON ERROR GOTO / label pattern it needs ("Common label within a
+' SUB/FUNCTION") when placed inside a SUB.
 Sub DBG_InitTty()
     $IF WIN THEN
         IF debugMode THEN
             _Console On
             dbgTtyOK = -1
         END IF
-    $ELSE
-        DIM dbgTtyProbe AS INTEGER : dbgTtyProbe = FREEFILE
-        ON ERROR RESUME NEXT
-        OPEN "/dev/tty" FOR APPEND AS #dbgTtyProbe
-        IF Err = 0 THEN
-            CLOSE #dbgTtyProbe
-            dbgTtyOK = -1
-        END IF
-        ON ERROR GOTO 0
     $END IF
 End Sub
 
