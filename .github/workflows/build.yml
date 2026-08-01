@@ -123,6 +123,7 @@ jobs:
             OUT=$("${{ matrix.artifact-path }}" --version)
           fi
           echo "$OUT"
+          OUT="${OUT//$'\r'/}"
           BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
           echo "$OUT" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
             echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
