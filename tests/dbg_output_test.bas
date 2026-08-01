@@ -7,8 +7,11 @@
 ' Covers:
 '   1. Windows: --debug (debugMode=-1) must enable dbgTtyOK via DBG_InitTty
 '   2. Windows: without --debug (debugMode=0), dbgTtyOK stays disabled
-'   3. Unix: DBG_InitTty's outcome depends only on the /dev/tty probe, not debugMode
-'   4. DBG_Print / GTEXT_Log don't error in either gating state
+'   3. DBG_Print / GTEXT_Log don't error in either gating state
+'
+' DBG_InitTty only covers the Windows branch of the fix (see src/sys/debug.bas --
+' QB64-PE rejects the ON ERROR GOTO / label pattern Unix's /dev/tty probe needs
+' inside a SUB, so that probe stays inline in sss.bas and isn't unit-testable here).
 '
 ' Build: ./tools/buildqb tests/dbg_output_test.bas
 ' Run:   builds/dbg_output_test   (exit 0 = all pass)
@@ -99,17 +102,7 @@ $IF WIN THEN
     _Dest _Console
     ST_Assert -1, "DBG_Print/GTEXT_Log ran without error while enabled"
 $ELSE
-    Print "--- Unix: DBG_InitTty outcome depends only on the /dev/tty probe ---"
-
-    debugMode = 0 : dbgTtyOK = 0
-    DBG_InitTty
-    Dim ttyA As Integer : ttyA = dbgTtyOK
-
-    debugMode = -1 : dbgTtyOK = 0
-    DBG_InitTty
-    Dim ttyB As Integer : ttyB = dbgTtyOK
-
-    ST_Assert ttyA = ttyB, "debugMode does not affect the /dev/tty probe outcome"
+    Print "--- Unix: /dev/tty probe lives inline in sss.bas, not unit-testable here ---"
 $END IF
 
 ' Disabled state must never error, on either platform.
