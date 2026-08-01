@@ -1,3 +1,29 @@
+' Enable debug/diagnostic output where possible; DBG_Print and GTEXT_Log check dbgTtyOK.
+' Unix: probe for a controlling terminal (/dev/tty). Silently skips terminal output
+'   when launched without one (e.g. double-click from a GUI file manager) instead of
+'   popping error dialogs.
+' Windows: there is no /dev/tty and no reliable way to detect a controlling console,
+'   so use --debug as the signal instead -- only show the $CONSOLE window (and log)
+'   when the user explicitly asked for it, so double-click launches stay silent.
+Sub DBG_InitTty()
+    $IF WIN THEN
+        IF debugMode THEN
+            _Console On
+            dbgTtyOK = -1
+        END IF
+    $ELSE
+        DIM dbgTtyProbe AS INTEGER : dbgTtyProbe = FREEFILE
+        ON ERROR GOTO dbgTtyFail
+        OPEN "/dev/tty" FOR APPEND AS #dbgTtyProbe : CLOSE #dbgTtyProbe
+        ON ERROR GOTO 0
+        dbgTtyOK = -1
+        GOTO dbgTtyDone
+        dbgTtyFail:
+        ON ERROR GOTO 0
+        dbgTtyDone:
+    $END IF
+End Sub
+
 Sub DBG_LogStateChange()
     If debugMode = 0 Then Exit Sub
     If gameState = prevGameState Then Exit Sub
@@ -23,11 +49,17 @@ End Sub
 
 Sub DBG_Print(dbgMsg As String)
     If dbgTtyOK = 0 Then Exit Sub
-    Dim dbgF As Integer
-    dbgF = FreeFile
-    Open "/dev/tty" For Append As #dbgF
-    Print #dbgF, dbgMsg
-    Close #dbgF
+    $IF WIN THEN
+        _Dest _Console
+        Print dbgMsg
+        _Dest 0
+    $ELSE
+        Dim dbgF As Integer
+        dbgF = FreeFile
+        Open "/dev/tty" For Append As #dbgF
+        Print #dbgF, dbgMsg
+        Close #dbgF
+    $END IF
 End Sub
 
 Sub DBG_Overlay()
