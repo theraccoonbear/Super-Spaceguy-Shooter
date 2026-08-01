@@ -97,23 +97,27 @@ run_http_test() {
   local run_bin="$RUN_BIN"
 
   echo "==> Starting HTTP mock server..."
-  local portfile
+  local portfile errfile
   portfile="$(mktemp)"
-  python3 "$REPODIR/tools/http_mock_server" --port 0 > "$portfile" &
+  errfile="$(mktemp)"
+  python3 "$REPODIR/tools/http_mock_server" --port 0 > "$portfile" 2> "$errfile" &
   local mock_pid=$!
   local mock_port=""
-  for i in $(seq 1 50); do
+  for i in $(seq 1 150); do
     mock_port="$(cat "$portfile" 2>/dev/null | tr -d '[:space:]')"
     [ -n "$mock_port" ] && break
     sleep 0.1
   done
-  rm -f "$portfile"
 
   if [ -z "$mock_port" ]; then
     echo "ERROR: mock server failed to start"
+    echo "--- stderr ---"
+    cat "$errfile" 2>/dev/null || true
+    rm -f "$portfile" "$errfile"
     kill "$mock_pid" 2>/dev/null || true
     exit 1
   fi
+  rm -f "$portfile" "$errfile"
   echo "    Mock listening on port $mock_port"
 
   local rc=0
