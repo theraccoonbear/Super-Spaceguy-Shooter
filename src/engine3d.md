@@ -2,7 +2,9 @@
 
 ## What problem it solves
 
-The game renders true 3D geometry (ships, planets, environment) with no GPU access — QB64-PE's `SCREEN`/`_NEWIMAGE` is a plain 2D pixel buffer. `src/3d/` is a from-scratch software 3D pipeline: matrix transforms, perspective projection, backface culling, depth sorting, and scanline polygon rasterization, all in QBasic.
+The things the player directly interacts with — ships, asteroids, pickups — are true 3D-modeled geometry, rendered with no GPU access (QB64-PE's `SCREEN`/`_NEWIMAGE` is a plain 2D pixel buffer). `src/3d/` is a from-scratch software 3D pipeline for exactly that: matrix transforms, perspective projection, backface culling, depth sorting, and scanline polygon rasterization, all in QBasic.
+
+Not everything on screen goes through this pipeline. Planets are 2D sprite images (`assets/planet-*.png`), not modeled geometry, and the starfield backdrop (`starfield.bas`) is a parallax effect — scrolling points at different speeds to fake depth — rather than a true 3D environment. Only the objects the player actually pilots, shoots, and collides with are real 3D meshes.
 
 `src/engine3d.bi` is the include manifest — `$INCLUDE` this one file (as `sss.bas` does) and it pulls in every module below in the right dependency order:
 
