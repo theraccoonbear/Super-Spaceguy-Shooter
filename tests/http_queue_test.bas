@@ -69,7 +69,7 @@ End Function
 Dim hqBaseUrl As String : hqBaseUrl = LTrim$(RTrim$(COMMAND$))
 If Len(hqBaseUrl) = 0 Then
     Print "Usage: http_queue_test http://127.0.0.1:PORT"
-    End 1
+    System 1
 End If
 
 Dim hqKey As String : hqKey = "mock-key"   ' mock ignores auth
@@ -238,5 +238,4 @@ Print ""
 Dim hqTotal As Integer : hqTotal = hqPass + hqFail
 Print "=== " + LTrim$(Str$(hqTotal)) + " tests: " + LTrim$(Str$(hqPass)) _
     + " passed, " + LTrim$(Str$(hqFail)) + " failed ==="
-If hqFail > 0 Then End 1
-End
+If hqFail > 0 Then System 1 Else System 0

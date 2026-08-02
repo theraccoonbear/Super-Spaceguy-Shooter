@@ -53,18 +53,25 @@ SEQ_Load _EMBEDDED$("SEQTXT")
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 CLI_Parse
 
-' Probe /dev/tty once at startup; DBG_Print and GTEXT_Log check this flag.
-' Silently skips terminal output when launched without a controlling terminal
-' (e.g. double-click from a GUI file manager) instead of popping error dialogs.
-DIM dbgTtyProbe AS INTEGER : dbgTtyProbe = FREEFILE
-ON ERROR GOTO dbgTtyFail
-OPEN "/dev/tty" FOR APPEND AS #dbgTtyProbe : CLOSE #dbgTtyProbe
-ON ERROR GOTO 0
-dbgTtyOK = -1
-GOTO dbgTtyDone
-dbgTtyFail:
-ON ERROR GOTO 0
-dbgTtyDone:
+' Enable debug/diagnostic output where possible; DBG_Print and GTEXT_Log check dbgTtyOK.
+' Windows: DBG_InitTty (src/sys/debug.bas) gates on --debug via $CONSOLE.
+' Unix: probe for a controlling terminal (/dev/tty), staying silent when launched
+'   without one (e.g. double-click from a GUI file manager) instead of popping
+'   error dialogs. Stays inline here rather than in a SUB -- QB64-PE rejects this
+'   ON ERROR GOTO / label pattern ("Common label within a SUB/FUNCTION") in a SUB.
+$IF WIN THEN
+    DBG_InitTty
+$ELSE
+    DIM dbgTtyProbe AS INTEGER : dbgTtyProbe = FREEFILE
+    ON ERROR GOTO dbgTtyFail
+    OPEN "/dev/tty" FOR APPEND AS #dbgTtyProbe : CLOSE #dbgTtyProbe
+    ON ERROR GOTO 0
+    dbgTtyOK = -1
+    GOTO dbgTtyDone
+    dbgTtyFail:
+    ON ERROR GOTO 0
+    dbgTtyDone:
+$END IF
 
 ' --- screen ---
 scrW = 320 : scrH = 240
