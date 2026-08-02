@@ -20,7 +20,7 @@ It runs natively on Linux, macOS, and Windows as a single compiled binary with n
 
 - Full intro-to-credits scene sequence: crawl → cutscene → title → six stages → outro, driven by a data-defined [scene sequencer](#architecture)
 - Combat with projectiles, collision, hit effects, and wave-based enemy spawning, plus three boss fights
-- Dynamic starfield and 3D environment rendering
+- Parallax starfield backdrop, with true 3D-modeled ships, asteroids, and pickups (planets are 2D sprites)
 - Fully procedural audio: music, sound effects, and synthesized speech — no audio files
 - Persistent settings (music/SFX/speech/narration volumes, telemetry consent, player callsign)
 - Optional anonymous gameplay telemetry and an online leaderboard (opt-in, disabled unless a backend is configured)
@@ -98,7 +98,7 @@ This is a from-scratch game engine written in QBasic. No game framework, no grap
 
 ### Software 3D rendering pipeline
 
-The renderer lives under `src/3d/` (`mesh.bas`, `poly.bas`, `matrix.bas`, `obj.bas`, `camera.bas`, `object.bas`, `scene.bas`, `collision.bas`, `starfield.bas`). It loads a custom text-based mesh format (`assets/models.e3d`, convertible from Wavefront OBJ via `obj2e3d.bas`) at startup, applies 4×4 matrix transforms (translation, rotation, scale) for each object each frame, projects vertices through a perspective camera, and rasterizes filled polygons directly to an offscreen buffer. Backface culling and a per-face depth sort keep overdraw reasonable. There is no GPU involvement — every pixel is computed by the CPU. See [`src/engine3d.md`](src/engine3d.md).
+The renderer lives under `src/3d/` (`mesh.bas`, `poly.bas`, `matrix.bas`, `obj.bas`, `camera.bas`, `object.bas`, `scene.bas`, `collision.bas`). It loads a custom text-based mesh format (`assets/models.e3d`, convertible from Wavefront OBJ via `obj2e3d.bas`) at startup, applies 4×4 matrix transforms (translation, rotation, scale) for each object each frame, projects vertices through a perspective camera, and rasterizes filled polygons directly to an offscreen buffer. Backface culling and a per-face depth sort keep overdraw reasonable. There is no GPU involvement — every pixel is computed by the CPU. This true 3D pipeline is used for the things the player directly interacts with — ships, asteroids, pickups; planets are 2D sprites and the background is a parallax starfield (`starfield.bas`), not modeled geometry. See [`src/engine3d.md`](src/engine3d.md).
 
 ### Procedural sound synthesis and software mixer
 
