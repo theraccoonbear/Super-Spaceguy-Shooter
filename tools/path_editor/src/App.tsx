@@ -10,6 +10,7 @@ import { SideView }  from './views/SideView'
 import { FrontView } from './views/FrontView'
 import { PerspView } from './views/PerspView'
 import { IOPanel }   from './io/IOPanel'
+import { linked as orthoLinked, toggleLinked } from './views/orthoCamera'
 
 // ── Animation loop ──────────────────────────────────────────────────────
 function useAnimLoop() {
@@ -47,7 +48,7 @@ function useAnimLoop() {
 }
 
 // ── Toolbar ─────────────────────────────────────────────────────────────
-function Toolbar() {
+function Toolbar({ isLinked, onToggleLinked }: { isLinked: boolean; onToggleLinked: () => void }) {
   const { path, playing, patchPath, setPlaying, setAnimT } = useStore()
 
   return (
@@ -118,6 +119,17 @@ function Toolbar() {
           {playing ? '■ Stop' : '▶ Play'}
         </button>
         <button className="icon" title="Reset" onClick={() => { setPlaying(false); setAnimT(0) }}>↺</button>
+      </div>
+      <div className="tb-sep" />
+
+      <div className="tb-group">
+        <button
+          className={isLinked ? 'link-btn linked' : 'link-btn'}
+          title="Link ortho pan/zoom (L) — all three views stay in sync"
+          onClick={onToggleLinked}
+        >
+          {isLinked ? '⊞ LINKED' : '⊟ FREE'}
+        </button>
       </div>
     </div>
   )
@@ -206,9 +218,21 @@ function StatusBar() {
 export function App() {
   useAnimLoop()
 
+  const [isLinked, setIsLinked] = useState(orthoLinked)
+
+  const handleToggleLinked = useCallback(() => {
+    setIsLinked(toggleLinked())
+  }, [])
+
+  const onRootKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Don't intercept L when an input is focused
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+    if (e.key === 'l' || e.key === 'L') handleToggleLinked()
+  }, [handleToggleLinked])
+
   return (
-    <div className="app">
-      <Toolbar />
+    <div className="app" onKeyDown={onRootKeyDown} tabIndex={-1} style={{ outline: 'none' }}>
+      <Toolbar isLinked={isLinked} onToggleLinked={handleToggleLinked} />
       <div className="workspace">
         <div className="view-cell">
           <div className="view-label">TOP · XZ</div>
