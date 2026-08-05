@@ -66,3 +66,13 @@ Never tell the user a task is done while CI is still running or red. Silence is 
     - The plan expresses any concerns or pushback if the user is going against best practices or otherwise potentially painting themself in a corner
 - Once a plan is approved by the user, you can proceed
 - Other bugs or feature ideas that arise during coding should get a GitHub issue created for them
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `theraccoonbear/Super-Spaceguy-Shooter` (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at repo root is the primary orientation document — load it at the start of any session touching game code. ADRs in `docs/adr/`. See `docs/agents/domain.md`.
