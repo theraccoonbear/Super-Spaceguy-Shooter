@@ -148,7 +148,7 @@ button.icon { padding: 3px 6px; }
 /* ── Workspace ─────────────────────────────────────────────────────────── */
 .workspace {
   display: grid;
-  grid-template-columns: 1fr 1fr 220px;
+  grid-template-columns: 1fr 1fr 1fr 220px;
   grid-template-rows: 1fr 1fr;
   gap: 1px;
   background: var(--border);
@@ -194,13 +194,36 @@ button.icon { padding: 3px 6px; }
 /* ── Sidebar ───────────────────────────────────────────────────────────── */
 .sidebar {
   grid-row: 1 / 3;
-  grid-column: 3;
+  grid-column: 4;
   background: var(--panel);
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
+.sidebar-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 7px 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.sidebar-tab:hover { color: var(--text); background: var(--panel2); }
+.sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
+.sidebar-tab .count { color: var(--accent); margin-left: 4px; }
 
 .sidebar-header {
   padding: 8px 10px 6px;
@@ -304,6 +327,8 @@ button.icon { padding: 3px 6px; }
   flex-direction: column;
   gap: 0;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .io-section {
