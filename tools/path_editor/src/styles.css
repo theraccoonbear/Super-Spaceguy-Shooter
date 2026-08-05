@@ -376,5 +376,17 @@ textarea.import-area:focus { border-color: var(--path); }
 .status-bar.dirty { color: var(--sel); }
 .status-bar.saved { color: var(--ok); }
 
+/* ── Linked-views toggle ───────────────────────────────────────────────── */
+.link-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.link-btn.linked {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, var(--panel2));
+}
+
 /* ── Scrollbar global ──────────────────────────────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }

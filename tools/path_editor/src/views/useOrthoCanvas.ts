@@ -1,23 +1,17 @@
-// Shared logic for the two orthographic canvas views (Top XZ, Side XY).
-// Each view has its own pan/scale camera state, stored in a ref to avoid
-// React re-renders on every mouse move.
+// Shared canvas management for orthographic views.
+// Camera state has moved to orthoCamera.ts; this hook only manages the
+// canvas element, DPI scaling, resize observation, and registration with
+// the shared redraw notification system so linked-pan/zoom works.
 
 import { useRef, useEffect, useCallback } from 'react'
-
-export interface OrthoCamera {
-  panX:  number
-  panY:  number
-  scale: number
-}
+import { registerRedraw } from './orthoCamera'
 
 export function useOrthoCanvas(
-  drawCallback: (ctx: CanvasRenderingContext2D, w: number, h: number, cam: OrthoCamera) => void,
+  drawCallback: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
   deps: unknown[],
 ) {
-  const cvRef  = useRef<HTMLCanvasElement>(null)
-  const camRef = useRef<OrthoCamera>({ panX: 0, panY: 0, scale: 12 })
+  const cvRef = useRef<HTMLCanvasElement>(null)
 
-  // Memoized draw function. Handles DPI scaling and canvas resize.
   const draw = useCallback(() => {
     const cv = cvRef.current
     if (!cv) return
@@ -26,7 +20,6 @@ export function useOrthoCanvas(
     const w = rect.width, h = rect.height
     if (w === 0 || h === 0) return
 
-    // Only reallocate canvas backing store when size actually changes
     const needW = Math.round(w * dpr)
     const needH = Math.round(h * dpr)
     if (cv.width !== needW || cv.height !== needH) {
@@ -36,14 +29,14 @@ export function useOrthoCanvas(
 
     const ctx = cv.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawCallback(ctx, w, h, camRef.current)
+    drawCallback(ctx, w, h)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 
-  // Redraw whenever deps change
+  // Redraw when dependencies change
   useEffect(() => { draw() }, [draw])
 
-  // Redraw on resize
+  // Redraw on canvas resize
   useEffect(() => {
     const cv = cvRef.current
     if (!cv) return
@@ -52,5 +45,8 @@ export function useOrthoCanvas(
     return () => ro.disconnect()
   }, [draw])
 
-  return { cvRef, camRef, draw }
+  // Register with the shared camera so notifyAll() redraws this view
+  useEffect(() => registerRedraw(draw), [draw])
+
+  return { cvRef, draw }
 }
