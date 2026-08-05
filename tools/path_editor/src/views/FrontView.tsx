@@ -3,7 +3,7 @@
 // Dragging moves waypoints in Y and Z; X inherited from selected wp on click-to-add.
 
 import { useRef, useCallback } from 'react'
-import { useStore } from '../store'
+import { useStore, PathData } from '../store'
 import { buildSpline, evalAt, tangentAt, actualPos } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
@@ -58,10 +58,44 @@ function drawShipDot(ctx: CanvasRenderingContext2D, sx: number, sy: number, colo
 export function FrontView() {
   const { path, selected, playing, animT } = useStore()
 
+  const ghostRef = useRef<{ path: PathData; wpIdx: number } | null>(null)
+
   const draw = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number) => {
     const { scale, worldPan: pan } = getCam(VIEW)
     ctx.clearRect(0, 0, w, h)
     drawGrid(ctx, w, h, scale, pan)
+
+    // ── Ghost ────────────────────────────────────────────────────────────
+    if (ghostRef.current !== null) {
+      const { path: gp, wpIdx } = ghostRef.current
+      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, roll: gp.roll, standoff: gp.standoff })
+      if (gSamples.length > 1) {
+        ctx.save()
+        ctx.globalAlpha = 0.25; ctx.setLineDash([5, 4])
+        ctx.beginPath(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5
+        gSamples.forEach(({ wire }, i) => {
+          const { sx, sy } = w2s(wire.z, wire.y, w, h, scale, pan)
+          i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
+        })
+        ctx.stroke(); ctx.restore()
+      }
+      const gWp = gp.wps[wpIdx]
+      const { sx: gx, sy: gy } = w2s(gWp.z, gWp.y, w, h, scale, pan)
+      const cur = path.wps[wpIdx]
+      if (cur) {
+        const { sx: cx, sy: cy } = w2s(cur.z, cur.y, w, h, scale, pan)
+        ctx.save()
+        ctx.globalAlpha = 0.4; ctx.setLineDash([2, 3])
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1
+        ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(cx, cy); ctx.stroke()
+        ctx.restore()
+      }
+      ctx.save()
+      ctx.globalAlpha = 0.35; ctx.setLineDash([3, 3])
+      ctx.beginPath(); ctx.arc(gx, gy, 5, 0, Math.PI * 2)
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.restore()
+    }
 
     const samples = buildSpline({ wps: path.wps, closed: path.closed, roll: path.roll, standoff: path.standoff })
 
@@ -164,6 +198,8 @@ export function FrontView() {
       useStore.getState().setSelected(idx)
       const wp = useStore.getState().path.wps[idx]
       drag.current = { type: 'wp', wpIdx: idx, startSx: sx, startSy: sy, startWz: wp.z, startWy: wp.y }
+      const p = useStore.getState().path
+      ghostRef.current = { path: { ...p, wps: [...p.wps] }, wpIdx: idx }
     } else {
       drag.current = { type: 'pan', startSx: sx, startSy: sy, startPan: { ...cam.worldPan }, startScale: cam.scale }
     }
@@ -210,6 +246,7 @@ export function FrontView() {
 
   const onMouseUp = useCallback((e: React.MouseEvent) => {
     if (!drag.current) return
+    if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
     if (!hasMoved.current && drag.current.type === 'pan') {
       const rect = getRect()
       const sx = e.clientX - rect.left, sy = e.clientY - rect.top
@@ -247,7 +284,11 @@ export function FrontView() {
   return (
     <canvas ref={cvRef} style={{ cursor: 'crosshair' }} tabIndex={0}
       onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
-      onMouseLeave={() => { drag.current = null; if (cvRef.current) cvRef.current.style.cursor = 'crosshair' }}
+      onMouseLeave={() => {
+        drag.current = null
+        if (cvRef.current) cvRef.current.style.cursor = 'crosshair'
+        if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
+      }}
       onWheel={onWheel} onKeyDown={onKeyDown}
       onContextMenu={(e) => e.preventDefault()} />
   )
