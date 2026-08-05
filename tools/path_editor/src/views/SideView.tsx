@@ -190,11 +190,23 @@ export function SideView() {
       const { startWx, startWy, startSx, startSy, wpIdx } = drag.current
       const { scale } = getCam(VIEW)
       const wps = useStore.getState().path.wps
-      useStore.getState().setWp(wpIdx, {
-        ...wps[wpIdx],
-        x: startWx + (sx - startSx) / scale,
-        y: startWy - (sy - startSy) / scale,
-      })
+      const dx = sx - startSx, dy = sy - startSy
+      const cv = cvRef.current
+      if (e.shiftKey) {
+        const lockH = Math.abs(dx) >= Math.abs(dy)
+        if (cv) cv.style.cursor = lockH ? 'ew-resize' : 'ns-resize'
+        useStore.getState().setWp(wpIdx, {
+          ...wps[wpIdx],
+          ...(lockH ? { x: startWx + dx / scale } : { y: startWy - dy / scale }),
+        })
+      } else {
+        if (cv) cv.style.cursor = 'crosshair'
+        useStore.getState().setWp(wpIdx, {
+          ...wps[wpIdx],
+          x: startWx + dx / scale,
+          y: startWy - dy / scale,
+        })
+      }
     }
   }, [])
 
@@ -236,7 +248,7 @@ export function SideView() {
   return (
     <canvas ref={cvRef} style={{ cursor: 'crosshair' }} tabIndex={0}
       onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
-      onMouseLeave={() => { drag.current = null }}
+      onMouseLeave={() => { drag.current = null; if (cvRef.current) cvRef.current.style.cursor = 'crosshair' }}
       onWheel={onWheel} onKeyDown={onKeyDown}
       onContextMenu={(e) => e.preventDefault()} />
   )
