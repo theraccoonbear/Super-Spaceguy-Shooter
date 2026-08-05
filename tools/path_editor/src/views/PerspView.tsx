@@ -7,7 +7,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
 import { buildSpline, evalAt, tangentAt, actualPos, shipFacing, makeFrame } from '../math/spline'
-import { v3 } from '../math/vec3'
+
 
 // ── Axis colours (standard: red X, green Y, blue Z) ────────────────────
 const AXIS_X = 0xef4444
@@ -388,7 +388,7 @@ export function PerspView() {
 
     if (!playing) { refs.shipGroup.visible = false; return }
 
-    const nSegs  = path.wps.length - 1
+    const nSegs  = path.closed ? path.wps.length : path.wps.length - 1
     const wire   = evalAt(path.wps, animT, path.closed)
     const tan    = tangentAt(path.wps, animT, path.closed)
     const frac   = animT / nSegs
