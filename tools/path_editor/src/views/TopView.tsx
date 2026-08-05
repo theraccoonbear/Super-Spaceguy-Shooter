@@ -192,11 +192,24 @@ export function TopView() {
       const { startWx, startWz, startSx, startSy, wpIdx } = drag.current
       const { scale } = getCam(VIEW)
       const wps = useStore.getState().path.wps
-      useStore.getState().setWp(wpIdx, {
-        ...wps[wpIdx],
-        x: startWx - (sy - startSy) / scale,
-        z: startWz + (sx - startSx) / scale,
-      })
+      const dx = sx - startSx, dy = sy - startSy
+      const cv = cvRef.current
+      if (e.shiftKey) {
+        // Shift: constrain to dominant axis (total displacement from drag start).
+        const lockH = Math.abs(dx) >= Math.abs(dy)
+        if (cv) cv.style.cursor = lockH ? 'ew-resize' : 'ns-resize'
+        useStore.getState().setWp(wpIdx, {
+          ...wps[wpIdx],
+          ...(lockH ? { z: startWz + dx / scale } : { x: startWx - dy / scale }),
+        })
+      } else {
+        if (cv) cv.style.cursor = 'crosshair'
+        useStore.getState().setWp(wpIdx, {
+          ...wps[wpIdx],
+          x: startWx - dy / scale,
+          z: startWz + dx / scale,
+        })
+      }
     }
   }, [])
 
@@ -240,7 +253,7 @@ export function TopView() {
   return (
     <canvas ref={cvRef} style={{ cursor: 'crosshair' }} tabIndex={0}
       onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
-      onMouseLeave={() => { drag.current = null }}
+      onMouseLeave={() => { drag.current = null; if (cvRef.current) cvRef.current.style.cursor = 'crosshair' }}
       onWheel={onWheel} onKeyDown={onKeyDown}
       onContextMenu={(e) => e.preventDefault()} />
   )
