@@ -8,7 +8,7 @@ export interface PathData {
   speed:    number
   orient:   OrientMode
   target:   Vec3      // fixed look-at point (used when orient='target')
-  closed:   boolean   // wps[n-1] === wps[0]; last waypoint duplicates first
+  closed:   boolean   // when true, last segment wraps back to wps[0] (no duplicate endpoint)
   roll:     number    // degrees per full loop (360 = one barrel roll)
   standoff: number    // perpendicular distance from wire (world units)
   wps:      Vec3[]
@@ -48,14 +48,27 @@ const DEFAULT_PATH: PathData = {
     { x: -8, y:  0, z:  5 },
     { x: -5, y: -1, z:  2 },
     { x:  8, y:  0, z:  2 },
-    { x: 20, y:  0, z:  0 },
   ],
+}
+
+// Strip duplicate endpoint from old-format closed paths (wps[last] === wps[0]).
+// Old format stored a copy of wps[0] as the last entry; new format uses structural closure.
+function normalizePath(p: PathData): PathData {
+  if (!p.closed || p.wps.length < 2) return p
+  const first = p.wps[0], last = p.wps[p.wps.length - 1]
+  const eps = 0.001
+  if (Math.abs(first.x - last.x) < eps &&
+      Math.abs(first.y - last.y) < eps &&
+      Math.abs(first.z - last.z) < eps) {
+    return { ...p, wps: p.wps.slice(0, -1) }
+  }
+  return p
 }
 
 function load(): PathData {
   try {
     const raw = localStorage.getItem('pe_session')
-    if (raw) return JSON.parse(raw) as PathData
+    if (raw) return normalizePath(JSON.parse(raw) as PathData)
   } catch { /* ignore */ }
   return DEFAULT_PATH
 }
@@ -72,12 +85,14 @@ export const useStore = create<EditorState>((set) => ({
   status:   'session restored',
 
   setPath: (p) => {
-    save(p)
-    set({ path: p, status: 'loaded' })
+    const path = normalizePath(p)
+    save(path)
+    set({ path, status: 'loaded' })
   },
 
   patchPath: (key, value) => set((s) => {
-    const path = { ...s.path, [key]: value }
+    let path: PathData = { ...s.path, [key]: value }
+    if (key === 'closed') path = normalizePath(path)
     save(path)
     return { path, status: 'modified' }
   }),

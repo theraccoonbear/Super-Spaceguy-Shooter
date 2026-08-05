@@ -4,7 +4,7 @@
 
 import { useRef, useCallback } from 'react'
 import { useStore } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, shipFacing } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
 

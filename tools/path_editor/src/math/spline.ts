@@ -2,16 +2,17 @@ import { Vec3, v3 } from './vec3'
 
 // ── Ghost index wrapping ────────────────────────────────────────────────
 // Mirrors the game's behavior.bas logic exactly.
-// For a closed path: wps[n-1] === wps[0] (duplicate last = first).
+// For a closed path: true modular wrap — no duplicate endpoint in wps[].
 // For an open path: clamp to endpoints.
 function ghosts(wps: Vec3[], seg: number, closed: boolean): [Vec3, Vec3, Vec3, Vec3] {
   const n = wps.length
   if (closed) {
-    let i0 = seg - 1
-    if (i0 < 0) i0 = n - 2
-    let i3 = seg + 2
-    if (i3 >= n) i3 = i3 - (n - 1)
-    return [wps[i0], wps[seg], wps[seg + 1], wps[i3]]
+    return [
+      wps[((seg - 1) % n + n) % n],
+      wps[seg % n],
+      wps[(seg + 1) % n],
+      wps[(seg + 2) % n],
+    ]
   }
   return [
     wps[Math.max(0, seg - 1)],
@@ -99,7 +100,7 @@ export function shipFacing(wirePos: Vec3, tangent: Vec3, orient: 'path' | 'targe
 
 // ── Public evaluation API ───────────────────────────────────────────────
 export function evalAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
-  const nSegs = wps.length - 1
+  const nSegs = closed ? wps.length : wps.length - 1
   const seg = Math.min(Math.floor(at), nSegs - 1)
   const t = at - seg
   const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
@@ -107,7 +108,7 @@ export function evalAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
 }
 
 export function tangentAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
-  const nSegs = wps.length - 1
+  const nSegs = closed ? wps.length : wps.length - 1
   const seg = Math.min(Math.floor(at), nSegs - 1)
   const t = at - seg
   const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
@@ -132,7 +133,7 @@ export interface SplineParams {
 
 export function buildSpline({ wps, closed, roll, standoff, stepsPerSeg = 32 }: SplineParams): SplineSample[] {
   if (wps.length < 2) return []
-  const nSegs = wps.length - 1
+  const nSegs = closed ? wps.length : wps.length - 1
   const samples: SplineSample[] = []
   for (let seg = 0; seg < nSegs; seg++) {
     const [p0, p1, p2, p3] = ghosts(wps, seg, closed)

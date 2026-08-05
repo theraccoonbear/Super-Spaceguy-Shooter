@@ -34,7 +34,7 @@ function useAnimLoop() {
       const dt    = Math.min(ts - lastTs, 50)
       lastTs      = ts
       const p     = pathRef.current
-      const nSegs = p.wps.length - 1
+      const nSegs = p.closed ? p.wps.length : p.wps.length - 1
       if (nSegs < 1) return
       const tan   = tangentAt(p.wps, animTRef.current, p.closed)
       const dT    = (p.speed / (v3.len(tan) || 1)) * (dt / 16.667)
