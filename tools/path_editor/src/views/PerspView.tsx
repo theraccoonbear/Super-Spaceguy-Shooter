@@ -75,20 +75,6 @@ function makeGizmoAxis(dir: THREE.Vector3, color: number, axis: AxisKey) {
   return { arrow, hit }
 }
 
-// Build the drag plane: contains the drag axis, faces the camera.
-function buildDragPlane(axisVec: THREE.Vector3, wpPos: THREE.Vector3, camPos: THREE.Vector3): THREE.Plane {
-  const toCamera = new THREE.Vector3().subVectors(camPos, wpPos).normalize()
-  // normal = axis × (toCamera × axis)  — perpendicular to axis, facing camera
-  const perp   = new THREE.Vector3().crossVectors(toCamera, axisVec)
-  const normal = new THREE.Vector3().crossVectors(axisVec, perp)
-  if (normal.lengthSq() < 1e-6) {
-    // Degenerate (camera nearly along axis) — fall back to world-up plane
-    normal.set(0, 1, 0)
-  } else {
-    normal.normalize()
-  }
-  return new THREE.Plane().setFromNormalAndCoplanarPoint(normal, wpPos)
-}
 
 function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
   return new THREE.Vector2(
@@ -195,32 +181,12 @@ export function PerspView() {
 
     const onPointerDown = (e: PointerEvent) => {
       if (!refsRef.current) return
-      const r   = refs
+      const r    = refs
       const rect = cv.getBoundingClientRect()
       const ndc  = getNDC(e, rect)
       r.raycaster.setFromCamera(ndc, r.camera)
 
-      // 1. Check gizmo handles first
-      if (r.gizmo.visible) {
-        const hits = r.raycaster.intersectObjects(r.gizmoHits, false)
-        if (hits.length > 0) {
-          e.stopPropagation()
-          r.controls.enabled = false
-          cv.setPointerCapture(e.pointerId)
-
-          const axis    = hits[0].object.userData.axis as AxisKey
-          const axisVec = new THREE.Vector3(axis==='x'?1:0, axis==='y'?1:0, axis==='z'?1:0)
-          const sel     = useStore.getState().selected
-          const wp      = useStore.getState().path.wps[sel]
-          const wpPos   = new THREE.Vector3(wp.x, wp.y, wp.z)
-          const plane   = buildDragPlane(axisVec, wpPos, r.camera.position)
-
-          r.drag = { wpIdx: sel, axis, axisVec, plane, originWp: wpPos, originIntersect: null }
-          return
-        }
-      }
-
-      // 2. Check waypoint spheres
+      // Check waypoint spheres for selection (no 3D drag — use ortho views to move nodes)
       const wpMeshes: THREE.Object3D[] = []
       r.wpGroup.traverse((o) => { if ((o as THREE.Mesh).isMesh) wpMeshes.push(o) })
       const wpHits = r.raycaster.intersectObjects(wpMeshes, false)
@@ -229,7 +195,7 @@ export function PerspView() {
         const idx = wpHits[0].object.userData.wpIdx as number
         useStore.getState().setSelected(idx)
       }
-      // 3. Otherwise let OrbitControls orbit
+      // Otherwise let OrbitControls orbit
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -287,12 +253,6 @@ export function PerspView() {
     // ── Render loop ───────────────────────────────────────────────────
     const render = () => {
       refs.raf = requestAnimationFrame(render)
-
-      // Keep gizmo scaled to constant apparent size
-      if (refs.gizmo.visible) {
-        const dist = refs.camera.position.distanceTo(refs.gizmo.position)
-        refs.gizmo.scale.setScalar(dist * 0.13)
-      }
 
       controls.update()
       renderer.render(scene, camera)
@@ -363,23 +323,9 @@ export function PerspView() {
       refs.targetMesh.position.set(path.target.x, path.target.y, path.target.z)
     }
 
-    // Gizmo — position at selected waypoint
-    if (selected >= 0 && selected < path.wps.length) {
-      const wp = path.wps[selected]
-      refs.gizmo.position.set(wp.x, wp.y, wp.z)
-      refs.gizmo.visible = true
-    } else {
-      refs.gizmo.visible = false
-    }
+    // Gizmo is not used for movement in 3D — use ortho views to move nodes.
+    refs.gizmo.visible = false
   }, [path, selected])
-
-  // Keep gizmo position in sync during live drag (store updates wps each move event)
-  useEffect(() => {
-    const refs = refsRef.current
-    if (!refs || !refs.drag || selected < 0) return
-    const wp = path.wps[selected]
-    if (wp) refs.gizmo.position.set(wp.x, wp.y, wp.z)
-  }, [path.wps, selected])
 
   // ── Update ship during animation ─────────────────────────────────────
   useEffect(() => {
