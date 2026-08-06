@@ -343,10 +343,12 @@ export function PerspView() {
     const { R, U } = makeFrame(facing)
 
     refs.shipGroup.position.set(ap.x, ap.y, ap.z)
+    // Cone tip is along local +X (ConeGeometry default +Y, rotated -90° around Z).
+    // makeBasis col-0 = where local X goes, so facing must be col-0.
     refs.shipGroup.setRotationFromMatrix(new THREE.Matrix4().makeBasis(
-      new THREE.Vector3(R.x, R.y, R.z),
-      new THREE.Vector3(U.x, U.y, U.z),
       new THREE.Vector3(facing.x, facing.y, facing.z),
+      new THREE.Vector3(U.x, U.y, U.z),
+      new THREE.Vector3(R.x, R.y, R.z),
     ))
     refs.shipGroup.visible = true
   }, [animT, playing, path])
