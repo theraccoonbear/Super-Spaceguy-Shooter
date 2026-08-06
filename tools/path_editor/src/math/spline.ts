@@ -66,6 +66,38 @@ export function makeFrame(tangent: Vec3): PathFrame {
   return { T, R, U }
 }
 
+// ── Rodrigues' rotation ─────────────────────────────────────────────────
+// Rotate vector v around unit axis k by an angle given by (cosA, sinA).
+function rotateAround(v: Vec3, k: Vec3, cosA: number, sinA: number): Vec3 {
+  const kxv = v3.cross(k, v)
+  const kdv = v3.dot(k, v)
+  return {
+    x: v.x * cosA + kxv.x * sinA + k.x * kdv * (1 - cosA),
+    y: v.y * cosA + kxv.y * sinA + k.y * kdv * (1 - cosA),
+    z: v.z * cosA + kxv.z * sinA + k.z * kdv * (1 - cosA),
+  }
+}
+
+// ── Parallel transport ──────────────────────────────────────────────────
+// Rotate frame so its tangent aligns with newT using the minimal rotation
+// that does not twist the frame.  Avoids the worldUp hard-switch in makeFrame.
+function transportFrame(frame: PathFrame, newT: Vec3): PathFrame {
+  const T1 = v3.norm(newT)
+  const axis = v3.cross(frame.T, T1)
+  const sinA = v3.len(axis)
+  if (sinA < 1e-8) {
+    // Tangents are parallel — no rotation needed (handles zero-curvature segments).
+    return { T: T1, R: frame.R, U: frame.U }
+  }
+  const cosA = Math.max(-1, Math.min(1, v3.dot(frame.T, T1)))
+  const k    = v3.scale(axis, 1 / sinA)
+  return {
+    T: T1,
+    R: rotateAround(frame.R, k, cosA, sinA),
+    U: rotateAround(frame.U, k, cosA, sinA),
+  }
+}
+
 // ── Standoff + roll offset ──────────────────────────────────────────────
 // Computes the actual ship position given a wire position, tangent, and
 // path fraction (0–1). Roll is in degrees per full loop; standoff is world units.
@@ -134,28 +166,78 @@ export interface SplineParams {
 export function buildSpline({ wps, closed, roll, standoff, stepsPerSeg = 32 }: SplineParams): SplineSample[] {
   if (wps.length < 2) return []
   const nSegs = closed ? wps.length : wps.length - 1
-  const samples: SplineSample[] = []
+
+  // ── Pass 1: collect wire positions and tangents ─────────────────────────
+  // For closed paths, skip the very last sub-step (t=1 of the last segment)
+  // because that position is the same wire as samples[0]; we append it explicitly below.
+  const rawWire: Vec3[]    = []
+  const rawTan:  Vec3[]    = []
+  const rawAt:   number[]  = []
   for (let seg = 0; seg < nSegs; seg++) {
     const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
-    // For closed paths, skip the final sub-step of the last segment (t=1, frac=1).
-    // That sub-step's wire position equals wps[0] (correct for the spline), but its
-    // roll angle is roll*π/180, which only matches frac=0's angle (0) when roll is a
-    // multiple of 360°.  Skipping it and appending samples[0] below closes both the
-    // wire and actual lines without a gap.
     const iMax = (closed && seg === nSegs - 1) ? stepsPerSeg - 1 : stepsPerSeg
     for (let i = 0; i <= iMax; i++) {
       const t = i / stepsPerSeg
-      const at = seg + t
-      const frac = at / nSegs
-      const wire = crEval(p0, p1, p2, p3, t)
-      const tangent = v3.norm(crTangent(p0, p1, p2, p3, t))
-      const ap = actualPos(wire, tangent, frac, roll, standoff)
-      samples.push({ wire, actual: ap, tangent, frac })
+      rawAt.push(seg + t)
+      rawWire.push(crEval(p0, p1, p2, p3, t))
+      rawTan.push(v3.norm(crTangent(p0, p1, p2, p3, t)))
     }
   }
-  // Explicitly close the loop: both the wire and actual lines return to their starting
-  // positions.  For roll=360° the seam is smooth; for other values a visible kink marks
-  // the seam — which is correct, since the actual path cannot close unless roll ≡ 0 (mod 360°).
+  const N = rawWire.length
+  if (N === 0) return []
+
+  // ── Pass 2: parallel-transport frames ──────────────────────────────────
+  // Each frame is rotated from the previous by the minimal rotation that aligns
+  // T_prev with T_cur.  This never flips R/U (unlike makeFrame's worldUp switch).
+  const frames: PathFrame[] = new Array(N)
+  frames[0] = makeFrame(rawTan[0])
+  for (let i = 1; i < N; i++) {
+    frames[i] = transportFrame(frames[i - 1], rawTan[i])
+  }
+
+  // ── Pass 3: holonomy correction for closed paths ────────────────────────
+  // Parallel transport accumulates a small twist after one full loop (holonomy).
+  // Measure it and distribute the cancellation linearly across all samples so
+  // that frames[0] and frames[N-1] are identical after correction.
+  // For roll=360° (one barrel roll) the seam then closes seamlessly.
+  let holonomy = 0
+  if (closed && N > 1) {
+    // Angle between transported R_last and initial R_0 in the tangent plane.
+    holonomy = Math.atan2(
+      v3.dot(frames[N - 1].R, frames[0].U),
+      v3.dot(frames[N - 1].R, frames[0].R),
+    )
+  }
+
+  // ── Pass 4: apply roll + holonomy correction → actual positions ─────────
+  const samples: SplineSample[] = []
+  for (let i = 0; i < N; i++) {
+    const wire    = rawWire[i]
+    const tangent = rawTan[i]
+    const frac    = rawAt[i] / nSegs
+    let actual: Vec3
+    if (standoff < 0.001) {
+      actual = wire
+    } else {
+      // Subtract accumulated holonomy linearly so the frame closes at the seam,
+      // then add the user-specified roll on top.
+      const corrAngle = -holonomy * frac
+      const corrCos = Math.cos(corrAngle), corrSin = Math.sin(corrAngle)
+      const T   = frames[i].T
+      const corrR = rotateAround(frames[i].R, T, corrCos, corrSin)
+      const corrU = rotateAround(frames[i].U, T, corrCos, corrSin)
+      const rollRad = frac * roll * (Math.PI / 180)
+      const cr = Math.cos(rollRad), sr = Math.sin(rollRad)
+      actual = {
+        x: wire.x + standoff * (cr * corrU.x + sr * corrR.x),
+        y: wire.y + standoff * (cr * corrU.y + sr * corrR.y),
+        z: wire.z + standoff * (cr * corrU.z + sr * corrR.z),
+      }
+    }
+    samples.push({ wire, actual, tangent, frac })
+  }
+
+  // Append samples[0] to close both the wire and actual lines for closed paths.
   if (closed && samples.length > 0) {
     samples.push({ ...samples[0] })
   }
