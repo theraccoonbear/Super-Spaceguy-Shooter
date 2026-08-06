@@ -1,7 +1,8 @@
 // 3D perspective view — Three.js + OrbitControls.
 // Waypoints are selectable via click; use ortho views to move nodes.
+// Follow mode: camera trails the ship; scroll adjusts distance.
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
@@ -29,6 +30,12 @@ interface SceneRefs {
   gizmo:      THREE.Group
   gizmoHits:  THREE.Mesh[]
   raf:        number
+  // Follow-cam state (mutated directly — not React state)
+  followMode: boolean
+  followDist: number
+  shipPos:    THREE.Vector3
+  shipFwd:    THREE.Vector3
+  shipUp:     THREE.Vector3
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -52,9 +59,8 @@ function makeTriMesh(
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }))
 }
 
-// Build the ship group: nose + port wing + starboard wing + dorsal fin.
+// Build the ship group: fuselage + nose + port wing + starboard wing + dorsal fin.
 // Local coordinate system: X = forward, Y = up, Z = right.
-// craftRoll rotates around X (forward), which banks Y toward Z.
 function buildShipGroup(): THREE.Group {
   const g = new THREE.Group()
 
@@ -85,6 +91,25 @@ function buildShipGroup(): THREE.Group {
   return g
 }
 
+// Scatter dark reference cubes so motion is perceptible in follow mode.
+// Deterministic LCG — same layout every mount.
+function buildBackground(scene: THREE.Scene) {
+  let seed = 0xdeadbeef
+  const rand = () => { seed = Math.imul(seed, 1664525) + 1013904223 >>> 0; return seed / 0xffffffff }
+  const rng  = (lo: number, hi: number) => lo + rand() * (hi - lo)
+  const COLORS = [0x1e293b, 0x1a1f2e, 0x1c1a2e, 0x1c2022, 0x1c2a1c, 0x241515]
+  for (let i = 0; i < 50; i++) {
+    const geo  = new THREE.BoxGeometry(rng(0.4, 5), rng(0.4, 5), rng(0.4, 5))
+    const col  = COLORS[Math.floor(rand() * COLORS.length)]
+    const wf   = rand() > 0.62   // ~38% wireframe
+    const mat  = new THREE.MeshBasicMaterial({ color: col, wireframe: wf })
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.set(rng(-40, 40), rng(-1, 18), rng(-40, 40))
+    mesh.rotation.set(rng(0, Math.PI * 2), rng(0, Math.PI * 2), rng(0, Math.PI * 2))
+    scene.add(mesh)
+  }
+}
+
 function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
   return new THREE.Vector2(
     ((e.clientX - rect.left) / rect.width)  *  2 - 1,
@@ -94,8 +119,9 @@ function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
 
 // ── Component ───────────────────────────────────────────────────────────
 export function PerspView() {
-  const mountRef = useRef<HTMLDivElement>(null)
-  const refsRef  = useRef<SceneRefs | null>(null)
+  const mountRef  = useRef<HTMLDivElement>(null)
+  const refsRef   = useRef<SceneRefs | null>(null)
+  const [followMode, setFollowMode] = useState(false)
 
   const { path, selected, playing, animT } = useStore()
 
@@ -127,6 +153,9 @@ export function PerspView() {
     addLine([-60,0,0],[60,0,0], 0x3f2020)
     addLine([0,-20,0],[0,20,0], 0x203f20)
     addLine([0,0,-60],[0,0,60], 0x20203f)
+
+    // Background reference geometry
+    buildBackground(scene)
 
     // Player marker
     scene.add(Object.assign(
@@ -167,6 +196,11 @@ export function PerspView() {
       renderer, scene, camera, controls, raycaster,
       wireLine, actualLine, wpGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
+      followMode: false,
+      followDist: 8,
+      shipPos: new THREE.Vector3(),
+      shipFwd: new THREE.Vector3(1, 0, 0),
+      shipUp:  new THREE.Vector3(0, 1, 0),
     }
     refsRef.current = refs
 
@@ -186,8 +220,17 @@ export function PerspView() {
         useStore.getState().setSelected(idx)
       }
     }
-
     cv.addEventListener('pointerdown', onPointerDown)
+
+    // Scroll: adjust follow distance when in follow mode;
+    // otherwise orbit controls handles the wheel event natively.
+    const onWheel = (e: WheelEvent) => {
+      if (!refs.followMode) return
+      e.preventDefault()
+      const factor = e.deltaY > 0 ? 1.12 : 0.89
+      refs.followDist = Math.max(1.5, Math.min(40, refs.followDist * factor))
+    }
+    cv.addEventListener('wheel', onWheel, { passive: false })
 
     // ── Resize ────────────────────────────────────────────────────────
     const resize = () => {
@@ -203,7 +246,21 @@ export function PerspView() {
     // ── Render loop ───────────────────────────────────────────────────
     const render = () => {
       refs.raf = requestAnimationFrame(render)
-      controls.update()
+      if (refs.followMode && refs.shipGroup.visible) {
+        // Chase cam: sit behind + slightly above ship, look slightly ahead
+        refs.camera.position
+          .copy(refs.shipPos)
+          .addScaledVector(refs.shipFwd, -refs.followDist)
+          .addScaledVector(refs.shipUp,   refs.followDist * 0.22)
+        refs.camera.lookAt(
+          refs.shipPos.x + refs.shipFwd.x * 2,
+          refs.shipPos.y + refs.shipFwd.y * 2,
+          refs.shipPos.z + refs.shipFwd.z * 2,
+        )
+      } else if (!refs.followMode) {
+        controls.update()
+      }
+      // Follow mode + ship not visible: camera stays at last position; no controls.update()
       renderer.render(scene, camera)
     }
     render()
@@ -212,6 +269,7 @@ export function PerspView() {
       cancelAnimationFrame(refs.raf)
       ro.disconnect()
       cv.removeEventListener('pointerdown', onPointerDown)
+      cv.removeEventListener('wheel', onWheel)
       renderer.dispose()
       if (mount.contains(cv)) mount.removeChild(cv)
     }
@@ -277,19 +335,18 @@ export function PerspView() {
     if (!refs || path.wps.length < 2) return
     if (!playing) { refs.shipGroup.visible = false; return }
 
-    const nSegs      = path.closed ? path.wps.length : path.wps.length - 1
-    const wire       = evalAt(path.wps, animT, path.closed)
-    const tan        = tangentAt(path.wps, animT, path.closed)
+    const nSegs        = path.closed ? path.wps.length : path.wps.length - 1
+    const wire         = evalAt(path.wps, animT, path.closed)
+    const tan          = tangentAt(path.wps, animT, path.closed)
     const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
     const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
-    const ap         = actualPos(wire, tan, pathRollDeg, path.standoff)
-    const facing     = shipFacing(ap, tan, path.orient, path.target)
-    const { R, U }   = makeFrame(facing)
+    const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
+    const facing       = shipFacing(ap, tan, path.orient, path.target)
+    const { R, U }     = makeFrame(facing)
 
     refs.shipGroup.position.set(ap.x, ap.y, ap.z)
 
     // Apply craftRoll: rotate U and R around the forward axis (facing).
-    // Positive craftRoll banks the dorsal fin from +Y toward +Z (right-roll).
     const crRad = craftRollDeg * (Math.PI / 180)
     const crCos = Math.cos(crRad), crSin = Math.sin(crRad)
     const rolledU = {
@@ -311,9 +368,35 @@ export function PerspView() {
     ))
     refs.shipGroup.visible = true
 
-    // Suppress unused-variable warning; nSegs used to guard closed-path bounds above.
+    // Store ship state so the follow-cam render loop can read it.
+    refs.shipPos.set(ap.x, ap.y, ap.z)
+    refs.shipFwd.set(facing.x, facing.y, facing.z)
+    refs.shipUp.set(rolledU.x, rolledU.y, rolledU.z)
+
     void nSegs
   }, [animT, playing, path])
 
-  return <div ref={mountRef} className="three-mount" />
+  // ── Follow-mode toggle ────────────────────────────────────────────────
+  const toggleFollow = useCallback(() => {
+    const refs = refsRef.current
+    if (!refs) return
+    const next = !refs.followMode
+    refs.followMode = next
+    refs.controls.enabled = !next  // disable orbit controls while following
+    setFollowMode(next)
+  }, [])
+
+  return (
+    <div style={{ position: 'absolute', inset: 0 }}>
+      <div ref={mountRef} className="three-mount" />
+      <button
+        className={followMode ? 'primary' : ''}
+        onClick={toggleFollow}
+        title="Toggle follow-cam — camera chases the ship; scroll to adjust distance"
+        style={{ position: 'absolute', top: 22, right: 6, zIndex: 3, fontSize: 10 }}
+      >
+        {followMode ? '⊙ FOLLOW' : '⊙ ORBIT'}
+      </button>
+    </div>
+  )
 }
