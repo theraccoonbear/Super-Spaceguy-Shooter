@@ -137,7 +137,13 @@ export function buildSpline({ wps, closed, roll, standoff, stepsPerSeg = 32 }: S
   const samples: SplineSample[] = []
   for (let seg = 0; seg < nSegs; seg++) {
     const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
-    for (let i = 0; i <= stepsPerSeg; i++) {
+    // For closed paths, skip the final sub-step of the last segment (t=1, frac=1).
+    // That sub-step's wire position equals wps[0] (correct for the spline), but its
+    // roll angle is roll*π/180, which only matches frac=0's angle (0) when roll is a
+    // multiple of 360°.  Skipping it and appending samples[0] below closes both the
+    // wire and actual lines without a gap.
+    const iMax = (closed && seg === nSegs - 1) ? stepsPerSeg - 1 : stepsPerSeg
+    for (let i = 0; i <= iMax; i++) {
       const t = i / stepsPerSeg
       const at = seg + t
       const frac = at / nSegs
@@ -146,6 +152,12 @@ export function buildSpline({ wps, closed, roll, standoff, stepsPerSeg = 32 }: S
       const ap = actualPos(wire, tangent, frac, roll, standoff)
       samples.push({ wire, actual: ap, tangent, frac })
     }
+  }
+  // Explicitly close the loop: both the wire and actual lines return to their starting
+  // positions.  For roll=360° the seam is smooth; for other values a visible kink marks
+  // the seam — which is correct, since the actual path cannot close unless roll ≡ 0 (mod 360°).
+  if (closed && samples.length > 0) {
+    samples.push({ ...samples[0] })
   }
   return samples
 }

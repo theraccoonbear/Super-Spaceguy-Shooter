@@ -146,7 +146,7 @@ export function SideView() {
     })
 
     if (playing && path.wps.length >= 2) {
-      const nSegs = path.wps.length - 1
+      const nSegs = path.closed ? path.wps.length : path.wps.length - 1
       const wire   = evalAt(path.wps, animT, path.closed)
       const tan    = tangentAt(path.wps, animT, path.closed)
       const frac   = animT / nSegs
