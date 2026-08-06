@@ -38,9 +38,18 @@ Sub MNV_Load(mnvlName As String)
     Dim mnvldHdr As String, mnvldRest As String
     Dim mnvldSp As Integer
     Dim mnvldCapture As Integer
+    Dim mnvldOrV As String   ' value side of orient= key
+    Dim mnvldJ As Integer    ' roll-array clear loop counter
 
     bsmWpCount   = 0
     bsmFlySpd    = 0.025     ' fallback if speed= line is missing
+    bsmClosed    = 0
+    bsmStandoff  = 0
+    bsmOrientMode = 0
+    bsmTargetX   = 0 : bsmTargetY = 0 : bsmTargetZ = 0
+    For mnvldJ = 0 To BSM_WP_MAX - 1
+        bsmPathRoll(mnvldJ) = 0 : bsmCraftRoll(mnvldJ) = 0
+    Next mnvldJ
     mnvldCapture = 0
     mnvldI       = 1
 
@@ -62,20 +71,67 @@ Sub MNV_Load(mnvlName As String)
 
         If mnvldCapture = 0 Then GoTo mnvldNext
 
+        ' ── Key=value lines ──────────────────────────────────────────────
         If LCase$(Left$(mnvldLine, 6)) = "speed=" Then
             bsmFlySpd = Val(Mid$(mnvldLine, 7))
             GoTo mnvldNext
         End If
 
+        If LCase$(Left$(mnvldLine, 9)) = "standoff=" Then
+            bsmStandoff = Val(Mid$(mnvldLine, 10))
+            GoTo mnvldNext
+        End If
+
+        If LCase$(Left$(mnvldLine, 7)) = "closed=" Then
+            bsmClosed = Val(Mid$(mnvldLine, 8))
+            GoTo mnvldNext
+        End If
+
+        If LCase$(Left$(mnvldLine, 7)) = "orient=" Then
+            mnvldOrV = Mid$(mnvldLine, 8)
+            If LCase$(Left$(mnvldOrV, 7)) = "target:" Then
+                bsmOrientMode = 1
+                mnvldRest = Mid$(mnvldOrV, 8)          ' "x,y,z"
+                mnvldSp   = InStr(mnvldRest, ",")
+                If mnvldSp > 0 Then
+                    bsmTargetX = Val(Left$(mnvldRest, mnvldSp))
+                    mnvldRest  = Mid$(mnvldRest, mnvldSp + 1)
+                    mnvldSp    = InStr(mnvldRest, ",")
+                    If mnvldSp > 0 Then
+                        bsmTargetY = Val(Left$(mnvldRest, mnvldSp))
+                        bsmTargetZ = Val(Mid$(mnvldRest, mnvldSp + 1))
+                    End If
+                End If
+            Else
+                bsmOrientMode = 0
+            End If
+            GoTo mnvldNext
+        End If
+
+        ' ── Waypoint line: X Y Z [pathRoll [craftRoll]] ─────────────────
         If bsmWpCount < BSM_WP_MAX Then
             mnvldSp = InStr(mnvldLine, " ")
             If mnvldSp > 0 Then
                 bsmWp(bsmWpCount).x = Val(Left$(mnvldLine, mnvldSp))
-                mnvldRest = LTrim$(Mid$(mnvldLine, mnvldSp))
+                mnvldRest = LTrim$(Mid$(mnvldLine, mnvldSp))  ' "Y Z [pR [cR]]"
                 mnvldSp   = InStr(mnvldRest, " ")
                 If mnvldSp > 0 Then
                     bsmWp(bsmWpCount).y = Val(Left$(mnvldRest, mnvldSp))
-                    bsmWp(bsmWpCount).z = Val(Mid$(mnvldRest, mnvldSp))
+                    mnvldRest = LTrim$(Mid$(mnvldRest, mnvldSp)) ' "Z [pR [cR]]"
+                    mnvldSp   = InStr(mnvldRest, " ")
+                    If mnvldSp > 0 Then
+                        bsmWp(bsmWpCount).z = Val(Left$(mnvldRest, mnvldSp))
+                        mnvldRest = LTrim$(Mid$(mnvldRest, mnvldSp)) ' "[pR [cR]]"
+                        mnvldSp   = InStr(mnvldRest, " ")
+                        If mnvldSp > 0 Then
+                            bsmPathRoll(bsmWpCount)  = Val(Left$(mnvldRest, mnvldSp))
+                            bsmCraftRoll(bsmWpCount) = Val(LTrim$(Mid$(mnvldRest, mnvldSp)))
+                        ElseIf Len(mnvldRest) > 0 Then
+                            bsmPathRoll(bsmWpCount) = Val(mnvldRest)
+                        End If
+                    Else
+                        bsmWp(bsmWpCount).z = Val(mnvldRest)  ' Z is last token
+                    End If
                     bsmWpCount = bsmWpCount + 1
                 End If
             End If
