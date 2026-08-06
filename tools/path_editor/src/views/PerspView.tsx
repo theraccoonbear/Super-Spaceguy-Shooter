@@ -8,10 +8,11 @@ import { useStore } from '../store'
 import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
 
 // ── Ship model colors ───────────────────────────────────────────────────
-const COL_NOSE  = 0xf97316   // orange  — body / nose
-const COL_PORT  = 0x22d3ee   // cyan    — port wing  (left,  −Z local)
-const COL_STAR  = 0xa3e635   // lime    — starboard  (right, +Z local)
-const COL_FIN   = 0xf472b6   // pink    — dorsal fin (top,   +Y local)
+const COL_NOSE  = 0xf97316   // orange — nose cone
+const COL_BODY  = 0x475569   // slate  — fuselage cylinder
+const COL_PORT  = 0x22d3ee   // cyan   — port wing  (left,  −Z local)
+const COL_STAR  = 0xa3e635   // lime   — starboard  (right, +Z local)
+const COL_FIN   = 0xf472b6   // pink   — dorsal fin (top,   +Y local)
 
 // ── Types ───────────────────────────────────────────────────────────────
 interface SceneRefs {
@@ -57,20 +58,29 @@ function makeTriMesh(
 function buildShipGroup(): THREE.Group {
   const g = new THREE.Group()
 
-  // Nose cone: ConeGeometry tip at +Y by default → rotate -90° Z so tip at +X.
-  const coneGeo = new THREE.ConeGeometry(0.12, 0.9, 6)
-  coneGeo.rotateZ(-Math.PI / 2)
-  g.add(new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: COL_NOSE })))
+  // Body cylinder: axis along X, x=-0.5 to x=+0.3 (radius 0.12).
+  // CylinderGeometry default axis is Y; rotateZ(-π/2) puts it along +X.
+  // Height 0.8, centered at x=0 after rotation → translate -0.1 → [-0.5, 0.3].
+  const bodyGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8)
+  bodyGeo.rotateZ(-Math.PI / 2)
+  bodyGeo.translate(-0.1, 0, 0)
+  g.add(new THREE.Mesh(bodyGeo, new THREE.MeshBasicMaterial({ color: COL_BODY })))
 
-  // Port wing (extends to -Z): swept delta triangle.
-  //   front-root, back-root, wing-tip
-  g.add(makeTriMesh([ 0.35, 0, -0.15], [-0.45, 0, -0.15], [-0.25, 0, -1.6], COL_PORT))
+  // Nose cone: tip at +X, base joins body front at x=+0.3 (radius 0.12).
+  // ConeGeometry height 0.6, centered at x=0 after rotation → translate +0.6 → base x=0.3, tip x=0.9.
+  const noseGeo = new THREE.ConeGeometry(0.12, 0.6, 8)
+  noseGeo.rotateZ(-Math.PI / 2)
+  noseGeo.translate(0.6, 0, 0)
+  g.add(new THREE.Mesh(noseGeo, new THREE.MeshBasicMaterial({ color: COL_NOSE })))
 
-  // Starboard wing (extends to +Z): mirror of port.
-  g.add(makeTriMesh([ 0.35, 0,  0.15], [-0.45, 0,  0.15], [-0.25, 0,  1.6], COL_STAR))
+  // Port wing (−Z): root from body surface, swept back to tip.
+  g.add(makeTriMesh([0.2, 0, -0.12], [-0.4, 0, -0.12], [-0.25, 0, -1.6], COL_PORT))
 
-  // Dorsal fin (extends to +Y): same sweep, vertical.
-  g.add(makeTriMesh([ 0.3, 0.14, 0], [-0.4, 0.14, 0], [-0.2, 1.3, 0], COL_FIN))
+  // Starboard wing (+Z): mirror.
+  g.add(makeTriMesh([0.2, 0,  0.12], [-0.4, 0,  0.12], [-0.25, 0,  1.6], COL_STAR))
+
+  // Dorsal fin (+Y): root at top of body, swept back and up.
+  g.add(makeTriMesh([0.2, 0.12, 0], [-0.4, 0.12, 0], [-0.2, 1.3, 0], COL_FIN))
 
   return g
 }
