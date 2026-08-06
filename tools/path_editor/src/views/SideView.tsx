@@ -4,9 +4,10 @@
 
 import { useRef, useCallback } from 'react'
 import { useStore, PathData } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
+import { drawShipModel, rollFrame } from './shipModel2D'
 
 const VIEW = 'side' as const
 
@@ -45,14 +46,6 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, scale: nu
   const { sx: bx0, sy: by0 } = w2s(0, -range, w, h, scale, pan)
   const { sx: bx1, sy: by1 } = w2s(0,  range, w, h, scale, pan)
   ctx.beginPath(); ctx.moveTo(bx0, by0); ctx.lineTo(bx1, by1); ctx.stroke()
-}
-
-function drawShipArrow(ctx: CanvasRenderingContext2D, sx: number, sy: number, fwdX: number, fwdY: number, color: string) {
-  const angle = Math.atan2(-fwdY, fwdX)
-  ctx.save(); ctx.translate(sx, sy); ctx.rotate(angle)
-  ctx.fillStyle = color
-  ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, 5); ctx.lineTo(-3, 0); ctx.lineTo(-5, -5); ctx.closePath()
-  ctx.fill(); ctx.restore()
 }
 
 // ── Component ───────────────────────────────────────────────────────────
@@ -146,13 +139,18 @@ export function SideView() {
     })
 
     if (playing && path.wps.length >= 2) {
-      const wire        = evalAt(path.wps, animT, path.closed)
-      const tan         = tangentAt(path.wps, animT, path.closed)
-      const pathRollDeg = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
-      const ap          = actualPos(wire, tan, pathRollDeg, path.standoff)
-      const facing      = shipFacing(ap, tan, path.orient, path.target)
-      const { sx, sy } = w2s(ap.x, ap.y, w, h, scale, pan)
-      drawShipArrow(ctx, sx, sy, facing.x, facing.y, '#f97316')
+      const wire         = evalAt(path.wps, animT, path.closed)
+      const tan          = tangentAt(path.wps, animT, path.closed)
+      const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
+      const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
+      const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
+      const facing       = shipFacing(ap, tan, path.orient, path.target)
+      const { R, U }     = makeFrame(facing)
+      const { rolledU, rolledR } = rollFrame(U, R, craftRollDeg)
+      drawShipModel(ctx, ap, facing, rolledU, rolledR, (wv) => {
+        const s = w2s(wv.x, wv.y, w, h, scale, pan)
+        return [s.sx, s.sy]
+      })
     }
 
     ctx.fillStyle = '#2a2a35'; ctx.font = '9px Courier New, monospace'
