@@ -41,6 +41,16 @@ Const BSM_WP_MAX = 128
 Dim Shared bsmWp(0 To BSM_WP_MAX - 1) As E3D_Coord
 Dim Shared bsmWpCount As Integer
 
+' ── extended path metadata (format v2 fields) ────────────────────────────
+Dim Shared bsmClosed     As Integer    ' 1=closed loop, 0=open (old format default)
+Dim Shared bsmStandoff   As Single     ' perpendicular standoff distance (world units)
+Dim Shared bsmOrientMode As Integer    ' 0=path-following, 1=fixed-target
+Dim Shared bsmTargetX    As Single     ' fixed-target world X (when orient=target)
+Dim Shared bsmTargetY    As Single
+Dim Shared bsmTargetZ    As Single
+Dim Shared bsmPathRoll(0 To BSM_WP_MAX - 1)  As Single  ' per-wp path roll (degrees)
+Dim Shared bsmCraftRoll(0 To BSM_WP_MAX - 1) As Single  ' per-wp craft roll (degrees)
+
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
     Dim bsmArcTgtY As Single, bsmArcTgtZ As Single
@@ -48,6 +58,10 @@ Sub BOSS_UpdateMovement()
     Dim bsmFu As Single, bsmFu2 As Single, bsmFu3 As Single
     Dim bsmFi0 As Integer, bsmFi1 As Integer, bsmFi2 As Integer, bsmFi3 As Integer
     Dim bsmFw0 As Single, bsmFw1 As Single, bsmFw2 As Single, bsmFw3 As Single
+    Dim bsmFlNS As Integer     ' number of segments (nWps for closed, nWps-1 for open)
+    Dim bsmFlTnX As Single, bsmFlTnY As Single, bsmFlTnZ As Single  ' normalized tangent
+    Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
+    Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -132,10 +146,12 @@ Sub BOSS_UpdateMovement()
             If boss.moveTimer <= 0 Then boss.state = 3
         End If
 
-    Case 6  ' flyover: Catmull-Rom spline through dive, rear fire, charge, banking arc return
-        bsmFt   = boss.arcAngle
-        bsmFseg = Int(bsmFt)
-        If bsmFseg >= bsmWpCount - 1 Then
+    Case 6  ' flyover: Catmull-Rom spline — supports standoff, closed paths, pathRoll
+        bsmFt    = boss.arcAngle
+        bsmFseg  = Int(bsmFt)
+        bsmFlNS  = bsmWpCount - 1
+        If bsmClosed Then bsmFlNS = bsmWpCount   ' closed: N segments (one extra wraps back)
+        If bsmFseg >= bsmFlNS Then
             ' path complete: land on final waypoint, flip arc dir, return to combat
             boss.px = player.px + bsmWp(bsmWpCount - 1).x
             boss.py = player.py + bsmWp(bsmWpCount - 1).y
@@ -152,17 +168,31 @@ Sub BOSS_UpdateMovement()
             bsmFu  = bsmFt - bsmFseg
             bsmFu2 = bsmFu * bsmFu
             bsmFu3 = bsmFu2 * bsmFu
-            bsmFi0 = bsmFseg - 1 : If bsmFi0 < 0 Then bsmFi0 = bsmWpCount - 2
-            bsmFi1 = bsmFseg
-            bsmFi2 = bsmFseg + 1
-            bsmFi3 = bsmFseg + 2 : If bsmFi3 >= bsmWpCount Then bsmFi3 = bsmFi3 - (bsmWpCount - 1)
+
+            ' Ghost indices: modular wrap for closed paths, clamp for open (JS: ghosts())
+            If bsmClosed Then
+                bsmFi0 = ((bsmFseg - 1) Mod bsmWpCount + bsmWpCount) Mod bsmWpCount
+                bsmFi1 = bsmFseg Mod bsmWpCount
+                bsmFi2 = (bsmFseg + 1) Mod bsmWpCount
+                bsmFi3 = (bsmFseg + 2) Mod bsmWpCount
+            Else
+                bsmFi0 = bsmFseg - 1 : If bsmFi0 < 0 Then bsmFi0 = bsmWpCount - 2
+                bsmFi1 = bsmFseg
+                bsmFi2 = bsmFseg + 1
+                bsmFi3 = bsmFseg + 2 : If bsmFi3 >= bsmWpCount Then bsmFi3 = bsmFi3 - (bsmWpCount - 1)
+            End If
+
+            ' CR basis weights (bsmFw without the 0.5 — applied at sum)
             bsmFw0 = -bsmFu3 + 2*bsmFu2 - bsmFu
             bsmFw1 =  3*bsmFu3 - 5*bsmFu2 + 2
             bsmFw2 = -3*bsmFu3 + 4*bsmFu2 + bsmFu
             bsmFw3 =  bsmFu3 - bsmFu2
+
+            ' Wire position (player-relative offset converted to world)
             boss.px = player.px + 0.5 * (bsmWp(bsmFi0).x*bsmFw0 + bsmWp(bsmFi1).x*bsmFw1 + bsmWp(bsmFi2).x*bsmFw2 + bsmWp(bsmFi3).x*bsmFw3)
             boss.py = player.py + 0.5 * (bsmWp(bsmFi0).y*bsmFw0 + bsmWp(bsmFi1).y*bsmFw1 + bsmWp(bsmFi2).y*bsmFw2 + bsmWp(bsmFi3).y*bsmFw3)
             boss.pz = player.pz + 0.5 * (bsmWp(bsmFi0).z*bsmFw0 + bsmWp(bsmFi1).z*bsmFw1 + bsmWp(bsmFi2).z*bsmFw2 + bsmWp(bsmFi3).z*bsmFw3)
+
             ' arc-length reparameterization: advance t by speed/|dq/dt| for constant world speed
             Dim bsmDw0 As Single : bsmDw0 = 0.5 * (-3*bsmFu2 + 4*bsmFu - 1)
             Dim bsmDw1 As Single : bsmDw1 = 0.5 * ( 9*bsmFu2 - 10*bsmFu)
@@ -176,6 +206,17 @@ Sub BOSS_UpdateMovement()
                 boss.arcAngle = boss.arcAngle + bsmFlySpd / bsmTanLen
             Else
                 boss.arcAngle = boss.arcAngle + bsmFlySpd
+            End If
+
+            ' Standoff: offset wire position perpendicular to tangent by pathRoll angle (JS: actualPos)
+            If bsmStandoff > 0.001 And bsmTanLen > 0.001 Then
+                bsmFlTnX = bsmDX / bsmTanLen
+                bsmFlTnY = bsmDY / bsmTanLen
+                bsmFlTnZ = bsmDZ / bsmTanLen
+                SpEvalRollAt bsmPathRoll(), bsmWpCount, bsmFt, bsmClosed, bsmFlPR
+                SpActualPos boss.px, boss.py, boss.pz, bsmFlTnX, bsmFlTnY, bsmFlTnZ, _
+                            bsmFlPR, bsmStandoff, bsmFlAX, bsmFlAY, bsmFlAZ
+                boss.px = bsmFlAX : boss.py = bsmFlAY : boss.pz = bsmFlAZ
             End If
         End If
 
@@ -194,10 +235,14 @@ Sub BOSS_FlyoverInit
         bsmManeuverName = bossManeuverList$(bfiPIdx)
     End If
     MNV_Load bsmManeuverName
+    ' Apply turn-dir sign to Z column (and to fixed target Z when orient=target)
     For bfiI = 0 To bsmWpCount - 1
         bsmWp(bfiI).z = bsmWp(bfiI).z * bsmTurnDir
     Next bfiI
-    If bsmWpCount > 0 Then
+    If bsmOrientMode = 1 Then bsmTargetZ = bsmTargetZ * bsmTurnDir
+    ' Anchor P0 to boss's current player-relative position to prevent positional snap.
+    ' Skip for closed paths: modular ghost wrapping means modifying P0 breaks the seam.
+    If bsmClosed = 0 And bsmWpCount > 0 Then
         bsmWp(0).x = boss.px - player.px
         bsmWp(0).y = boss.py - player.py
         bsmWp(0).z = boss.pz - player.pz

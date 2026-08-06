@@ -18,6 +18,7 @@ export function exportBlock(p: PathData): string {
   }
 
   if (Math.abs(p.standoff) > 0.01) lines.push(`standoff=${fmt(p.standoff)}`)
+  lines.push(`closed=${p.closed ? 1 : 0}`)
 
   lines.push('')
 
@@ -78,6 +79,7 @@ export function parseBlocks(text: string): Map<string, PathData> {
       switch (key) {
         case 'speed':    cur.speed    = parseFloat(val); break
         case 'standoff': cur.standoff = parseFloat(val); break
+        case 'closed':   cur.closed   = val.trim() === '1'; break
         // Legacy: old files had a global 'roll' — ignore it (per-node rolls are on waypoint lines)
         case 'roll': break
         case 'orient':
