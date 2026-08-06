@@ -1,31 +1,19 @@
 // 3D perspective view — Three.js + OrbitControls.
-// Waypoints are selectable and draggable via axis gizmo handles (X/Y/Z arrows).
-// OrbitControls is suppressed while dragging a gizmo handle.
+// Waypoints are selectable via click; use ortho views to move nodes.
 
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, shipFacing, makeFrame } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
 
-
-// ── Axis colours (standard: red X, green Y, blue Z) ────────────────────
-const AXIS_X = 0xef4444
-const AXIS_Y = 0x4ade80
-const AXIS_Z = 0x60a5fa
+// ── Ship model colors ───────────────────────────────────────────────────
+const COL_NOSE  = 0xf97316   // orange  — body / nose
+const COL_PORT  = 0x22d3ee   // cyan    — port wing  (left,  −Z local)
+const COL_STAR  = 0xa3e635   // lime    — starboard  (right, +Z local)
+const COL_FIN   = 0xf472b6   // pink    — dorsal fin (top,   +Y local)
 
 // ── Types ───────────────────────────────────────────────────────────────
-type AxisKey = 'x' | 'y' | 'z'
-
-interface DragState {
-  wpIdx:           number
-  axis:            AxisKey
-  axisVec:         THREE.Vector3
-  plane:           THREE.Plane
-  originWp:        THREE.Vector3   // waypoint world position at drag start
-  originIntersect: THREE.Vector3 | null
-}
-
 interface SceneRefs {
   renderer:   THREE.WebGLRenderer
   scene:      THREE.Scene
@@ -37,9 +25,8 @@ interface SceneRefs {
   wpGroup:    THREE.Group
   shipGroup:  THREE.Group
   targetMesh: THREE.Mesh
-  gizmo:      THREE.Group         // axis handles for selected waypoint
-  gizmoHits:  THREE.Mesh[]        // invisible hit volumes, tagged with userData.axis
-  drag:       DragState | null
+  gizmo:      THREE.Group
+  gizmoHits:  THREE.Mesh[]
   raf:        number
 }
 
@@ -51,30 +38,42 @@ function makeLine(color: number): THREE.Line {
   )
 }
 
-// Build one axis of the gizmo: visible arrow + invisible hit cylinder.
-// Returns { visual: ArrowHelper, hit: Mesh }.
-function makeGizmoAxis(dir: THREE.Vector3, color: number, axis: AxisKey) {
-  // Visual arrow
-  const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(), 1, color, 0.22, 0.1)
-
-  // Invisible hit cylinder along the shaft (easier to click than a line).
-  // Cylinder default runs along local Y — rotate to match axis direction.
-  const hitGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.85, 6)
-  const hitMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
-  const hit    = new THREE.Mesh(hitGeo, hitMat)
-  hit.userData = { isGizmoHandle: true, axis }
-
-  // Translate so cylinder bottom is at origin (tip at +dir)
-  hit.position.addScaledVector(dir, 0.42)
-
-  // Rotate local Y to match axis direction
-  if (axis === 'x') hit.rotateZ(-Math.PI / 2)
-  if (axis === 'z') hit.rotateX( Math.PI / 2)
-  // Y needs no rotation
-
-  return { arrow, hit }
+// Flat triangle mesh (DoubleSide so visible from either face).
+function makeTriMesh(
+  v1: [number,number,number],
+  v2: [number,number,number],
+  v3: [number,number,number],
+  color: number,
+): THREE.Mesh {
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([...v1, ...v2, ...v3], 3))
+  geo.computeVertexNormals()
+  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }))
 }
 
+// Build the ship group: nose + port wing + starboard wing + dorsal fin.
+// Local coordinate system: X = forward, Y = up, Z = right.
+// craftRoll rotates around X (forward), which banks Y toward Z.
+function buildShipGroup(): THREE.Group {
+  const g = new THREE.Group()
+
+  // Nose cone: ConeGeometry tip at +Y by default → rotate -90° Z so tip at +X.
+  const coneGeo = new THREE.ConeGeometry(0.12, 0.9, 6)
+  coneGeo.rotateZ(-Math.PI / 2)
+  g.add(new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: COL_NOSE })))
+
+  // Port wing (extends to -Z): swept delta triangle.
+  //   front-root, back-root, wing-tip
+  g.add(makeTriMesh([ 0.35, 0, -0.15], [-0.45, 0, -0.15], [-0.25, 0, -1.6], COL_PORT))
+
+  // Starboard wing (extends to +Z): mirror of port.
+  g.add(makeTriMesh([ 0.35, 0,  0.15], [-0.45, 0,  0.15], [-0.25, 0,  1.6], COL_STAR))
+
+  // Dorsal fin (extends to +Y): same sweep, vertical.
+  g.add(makeTriMesh([ 0.3, 0.14, 0], [-0.4, 0.14, 0], [-0.2, 1.3, 0], COL_FIN))
+
+  return g
+}
 
 function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
   return new THREE.Vector2(
@@ -140,30 +139,15 @@ export function PerspView() {
     const wpGroup = new THREE.Group(); scene.add(wpGroup)
 
     // Ship
-    const shipGroup = new THREE.Group()
-    const coneGeo   = new THREE.ConeGeometry(0.35, 1.4, 6)
-    coneGeo.rotateZ(-Math.PI / 2)
-    shipGroup.add(new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: 0xf97316 })))
+    const shipGroup = buildShipGroup()
     shipGroup.visible = false
     scene.add(shipGroup)
 
-    // ── Gizmo ────────────────────────────────────────────────────────
-    const gizmo    = new THREE.Group()
+    // Gizmo (kept invisible — 3D drag disabled, use ortho views)
+    const gizmo     = new THREE.Group()
     const gizmoHits: THREE.Mesh[] = []
-    scene.add(gizmo)
-
-    const axes: Array<{ dir: [number,number,number]; color: number; axis: AxisKey }> = [
-      { dir: [1,0,0], color: AXIS_X, axis: 'x' },
-      { dir: [0,1,0], color: AXIS_Y, axis: 'y' },
-      { dir: [0,0,1], color: AXIS_Z, axis: 'z' },
-    ]
-    for (const { dir, color, axis } of axes) {
-      const { arrow, hit } = makeGizmoAxis(new THREE.Vector3(...dir), color, axis)
-      gizmo.add(arrow)
-      gizmo.add(hit)
-      gizmoHits.push(hit)
-    }
     gizmo.visible = false
+    scene.add(gizmo)
 
     // ── Raycaster + pointer events ────────────────────────────────────
     const raycaster = new THREE.Raycaster()
@@ -172,72 +156,28 @@ export function PerspView() {
     const refs: SceneRefs = {
       renderer, scene, camera, controls, raycaster,
       wireLine, actualLine, wpGroup, shipGroup, targetMesh,
-      gizmo, gizmoHits, drag: null, raf: 0,
+      gizmo, gizmoHits, raf: 0,
     }
     refsRef.current = refs
 
-    // Pointer events — attached to canvas so we control propagation
     const cv = renderer.domElement
 
     const onPointerDown = (e: PointerEvent) => {
       if (!refsRef.current) return
-      const r    = refs
       const rect = cv.getBoundingClientRect()
       const ndc  = getNDC(e, rect)
-      r.raycaster.setFromCamera(ndc, r.camera)
-
-      // Check waypoint spheres for selection (no 3D drag — use ortho views to move nodes)
+      refs.raycaster.setFromCamera(ndc, refs.camera)
       const wpMeshes: THREE.Object3D[] = []
-      r.wpGroup.traverse((o) => { if ((o as THREE.Mesh).isMesh) wpMeshes.push(o) })
-      const wpHits = r.raycaster.intersectObjects(wpMeshes, false)
+      refs.wpGroup.traverse((o) => { if ((o as THREE.Mesh).isMesh) wpMeshes.push(o) })
+      const wpHits = refs.raycaster.intersectObjects(wpMeshes, false)
       if (wpHits.length > 0) {
         e.stopPropagation()
         const idx = wpHits[0].object.userData.wpIdx as number
         useStore.getState().setSelected(idx)
       }
-      // Otherwise let OrbitControls orbit
-    }
-
-    const onPointerMove = (e: PointerEvent) => {
-      const r = refsRef.current
-      if (!r || !r.drag) return
-      const rect = cv.getBoundingClientRect()
-      const ndc  = getNDC(e, rect)
-      r.raycaster.setFromCamera(ndc, r.camera)
-
-      const intersectPt = new THREE.Vector3()
-      const hit = r.raycaster.ray.intersectPlane(r.drag.plane, intersectPt)
-      if (!hit) return
-
-      if (!r.drag.originIntersect) {
-        r.drag.originIntersect = intersectPt.clone()
-        return
-      }
-
-      const delta    = new THREE.Vector3().subVectors(intersectPt, r.drag.originIntersect)
-      const movement = delta.dot(r.drag.axisVec)
-      const newPos   = r.drag.originWp.clone().addScaledVector(r.drag.axisVec, movement)
-
-      const wps = useStore.getState().path.wps
-      useStore.getState().setWp(r.drag.wpIdx, {
-        ...wps[r.drag.wpIdx],
-        [r.drag.axis]: newPos[r.drag.axis],
-      })
-    }
-
-    const onPointerUp = (e: PointerEvent) => {
-      const r = refsRef.current
-      if (!r) return
-      if (r.drag) {
-        cv.releasePointerCapture(e.pointerId)
-        r.drag = null
-        r.controls.enabled = true
-      }
     }
 
     cv.addEventListener('pointerdown', onPointerDown)
-    cv.addEventListener('pointermove', onPointerMove)
-    cv.addEventListener('pointerup',   onPointerUp)
 
     // ── Resize ────────────────────────────────────────────────────────
     const resize = () => {
@@ -253,7 +193,6 @@ export function PerspView() {
     // ── Render loop ───────────────────────────────────────────────────
     const render = () => {
       refs.raf = requestAnimationFrame(render)
-
       controls.update()
       renderer.render(scene, camera)
     }
@@ -263,23 +202,20 @@ export function PerspView() {
       cancelAnimationFrame(refs.raf)
       ro.disconnect()
       cv.removeEventListener('pointerdown', onPointerDown)
-      cv.removeEventListener('pointermove', onPointerMove)
-      cv.removeEventListener('pointerup',   onPointerUp)
       renderer.dispose()
       if (mount.contains(cv)) mount.removeChild(cv)
     }
   }, [])
 
-  // ── Update path geometry + waypoints + gizmo ────────────────────────
+  // ── Update path geometry + waypoints ─────────────────────────────────
   useEffect(() => {
     const refs = refsRef.current
     if (!refs) return
 
     const samples = buildSpline({
-      wps: path.wps, closed: path.closed, roll: path.roll, standoff: path.standoff,
+      wps: path.wps, closed: path.closed, standoff: path.standoff,
     })
 
-    // Wire line
     if (samples.length > 1) {
       const wirePos = new Float32Array(samples.length * 3)
       samples.forEach(({ wire }, i) => {
@@ -305,7 +241,7 @@ export function PerspView() {
       refs.actualLine.visible = false
     }
 
-    // Waypoint spheres — tag each mesh with its index for raycasting
+    // Waypoint spheres
     refs.wpGroup.clear()
     path.wps.forEach((wp, i) => {
       const isSel = i === selected
@@ -317,13 +253,11 @@ export function PerspView() {
       refs.wpGroup.add(mesh)
     })
 
-    // Target marker
     refs.targetMesh.visible = path.orient === 'target'
     if (path.orient === 'target') {
       refs.targetMesh.position.set(path.target.x, path.target.y, path.target.z)
     }
 
-    // Gizmo is not used for movement in 3D — use ortho views to move nodes.
     refs.gizmo.visible = false
   }, [path, selected])
 
@@ -331,26 +265,44 @@ export function PerspView() {
   useEffect(() => {
     const refs = refsRef.current
     if (!refs || path.wps.length < 2) return
-
     if (!playing) { refs.shipGroup.visible = false; return }
 
-    const nSegs  = path.closed ? path.wps.length : path.wps.length - 1
-    const wire   = evalAt(path.wps, animT, path.closed)
-    const tan    = tangentAt(path.wps, animT, path.closed)
-    const frac   = animT / nSegs
-    const ap     = actualPos(wire, tan, frac, path.roll, path.standoff)
-    const facing = shipFacing(ap, tan, path.orient, path.target)
-    const { R, U } = makeFrame(facing)
+    const nSegs      = path.closed ? path.wps.length : path.wps.length - 1
+    const wire       = evalAt(path.wps, animT, path.closed)
+    const tan        = tangentAt(path.wps, animT, path.closed)
+    const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
+    const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
+    const ap         = actualPos(wire, tan, pathRollDeg, path.standoff)
+    const facing     = shipFacing(ap, tan, path.orient, path.target)
+    const { R, U }   = makeFrame(facing)
 
     refs.shipGroup.position.set(ap.x, ap.y, ap.z)
-    // Cone tip is along local +X (ConeGeometry default +Y, rotated -90° around Z).
-    // makeBasis col-0 = where local X goes, so facing must be col-0.
+
+    // Apply craftRoll: rotate U and R around the forward axis (facing).
+    // Positive craftRoll banks the dorsal fin from +Y toward +Z (right-roll).
+    const crRad = craftRollDeg * (Math.PI / 180)
+    const crCos = Math.cos(crRad), crSin = Math.sin(crRad)
+    const rolledU = {
+      x: crCos * U.x - crSin * R.x,
+      y: crCos * U.y - crSin * R.y,
+      z: crCos * U.z - crSin * R.z,
+    }
+    const rolledR = {
+      x: crSin * U.x + crCos * R.x,
+      y: crSin * U.y + crCos * R.y,
+      z: crSin * U.z + crCos * R.z,
+    }
+
+    // makeBasis: col0=local X (forward), col1=local Y (up), col2=local Z (right)
     refs.shipGroup.setRotationFromMatrix(new THREE.Matrix4().makeBasis(
       new THREE.Vector3(facing.x, facing.y, facing.z),
-      new THREE.Vector3(U.x, U.y, U.z),
-      new THREE.Vector3(R.x, R.y, R.z),
+      new THREE.Vector3(rolledU.x, rolledU.y, rolledU.z),
+      new THREE.Vector3(rolledR.x, rolledR.y, rolledR.z),
     ))
     refs.shipGroup.visible = true
+
+    // Suppress unused-variable warning; nSegs used to guard closed-path bounds above.
+    void nSegs
   }, [animT, playing, path])
 
   return <div ref={mountRef} className="three-mount" />

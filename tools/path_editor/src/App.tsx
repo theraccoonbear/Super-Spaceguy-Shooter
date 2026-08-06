@@ -87,18 +87,9 @@ function Toolbar({ isLinked, onToggleLinked }: { isLinked: boolean; onToggleLink
       <div className="tb-sep" />
 
       <div className="tb-group">
-        <span className="tb-label">Roll</span>
-        <input type="number" className="wide" value={path.roll} step={45}
-          title="Degrees of roll per full path loop (360 = barrel roll)"
-          onChange={(e) => patchPath('roll', parseFloat(e.target.value) || 0)} />
-        <span className="tb-label">°/loop</span>
-      </div>
-      <div className="tb-sep" />
-
-      <div className="tb-group">
         <span className="tb-label">Standoff</span>
         <input type="number" className="narrow" value={path.standoff} step={0.5} min={0}
-          title="Perpendicular offset from wire (world units). With Roll: helix."
+          title="Perpendicular offset from wire (world units). Use node pathRoll to angle the offset."
           onChange={(e) => patchPath('standoff', Math.max(0, parseFloat(e.target.value) || 0))} />
         <span className="tb-label">u</span>
       </div>
@@ -147,6 +138,12 @@ function Sidebar() {
     setWp(i, { ...wps[i], [axis]: n })
   }, [wps, setWp])
 
+  const handleRoll = useCallback((i: number, field: 'pathRoll'|'craftRoll', val: string) => {
+    const n = parseFloat(val)
+    if (isNaN(n)) return
+    setWp(i, { ...wps[i], [field]: n })
+  }, [wps, setWp])
+
   const handleAdd = useCallback(() => {
     const last = wps[wps.length - 1] ?? { x: 20, y: 0, z: 0 }
     addWp({ ...last }, selected >= 0 ? selected : undefined)
@@ -183,6 +180,21 @@ function Sidebar() {
                 </div>
                 <button className="wp-del" title="Delete"
                   onClick={(e) => { e.stopPropagation(); delWp(i) }}>×</button>
+                {/* Roll controls — shown only for the selected node */}
+                {i === selected && (
+                  <div className="wp-rolls" onClick={(e) => e.stopPropagation()}>
+                    <label className="roll-label" title="Path Roll — standoff offset angle at this node (°)">
+                      <span className="roll-tag" style={{ color:'var(--accent)' }}>P°</span>
+                      <input type="number" value={parseFloat((wp.pathRoll ?? 0).toFixed(1))} step={15}
+                        onChange={(e) => handleRoll(i, 'pathRoll', e.target.value)} />
+                    </label>
+                    <label className="roll-label" title="Craft Roll — ship body bank angle at this node (°)">
+                      <span className="roll-tag" style={{ color:'#f472b6' }}>C°</span>
+                      <input type="number" value={parseFloat((wp.craftRoll ?? 0).toFixed(1))} step={15}
+                        onChange={(e) => handleRoll(i, 'craftRoll', e.target.value)} />
+                    </label>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -194,9 +206,10 @@ function Sidebar() {
             </div>
           </div>
           <div className="sidebar-hint">
-            <span>Click empty</span> → add wp<br />
+            <span>Click node</span> → select + edit rolls<br />
+            <span>P°</span> = path roll (standoff angle)<br />
+            <span>C°</span> = craft roll (ship bank)<br />
             <span>Drag wp</span> → move in view plane<br />
-            <span>3D gizmo</span> → drag X/Y/Z arrows<br />
             <span>Right drag</span> → pan · <span>Scroll</span> → zoom<br />
             <span>Del key</span> → remove selected
           </div>
@@ -225,7 +238,6 @@ export function App() {
   }, [])
 
   const onRootKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Don't intercept L when an input is focused
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
     if (e.key === 'l' || e.key === 'L') handleToggleLinked()
   }, [handleToggleLinked])

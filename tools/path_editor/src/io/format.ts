@@ -1,9 +1,8 @@
 import { PathData } from '../store'
-import { Vec3 } from '../math/vec3'
+import { Waypoint } from '../math/vec3'
 
 // ── Export ──────────────────────────────────────────────────────────────
 function fmt(n: number): string {
-  // Use integer if exact, otherwise 2 decimal places
   return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
 
@@ -18,22 +17,28 @@ export function exportBlock(p: PathData): string {
     lines.push(`orient=path`)
   }
 
-  if (Math.abs(p.roll) > 0.01)     lines.push(`roll=${fmt(p.roll)}`)
   if (Math.abs(p.standoff) > 0.01) lines.push(`standoff=${fmt(p.standoff)}`)
 
   lines.push('')
 
   // For closed paths: append wps[0] as the last line so the game engine
   // gets the duplicate-endpoint convention it expects (wps[last] === wps[0]).
-  const wpsToExport = (p.closed && p.wps.length > 0)
+  const wpsToExport: Waypoint[] = (p.closed && p.wps.length > 0)
     ? [...p.wps, p.wps[0]]
     : p.wps
 
   for (const wp of wpsToExport) {
-    const x = fmt(wp.x).padStart(5)
-    const y = fmt(wp.y).padStart(5)
-    const z = fmt(wp.z).padStart(5)
-    lines.push(`${x}  ${y}  ${z}`)
+    const x  = fmt(wp.x).padStart(5)
+    const y  = fmt(wp.y).padStart(5)
+    const z  = fmt(wp.z).padStart(5)
+    const pr = wp.pathRoll  ?? 0
+    const cr = wp.craftRoll ?? 0
+    // Write roll fields only when non-zero (backward compatible: old parsers stop at 3 nums)
+    if (Math.abs(pr) > 0.01 || Math.abs(cr) > 0.01) {
+      lines.push(`${x}  ${y}  ${z}  ${fmt(pr).padStart(7)}  ${fmt(cr).padStart(7)}`)
+    } else {
+      lines.push(`${x}  ${y}  ${z}`)
+    }
   }
 
   return lines.join('\n')
@@ -42,7 +47,7 @@ export function exportBlock(p: PathData): string {
 // ── Import ──────────────────────────────────────────────────────────────
 export function parseBlocks(text: string): Map<string, PathData> {
   const result = new Map<string, PathData>()
-  const lines = text.split(/\r?\n/)
+  const lines  = text.split(/\r?\n/)
   let cur: PathData | null = null
 
   for (const rawLine of lines) {
@@ -58,7 +63,6 @@ export function parseBlocks(text: string): Map<string, PathData> {
         orient:   'path',
         target:   { x: 0, y: 0, z: 0 },
         closed:   true,
-        roll:     0,
         standoff: 0,
         wps:      [],
       }
@@ -73,8 +77,9 @@ export function parseBlocks(text: string): Map<string, PathData> {
       const [, key, val] = kv
       switch (key) {
         case 'speed':    cur.speed    = parseFloat(val); break
-        case 'roll':     cur.roll     = parseFloat(val); break
         case 'standoff': cur.standoff = parseFloat(val); break
+        // Legacy: old files had a global 'roll' — ignore it (per-node rolls are on waypoint lines)
+        case 'roll': break
         case 'orient':
           if (val.startsWith('target:')) {
             cur.orient = 'target'
@@ -88,10 +93,14 @@ export function parseBlocks(text: string): Map<string, PathData> {
       continue
     }
 
-    // Waypoint: X Y Z
+    // Waypoint: X Y Z [pathRoll [craftRoll]]
     const nums = line.split(/\s+/).filter(Boolean).map(Number)
     if (nums.length >= 3 && nums.every((n) => !isNaN(n))) {
-      cur.wps.push({ x: nums[0], y: nums[1], z: nums[2] } as Vec3)
+      cur.wps.push({
+        x: nums[0], y: nums[1], z: nums[2],
+        pathRoll:  nums[3] ?? 0,
+        craftRoll: nums[4] ?? 0,
+      })
     }
   }
 
