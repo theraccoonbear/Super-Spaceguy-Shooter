@@ -4,7 +4,7 @@
 
 import { useRef, useCallback } from 'react'
 import { useStore, PathData } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, shipFacing } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
 
@@ -70,7 +70,7 @@ export function TopView() {
     // ── Ghost (drawn behind live path while dragging a node) ────────────
     if (ghostRef.current !== null) {
       const { path: gp, wpIdx } = ghostRef.current
-      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, roll: gp.roll, standoff: gp.standoff })
+      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, standoff: gp.standoff })
       if (gSamples.length > 1) {
         ctx.save()
         ctx.globalAlpha = 0.25; ctx.setLineDash([5, 4])
@@ -99,7 +99,7 @@ export function TopView() {
       ctx.restore()
     }
 
-    const samples = buildSpline({ wps: path.wps, closed: path.closed, roll: path.roll, standoff: path.standoff })
+    const samples = buildSpline({ wps: path.wps, closed: path.closed, standoff: path.standoff })
 
     if (samples.length > 1) {
       ctx.beginPath(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5
@@ -147,12 +147,11 @@ export function TopView() {
     })
 
     if (playing && path.wps.length >= 2) {
-      const nSegs = path.closed ? path.wps.length : path.wps.length - 1
-      const wire   = evalAt(path.wps, animT, path.closed)
-      const tan    = tangentAt(path.wps, animT, path.closed)
-      const frac   = animT / nSegs
-      const ap     = actualPos(wire, tan, frac, path.roll, path.standoff)
-      const facing = shipFacing(ap, tan, path.orient, path.target)
+      const wire         = evalAt(path.wps, animT, path.closed)
+      const tan          = tangentAt(path.wps, animT, path.closed)
+      const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
+      const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
+      const facing       = shipFacing(ap, tan, path.orient, path.target)
       const { sx, sy } = w2s(ap.x, ap.z, w, h, scale, pan)
       drawShipArrow(ctx, sx, sy, facing.x, facing.z, '#f97316')
     }

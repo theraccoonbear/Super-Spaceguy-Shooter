@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import { Vec3 } from './math/vec3'
+import { Vec3, Waypoint } from './math/vec3'
 
+export type { Waypoint }
 export type OrientMode = 'path' | 'target'
 
 export interface PathData {
@@ -9,9 +10,8 @@ export interface PathData {
   orient:   OrientMode
   target:   Vec3      // fixed look-at point (used when orient='target')
   closed:   boolean   // when true, last segment wraps back to wps[0] (no duplicate endpoint)
-  roll:     number    // degrees per full loop (360 = one barrel roll)
   standoff: number    // perpendicular distance from wire (world units)
-  wps:      Vec3[]
+  wps:      Waypoint[]
 }
 
 export interface EditorState {
@@ -23,7 +23,7 @@ export interface EditorState {
 
   setPath:     (p: PathData) => void
   patchPath:   <K extends keyof PathData>(key: K, value: PathData[K]) => void
-  setWp:       (i: number, wp: Vec3) => void
+  setWp:       (i: number, wp: Waypoint) => void
   addWp:       (wp: Vec3, after?: number) => void
   delWp:       (i: number) => void
   dupWp:       (i: number) => void
@@ -33,42 +33,61 @@ export interface EditorState {
   setStatus:   (s: string) => void
 }
 
+function makeWp(x: number, y: number, z: number, pathRoll = 0, craftRoll = 0): Waypoint {
+  return { x, y, z, pathRoll, craftRoll }
+}
+
 const DEFAULT_PATH: PathData = {
   name:     'new_path',
   speed:    0.025,
   orient:   'path',
   target:   { x: 0, y: 0, z: 0 },
   closed:   true,
-  roll:     0,
   standoff: 0,
   wps: [
-    { x: 20, y:  0, z:  0 },
-    { x:  8, y:  1, z:  3 },
-    { x: -5, y:  1, z:  6 },
-    { x: -8, y:  0, z:  5 },
-    { x: -5, y: -1, z:  2 },
-    { x:  8, y:  0, z:  2 },
+    makeWp( 20,  0,  0),
+    makeWp(  8,  1,  3),
+    makeWp( -5,  1,  6),
+    makeWp( -8,  0,  5),
+    makeWp( -5, -1,  2),
+    makeWp(  8,  0,  2),
   ],
 }
 
-// Strip duplicate endpoint from old-format closed paths (wps[last] === wps[0]).
-// Old format stored a copy of wps[0] as the last entry; new format uses structural closure.
-function normalizePath(p: PathData): PathData {
-  if (!p.closed || p.wps.length < 2) return p
-  const first = p.wps[0], last = p.wps[p.wps.length - 1]
-  const eps = 0.001
-  if (Math.abs(first.x - last.x) < eps &&
-      Math.abs(first.y - last.y) < eps &&
-      Math.abs(first.z - last.z) < eps) {
-    return { ...p, wps: p.wps.slice(0, -1) }
+// Ensure every waypoint has roll fields (backward compat when loading old sessions).
+function ensureRolls(wp: Vec3): Waypoint {
+  const w = wp as Partial<Waypoint>
+  return {
+    x: w.x ?? 0, y: w.y ?? 0, z: w.z ?? 0,
+    pathRoll:  w.pathRoll  ?? 0,
+    craftRoll: w.craftRoll ?? 0,
   }
-  return p
+}
+
+// Strip duplicate endpoint from old-format closed paths (wps[last] === wps[0]).
+function normalizePath(p: PathData): PathData {
+  let wps = p.wps.map(ensureRolls)
+  if (p.closed && wps.length >= 2) {
+    const first = wps[0], last = wps[wps.length - 1]
+    const eps = 0.001
+    if (Math.abs(first.x - last.x) < eps &&
+        Math.abs(first.y - last.y) < eps &&
+        Math.abs(first.z - last.z) < eps) {
+      wps = wps.slice(0, -1)
+    }
+  }
+  return { ...p, wps }
 }
 
 function load(): PathData {
   try {
     const raw = localStorage.getItem('pe_session')
-    if (raw) return normalizePath(JSON.parse(raw) as PathData)
+    if (raw) {
+      const parsed = JSON.parse(raw) as PathData
+      // Migrate old sessions that had a global 'roll' field
+      if ('roll' in parsed) delete (parsed as Record<string, unknown>).roll
+      return normalizePath(parsed)
+    }
   } catch { /* ignore */ }
   return DEFAULT_PATH
 }
@@ -99,7 +118,7 @@ export const useStore = create<EditorState>((set) => ({
 
   setWp: (i, wp) => set((s) => {
     const wps = [...s.path.wps]
-    wps[i] = wp
+    wps[i] = ensureRolls(wp)
     const path = { ...s.path, wps }
     save(path)
     return { path, status: 'modified' }
@@ -107,8 +126,9 @@ export const useStore = create<EditorState>((set) => ({
 
   addWp: (wp, after) => set((s) => {
     const wps = [...s.path.wps]
+    const fullWp = ensureRolls(wp)
     const idx = after !== undefined ? after + 1 : wps.length
-    wps.splice(idx, 0, wp)
+    wps.splice(idx, 0, fullWp)
     const path = { ...s.path, wps }
     save(path)
     return { path, selected: idx, status: `added waypoint ${idx}` }
