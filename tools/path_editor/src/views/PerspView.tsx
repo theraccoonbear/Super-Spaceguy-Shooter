@@ -25,6 +25,7 @@ interface SceneRefs {
   wireLine:   THREE.Line
   actualLine: THREE.Line
   wpGroup:    THREE.Group
+  bgGroup:    THREE.Group   // background scatter — rebuilt on path change
   shipGroup:  THREE.Group
   targetMesh: THREE.Mesh
   gizmo:      THREE.Group
@@ -91,22 +92,71 @@ function buildShipGroup(): THREE.Group {
   return g
 }
 
-// Scatter dark reference cubes so motion is perceptible in follow mode.
-// Deterministic LCG — same layout every mount.
-function buildBackground(scene: THREE.Scene) {
+// Scatter dark reference cubes well outside the flight path.
+// Called from the path useEffect with all actual ship positions (wire + standoff),
+// so the exclusion zone covers every rotational variant of the offset.
+// Deterministic LCG — consistent placement for a given path AABB.
+function buildBackground(
+  bgGroup:    THREE.Group,
+  actualPts:  Array<{x: number; y: number; z: number}>,
+) {
+  // Dispose old meshes
+  bgGroup.children.slice().forEach((c) => {
+    const m = c as THREE.Mesh
+    m.geometry.dispose()
+    ;(m.material as THREE.Material).dispose()
+  })
+  bgGroup.clear()
+
+  // AABB of all actual ship positions (covers wire + standoff in every orientation)
+  let x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0
+  if (actualPts.length > 0) {
+    x0 = x1 = actualPts[0].x
+    y0 = y1 = actualPts[0].y
+    z0 = z1 = actualPts[0].z
+    for (const p of actualPts) {
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x)
+      y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y)
+      z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z)
+    }
+  }
+  // Expand by: half-diagonal of max cube (√(5²+5²+5²)/2 ≈ 4.3) + visual breathing room
+  const M = 10
+  const cx0 = x0 - M, cx1 = x1 + M
+  const cy0 = y0 - M, cy1 = y1 + M
+  const cz0 = z0 - M, cz1 = z1 + M
+
   let seed = 0xdeadbeef
-  const rand = () => { seed = Math.imul(seed, 1664525) + 1013904223 >>> 0; return seed / 0xffffffff }
+  const rand = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0xffffffff }
   const rng  = (lo: number, hi: number) => lo + rand() * (hi - lo)
   const COLORS = [0x1e293b, 0x1a1f2e, 0x1c1a2e, 0x1c2022, 0x1c2a1c, 0x241515]
-  for (let i = 0; i < 50; i++) {
-    const geo  = new THREE.BoxGeometry(rng(0.4, 5), rng(0.4, 5), rng(0.4, 5))
-    const col  = COLORS[Math.floor(rand() * COLORS.length)]
-    const wf   = rand() > 0.62   // ~38% wireframe
+
+  // Generate up to 300 candidates; keep the first 50 that clear the path zone.
+  for (let i = 0; i < 300 && bgGroup.children.length < 50; i++) {
+    const px = rng(-55, 55)
+    const py = rng(-1, 20)
+    const pz = rng(-55, 55)
+    const sx = rng(0.4, 5), sy = rng(0.4, 5), sz = rng(0.4, 5)
+    const rx = rng(0, Math.PI * 2)
+    const ry = rng(0, Math.PI * 2)
+    const rz = rng(0, Math.PI * 2)
+    const col = COLORS[Math.floor(rand() * COLORS.length)]
+    const wf  = rand() > 0.62
+
+    // Bounding-sphere radius of this (possibly rotated) box — half-diagonal
+    const hr = Math.sqrt(sx * sx + sy * sy + sz * sz) * 0.5
+
+    // Reject if the cube's bounding sphere overlaps the expanded path AABB
+    if (px + hr > cx0 && px - hr < cx1 &&
+        py + hr > cy0 && py - hr < cy1 &&
+        pz + hr > cz0 && pz - hr < cz1) continue
+
+    const geo  = new THREE.BoxGeometry(sx, sy, sz)
     const mat  = new THREE.MeshBasicMaterial({ color: col, wireframe: wf })
     const mesh = new THREE.Mesh(geo, mat)
-    mesh.position.set(rng(-40, 40), rng(-1, 18), rng(-40, 40))
-    mesh.rotation.set(rng(0, Math.PI * 2), rng(0, Math.PI * 2), rng(0, Math.PI * 2))
-    scene.add(mesh)
+    mesh.position.set(px, py, pz)
+    mesh.rotation.set(rx, ry, rz)
+    bgGroup.add(mesh)
   }
 }
 
@@ -154,8 +204,9 @@ export function PerspView() {
     addLine([0,-20,0],[0,20,0], 0x203f20)
     addLine([0,0,-60],[0,0,60], 0x20203f)
 
-    // Background reference geometry
-    buildBackground(scene)
+    // Background scatter group — populated by path useEffect so it knows the path AABB
+    const bgGroup = new THREE.Group()
+    scene.add(bgGroup)
 
     // Player marker
     scene.add(Object.assign(
@@ -194,7 +245,7 @@ export function PerspView() {
 
     const refs: SceneRefs = {
       renderer, scene, camera, controls, raycaster,
-      wireLine, actualLine, wpGroup, shipGroup, targetMesh,
+      wireLine, actualLine, wpGroup, bgGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
       followMode: false,
       followDist: 8,
@@ -327,6 +378,9 @@ export function PerspView() {
     }
 
     refs.gizmo.visible = false
+
+    // Rebuild background scatter outside the full actual-path AABB
+    buildBackground(refs.bgGroup, samples.map(s => s.actual))
   }, [path, selected])
 
   // ── Update ship during animation ─────────────────────────────────────
