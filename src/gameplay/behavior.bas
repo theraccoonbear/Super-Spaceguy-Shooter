@@ -50,6 +50,8 @@ Dim Shared bsmTargetY    As Single
 Dim Shared bsmTargetZ    As Single
 Dim Shared bsmPathRoll(0 To BSM_WP_MAX - 1)  As Single  ' per-wp path roll (degrees)
 Dim Shared bsmCraftRoll(0 To BSM_WP_MAX - 1) As Single  ' per-wp craft roll (degrees)
+Dim Shared bsmFlTnX As Single, bsmFlTnY As Single, bsmFlTnZ As Single  ' normalized tangent at current t — written by Case 6, read by boss.bas
+Dim Shared bsmFlCR  As Single                                           ' interpolated craftRoll at current t
 
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
@@ -59,7 +61,6 @@ Sub BOSS_UpdateMovement()
     Dim bsmFi0 As Integer, bsmFi1 As Integer, bsmFi2 As Integer, bsmFi3 As Integer
     Dim bsmFw0 As Single, bsmFw1 As Single, bsmFw2 As Single, bsmFw3 As Single
     Dim bsmFlNS As Integer     ' number of segments (nWps for closed, nWps-1 for open)
-    Dim bsmFlTnX As Single, bsmFlTnY As Single, bsmFlTnZ As Single  ' normalized tangent
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
 
@@ -204,20 +205,23 @@ Sub BOSS_UpdateMovement()
             Dim bsmTanLen As Single : bsmTanLen = Sqr(bsmDX*bsmDX + bsmDY*bsmDY + bsmDZ*bsmDZ)
             If bsmTanLen > 0.001 Then
                 boss.arcAngle = boss.arcAngle + bsmFlySpd / bsmTanLen
+                bsmFlTnX = bsmDX / bsmTanLen
+                bsmFlTnY = bsmDY / bsmTanLen
+                bsmFlTnZ = bsmDZ / bsmTanLen
             Else
                 boss.arcAngle = boss.arcAngle + bsmFlySpd
+                bsmFlTnX = 1 : bsmFlTnY = 0 : bsmFlTnZ = 0
             End If
 
             ' Standoff: offset wire position perpendicular to tangent by pathRoll angle (JS: actualPos)
             If bsmStandoff > 0.001 And bsmTanLen > 0.001 Then
-                bsmFlTnX = bsmDX / bsmTanLen
-                bsmFlTnY = bsmDY / bsmTanLen
-                bsmFlTnZ = bsmDZ / bsmTanLen
                 SpEvalRollAt bsmPathRoll(), bsmWpCount, bsmFt, bsmClosed, bsmFlPR
                 SpActualPos boss.px, boss.py, boss.pz, bsmFlTnX, bsmFlTnY, bsmFlTnZ, _
                             bsmFlPR, bsmStandoff, bsmFlAX, bsmFlAY, bsmFlAZ
                 boss.px = bsmFlAX : boss.py = bsmFlAY : boss.pz = bsmFlAZ
             End If
+
+            SpEvalRollAt bsmCraftRoll(), bsmWpCount, bsmFt, bsmClosed, bsmFlCR
         End If
 
     End Select

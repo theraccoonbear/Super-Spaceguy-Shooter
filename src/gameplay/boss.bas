@@ -115,12 +115,24 @@ Sub BOSS_Update
             If bssFlySpdH > 0.001 Then bssTgtRx = _ATAN2(-bssVY, bssFlySpdH) * 57.2958
             bssTgtRz = -(bssVZ / bssFlySpdT) * 55.0  ' bank into the turn
         End If
+        If bsmOrientMode = 1 Then
+            Dim bssFlyFX As Single, bssFlyFY As Single, bssFlyFZ As Single
+            SpShipFacing boss.px, boss.py, boss.pz, _
+                         bsmFlTnX, bsmFlTnY, bsmFlTnZ, _
+                         bsmOrientMode, _
+                         player.px + bsmTargetX, player.py + bsmTargetY, player.pz + bsmTargetZ, _
+                         bssFlyFX, bssFlyFY, bssFlyFZ
+            Dim bssFlyFH As Single : bssFlyFH = Sqr(bssFlyFX*bssFlyFX + bssFlyFZ*bssFlyFZ)
+            bssTgtRy = _ATAN2(bssFlyFZ, -bssFlyFX) * 57.2958
+            If bssFlyFH > 0.001 Then bssTgtRx = _ATAN2(-bssFlyFY, bssFlyFH) * 57.2958
+        End If
     End If
     Dim bssAttLerp As Single : bssAttLerp = BOSS_ATTITUDE_LERP
     If boss.state = 6 Then bssAttLerp = 0.18  ' faster tracking during spline flight
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * bssAttLerp
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * bssAttLerp
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * bssAttLerp
+    If boss.state = 6 Then boss.rz = boss.rz + bsmFlCR
 
     ' fire patterns: suppressed during dive (6), dramatic turn (9), and fwd charge approach (8 before overtake)
     boss.fireTimer = boss.fireTimer - 0.025
