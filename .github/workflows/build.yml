@@ -27,7 +27,9 @@ jobs:
 
       - name: Regenerate spline math from DSL
         shell: bash
-        run: npm install --prefix math && node tools/emit-spline.js
+        run: |
+          (cd math && npm install)
+          node tools/emit-spline.js
 
       - name: Resolve QB64-PE release version
         id: qb64pe_release
@@ -100,7 +102,9 @@ jobs:
 
       - name: Regenerate spline math from DSL
         shell: bash
-        run: npm install --prefix math && node tools/emit-spline.js
+        run: |
+          (cd math && npm install)
+          node tools/emit-spline.js
 
       - name: Resolve QB64-PE release version
         id: qb64pe_release
