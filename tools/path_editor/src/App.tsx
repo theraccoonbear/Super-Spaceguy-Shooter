@@ -3,7 +3,6 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useStore } from './store'
-import { arcAdvanceAt } from './math/spline'
 import { TopView }   from './views/TopView'
 import { SideView }  from './views/SideView'
 import { FrontView } from './views/FrontView'
@@ -35,7 +34,7 @@ function useAnimLoop() {
       const p     = pathRef.current
       const nSegs = p.closed ? p.wps.length : p.wps.length - 1
       if (nSegs < 1) return
-      const dT    = arcAdvanceAt(p.wps, animTRef.current, p.closed, p.speed) * (dt / 16.667)
+      const dT    = p.speed * (dt / 16.667)   // direct t-advance; speed = param units/frame at 60fps
       let newT    = animTRef.current + dT
       if (newT >= nSegs) newT -= nSegs
       setAnimTRef.current(newT)
@@ -60,8 +59,8 @@ function Toolbar({ isLinked, onToggleLinked }: { isLinked: boolean; onToggleLink
 
       <div className="tb-group">
         <span className="tb-label">Speed</span>
-        <input type="number" className="narrow" value={path.speed} step={0.005} min={0.001} max={2}
-          onChange={(e) => patchPath('speed', parseFloat(e.target.value) || 0.025)} />
+        <input type="number" className="narrow" value={path.speed} step={0.001} min={0.0005} max={2}
+          onChange={(e) => patchPath('speed', parseFloat(e.target.value) || 0.005)} />
       </div>
       <div className="tb-sep" />
 
