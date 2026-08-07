@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "exprforge": "file:../../../../../../../../../../home/don/code/exprforge",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.167.0",
