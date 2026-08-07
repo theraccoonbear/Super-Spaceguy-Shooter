@@ -16,7 +16,7 @@
 
 'use strict';
 
-const EF = require('../tools/path_editor/node_modules/exprforge');
+const EF = require('exprforge');
 const { num, v, call, add, mul, sub, div, neg, letIn, select, cmp, outputs } = EF;
 
 // ── Helpers ───────────────────────────────────────────────────────────────

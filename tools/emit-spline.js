@@ -13,9 +13,8 @@
 const fs   = require('fs');
 const path = require('path');
 
-// Load emitAll from the installed exprforge package.
-const EF_PATH = path.resolve(__dirname, 'path_editor/node_modules/exprforge');
-const { emitAll } = require(EF_PATH);
+// Load emitAll from exprforge (installed in math/node_modules).
+const { emitAll } = require('../math/node_modules/exprforge');
 
 // All spline math ASTs live here — pure JS DSL, no QB64, no TypeScript.
 const { splineFrameAsts } = require('../math/spline-frame.js');
