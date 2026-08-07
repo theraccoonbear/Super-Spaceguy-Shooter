@@ -108,13 +108,11 @@ Sub BOSS_Update
     bssTgtRz = bssVY * 60              : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
     ' flyover: derive yaw/pitch/roll from spline tangent (the actual velocity vector)
     If boss.state = 6 Then
-        Dim bssFlySpdH As Single : bssFlySpdH = Sqr(bssVX*bssVX + bssVZ*bssVZ)
-        Dim bssFlySpdT As Single : bssFlySpdT = Sqr(bssVX*bssVX + bssVY*bssVY + bssVZ*bssVZ)
-        If bssFlySpdT > 0.001 Then
-            bssTgtRy = _ATAN2(bssVZ, -bssVX) * 57.2958
-            If bssFlySpdH > 0.001 Then bssTgtRx = _ATAN2(-bssVY, bssFlySpdH) * 57.2958
-            bssTgtRz = -(bssVZ / bssFlySpdT) * 55.0  ' bank into the turn
-        End If
+        ' Use exact CR tangent (already normalized) — velocity delta is too noisy at slow speeds
+        Dim bssFlySpdH As Single : bssFlySpdH = Sqr(bsmFlTnX*bsmFlTnX + bsmFlTnZ*bsmFlTnZ)
+        bssTgtRy = _ATAN2(bsmFlTnZ, -bsmFlTnX) * 57.2958
+        If bssFlySpdH > 0.001 Then bssTgtRx = _ATAN2(-bsmFlTnY, bssFlySpdH) * 57.2958
+        bssTgtRz = -bsmFlTnZ * 55.0
         If bsmOrientMode = 1 Then
             Dim bssFlyFX As Single, bssFlyFY As Single, bssFlyFZ As Single
             SpShipFacing boss.px, boss.py, boss.pz, _
