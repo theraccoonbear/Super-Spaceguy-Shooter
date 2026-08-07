@@ -131,8 +131,7 @@ speed=0.025
  20   0   0
 
 [browser_built]
-speed=0.5
-scale=5
+speed=0.05
 orient=path
 
    20   0.62  -7.37
