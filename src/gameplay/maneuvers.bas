@@ -40,11 +40,13 @@ Sub MNV_Load(mnvlName As String)
     Dim mnvldCapture As Integer
     Dim mnvldOrV As String   ' value side of orient= key
     Dim mnvldJ As Integer    ' roll-array clear loop counter
+    Dim mnvldScale As Single ' scale= multiplier applied to all waypoint coords
 
     bsmWpCount   = 0
     bsmFlySpd    = 0.025     ' fallback if speed= line is missing
     bsmClosed    = 0
     bsmStandoff  = 0
+    mnvldScale   = 1.0
     bsmOrientMode = 0
     bsmTargetX   = 0 : bsmTargetY = 0 : bsmTargetZ = 0
     For mnvldJ = 0 To BSM_WP_MAX - 1
@@ -82,6 +84,12 @@ Sub MNV_Load(mnvlName As String)
             GoTo mnvldNext
         End If
 
+        If LCase$(Left$(mnvldLine, 6)) = "scale=" Then
+            mnvldScale = Val(Mid$(mnvldLine, 7))
+            If mnvldScale < 0.001 Then mnvldScale = 1.0
+            GoTo mnvldNext
+        End If
+
         If LCase$(Left$(mnvldLine, 7)) = "closed=" Then
             bsmClosed = Val(Mid$(mnvldLine, 8))
             GoTo mnvldNext
@@ -112,15 +120,15 @@ Sub MNV_Load(mnvlName As String)
         If bsmWpCount < BSM_WP_MAX Then
             mnvldSp = InStr(mnvldLine, " ")
             If mnvldSp > 0 Then
-                bsmWp(bsmWpCount).x = Val(Left$(mnvldLine, mnvldSp))
+                bsmWp(bsmWpCount).x = Val(Left$(mnvldLine, mnvldSp)) * mnvldScale
                 mnvldRest = LTrim$(Mid$(mnvldLine, mnvldSp))  ' "Y Z [pR [cR]]"
                 mnvldSp   = InStr(mnvldRest, " ")
                 If mnvldSp > 0 Then
-                    bsmWp(bsmWpCount).y = Val(Left$(mnvldRest, mnvldSp))
+                    bsmWp(bsmWpCount).y = Val(Left$(mnvldRest, mnvldSp)) * mnvldScale
                     mnvldRest = LTrim$(Mid$(mnvldRest, mnvldSp)) ' "Z [pR [cR]]"
                     mnvldSp   = InStr(mnvldRest, " ")
                     If mnvldSp > 0 Then
-                        bsmWp(bsmWpCount).z = Val(Left$(mnvldRest, mnvldSp))
+                        bsmWp(bsmWpCount).z = Val(Left$(mnvldRest, mnvldSp)) * mnvldScale
                         mnvldRest = LTrim$(Mid$(mnvldRest, mnvldSp)) ' "[pR [cR]]"
                         mnvldSp   = InStr(mnvldRest, " ")
                         If mnvldSp > 0 Then
@@ -130,7 +138,7 @@ Sub MNV_Load(mnvlName As String)
                             bsmPathRoll(bsmWpCount) = Val(mnvldRest)
                         End If
                     Else
-                        bsmWp(bsmWpCount).z = Val(mnvldRest)  ' Z is last token
+                        bsmWp(bsmWpCount).z = Val(mnvldRest) * mnvldScale  ' Z is last token
                     End If
                     bsmWpCount = bsmWpCount + 1
                 End If
