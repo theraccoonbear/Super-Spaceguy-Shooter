@@ -3,8 +3,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useStore } from './store'
-import { tangentAt } from './math/spline'
-import { v3 } from './math/vec3'
+import { arcAdvanceAt } from './math/spline'
 import { TopView }   from './views/TopView'
 import { SideView }  from './views/SideView'
 import { FrontView } from './views/FrontView'
@@ -36,8 +35,7 @@ function useAnimLoop() {
       const p     = pathRef.current
       const nSegs = p.closed ? p.wps.length : p.wps.length - 1
       if (nSegs < 1) return
-      const tan   = tangentAt(p.wps, animTRef.current, p.closed)
-      const dT    = (p.speed / (v3.len(tan) || 1)) * (dt / 16.667)
+      const dT    = arcAdvanceAt(p.wps, animTRef.current, p.closed, p.speed) * (dt / 16.667)
       let newT    = animTRef.current + dT
       if (newT >= nSegs) newT -= nSegs
       setAnimTRef.current(newT)
