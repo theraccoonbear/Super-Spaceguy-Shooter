@@ -5,6 +5,7 @@ import {
   SpEfMkFrame,
   SpEfActualPos,
   SpEfFacingNorm,
+  SpEfArcAdvance,
 } from './spline_gen'
 
 // ── Ghost index wrapping ────────────────────────────────────────────────
@@ -95,6 +96,21 @@ export function tangentAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
   const dtz = dw0 * p0.z + dw1 * p1.z + dw2 * p2.z + dw3 * p3.z
   const { fx, fy, fz } = SpEfFacingNorm(dtx, dty, dtz)
   return { x: fx, y: fy, z: fz }
+}
+
+// Arc-length advance using the raw (unnormalized) derivative — wraps SpEfArcAdvance.
+// Use this for animating along the path; tangentAt returns a unit vector and cannot
+// be used for arc-length compensation.
+export function arcAdvanceAt(wps: Vec3[], at: number, closed: boolean, speed: number): number {
+  const nSegs = closed ? wps.length : wps.length - 1
+  const seg = Math.min(Math.floor(at), nSegs - 1)
+  const t = at - seg
+  const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
+  const { dw0, dw1, dw2, dw3 } = SpEfCrDerivWeights(t)
+  const dtx = dw0 * p0.x + dw1 * p1.x + dw2 * p2.x + dw3 * p3.x
+  const dty = dw0 * p0.y + dw1 * p1.y + dw2 * p2.y + dw3 * p3.y
+  const dtz = dw0 * p0.z + dw1 * p1.z + dw2 * p2.z + dw3 * p3.z
+  return SpEfArcAdvance(dtx, dty, dtz, speed).advance
 }
 
 export function evalRollAt(
