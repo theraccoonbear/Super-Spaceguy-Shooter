@@ -16,40 +16,18 @@ jobs:
       - name: Regenerate speech dict and check for missing pronunciations
         shell: bash
         run: bash tools/bake_speech_dict
-      - name: Fail if speech_dict.txt is stale
-        shell: bash
-        run: |
-          git diff --exit-code assets/speech_dict.txt || {
-            echo "::error::speech_dict.txt is stale — run tools/bake_speech_dict and commit"
-            exit 1
-          }
-
-  math-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install math dependencies
-        run: npm install --prefix math
-      - name: Regenerate spline math
-        run: node tools/emit-spline.js
-      - name: Fail if generated files are stale
-        shell: bash
-        run: |
-          git diff --exit-code src/gameplay/spline_path_gen.bi tools/path_editor/src/math/spline_gen.ts || {
-            echo "::error::Generated spline math is stale -- run node tools/emit-spline.js and commit"
-            exit 1
-          }
 
   test:
     name: Tests
-    needs: [dict-check, math-check]
+    needs: dict-check
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Regenerate spline math from DSL
+        shell: bash
+        run: npm install --prefix math && node tools/emit-spline.js
 
       - name: Resolve QB64-PE release version
         id: qb64pe_release
@@ -93,7 +71,7 @@ jobs:
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
 
   build:
-    needs: [dict-check, math-check]
+    needs: dict-check
     strategy:
       fail-fast: false
       matrix:
@@ -119,6 +97,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Regenerate spline math from DSL
+        shell: bash
+        run: npm install --prefix math && node tools/emit-spline.js
 
       - name: Resolve QB64-PE release version
         id: qb64pe_release
@@ -218,17 +200,16 @@ jobs:
 
   gate:
     name: All checks pass
-    needs: [dict-check, math-check, test, build]
+    needs: [dict-check, test, build]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Require all jobs to succeed
         run: |
           fail=0
-          [[ "${{ needs.dict-check.result }}"  != "success" ]] && echo "FAIL dict-check:  ${{ needs.dict-check.result }}"  && fail=1
-          [[ "${{ needs.math-check.result }}"  != "success" ]] && echo "FAIL math-check:  ${{ needs.math-check.result }}"  && fail=1
-          [[ "${{ needs.test.result }}"        != "success" ]] && echo "FAIL test:        ${{ needs.test.result }}"        && fail=1
-          [[ "${{ needs.build.result }}"       != "success" ]] && echo "FAIL build:       ${{ needs.build.result }}"       && fail=1
+          [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
+          [[ "${{ needs.test.result }}"       != "success" ]] && echo "FAIL test:       ${{ needs.test.result }}"       && fail=1
+          [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
   release:

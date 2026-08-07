@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "exprforge": "file:../../../../../../../../../home/don/code/exprforge"
+    "exprforge": "^0.1.0"
   }
 }
