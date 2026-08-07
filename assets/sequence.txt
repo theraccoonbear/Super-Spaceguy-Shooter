@@ -54,7 +54,7 @@ level:5
 level:6
     CRAWL txt=stage6 mus=crawl
     PLAY type=combat mus=game trigger=20
-    PLAY type=boss maneuver=weave,flyover,plotted mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055
+    PLAY type=boss maneuver=weave,browser_built,plotted mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055
     ARRIVE mus=planet
 
 outro:

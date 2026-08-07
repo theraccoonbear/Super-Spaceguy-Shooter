@@ -548,14 +548,14 @@ SEQ_Advance
 ST_Assert bossManeuverCnt = 2,                    "18.03  level5 maneuver=drift,weave -> count=2"
 ST_Assert bossManeuverList$(0) = "drift",         "18.04  level5 phase1=drift"
 ST_Assert bossManeuverList$(1) = "weave",         "18.05  level5 phase2=weave"
-' level:6 boss has maneuver=weave,flyover,plotted (three entries)
+' level:6 boss has maneuver=weave,browser_built,plotted (three entries)
 ST_Reset
 levelNum = 5
 ST_GoTo "boss6"
 SEQ_Advance
-ST_Assert bossManeuverCnt = 3,                    "18.06  level6 maneuver=weave,flyover,plotted -> count=3"
+ST_Assert bossManeuverCnt = 3,                    "18.06  level6 maneuver=weave,browser_built,plotted -> count=3"
 ST_Assert bossManeuverList$(0) = "weave",         "18.07  level6 phase1=weave"
-ST_Assert bossManeuverList$(1) = "flyover",       "18.08  level6 phase2=flyover"
+ST_Assert bossManeuverList$(1) = "browser_built", "18.08  level6 phase2=browser_built"
 ST_Assert bossManeuverList$(2) = "plotted",       "18.09  level6 phase3=plotted"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
