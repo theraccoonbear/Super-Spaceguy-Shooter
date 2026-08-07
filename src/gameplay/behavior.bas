@@ -63,6 +63,7 @@ Sub BOSS_UpdateMovement()
     Dim bsmFlNS As Integer     ' number of segments (nWps for closed, nWps-1 for open)
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
+    Dim bsmFlAXD As Double, bsmFlAYD As Double, bsmFlAZD As Double  ' Double temps for SpEfActualPos
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -216,8 +217,9 @@ Sub BOSS_UpdateMovement()
             ' Standoff: offset wire position perpendicular to tangent by pathRoll angle (JS: actualPos)
             If bsmStandoff > 0.001 And bsmTanLen > 0.001 Then
                 SpEvalRollAt bsmPathRoll(), bsmWpCount, bsmFt, bsmClosed, bsmFlPR
-                SpActualPos boss.px, boss.py, boss.pz, bsmFlTnX, bsmFlTnY, bsmFlTnZ, _
-                            bsmFlPR, bsmStandoff, bsmFlAX, bsmFlAY, bsmFlAZ
+                SpEfActualPos CDbl(boss.px), CDbl(boss.py), CDbl(boss.pz), CDbl(bsmFlTnX), CDbl(bsmFlTnY), CDbl(bsmFlTnZ), _
+                              CDbl(bsmFlPR), CDbl(bsmStandoff), bsmFlAXD, bsmFlAYD, bsmFlAZD
+                bsmFlAX = CSng(bsmFlAXD) : bsmFlAY = CSng(bsmFlAYD) : bsmFlAZ = CSng(bsmFlAZD)
                 boss.px = bsmFlAX : boss.py = bsmFlAY : boss.pz = bsmFlAZ
             End If
 
