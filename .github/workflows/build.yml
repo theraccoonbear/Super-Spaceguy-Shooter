@@ -24,9 +24,28 @@ jobs:
             exit 1
           }
 
+  math-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install math dependencies
+        run: npm install --prefix math
+      - name: Regenerate spline math
+        run: node tools/emit-spline.js
+      - name: Fail if generated files are stale
+        shell: bash
+        run: |
+          git diff --exit-code src/gameplay/spline_path_gen.bi tools/path_editor/src/math/spline_gen.ts || {
+            echo "::error::Generated spline math is stale -- run node tools/emit-spline.js and commit"
+            exit 1
+          }
+
   test:
     name: Tests
-    needs: dict-check
+    needs: [dict-check, math-check]
     runs-on: ubuntu-latest
 
     steps:
@@ -74,7 +93,7 @@ jobs:
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
 
   build:
-    needs: dict-check
+    needs: [dict-check, math-check]
     strategy:
       fail-fast: false
       matrix:
@@ -199,16 +218,17 @@ jobs:
 
   gate:
     name: All checks pass
-    needs: [dict-check, test, build]
+    needs: [dict-check, math-check, test, build]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Require all jobs to succeed
         run: |
           fail=0
-          [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
-          [[ "${{ needs.test.result }}"       != "success" ]] && echo "FAIL test:       ${{ needs.test.result }}"       && fail=1
-          [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
+          [[ "${{ needs.dict-check.result }}"  != "success" ]] && echo "FAIL dict-check:  ${{ needs.dict-check.result }}"  && fail=1
+          [[ "${{ needs.math-check.result }}"  != "success" ]] && echo "FAIL math-check:  ${{ needs.math-check.result }}"  && fail=1
+          [[ "${{ needs.test.result }}"        != "success" ]] && echo "FAIL test:        ${{ needs.test.result }}"        && fail=1
+          [[ "${{ needs.build.result }}"       != "success" ]] && echo "FAIL build:       ${{ needs.build.result }}"       && fail=1
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
   release:
