@@ -14,12 +14,7 @@ Dim Shared sssBlkStore$
 Dim Shared sssRawBlocks$
 
 Sub GTEXT_Log(glgMsg As String)
-    If dbgTtyOK = 0 Then Exit Sub
-    Dim glgF As Integer
-    glgF = FreeFile
-    Open "/dev/tty" For Append As #glgF
-    Print #glgF, "[gtext] " + glgMsg
-    Close #glgF
+    DBG_Print "[gtext] " + glgMsg
 End Sub
 
 Sub GTEXT_LoadVars(src As String)

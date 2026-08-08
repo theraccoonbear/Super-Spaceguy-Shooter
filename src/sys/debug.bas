@@ -1,3 +1,20 @@
+' Windows: there is no /dev/tty and no reliable way to detect a controlling console,
+' so use --debug as the signal instead -- only show the $CONSOLE window (and log)
+' when the user explicitly asked for it, so double-click launches stay silent.
+' DBG_Print and GTEXT_Log check dbgTtyOK.
+'
+' Unix's /dev/tty probe stays inline in sss.bas rather than living here: QB64-PE
+' rejects the ON ERROR GOTO / label pattern it needs ("Common label within a
+' SUB/FUNCTION") when placed inside a SUB.
+Sub DBG_InitTty()
+    $IF WIN THEN
+        IF debugMode THEN
+            _Console On
+            dbgTtyOK = -1
+        END IF
+    $END IF
+End Sub
+
 Sub DBG_LogStateChange()
     If debugMode = 0 Then Exit Sub
     If gameState = prevGameState Then Exit Sub
@@ -23,11 +40,17 @@ End Sub
 
 Sub DBG_Print(dbgMsg As String)
     If dbgTtyOK = 0 Then Exit Sub
-    Dim dbgF As Integer
-    dbgF = FreeFile
-    Open "/dev/tty" For Append As #dbgF
-    Print #dbgF, dbgMsg
-    Close #dbgF
+    $IF WIN THEN
+        _Dest _Console
+        Print dbgMsg
+        _Dest 0
+    $ELSE
+        Dim dbgF As Integer
+        dbgF = FreeFile
+        Open "/dev/tty" For Append As #dbgF
+        Print #dbgF, dbgMsg
+        Close #dbgF
+    $END IF
 End Sub
 
 Sub DBG_Overlay()
