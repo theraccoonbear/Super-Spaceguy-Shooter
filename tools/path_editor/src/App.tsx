@@ -9,35 +9,66 @@ import { FrontView } from './views/FrontView'
 import { PerspView } from './views/PerspView'
 import { IOPanel }   from './io/IOPanel'
 import { linked as orthoLinked, toggleLinked } from './views/orthoCamera'
+import { tangentAt, makeFrame, transportFrame } from './math/spline'
+import type { Vec3 } from './math/vec3'
 
 // ── Animation loop ──────────────────────────────────────────────────────
 function useAnimLoop() {
-  const { playing, path, animT, setAnimT } = useStore()
+  const { playing, path, animT, setPlayState } = useStore()
 
-  const playingRef    = useRef(playing)
-  const pathRef       = useRef(path)
-  const animTRef      = useRef(animT)
-  const setAnimTRef   = useRef(setAnimT)
-  playingRef.current  = playing
-  pathRef.current     = path
-  animTRef.current    = animT
-  setAnimTRef.current = setAnimT
+  const playingRef      = useRef(playing)
+  const pathRef         = useRef(path)
+  const animTRef        = useRef(animT)
+  const setPlayStateRef = useRef(setPlayState)
+  playingRef.current      = playing
+  pathRef.current         = path
+  animTRef.current        = animT
+  setPlayStateRef.current = setPlayState
+
+  // Frame accumulation state — lives in refs so RAF closure stays stale-free
+  const frameRRef   = useRef<Vec3>({ x: 1, y: 0, z: 0 })
+  const frameURef   = useRef<Vec3>({ x: 0, y: 0, z: 1 })
+  const prevTanRef  = useRef<Vec3 | null>(null)
 
   useEffect(() => {
     let lastTs = 0, raf = 0
     const tick = (ts: number) => {
       raf = requestAnimationFrame(tick)
-      if (!playingRef.current) { lastTs = 0; return }
-      if (lastTs === 0) { lastTs = ts; return }
-      const dt    = Math.min(ts - lastTs, 50)
-      lastTs      = ts
+      if (!playingRef.current) { lastTs = 0; prevTanRef.current = null; return }
       const p     = pathRef.current
       const nSegs = p.closed ? p.wps.length : p.wps.length - 1
       if (nSegs < 1) return
-      const dT    = p.speed * (dt / 16.667)   // direct t-advance; speed = param units/frame at 60fps
-      let newT    = animTRef.current + dT
+
+      if (lastTs === 0) {
+        // First tick after play start: initialize frame via Gram-Schmidt
+        lastTs = ts
+        const t0  = animTRef.current
+        const tan = tangentAt(p.wps, t0, p.closed)
+        const { R, U } = makeFrame(tan)
+        frameRRef.current  = R
+        frameURef.current  = U
+        prevTanRef.current = tan
+        setPlayStateRef.current(t0, R, U)
+        return
+      }
+
+      const dt   = Math.min(ts - lastTs, 50)
+      lastTs     = ts
+      const dT   = p.speed * (dt / 16.667)   // direct t-advance; speed = param units/frame at 60fps
+      let newT   = animTRef.current + dT
       if (newT >= nSegs) newT -= nSegs
-      setAnimTRef.current(newT)
+
+      // Parallel transport: rotate frame from previous tangent to current tangent
+      const newTan = tangentAt(p.wps, newT, p.closed)
+      const prevTan = prevTanRef.current
+      if (prevTan) {
+        const { R, U } = transportFrame(prevTan, newTan, frameRRef.current, frameURef.current)
+        frameRRef.current = R
+        frameURef.current = U
+      }
+      prevTanRef.current = newTan
+
+      setPlayStateRef.current(newT, frameRRef.current, frameURef.current)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)

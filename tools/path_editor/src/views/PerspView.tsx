@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
 
 // ── Ship model colors ───────────────────────────────────────────────────
 const COL_NOSE  = 0xf97316   // orange — nose cone
@@ -173,7 +173,7 @@ export function PerspView() {
   const refsRef   = useRef<SceneRefs | null>(null)
   const [followMode, setFollowMode] = useState(false)
 
-  const { path, selected, playing, animT } = useStore()
+  const { path, selected, playing, animT, frameR, frameU } = useStore()
 
   // ── Init ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -396,7 +396,8 @@ export function PerspView() {
     const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
     const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
     const facing       = shipFacing(ap, tan, path.orient, path.target)
-    const { R, U }     = makeFrame(facing)
+    const R = frameR
+    const U = frameU
 
     refs.shipGroup.position.set(ap.x, ap.y, ap.z)
 
@@ -428,7 +429,7 @@ export function PerspView() {
     refs.shipUp.set(rolledU.x, rolledU.y, rolledU.z)
 
     void nSegs
-  }, [animT, playing, path])
+  }, [animT, playing, path, frameR, frameU])
 
   // ── Follow-mode toggle ────────────────────────────────────────────────
   const toggleFollow = useCallback(() => {

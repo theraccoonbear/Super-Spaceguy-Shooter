@@ -4,7 +4,7 @@
 
 import { useRef, useCallback } from 'react'
 import { useStore, PathData } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
 import { drawShipModel, rollFrame } from './shipModel2D'
@@ -50,7 +50,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, scale: nu
 
 // ── Component ───────────────────────────────────────────────────────────
 export function TopView() {
-  const { path, selected, playing, animT } = useStore()
+  const { path, selected, playing, animT, frameR, frameU } = useStore()
 
   // Snapshot of path at node-drag start; cleared on release.
   const ghostRef = useRef<{ path: PathData; wpIdx: number } | null>(null)
@@ -146,7 +146,8 @@ export function TopView() {
       const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
       const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
       const facing       = shipFacing(ap, tan, path.orient, path.target)
-      const { R, U }     = makeFrame(facing)
+      const R = frameR
+      const U = frameU
       const { rolledU, rolledR } = rollFrame(U, R, craftRollDeg)
       drawShipModel(ctx, ap, facing, rolledU, rolledR, (wv) => {
         const s = w2s(wv.x, wv.z, w, h, scale, pan)
@@ -157,7 +158,7 @@ export function TopView() {
     ctx.fillStyle = '#2a2a35'; ctx.font = '9px Courier New, monospace'
     ctx.fillText('Z →', w - 28, h - 8)
     ctx.fillText('X ↑', 8, 14)
-  }, [path, selected, playing, animT])
+  }, [path, selected, playing, animT, frameR, frameU])
 
   const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, playing, animT])
 
