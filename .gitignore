@@ -36,6 +36,9 @@ tests/telem_creds_test
 tests/http_queue_test
 tools/telem_batch_test
 
+# math DSL dependencies (installed at build/CI time via npm install)
+math/node_modules/
+
 # Claude Code session memory
 memory/
 .aider*
