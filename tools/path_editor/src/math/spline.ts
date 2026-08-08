@@ -7,7 +7,16 @@ import {
   SpEfFacingNorm,
   SpEfArcAdvance,
   SpEfTransportFrame,
+  SpEfFrustumAtX,
 } from './spline_gen'
+
+// ── Frustum math ────────────────────────────────────────────────────────
+// Half-extents of the game frustum at a given world X depth.
+// Constants from dims.bas: GAME_FOV=72, CAM_OFFSET_X=6.5; aspect=320/240=4/3.
+const _TAN_HALF_FOV = Math.tan(Math.PI * 72 / 360)
+export function frustumAtX(worldX: number): { halfY: number; halfZ: number } {
+  return SpEfFrustumAtX(worldX, -6.5, _TAN_HALF_FOV, 4 / 3)
+}
 
 // ── Ghost index wrapping ────────────────────────────────────────────────
 // Mirrors the game's behavior.bas logic exactly.

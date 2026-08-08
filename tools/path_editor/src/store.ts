@@ -32,8 +32,10 @@ export interface EditorState {
   setSelected:  (i: number) => void
   setPlaying:   (v: boolean) => void
   setAnimT:     (v: number) => void
-  setPlayState: (animT: number, frameR: Vec3, frameU: Vec3) => void
-  setStatus:    (s: string) => void
+  setPlayState:    (animT: number, frameR: Vec3, frameU: Vec3) => void
+  setStatus:       (s: string) => void
+  showOverlays:    boolean
+  setShowOverlays: (v: boolean) => void
 }
 
 function makeWp(x: number, y: number, z: number, pathRoll = 0, craftRoll = 0): Waypoint {
@@ -154,9 +156,11 @@ export const useStore = create<EditorState>((set) => ({
     return { path, selected: i + 1, status: `duplicated waypoint ${i}` }
   }),
 
-  setSelected:  (i) => set({ selected: i }),
-  setPlaying:   (v) => set({ playing: v }),
-  setAnimT:     (v) => set({ animT: v }),
-  setPlayState: (animT, frameR, frameU) => set({ animT, frameR, frameU }),
-  setStatus:    (s) => set({ status: s }),
+  setSelected:     (i) => set({ selected: i }),
+  setPlaying:      (v) => set({ playing: v }),
+  setAnimT:        (v) => set({ animT: v }),
+  setPlayState:    (animT, frameR, frameU) => set({ animT, frameR, frameU }),
+  setStatus:       (s) => set({ status: s }),
+  showOverlays:    true,
+  setShowOverlays: (v) => set({ showOverlays: v }),
 }))
