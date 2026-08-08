@@ -3,7 +3,9 @@
 '$INCLUDE:'2d/effects.bas'
 '$INCLUDE:'audio/snd.bas'
 '$INCLUDE:'audio/music.bas'
+'$INCLUDE:'gameplay/spline_path.bi'   ' Catmull-Rom path math for boss flyovers
 '$INCLUDE:'gameplay/behavior.bas'
+'$INCLUDE:'gameplay/maneuvers.bas'
 '$INCLUDE:'2d/font.bas'
 '$INCLUDE:'sys/gametext.bas'
 '$INCLUDE:'2d/crawl.bas'

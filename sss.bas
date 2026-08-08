@@ -31,6 +31,7 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
+$EMBED:'assets/maneuvers.txt':'MANEUVERS'
 $EMBED:'assets/.env':'ENVCONFIG'
 
 DIM SHARED ctrlDev AS INTEGER
@@ -82,6 +83,10 @@ titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
+MNV_Init _EMBEDDED$("MANEUVERS")
+bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
+bossManeuverList$(0) = "flyover"
+bossManeuverCnt = 1
 GTEXT_Load _EMBEDDED$("GAMETEXT")
 GTEXT_Diag
 sSpkTitle    = GTEXT_Get$("speech_title")

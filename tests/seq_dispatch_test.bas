@@ -19,6 +19,9 @@
 '  16.  outro: end-of-sequence falls back to title
 '  17.  SEQ_RewindToTitle idempotent from title position
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
+'  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
+'  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
+'  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -73,6 +76,14 @@ Dim Shared boss         As BossState
 Dim Shared tt           As Single
 Dim Shared planetNames(1 To PLANET_COUNT) As String
 Dim Shared telemExitReason As String
+Dim Shared bossMusList$(0 To 7)
+Dim Shared bossMusCnt        As Integer
+Dim Shared bossSpeechList$(0 To 7)
+Dim Shared bossSpeechCnt     As Integer
+Dim Shared bossManeuverList$(0 To 7)
+Dim Shared bossManeuverCnt   As Integer
+Dim Shared bossSeekStr     As Single
+Dim Shared bsmManeuverName As String
 Dim introTimer As Integer
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
@@ -105,6 +116,10 @@ Sub ST_Reset()
     planetNameIdx = PLANET_COUNT
     planetTimer  = 0
     boss.warnTimer = 0
+    bossMusCnt      = 0
+    bossSpeechCnt   = 0
+    bossManeuverCnt = 0
+    bossSeekStr     = 0
     tt           = 0
     SEQ_Load _EMBEDDED$("SEQTXT")
 End Sub
@@ -474,6 +489,74 @@ ST_Assert gameState = GS_PLAYING,                        "15.02  gameState=GS_PL
 ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "15.03  boss.warnTimer set"
 ST_Assert stageScore = 2147483647,                       "15.04  stageScore=MAX (combat trigger disabled)"
 
+' ────────────────────────────────────────────────────────────────────────────
+' 16. PLAY boss mus= CSV populates phase music tickable
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 16. boss mus= CSV tickable ---"
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance   ' dispatch boss PLAY at level:3
+ST_Assert bossMusCnt = 3,                        "16.01  bossMusCnt=3 from mus=boss,boss2,boss3"
+ST_Assert bossMusList$(0) = "boss",              "16.02  phase 1 cue=boss"
+ST_Assert bossMusList$(1) = "boss2",             "16.03  phase 2 cue=boss2"
+ST_Assert bossMusList$(2) = "boss3",             "16.04  phase 3 cue=boss3"
+ST_Assert bossSpeechCnt = 3,                     "16.05  bossSpeechCnt=3 from speech=,key2,key3"
+ST_Assert bossSpeechList$(0) = "",               "16.06  phase 1 speech=empty (boss warning handles it)"
+ST_Assert bossSpeechList$(1) = "speech_boss_phase2", "16.07  phase 2 speech key"
+ST_Assert bossSpeechList$(2) = "speech_boss_phase3", "16.08  phase 3 speech key"
+
+' ────────────────────────────────────────────────────────────────────────────
+' 17. PLAY boss seek= populates bossSeekStr
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 17. boss seek= parsed into bossSeekStr ---"
+' level:3 boss has seek=0.015
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance
+ST_Assert bossSeekStr > 0.014 And bossSeekStr < 0.016, "17.01  level3 boss seek=0.015"
+' level:5 boss has seek=0.035
+ST_Reset
+levelNum = 4
+ST_GoTo "boss5"
+SEQ_Advance
+ST_Assert bossSeekStr > 0.034 And bossSeekStr < 0.036, "17.02  level5 boss seek=0.035"
+' level:6 boss has seek=0.055
+ST_Reset
+levelNum = 5
+ST_GoTo "boss6"
+SEQ_Advance
+ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=0.055"
+
+' ────────────────────────────────────────────────────────────────────────────
+' 18. PLAY boss maneuver= populates bsmManeuverName; defaults to "flyover"
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 18. boss maneuver= parsed into bossManeuverList$ ---"
+' level:3 boss has maneuver=drift (single entry)
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance
+ST_Assert bossManeuverCnt = 1,                    "18.01  level3 maneuver=drift -> count=1"
+ST_Assert bossManeuverList$(0) = "drift",         "18.02  level3 maneuver=drift -> [0]=drift"
+' level:5 boss has maneuver=drift,weave (two entries)
+ST_Reset
+levelNum = 4
+ST_GoTo "boss5"
+SEQ_Advance
+ST_Assert bossManeuverCnt = 2,                    "18.03  level5 maneuver=drift,weave -> count=2"
+ST_Assert bossManeuverList$(0) = "drift",         "18.04  level5 phase1=drift"
+ST_Assert bossManeuverList$(1) = "weave",         "18.05  level5 phase2=weave"
+' level:6 boss has maneuver=weave,browser_built,plotted (three entries)
+ST_Reset
+levelNum = 5
+ST_GoTo "boss6"
+SEQ_Advance
+ST_Assert bossManeuverCnt = 3,                    "18.06  level6 maneuver=weave,browser_built,plotted -> count=3"
+ST_Assert bossManeuverList$(0) = "weave",         "18.07  level6 phase1=weave"
+ST_Assert bossManeuverList$(1) = "browser_built", "18.08  level6 phase2=browser_built"
+ST_Assert bossManeuverList$(2) = "plotted",       "18.09  level6 phase3=plotted"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
