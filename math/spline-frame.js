@@ -7,6 +7,7 @@
 //   mf = SpEfMkFrame     ap = SpEfActualPos    rf = SpEfRollFrame
 //   cw = SpEfCrWeights   dw = SpEfCrDerivWeights
 //   fn = SpEfFacingNorm  aa = SpEfArcAdvance    tf = SpEfTransportFrame
+//   fr = SpEfFrustumAtX
 //
 // NOTE: normalize3 (exprforge/math) injects a fixed binding __exprforgeMathNrmLen2.
 // Only one Sub in the compilation unit may use it — that is SpEfFacingNorm.
@@ -243,6 +244,26 @@ const SpEfTransportFrame = (() => {
     };
 })();
 
+// ── SpEfFrustumAtX ────────────────────────────────────────────────────────
+// Half-extents of the visible frustum at world X depth `atX`.
+// dist = atX - camX  (distance from camera along the forward/X axis)
+// halfY = dist * tanHfov
+// halfZ = halfY * aspect
+// Pass game constants as params so the function is not hardcoded to one camera.
+// Prefix: fr
+// Outputs: halfY, halfZ
+
+const SpEfFrustumAtX = {
+    name: "SpEfFrustumAtX",
+    params: ["atX", "camX", "tanHfov", "aspect"],
+    body: letChain([
+        ["frDist", sub(v("atX"), v("camX"))],
+    ], outputs({
+        halfY: mul(v("frDist"), v("tanHfov")),
+        halfZ: mul(mul(v("frDist"), v("tanHfov")), v("aspect")),
+    })),
+};
+
 // ── Export all ────────────────────────────────────────────────────────────
 
 const splineFrameAsts = [
@@ -254,6 +275,7 @@ const splineFrameAsts = [
     SpEfFacingNorm,
     SpEfArcAdvance,
     SpEfTransportFrame,
+    SpEfFrustumAtX,
 ];
 
 module.exports = { splineFrameAsts };

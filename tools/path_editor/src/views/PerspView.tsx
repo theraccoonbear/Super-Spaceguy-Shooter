@@ -6,7 +6,12 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, frustumAtX } from '../math/spline'
+import {
+  GAME_CAM_X, GAME_CAM_Y,
+  SHIP_HX, SHIP_HY, SHIP_HZ,
+  SCALE_PLANES,
+} from './overlays'
 
 // ── Ship model colors ───────────────────────────────────────────────────
 const COL_NOSE  = 0xf97316   // orange — nose cone
@@ -17,20 +22,21 @@ const COL_FIN   = 0xf472b6   // pink   — dorsal fin (top,   +Y local)
 
 // ── Types ───────────────────────────────────────────────────────────────
 interface SceneRefs {
-  renderer:   THREE.WebGLRenderer
-  scene:      THREE.Scene
-  camera:     THREE.PerspectiveCamera
-  controls:   OrbitControls
-  raycaster:  THREE.Raycaster
-  wireLine:   THREE.Line
-  actualLine: THREE.Line
-  wpGroup:    THREE.Group
-  bgGroup:    THREE.Group   // background scatter — rebuilt on path change
-  shipGroup:  THREE.Group
-  targetMesh: THREE.Mesh
-  gizmo:      THREE.Group
-  gizmoHits:  THREE.Mesh[]
-  raf:        number
+  renderer:     THREE.WebGLRenderer
+  scene:        THREE.Scene
+  camera:       THREE.PerspectiveCamera
+  controls:     OrbitControls
+  raycaster:    THREE.Raycaster
+  wireLine:     THREE.Line
+  actualLine:   THREE.Line
+  wpGroup:      THREE.Group
+  bgGroup:      THREE.Group   // background scatter — rebuilt on path change
+  shipGroup:    THREE.Group
+  overlayGroup: THREE.Group   // player ship, camera cube, frustum, scale planes
+  targetMesh:   THREE.Mesh
+  gizmo:        THREE.Group
+  gizmoHits:    THREE.Mesh[]
+  raf:          number
   // Follow-cam state (mutated directly — not React state)
   followMode: boolean
   followDist: number
@@ -160,6 +166,77 @@ function buildBackground(
   }
 }
 
+// ── Gameplay context overlay (player ref ship, camera cube, frustum, scale) ──
+function buildOverlayGroup(): THREE.Group {
+  const g = new THREE.Group()
+
+  // Player reference ship — indigo semi-transparent box, nose cone in orange
+  const shipMat = new THREE.MeshBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.35 })
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(SHIP_HX * 2, SHIP_HY * 2, SHIP_HZ * 2), shipMat))
+  g.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(SHIP_HX * 2, SHIP_HY * 2, SHIP_HZ * 2)),
+    new THREE.LineBasicMaterial({ color: 0x818cf8 }),
+  ))
+  const noseGeo = new THREE.ConeGeometry(0.1, 0.45, 8)
+  noseGeo.rotateZ(-Math.PI / 2)
+  noseGeo.translate(SHIP_HX + 0.22, 0, 0)
+  g.add(new THREE.Mesh(noseGeo, new THREE.MeshBasicMaterial({ color: 0xf97316 })))
+
+  // Camera cube — yellow, at in-game camera resting position
+  const camCube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.4, 0.4),
+    new THREE.MeshBasicMaterial({ color: 0xfde047 }),
+  )
+  camCube.position.set(GAME_CAM_X, GAME_CAM_Y, 0)
+  g.add(camCube)
+
+  // Frustum wireframe — from camera to 4 far corners + far rectangle
+  const FAR_X = 100
+  const { halfY: farHY, halfZ: farHZ } = frustumAtX(FAR_X)
+  const cam = new THREE.Vector3(GAME_CAM_X, GAME_CAM_Y, 0)
+  const farCorners = [
+    new THREE.Vector3(FAR_X,  farHY,  farHZ),
+    new THREE.Vector3(FAR_X,  farHY, -farHZ),
+    new THREE.Vector3(FAR_X, -farHY, -farHZ),
+    new THREE.Vector3(FAR_X, -farHY,  farHZ),
+  ]
+  const frustumPts: THREE.Vector3[] = []
+  for (const fc of farCorners) frustumPts.push(cam.clone(), fc)
+  frustumPts.push(farCorners[0], farCorners[1], farCorners[1], farCorners[2],
+                  farCorners[2], farCorners[3], farCorners[3], farCorners[0])
+  g.add(new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints(frustumPts),
+    new THREE.LineBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.3 }),
+  ))
+
+  // Scale plane outlines — translucent vertical rectangles perpendicular to X
+  const planeColors = [0xef4444, 0xf97316, 0xeab308, 0x84cc16, 0x22d3ee, 0x818cf8]
+  SCALE_PLANES.forEach((plane, i) => {
+    const { halfY, halfZ } = frustumAtX(plane.x)
+    const pts = [
+      new THREE.Vector3(plane.x, -halfY, -halfZ),
+      new THREE.Vector3(plane.x,  halfY, -halfZ),
+      new THREE.Vector3(plane.x,  halfY,  halfZ),
+      new THREE.Vector3(plane.x, -halfY,  halfZ),
+      new THREE.Vector3(plane.x, -halfY, -halfZ),
+    ]
+    g.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color: planeColors[i], transparent: true, opacity: 0.5 }),
+    ))
+    // Fill
+    const planeGeo = new THREE.PlaneGeometry(halfZ * 2, halfY * 2)
+    planeGeo.rotateY(Math.PI / 2)
+    const mesh = new THREE.Mesh(planeGeo,
+      new THREE.MeshBasicMaterial({ color: planeColors[i], transparent: true, opacity: 0.04, side: THREE.DoubleSide }),
+    )
+    mesh.position.set(plane.x, 0, 0)
+    g.add(mesh)
+  })
+
+  return g
+}
+
 function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
   return new THREE.Vector2(
     ((e.clientX - rect.left) / rect.width)  *  2 - 1,
@@ -173,7 +250,7 @@ export function PerspView() {
   const refsRef   = useRef<SceneRefs | null>(null)
   const [followMode, setFollowMode] = useState(false)
 
-  const { path, selected, playing, animT, frameR, frameU } = useStore()
+  const { path, selected, playing, animT, frameR, frameU, showOverlays } = useStore()
 
   // ── Init ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -208,9 +285,13 @@ export function PerspView() {
     const bgGroup = new THREE.Group()
     scene.add(bgGroup)
 
-    // Player marker
+    // Gameplay context overlays (player ref ship, camera cube, frustum, scale planes)
+    const overlayGroup = buildOverlayGroup()
+    scene.add(overlayGroup)
+
+    // Player origin marker (small green dot at 0,0,0 — separate from the ship overlay)
     scene.add(Object.assign(
-      new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0x4ade80 }))
+      new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0x4ade80 }))
     ))
 
     // Target marker
@@ -245,7 +326,7 @@ export function PerspView() {
 
     const refs: SceneRefs = {
       renderer, scene, camera, controls, raycaster,
-      wireLine, actualLine, wpGroup, bgGroup, shipGroup, targetMesh,
+      wireLine, actualLine, wpGroup, bgGroup, overlayGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
       followMode: false,
       followDist: 8,
@@ -325,6 +406,13 @@ export function PerspView() {
       if (mount.contains(cv)) mount.removeChild(cv)
     }
   }, [])
+
+  // ── Toggle gameplay overlays ─────────────────────────────────────────
+  useEffect(() => {
+    const refs = refsRef.current
+    if (!refs) return
+    refs.overlayGroup.visible = showOverlays
+  }, [showOverlays])
 
   // ── Update path geometry + waypoints ─────────────────────────────────
   useEffect(() => {

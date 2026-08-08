@@ -77,7 +77,7 @@ function useAnimLoop() {
 
 // ── Toolbar ─────────────────────────────────────────────────────────────
 function Toolbar({ isLinked, onToggleLinked }: { isLinked: boolean; onToggleLinked: () => void }) {
-  const { path, playing, patchPath, setPlaying, setAnimT } = useStore()
+  const { path, playing, patchPath, setPlaying, setAnimT, showOverlays, setShowOverlays } = useStore()
 
   return (
     <div className="toolbar">
@@ -148,6 +148,17 @@ function Toolbar({ isLinked, onToggleLinked }: { isLinked: boolean; onToggleLink
           onClick={onToggleLinked}
         >
           {isLinked ? '⊞ LINKED' : '⊟ FREE'}
+        </button>
+      </div>
+      <div className="tb-sep" />
+
+      <div className="tb-group">
+        <button
+          className={showOverlays ? 'link-btn linked' : 'link-btn'}
+          title="Toggle gameplay context overlays — player ship, camera, frustum, scale planes"
+          onClick={() => setShowOverlays(!showOverlays)}
+        >
+          {showOverlays ? '⊞ GAME CTX' : '⊟ GAME CTX'}
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } fro
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
 import { drawShipModel, rollFrame } from './shipModel2D'
+import { drawOverlaysXZ } from './overlays'
 
 const VIEW = 'top' as const
 
@@ -50,7 +51,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, scale: nu
 
 // ── Component ───────────────────────────────────────────────────────────
 export function TopView() {
-  const { path, selected, playing, animT, frameR, frameU } = useStore()
+  const { path, selected, playing, animT, frameR, frameU, showOverlays } = useStore()
 
   // Snapshot of path at node-drag start; cleared on release.
   const ghostRef = useRef<{ path: PathData; wpIdx: number } | null>(null)
@@ -59,6 +60,13 @@ export function TopView() {
     const { scale, worldPan: pan } = getCam(VIEW)
     ctx.clearRect(0, 0, w, h)
     drawGrid(ctx, w, h, scale, pan)
+
+    if (showOverlays) {
+      drawOverlaysXZ(ctx, (wx, wz) => {
+        const { sx, sy } = w2s(wx, wz, w, h, scale, pan)
+        return [sx, sy]
+      })
+    }
 
     // ── Ghost (drawn behind live path while dragging a node) ────────────
     if (ghostRef.current !== null) {
@@ -158,7 +166,7 @@ export function TopView() {
     ctx.fillStyle = '#2a2a35'; ctx.font = '9px Courier New, monospace'
     ctx.fillText('Z →', w - 28, h - 8)
     ctx.fillText('X ↑', 8, 14)
-  }, [path, selected, playing, animT, frameR, frameU])
+  }, [path, selected, playing, animT, frameR, frameU, showOverlays])
 
   const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, playing, animT])
 
