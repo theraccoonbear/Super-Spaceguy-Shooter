@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "predev":    "cd ../.. && (cd math && npm install --prefer-offline --silent) && node tools/emit-spline.js",
+    "dev":       "vite",
+    "prebuild":  "cd ../.. && (cd math && npm install --prefer-offline --silent) && node tools/emit-spline.js",
+    "build":     "tsc && vite build",
+    "preview":   "vite preview"
   },
   "dependencies": {
     "exprforge": "file:../../../../../../../../../../home/don/code/exprforge",
