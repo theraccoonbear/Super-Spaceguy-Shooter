@@ -3,10 +3,14 @@
 // This file is the single source of truth — pure JS, no QB64, no TypeScript.
 //
 // QB64-PE SCOPE RULE: All Dim statements inside Subs share a module-wide namespace.
-// Every letIn name below uses a function-specific prefix to prevent collisions:
+// Every letChain name below uses a function-specific prefix to prevent collisions:
 //   mf = SpEfMkFrame     ap = SpEfActualPos    rf = SpEfRollFrame
 //   cw = SpEfCrWeights   dw = SpEfCrDerivWeights
-//   fn = SpEfFacingNorm  aa = SpEfArcAdvance
+//   fn = SpEfFacingNorm  aa = SpEfArcAdvance    tf = SpEfTransportFrame
+//
+// NOTE: normalize3 (exprforge/math) injects a fixed binding __exprforgeMathNrmLen2.
+// Only one Sub in the compilation unit may use it — that is SpEfFacingNorm.
+// All other normalizations use explicit safeDiv letChain pairs to avoid collision.
 //
 // Downstream generated files (never hand-edit):
 //   src/gameplay/spline_path_gen.bi           QB64
@@ -16,25 +20,35 @@
 
 'use strict';
 
-const EF = require('exprforge');
-const { num, v, call, add, mul, sub, div, neg, letIn, select, cmp, outputs } = EF;
+const { num, v, add, mul, sub, div, neg, letChain, select, cmp, outputs, call } = require('exprforge');
+const { safeDiv, dot3, len3, cross3, normalize3 } = require('exprforge/math');
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── Project-local helpers (not generic enough for exprforge/math) ─────────
 
 const PI       = num(3.141592653589793);
 const degToRad = (degVar) => mul(degVar, div(PI, num(180)));
-const dot3     = (ax, ay, az, bx, by, bz) => add(mul(ax, bx), mul(ay, by), mul(az, bz));
-const len3     = (x, y, z) => call("sqrt", dot3(x, y, z, x, y, z));
 
-const EPS = num(0.000001);
-function safeDiv(component, lenVar, fallback) {
-    const isSafe = cmp(v(lenVar), ">", EPS);
-    const safeLen = select(isSafe, v(lenVar), num(1));
-    return select(isSafe, div(component, safeLen), fallback);
-}
-
-// worldUp branch shared across MkFrame and ActualPos helpers
+// worldUp branch: (0,0,1) when |ty|>0.98, else (0,1,0).
+// References the param named "ty" — valid for any Sub that uses this param name.
 const nearVert = cmp(call("abs", v("ty")), ">", num(0.98));
+
+// Gram-Schmidt letChain pairs: T × worldUp → right vector, then normalize.
+// Returns array of [name, expr] pairs for use in letChain([...pairs], body).
+// `prefix` namespaces all bindings so mf/ap never collide in QB64 scope.
+function gramSchmidtPairs(prefix) {
+    return [
+        [prefix+'Wy',     select(nearVert, num(0), num(1))],
+        [prefix+'Wz',     select(nearVert, num(1), num(0))],
+        // T × worldUp (worldUp.x = 0, so CrossY simplifies to -tx*Wz)
+        [prefix+'CrossX', sub(mul(v("ty"), v(prefix+"Wz")), mul(v("tz"), v(prefix+"Wy")))],
+        [prefix+'CrossY', neg(mul(v("tx"), v(prefix+"Wz")))],
+        [prefix+'CrossZ', mul(v("tx"), v(prefix+"Wy"))],
+        [prefix+'RLen',   len3(v(prefix+"CrossX"), v(prefix+"CrossY"), v(prefix+"CrossZ"))],
+        [prefix+'RxN', safeDiv(v(prefix+"CrossX"), v(prefix+"RLen"), num(0))],
+        [prefix+'RyN', safeDiv(v(prefix+"CrossY"), v(prefix+"RLen"), num(0))],
+        [prefix+'RzN', safeDiv(v(prefix+"CrossZ"), v(prefix+"RLen"), num(1))],
+    ];
+}
 
 // ── SpEfMkFrame ───────────────────────────────────────────────────────────
 // Gram-Schmidt frame from normalized tangent (tx, ty, tz).
@@ -42,24 +56,10 @@ const nearVert = cmp(call("abs", v("ty")), ">", num(0.98));
 // R = normalize(T × worldUp),  U = R × T
 // Outputs: rx, ry, rz, ux, uy, uz
 
-function mfChain(body) {
-    return letIn("mfWy",     select(nearVert, num(0), num(1)),
-           letIn("mfWz",     select(nearVert, num(1), num(0)),
-           letIn("mfCrossX", sub(mul(v("ty"), v("mfWz")), mul(v("tz"), v("mfWy"))),
-           letIn("mfCrossY", neg(mul(v("tx"), v("mfWz"))),
-           letIn("mfCrossZ", mul(v("tx"), v("mfWy")),
-           letIn("mfRLen",   len3(v("mfCrossX"), v("mfCrossY"), v("mfCrossZ")),
-           letIn("mfRxN",    safeDiv(v("mfCrossX"), "mfRLen", num(0)),
-           letIn("mfRyN",    safeDiv(v("mfCrossY"), "mfRLen", num(0)),
-           letIn("mfRzN",    safeDiv(v("mfCrossZ"), "mfRLen", num(1)),
-               body
-           )))))))));
-}
-
 const SpEfMkFrame = {
     name: "SpEfMkFrame",
     params: ["tx", "ty", "tz"],
-    body: mfChain(outputs({
+    body: letChain(gramSchmidtPairs("mf"), outputs({
         rx: v("mfRxN"),
         ry: v("mfRyN"),
         rz: v("mfRzN"),
@@ -75,33 +75,21 @@ const SpEfMkFrame = {
 // (wy_wire avoids collision with the local apWy binding)
 // Outputs: x, y, z
 
-function apChain(body) {
-    return letIn("apWy",     select(nearVert, num(0), num(1)),
-           letIn("apWz",     select(nearVert, num(1), num(0)),
-           letIn("apCrossX", sub(mul(v("ty"), v("apWz")), mul(v("tz"), v("apWy"))),
-           letIn("apCrossY", neg(mul(v("tx"), v("apWz"))),
-           letIn("apCrossZ", mul(v("tx"), v("apWy")),
-           letIn("apRLen",   len3(v("apCrossX"), v("apCrossY"), v("apCrossZ")),
-           letIn("apRxN",    safeDiv(v("apCrossX"), "apRLen", num(0)),
-           letIn("apRyN",    safeDiv(v("apCrossY"), "apRLen", num(0)),
-           letIn("apRzN",    safeDiv(v("apCrossZ"), "apRLen", num(1)),
-           letIn("apUx",     sub(mul(v("apRyN"), v("tz")), mul(v("apRzN"), v("ty"))),
-           letIn("apUy",     sub(mul(v("apRzN"), v("tx")), mul(v("apRxN"), v("tz"))),
-           letIn("apUz",     sub(mul(v("apRxN"), v("ty")), mul(v("apRyN"), v("tx"))),
-           letIn("apRad",    degToRad(v("prDeg")),
-           letIn("apC",      call("cos", v("apRad")),
-           letIn("apS",      call("sin", v("apRad")),
-               body
-           )))))))))))))));
-}
-
 const SpEfActualPos = {
     name: "SpEfActualPos",
     params: ["wx", "wy_wire", "wz_wire", "tx", "ty", "tz", "prDeg", "so"],
-    body: apChain(outputs({
-        x: add(v("wx"),       mul(v("so"), add(mul(v("apC"), v("apUx")), mul(v("apS"), v("apRxN"))))),
-        y: add(v("wy_wire"),  mul(v("so"), add(mul(v("apC"), v("apUy")), mul(v("apS"), v("apRyN"))))),
-        z: add(v("wz_wire"),  mul(v("so"), add(mul(v("apC"), v("apUz")), mul(v("apS"), v("apRzN"))))),
+    body: letChain([
+        ...gramSchmidtPairs("ap"),
+        ["apUx", sub(mul(v("apRyN"), v("tz")), mul(v("apRzN"), v("ty")))],
+        ["apUy", sub(mul(v("apRzN"), v("tx")), mul(v("apRxN"), v("tz")))],
+        ["apUz", sub(mul(v("apRxN"), v("ty")), mul(v("apRyN"), v("tx")))],
+        ["apRad", degToRad(v("prDeg"))],
+        ["apC",   call("cos", v("apRad"))],
+        ["apS",   call("sin", v("apRad"))],
+    ], outputs({
+        x: add(v("wx"),      mul(v("so"), add(mul(v("apC"), v("apUx")), mul(v("apS"), v("apRxN"))))),
+        y: add(v("wy_wire"), mul(v("so"), add(mul(v("apC"), v("apUy")), mul(v("apS"), v("apRyN"))))),
+        z: add(v("wz_wire"), mul(v("so"), add(mul(v("apC"), v("apUz")), mul(v("apS"), v("apRzN"))))),
     })),
 };
 
@@ -114,18 +102,18 @@ const SpEfActualPos = {
 const SpEfRollFrame = {
     name: "SpEfRollFrame",
     params: ["ux", "uy", "uz", "rx", "ry", "rz", "crDeg"],
-    body: letIn("rfRad", degToRad(v("crDeg")),
-          letIn("rfC",   call("cos", v("rfRad")),
-          letIn("rfS",   call("sin", v("rfRad")),
-              outputs({
-                  rolledUx: sub(mul(v("rfC"), v("ux")), mul(v("rfS"), v("rx"))),
-                  rolledUy: sub(mul(v("rfC"), v("uy")), mul(v("rfS"), v("ry"))),
-                  rolledUz: sub(mul(v("rfC"), v("uz")), mul(v("rfS"), v("rz"))),
-                  rolledRx: add(mul(v("rfS"), v("ux")), mul(v("rfC"), v("rx"))),
-                  rolledRy: add(mul(v("rfS"), v("uy")), mul(v("rfC"), v("ry"))),
-                  rolledRz: add(mul(v("rfS"), v("uz")), mul(v("rfC"), v("rz"))),
-              })
-          ))),
+    body: letChain([
+        ["rfRad", degToRad(v("crDeg"))],
+        ["rfC",   call("cos", v("rfRad"))],
+        ["rfS",   call("sin", v("rfRad"))],
+    ], outputs({
+        rolledUx: sub(mul(v("rfC"), v("ux")), mul(v("rfS"), v("rx"))),
+        rolledUy: sub(mul(v("rfC"), v("uy")), mul(v("rfS"), v("ry"))),
+        rolledUz: sub(mul(v("rfC"), v("uz")), mul(v("rfS"), v("rz"))),
+        rolledRx: add(mul(v("rfS"), v("ux")), mul(v("rfC"), v("rx"))),
+        rolledRy: add(mul(v("rfS"), v("uy")), mul(v("rfC"), v("ry"))),
+        rolledRz: add(mul(v("rfS"), v("uz")), mul(v("rfC"), v("rz"))),
+    })),
 };
 
 // ── SpEfCrWeights ─────────────────────────────────────────────────────────
@@ -136,15 +124,15 @@ const SpEfRollFrame = {
 const SpEfCrWeights = {
     name: "SpEfCrWeights",
     params: ["t"],
-    body: letIn("cwT2", mul(v("t"), v("t")),
-          letIn("cwT3", mul(v("cwT2"), v("t")),
-              outputs({
-                  w0: mul(num(0.5), add(neg(v("cwT3")), mul(num(2), v("cwT2")), neg(v("t")))),
-                  w1: mul(num(0.5), add(mul(num(3), v("cwT3")), mul(num(-5), v("cwT2")), num(2))),
-                  w2: mul(num(0.5), add(mul(num(-3), v("cwT3")), mul(num(4), v("cwT2")), v("t"))),
-                  w3: mul(num(0.5), add(v("cwT3"), neg(v("cwT2")))),
-              })
-          )),
+    body: letChain([
+        ["cwT2", mul(v("t"), v("t"))],
+        ["cwT3", mul(v("cwT2"), v("t"))],
+    ], outputs({
+        w0: mul(num(0.5), add(neg(v("cwT3")), mul(num(2),   v("cwT2")), neg(v("t")))),
+        w1: mul(num(0.5), add(mul(num(3),  v("cwT3")), mul(num(-5),  v("cwT2")), num(2))),
+        w2: mul(num(0.5), add(mul(num(-3), v("cwT3")), mul(num(4),   v("cwT2")), v("t"))),
+        w3: mul(num(0.5), add(v("cwT3"), neg(v("cwT2")))),
+    })),
 };
 
 // ── SpEfCrDerivWeights ────────────────────────────────────────────────────
@@ -156,33 +144,31 @@ const SpEfCrWeights = {
 const SpEfCrDerivWeights = {
     name: "SpEfCrDerivWeights",
     params: ["t"],
-    body: letIn("dwT2", mul(v("t"), v("t")),
-        outputs({
-            dw0: mul(num(0.5), add(mul(num(-3), v("dwT2")), mul(num(4),   v("t")), num(-1))),
-            dw1: mul(num(0.5), add(mul(num(9),  v("dwT2")), mul(num(-10), v("t")))),
-            dw2: mul(num(0.5), add(mul(num(-9), v("dwT2")), mul(num(8),   v("t")), num(1))),
-            dw3: mul(num(0.5), add(mul(num(3),  v("dwT2")), mul(num(-2),  v("t")))),
-        })
-    ),
+    body: letChain([
+        ["dwT2", mul(v("t"), v("t"))],
+    ], outputs({
+        dw0: mul(num(0.5), add(mul(num(-3), v("dwT2")), mul(num(4),   v("t")), num(-1))),
+        dw1: mul(num(0.5), add(mul(num(9),  v("dwT2")), mul(num(-10), v("t")))),
+        dw2: mul(num(0.5), add(mul(num(-9), v("dwT2")), mul(num(8),   v("t")), num(1))),
+        dw3: mul(num(0.5), add(mul(num(3),  v("dwT2")), mul(num(-2),  v("t")))),
+    })),
 };
 
 // ── SpEfFacingNorm ────────────────────────────────────────────────────────
 // Safe-normalize direction vector (dx, dy, dz).
 // Fallback (0,1,0) when len < EPS so callers always receive a unit vector.
-// The orient-mode switch (path vs target) is caller infrastructure, not DSL.
+// Uses normalize3 from exprforge/math — injects __exprforgeMathNrmLen2.
+// CONSTRAINT: only one Sub in this file may use normalize3 (QB64 Dim scope).
 // Outputs: fx, fy, fz
 
-const SpEfFacingNorm = {
-    name: "SpEfFacingNorm",
-    params: ["dx", "dy", "dz"],
-    body: letIn("fnFLen", len3(v("dx"), v("dy"), v("dz")),
-        outputs({
-            fx: safeDiv(v("dx"), "fnFLen", num(0)),
-            fy: safeDiv(v("dy"), "fnFLen", num(1)),
-            fz: safeDiv(v("dz"), "fnFLen", num(0)),
-        })
-    ),
-};
+const SpEfFacingNorm = (() => {
+    const { x, y, z } = normalize3(v("dx"), v("dy"), v("dz"), num(0), num(1), num(0));
+    return {
+        name: "SpEfFacingNorm",
+        params: ["dx", "dy", "dz"],
+        body: outputs({ fx: x, fy: y, fz: z }),
+    };
+})();
 
 // ── SpEfArcAdvance ────────────────────────────────────────────────────────
 // Arc-length reparameterization: advance = speed / |tangent|
@@ -193,12 +179,69 @@ const SpEfFacingNorm = {
 const SpEfArcAdvance = {
     name: "SpEfArcAdvance",
     params: ["tx", "ty", "tz", "speed"],
-    body: letIn("aaTanLen", len3(v("tx"), v("ty"), v("tz")),
-        outputs({
-            advance: safeDiv(v("speed"), "aaTanLen", v("speed")),
-        })
-    ),
+    body: letChain([
+        ["aaTanLen", len3(v("tx"), v("ty"), v("tz"))],
+    ], outputs({
+        advance: safeDiv(v("speed"), v("aaTanLen"), v("speed")),
+    })),
 };
+
+// ── SpEfTransportFrame ────────────────────────────────────────────────────
+// Rodrigues parallel-transport: rotates frame (rx,ry,rz, ux,uy,uz) from
+// unit tangent T0 to unit tangent T1, preserving orientation with no twist.
+//
+// Rotation axis  b  = T0 × T1  (|b| = sinA for unit tangents)
+// Rodrigues:  v' = v*cosA + (b×v)*sinA + k*(k·v)*(1-cosA)
+//             where k = b/|b| (unit axis), sinA = |b|, cosA = T0·T1
+//
+// Falls back to identity (frame unchanged) when T0 ≈ T1 (|b| < EPS).
+// Prefix: tf
+// Outputs: newRx, newRy, newRz, newUx, newUy, newUz
+
+const SpEfTransportFrame = (() => {
+    // Build cross-product expressions (AST nodes only — no let injection)
+    const b   = cross3(v("tx0"), v("ty0"), v("tz0"), v("tx1"), v("ty1"), v("tz1"));
+    const kXr = cross3(v("tfKx"), v("tfKy"), v("tfKz"), v("rx"), v("ry"), v("rz"));
+    const kXu = cross3(v("tfKx"), v("tfKy"), v("tfKz"), v("ux"), v("uy"), v("uz"));
+    const guard = cmp(v("tfBLen"), ">", num(0.000001));
+
+    // Rodrigues output for one vector component (v=vx/vy/vz, kd=k·v, ckc=k×v component, ki=k component)
+    const rod = (vComp, kdV, kc, ki) =>
+        select(guard,
+            add(mul(vComp, v("tfCosA")), mul(kc, v("tfBLen")), mul(ki, mul(kdV, v("tf1mC")))),
+            vComp);
+
+    return {
+        name: "SpEfTransportFrame",
+        params: ["tx0", "ty0", "tz0", "tx1", "ty1", "tz1", "rx", "ry", "rz", "ux", "uy", "uz"],
+        body: letChain([
+            ["tfBx",   b.x],
+            ["tfBy",   b.y],
+            ["tfBz",   b.z],
+            ["tfBLen", len3(v("tfBx"), v("tfBy"), v("tfBz"))],
+            ["tfCosA", dot3(v("tx0"), v("ty0"), v("tz0"), v("tx1"), v("ty1"), v("tz1"))],
+            ["tfKx",   safeDiv(v("tfBx"), v("tfBLen"), num(0))],
+            ["tfKy",   safeDiv(v("tfBy"), v("tfBLen"), num(0))],
+            ["tfKz",   safeDiv(v("tfBz"), v("tfBLen"), num(1))],
+            ["tf1mC",  sub(num(1), v("tfCosA"))],
+            ["tfKdR",  dot3(v("tfKx"), v("tfKy"), v("tfKz"), v("rx"), v("ry"), v("rz"))],
+            ["tfCKRx", kXr.x],
+            ["tfCKRy", kXr.y],
+            ["tfCKRz", kXr.z],
+            ["tfKdU",  dot3(v("tfKx"), v("tfKy"), v("tfKz"), v("ux"), v("uy"), v("uz"))],
+            ["tfCKUx", kXu.x],
+            ["tfCKUy", kXu.y],
+            ["tfCKUz", kXu.z],
+        ], outputs({
+            newRx: rod(v("rx"), v("tfKdR"), v("tfCKRx"), v("tfKx")),
+            newRy: rod(v("ry"), v("tfKdR"), v("tfCKRy"), v("tfKy")),
+            newRz: rod(v("rz"), v("tfKdR"), v("tfCKRz"), v("tfKz")),
+            newUx: rod(v("ux"), v("tfKdU"), v("tfCKUx"), v("tfKx")),
+            newUy: rod(v("uy"), v("tfKdU"), v("tfCKUy"), v("tfKy")),
+            newUz: rod(v("uz"), v("tfKdU"), v("tfCKUz"), v("tfKz")),
+        })),
+    };
+})();
 
 // ── Export all ────────────────────────────────────────────────────────────
 
@@ -210,6 +253,7 @@ const splineFrameAsts = [
     SpEfCrDerivWeights,
     SpEfFacingNorm,
     SpEfArcAdvance,
+    SpEfTransportFrame,
 ];
 
 module.exports = { splineFrameAsts };

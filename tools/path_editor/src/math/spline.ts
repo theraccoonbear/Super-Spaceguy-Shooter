@@ -6,6 +6,7 @@ import {
   SpEfActualPos,
   SpEfFacingNorm,
   SpEfArcAdvance,
+  SpEfTransportFrame,
 } from './spline_gen'
 
 // ── Ghost index wrapping ────────────────────────────────────────────────
@@ -38,7 +39,7 @@ export interface PathFrame {
 }
 
 // Gram-Schmidt frame from tangent — wraps generated SpEfMkFrame.
-// Matches game runtime exactly (no parallel transport).
+// Used for one-shot frame initialization; parallel transport accumulates from here.
 export function makeFrame(tangent: Vec3): PathFrame {
   const T = v3.norm(tangent)
   const { rx, ry, rz, ux, uy, uz } = SpEfMkFrame(T.x, T.y, T.z)
@@ -46,6 +47,22 @@ export function makeFrame(tangent: Vec3): PathFrame {
     T,
     R: { x: rx, y: ry, z: rz },
     U: { x: ux, y: uy, z: uz },
+  }
+}
+
+// Rodrigues parallel transport: rotates frame from T0 to T1 preserving orientation.
+// T0 and T1 must be unit vectors. Falls back to identity when T0 ≈ T1.
+// Use this for accumulating frame state across animation ticks.
+export function transportFrame(T0: Vec3, T1: Vec3, R: Vec3, U: Vec3): { R: Vec3; U: Vec3 } {
+  const { newRx, newRy, newRz, newUx, newUy, newUz } = SpEfTransportFrame(
+    T0.x, T0.y, T0.z,
+    T1.x, T1.y, T1.z,
+    R.x, R.y, R.z,
+    U.x, U.y, U.z,
+  )
+  return {
+    R: { x: newRx, y: newRy, z: newRz },
+    U: { x: newUx, y: newUy, z: newUz },
   }
 }
 
