@@ -112,7 +112,9 @@ Sub BOSS_Update
         Dim bssFlySpdH As Single : bssFlySpdH = Sqr(bsmFlTnX*bsmFlTnX + bsmFlTnZ*bsmFlTnZ)
         bssTgtRy = _ATAN2(bsmFlTnZ, -bsmFlTnX) * 57.2958
         If bssFlySpdH > 0.001 Then bssTgtRx = _ATAN2(-bsmFlTnY, bssFlySpdH) * 57.2958
-        bssTgtRz = -bsmFlTnZ * 55.0
+        ' Roll from transported frame: atan2(R.y, U.y) gives the banking angle.
+        ' Physically correct — no approximation; same math as the path editor.
+        bssTgtRz = _ATAN2(bsmFlFRY, bsmFlFUY) * 57.2958
         If bsmOrientMode = 1 Then
             Dim bssFlyFX As Single, bssFlyFY As Single, bssFlyFZ As Single
             SpShipFacing boss.px, boss.py, boss.pz, _

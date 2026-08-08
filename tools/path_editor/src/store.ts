@@ -19,18 +19,21 @@ export interface EditorState {
   selected: number    // selected waypoint index, -1 = none
   playing:  boolean
   animT:    number    // 0..nSegs (Catmull-Rom parameter)
+  frameR:   Vec3      // parallel-transported right vector (updated each play tick)
+  frameU:   Vec3      // parallel-transported up vector (updated each play tick)
   status:   string    // displayed in status bar
 
-  setPath:     (p: PathData) => void
-  patchPath:   <K extends keyof PathData>(key: K, value: PathData[K]) => void
-  setWp:       (i: number, wp: Waypoint) => void
-  addWp:       (wp: Vec3, after?: number) => void
-  delWp:       (i: number) => void
-  dupWp:       (i: number) => void
-  setSelected: (i: number) => void
-  setPlaying:  (v: boolean) => void
-  setAnimT:    (v: number) => void
-  setStatus:   (s: string) => void
+  setPath:      (p: PathData) => void
+  patchPath:    <K extends keyof PathData>(key: K, value: PathData[K]) => void
+  setWp:        (i: number, wp: Waypoint) => void
+  addWp:        (wp: Vec3, after?: number) => void
+  delWp:        (i: number) => void
+  dupWp:        (i: number) => void
+  setSelected:  (i: number) => void
+  setPlaying:   (v: boolean) => void
+  setAnimT:     (v: number) => void
+  setPlayState: (animT: number, frameR: Vec3, frameU: Vec3) => void
+  setStatus:    (s: string) => void
 }
 
 function makeWp(x: number, y: number, z: number, pathRoll = 0, craftRoll = 0): Waypoint {
@@ -101,6 +104,8 @@ export const useStore = create<EditorState>((set) => ({
   selected: -1,
   playing:  false,
   animT:    0,
+  frameR:   { x: 1, y: 0, z: 0 },
+  frameU:   { x: 0, y: 0, z: 1 },
   status:   'session restored',
 
   setPath: (p) => {
@@ -149,8 +154,9 @@ export const useStore = create<EditorState>((set) => ({
     return { path, selected: i + 1, status: `duplicated waypoint ${i}` }
   }),
 
-  setSelected: (i) => set({ selected: i }),
-  setPlaying:  (v) => set({ playing: v }),
-  setAnimT:    (v) => set({ animT: v }),
-  setStatus:   (s) => set({ status: s }),
+  setSelected:  (i) => set({ selected: i }),
+  setPlaying:   (v) => set({ playing: v }),
+  setAnimT:     (v) => set({ animT: v }),
+  setPlayState: (animT, frameR, frameU) => set({ animT, frameR, frameU }),
+  setStatus:    (s) => set({ status: s }),
 }))

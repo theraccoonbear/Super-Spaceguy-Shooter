@@ -52,6 +52,12 @@ Dim Shared bsmPathRoll(0 To BSM_WP_MAX - 1)  As Single  ' per-wp path roll (degr
 Dim Shared bsmCraftRoll(0 To BSM_WP_MAX - 1) As Single  ' per-wp craft roll (degrees)
 Dim Shared bsmFlTnX As Single, bsmFlTnY As Single, bsmFlTnZ As Single  ' normalized tangent at current t — written by Case 6, read by boss.bas
 Dim Shared bsmFlCR  As Single                                           ' interpolated craftRoll at current t
+' Parallel-transport frame (Rodrigues) — updated each Case 6 tick via SpEfTransportFrame.
+' R (right) and U (up) rotate with the path, preventing twist. Read by boss.bas for body orientation.
+Dim Shared bsmFlFRX As Single, bsmFlFRY As Single, bsmFlFRZ As Single         ' transported right vector
+Dim Shared bsmFlFUX As Single, bsmFlFUY As Single, bsmFlFUZ As Single         ' transported up vector
+Dim Shared bsmFlPrevTnX As Single, bsmFlPrevTnY As Single, bsmFlPrevTnZ As Single  ' tangent on previous tick
+Dim Shared bsmFlFrameReady As Integer                                         ' 0=needs init, 1=frame live
 
 Sub BOSS_UpdateMovement()
     Dim bsmArcSpd As Single, bsmArcRad As Single, bsmRate As Single
@@ -64,6 +70,8 @@ Sub BOSS_UpdateMovement()
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
     Dim bsmFlAXD As Double, bsmFlAYD As Double, bsmFlAZD As Double  ' Double temps for SpEfActualPos
+    Dim bsmTfNRX As Double, bsmTfNRY As Double, bsmTfNRZ As Double  ' SpEfTransportFrame output R
+    Dim bsmTfNUX As Double, bsmTfNUY As Double, bsmTfNUZ As Double  ' SpEfTransportFrame output U
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -214,6 +222,26 @@ Sub BOSS_UpdateMovement()
                 bsmFlTnX = 1 : bsmFlTnY = 0 : bsmFlTnZ = 0
             End If
 
+            ' Parallel transport: maintain frame (R,U) across ticks using Rodrigues rotation.
+            ' Matches editor exactly — same SpEfTransportFrame function, same 100% shared math.
+            If bsmFlFrameReady = 0 Then
+                SpEfMkFrame CDbl(bsmFlTnX), CDbl(bsmFlTnY), CDbl(bsmFlTnZ), _
+                            bsmTfNRX, bsmTfNRY, bsmTfNRZ, bsmTfNUX, bsmTfNUY, bsmTfNUZ
+                bsmFlFRX = CSng(bsmTfNRX) : bsmFlFRY = CSng(bsmTfNRY) : bsmFlFRZ = CSng(bsmTfNRZ)
+                bsmFlFUX = CSng(bsmTfNUX) : bsmFlFUY = CSng(bsmTfNUY) : bsmFlFUZ = CSng(bsmTfNUZ)
+                bsmFlPrevTnX = bsmFlTnX : bsmFlPrevTnY = bsmFlTnY : bsmFlPrevTnZ = bsmFlTnZ
+                bsmFlFrameReady = 1
+            Else
+                SpEfTransportFrame CDbl(bsmFlPrevTnX), CDbl(bsmFlPrevTnY), CDbl(bsmFlPrevTnZ), _
+                                   CDbl(bsmFlTnX),     CDbl(bsmFlTnY),     CDbl(bsmFlTnZ), _
+                                   CDbl(bsmFlFRX), CDbl(bsmFlFRY), CDbl(bsmFlFRZ), _
+                                   CDbl(bsmFlFUX), CDbl(bsmFlFUY), CDbl(bsmFlFUZ), _
+                                   bsmTfNRX, bsmTfNRY, bsmTfNRZ, bsmTfNUX, bsmTfNUY, bsmTfNUZ
+                bsmFlFRX = CSng(bsmTfNRX) : bsmFlFRY = CSng(bsmTfNRY) : bsmFlFRZ = CSng(bsmTfNRZ)
+                bsmFlFUX = CSng(bsmTfNUX) : bsmFlFUY = CSng(bsmTfNUY) : bsmFlFUZ = CSng(bsmTfNUZ)
+                bsmFlPrevTnX = bsmFlTnX : bsmFlPrevTnY = bsmFlTnY : bsmFlPrevTnZ = bsmFlTnZ
+            End If
+
             ' Standoff: offset wire position perpendicular to tangent by pathRoll angle (JS: actualPos)
             If bsmStandoff > 0.001 And bsmTanLen > 0.001 Then
                 SpEvalRollAt bsmPathRoll(), bsmWpCount, bsmFt, bsmClosed, bsmFlPR
@@ -253,6 +281,7 @@ Sub BOSS_FlyoverInit
         bsmWp(0).y = boss.py - player.py
         bsmWp(0).z = boss.pz - player.pz
     End If
+    bsmFlFrameReady = 0   ' transport frame will be initialized on the first Case 6 tick
 End Sub
 
 ' Called each time the boss fires to pick the next movement mode.

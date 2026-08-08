@@ -92,6 +92,21 @@ The codebase is split across ~30 `$INCLUDE` modules, each owning a vertical slic
 | `settings.bas` | Persistent INI-file settings |
 | `input.bas` | Keyboard input with edge detection |
 
+### Flight path math
+
+**All boss-flight spline math lives in [`math/spline-frame.js`](math/spline-frame.js)** — pure JavaScript using the [exprforge](https://www.npmjs.com/package/exprforge) DSL. This is the single source of truth for every flight-path calculation in the game.
+
+Do not hand-edit the generated files. Run `node tools/emit-spline.js` from the repo root to regenerate both downstream targets from the DSL:
+
+| Generated file | Language | Consumer |
+|---|---|---|
+| `src/gameplay/spline_path_gen.bi` | QB64-PE | Game runtime (`behavior.bas`) |
+| `tools/path_editor/src/math/spline_gen.ts` | TypeScript | Path editor preview |
+
+The CI pipeline regenerates both files on every build, so the generated code is always fresh. If you add or change a function in the DSL, run the emit script locally and commit the regenerated files.
+
+Implemented algorithms: Catmull-Rom position/tangent weights, Gram-Schmidt frame, standoff offset, arc-length reparameterization, and Rodrigues parallel transport for smooth ship-body orientation.
+
 ---
 
 ## Controls
