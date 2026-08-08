@@ -32,11 +32,15 @@
 ## Pre-commit checklist — run ALL of these locally before every commit/push
 1. **Build**: `./tools/buildqb sss.bas` — must complete with no errors
 2. **Smoke test**: `builds/sss --version` — must print the version and exit 0
-3. **All automated tests**: build and run every test binary in `tests/`:
+3. **All automated tests**: build and run every test binary in `tests/` (mirrors `.github/scripts/qb64test.sh`, which runs this same suite in CI on Linux, macOS, and Windows):
    ```
-   ./tools/buildqb tests/seq_trace_test.bas    && builds/seq_trace_test
-   ./tools/buildqb tests/seq_dispatch_test.bas  && builds/seq_dispatch_test
+   ./tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
+   ./tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test
    ./tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
+   ./tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
+   ./tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
+   ./tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
+   tools/http_queue_test   # builds + runs http_queue_test.bas against a local mock server
    ```
    All tests must pass (exit 0) before committing. No exceptions.
 4. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
@@ -62,3 +66,13 @@ Never tell the user a task is done while CI is still running or red. Silence is 
     - The plan expresses any concerns or pushback if the user is going against best practices or otherwise potentially painting themself in a corner
 - Once a plan is approved by the user, you can proceed
 - Other bugs or feature ideas that arise during coding should get a GitHub issue created for them
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `theraccoonbear/Super-Spaceguy-Shooter` (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at repo root is the primary orientation document — load it at the start of any session touching game code. ADRs in `docs/adr/`. See `docs/agents/domain.md`.
