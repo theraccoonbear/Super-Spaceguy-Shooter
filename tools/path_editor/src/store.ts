@@ -14,6 +14,8 @@ export interface PathData {
   wps:      Waypoint[]
 }
 
+export type PaneName = 'top' | 'side' | 'front' | 'persp'
+
 export interface EditorState {
   path:     PathData
   selected: number    // selected waypoint index, -1 = none
@@ -26,6 +28,7 @@ export interface EditorState {
   setPath:      (p: PathData) => void
   patchPath:    <K extends keyof PathData>(key: K, value: PathData[K]) => void
   setWp:        (i: number, wp: Waypoint) => void
+  replaceWps:   (wps: Waypoint[]) => void
   addWp:        (wp: Vec3, after?: number) => void
   delWp:        (i: number) => void
   dupWp:        (i: number) => void
@@ -36,6 +39,8 @@ export interface EditorState {
   setStatus:       (s: string) => void
   showOverlays:    boolean
   setShowOverlays: (v: boolean) => void
+  maximizedPane:    PaneName | null
+  setMaximizedPane: (pane: PaneName | null) => void
 }
 
 function makeWp(x: number, y: number, z: number, pathRoll = 0, craftRoll = 0): Waypoint {
@@ -131,6 +136,12 @@ export const useStore = create<EditorState>((set) => ({
     return { path, status: 'modified' }
   }),
 
+  replaceWps: (wps) => set((s) => {
+    const path = { ...s.path, wps: wps.map(ensureRolls) }
+    save(path)
+    return { path, status: 'modified' }
+  }),
+
   addWp: (wp, after) => set((s) => {
     const wps = [...s.path.wps]
     const fullWp = ensureRolls(wp)
@@ -163,4 +174,6 @@ export const useStore = create<EditorState>((set) => ({
   setStatus:       (s) => set({ status: s }),
   showOverlays:    true,
   setShowOverlays: (v) => set({ showOverlays: v }),
+  maximizedPane:    null,
+  setMaximizedPane: (pane) => set({ maximizedPane: pane }),
 }))

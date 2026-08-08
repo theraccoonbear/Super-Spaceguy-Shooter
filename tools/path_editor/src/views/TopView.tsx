@@ -4,11 +4,13 @@
 
 import { useRef, useCallback } from 'react'
 import { useStore, PathData } from '../store'
+import type { Waypoint } from '../math/vec3'
 import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
 import { drawShipModel, rollFrame } from './shipModel2D'
 import { drawOverlaysXZ } from './overlays'
+import { rotateAroundY, translateWps } from '../math/pathOps'
 
 const VIEW = 'top' as const
 
@@ -166,17 +168,31 @@ export function TopView() {
     ctx.fillStyle = '#2a2a35'; ctx.font = '9px Courier New, monospace'
     ctx.fillText('Z →', w - 28, h - 8)
     ctx.fillText('X ↑', 8, 14)
+
+    // Rotate/translate hint overlay
+    if (opHintRef.current) {
+      ctx.save()
+      ctx.font = 'bold 11px Courier New, monospace'
+      ctx.fillStyle = '#fbbf24'
+      ctx.textAlign = 'center'
+      ctx.fillText(opHintRef.current, w / 2, 22)
+      ctx.textAlign = 'left'
+      ctx.restore()
+    }
   }, [path, selected, playing, animT, frameR, frameU, showOverlays])
 
   const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, playing, animT])
 
   // ── Interaction ──────────────────────────────────────────────────────
   type DragState =
-    | { type: 'wp';  wpIdx: number; startSx: number; startSy: number; startWx: number; startWz: number }
-    | { type: 'pan'; startSx: number; startSy: number; startPan: WorldPan; startScale: number }
-  const drag     = useRef<DragState | null>(null)
-  const hasMoved = useRef(false)
-  const drawRef  = useRef(redraw)
+    | { type: 'wp';        wpIdx: number; startSx: number; startSy: number; startWx: number; startWz: number }
+    | { type: 'pan';       startSx: number; startSy: number; startPan: WorldPan; startScale: number }
+    | { type: 'rotate';    startSx: number; snapshotWps: Waypoint[] }
+    | { type: 'translate'; startSx: number; startSy: number; snapshotWps: Waypoint[] }
+  const drag      = useRef<DragState | null>(null)
+  const hasMoved  = useRef(false)
+  const drawRef   = useRef(redraw)
+  const opHintRef = useRef('')
   drawRef.current = redraw
 
   const getRect = () => cvRef.current!.getBoundingClientRect()
@@ -197,6 +213,21 @@ export function TopView() {
     const sx = e.clientX - rect.left, sy = e.clientY - rect.top
     hasMoved.current = false
     const cam = getCam(VIEW)
+
+    // Alt+left drag: rotate entire path around Y axis at centroid
+    if (e.button === 0 && e.altKey) {
+      const p = useStore.getState().path
+      drag.current = { type: 'rotate', startSx: sx, snapshotWps: p.wps.map(w => ({ ...w })) }
+      if (cvRef.current) cvRef.current.style.cursor = 'grabbing'
+      return
+    }
+    // Ctrl+left drag: translate entire path in XZ
+    if (e.button === 0 && e.ctrlKey) {
+      const p = useStore.getState().path
+      drag.current = { type: 'translate', startSx: sx, startSy: sy, snapshotWps: p.wps.map(w => ({ ...w })) }
+      if (cvRef.current) cvRef.current.style.cursor = 'move'
+      return
+    }
 
     if (e.button === 2 || e.button === 1) {
       drag.current = { type: 'pan', startSx: sx, startSy: sy, startPan: { ...cam.worldPan }, startScale: cam.scale }
@@ -221,6 +252,28 @@ export function TopView() {
     const rect = getRect()
     const sx = e.clientX - rect.left, sy = e.clientY - rect.top
     hasMoved.current = true
+
+    if (drag.current.type === 'rotate') {
+      const dx = sx - drag.current.startSx
+      const theta = dx * Math.PI / 180   // 1°/px
+      const rotated = rotateAroundY(drag.current.snapshotWps, theta)
+      useStore.getState().replaceWps(rotated)
+      opHintRef.current = `↻ Y  ${(theta * 180 / Math.PI).toFixed(1)}°`
+      drawRef.current()
+      return
+    }
+
+    if (drag.current.type === 'translate') {
+      const { startSx, startSy, snapshotWps } = drag.current
+      const { scale } = getCam(VIEW)
+      const dx = sx - startSx, dy = sy - startSy
+      // TOP: screen-X → world-Z, screen-Y → world-X (inverted)
+      const translated = translateWps(snapshotWps, -dy / scale, 0, dx / scale)
+      useStore.getState().replaceWps(translated)
+      opHintRef.current = `⇥ X ${(-dy / scale).toFixed(1)}  Z ${(dx / scale).toFixed(1)}`
+      drawRef.current()
+      return
+    }
 
     if (drag.current.type === 'pan') {
       const { startSx, startSy, startPan, startScale } = drag.current
@@ -259,10 +312,16 @@ export function TopView() {
 
   const onMouseUp = useCallback((e: React.MouseEvent) => {
     if (!drag.current) return
-    if (ghostRef.current !== null) {
-      ghostRef.current = null
-      drawRef.current()   // force repaint to clear ghost
+    if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
+
+    if (drag.current.type === 'rotate' || drag.current.type === 'translate') {
+      opHintRef.current = ''
+      if (cvRef.current) cvRef.current.style.cursor = 'crosshair'
+      drag.current = null
+      drawRef.current()
+      return
     }
+
     if (!hasMoved.current && drag.current.type === 'pan') {
       const rect = getRect()
       const sx = e.clientX - rect.left, sy = e.clientY - rect.top
@@ -303,8 +362,10 @@ export function TopView() {
       onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
       onMouseLeave={() => {
         drag.current = null
+        opHintRef.current = ''
         if (cvRef.current) cvRef.current.style.cursor = 'crosshair'
-        if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
+        if (ghostRef.current !== null) ghostRef.current = null
+        drawRef.current()
       }}
       onWheel={onWheel} onKeyDown={onKeyDown}
       onContextMenu={(e) => e.preventDefault()} />

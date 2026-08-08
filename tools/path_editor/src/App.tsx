@@ -2,7 +2,7 @@
 // Layout: Top XZ | Side XY | Front YZ | 3D Persp, with sidebar (waypoints + I/O).
 
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { useStore } from './store'
+import { useStore, type PaneName } from './store'
 import { TopView }   from './views/TopView'
 import { SideView }  from './views/SideView'
 import { FrontView } from './views/FrontView'
@@ -249,8 +249,11 @@ function Sidebar() {
             <span>P°</span> = path roll (standoff angle)<br />
             <span>C°</span> = craft roll (ship bank)<br />
             <span>Drag wp</span> → move in view plane<br />
+            <span>Alt drag</span> → rotate entire path<br />
+            <span>Ctrl drag</span> → translate entire path<br />
             <span>Right drag</span> → pan · <span>Scroll</span> → zoom<br />
-            <span>Del key</span> → remove selected
+            <span>Del key</span> → remove selected<br />
+            <span>Corner wedge</span> → maximize / restore
           </div>
         </>
       )}
@@ -271,6 +274,7 @@ export function App() {
   useAnimLoop()
 
   const [isLinked, setIsLinked] = useState(orthoLinked)
+  const { maximizedPane, setMaximizedPane } = useStore()
 
   const handleToggleLinked = useCallback(() => {
     setIsLinked(toggleLinked())
@@ -279,26 +283,49 @@ export function App() {
   const onRootKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
     if (e.key === 'l' || e.key === 'L') handleToggleLinked()
-  }, [handleToggleLinked])
+    if (e.key === 'Escape' && maximizedPane !== null) setMaximizedPane(null)
+  }, [handleToggleLinked, maximizedPane, setMaximizedPane])
+
+  const toggleMax = useCallback((pane: PaneName) => {
+    setMaximizedPane(maximizedPane === pane ? null : pane)
+  }, [maximizedPane, setMaximizedPane])
+
+  // Resolve CSS class for each view-cell
+  const cellClass = (pane: PaneName) =>
+    maximizedPane === pane ? 'view-cell maximized'
+    : maximizedPane !== null ? 'view-cell hidden'
+    : 'view-cell'
 
   return (
     <div className="app" onKeyDown={onRootKeyDown} tabIndex={-1} style={{ outline: 'none' }}>
       <Toolbar isLinked={isLinked} onToggleLinked={handleToggleLinked} />
       <div className="workspace">
-        <div className="view-cell">
+        <div className={cellClass('top')}>
           <div className="view-label">TOP · XZ</div>
+          <div className={`expand-wedge br${maximizedPane === 'top' ? ' active' : ''}`}
+            title={maximizedPane === 'top' ? 'Restore 4-pane view (Esc)' : 'Maximize TOP · XZ'}
+            onClick={() => toggleMax('top')} />
           <TopView />
         </div>
-        <div className="view-cell">
+        <div className={cellClass('side')}>
           <div className="view-label">SIDE · XY</div>
+          <div className={`expand-wedge bl${maximizedPane === 'side' ? ' active' : ''}`}
+            title={maximizedPane === 'side' ? 'Restore 4-pane view (Esc)' : 'Maximize SIDE · XY'}
+            onClick={() => toggleMax('side')} />
           <SideView />
         </div>
-        <div className="view-cell">
+        <div className={cellClass('front')}>
           <div className="view-label">FRONT · YZ</div>
+          <div className={`expand-wedge tr${maximizedPane === 'front' ? ' active' : ''}`}
+            title={maximizedPane === 'front' ? 'Restore 4-pane view (Esc)' : 'Maximize FRONT · YZ'}
+            onClick={() => toggleMax('front')} />
           <FrontView />
         </div>
-        <div className="view-cell">
+        <div className={cellClass('persp')}>
           <div className="view-label">3D · ORBIT</div>
+          <div className={`expand-wedge tl${maximizedPane === 'persp' ? ' active' : ''}`}
+            title={maximizedPane === 'persp' ? 'Restore 4-pane view (Esc)' : 'Maximize 3D · ORBIT'}
+            onClick={() => toggleMax('persp')} />
           <PerspView />
         </div>
         <Sidebar />
