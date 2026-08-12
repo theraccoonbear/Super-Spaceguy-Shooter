@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "exprforge": "^0.2.0"
+    "exprforge": "^0.4.0"
   }
 }

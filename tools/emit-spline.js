@@ -13,8 +13,11 @@
 const fs   = require('fs');
 const path = require('path');
 
-// Load emitAll from exprforge (installed in math/node_modules).
-const { emitAll } = require('../math/node_modules/exprforge');
+// Load emitAll from exprforge — resolved through math/ so it always uses the
+// same install as spline-frame.js, regardless of where the script is invoked.
+const { emitAll } = require(
+    require.resolve('exprforge', { paths: [path.join(__dirname, '../math')] })
+);
 
 // All spline math ASTs live here — pure JS DSL, no QB64, no TypeScript.
 const { splineFrameAsts } = require('../math/spline-frame.js');
