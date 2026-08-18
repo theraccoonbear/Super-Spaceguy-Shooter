@@ -6,7 +6,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, frustumAtX } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame, frustumAtX } from '../math/spline'
+import { evalTrack } from './behaviorMarkers'
 import {
   GAME_CAM_X, GAME_CAM_Y,
   SHIP_HX, SHIP_HY, SHIP_HZ,
@@ -21,6 +22,14 @@ const COL_STAR  = 0xa3e635   // lime   — starboard  (right, +Z local)
 const COL_FIN   = 0xf472b6   // pink   — dorsal fin (top,   +Y local)
 
 // ── Types ───────────────────────────────────────────────────────────────
+type CameraMode = 'orbit' | 'follow' | 'ingame'
+
+const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
+  orbit:  '⊙ ORBIT',
+  follow: '⊙ FOLLOW',
+  ingame: '⊙ IN-GAME',
+}
+
 interface SceneRefs {
   renderer:     THREE.WebGLRenderer
   scene:        THREE.Scene
@@ -37,8 +46,8 @@ interface SceneRefs {
   gizmo:        THREE.Group
   gizmoHits:    THREE.Mesh[]
   raf:          number
-  // Follow-cam state (mutated directly — not React state)
-  followMode: boolean
+  // Camera mode (mutated directly — not React state)
+  cameraMode: CameraMode
   followDist: number
   shipPos:    THREE.Vector3
   shipFwd:    THREE.Vector3
@@ -137,11 +146,13 @@ function buildBackground(
   const rng  = (lo: number, hi: number) => lo + rand() * (hi - lo)
   const COLORS = [0x1e293b, 0x1a1f2e, 0x1c1a2e, 0x1c2022, 0x1c2a1c, 0x241515]
 
-  // Generate up to 300 candidates; keep the first 50 that clear the path zone.
-  for (let i = 0; i < 300 && bgGroup.children.length < 50; i++) {
-    const px = rng(-55, 55)
-    const py = rng(-1, 20)
-    const pz = rng(-55, 55)
+  // Generate up to 600 candidates; keep the first 50 that clear the path zone
+  // and are at least 70 units from the origin (keeps them out of the flight space).
+  const MIN_RADIUS = 70
+  for (let i = 0; i < 600 && bgGroup.children.length < 50; i++) {
+    const px = rng(-130, 130)
+    const py = rng(-20, 50)
+    const pz = rng(-130, 130)
     const sx = rng(0.4, 5), sy = rng(0.4, 5), sz = rng(0.4, 5)
     const rx = rng(0, Math.PI * 2)
     const ry = rng(0, Math.PI * 2)
@@ -151,6 +162,9 @@ function buildBackground(
 
     // Bounding-sphere radius of this (possibly rotated) box — half-diagonal
     const hr = Math.sqrt(sx * sx + sy * sy + sz * sz) * 0.5
+
+    // Reject if within the minimum radius exclusion zone
+    if (Math.sqrt(px * px + py * py + pz * pz) < MIN_RADIUS) continue
 
     // Reject if the cube's bounding sphere overlaps the expanded path AABB
     if (px + hr > cx0 && px - hr < cx1 &&
@@ -248,9 +262,10 @@ function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
 export function PerspView() {
   const mountRef  = useRef<HTMLDivElement>(null)
   const refsRef   = useRef<SceneRefs | null>(null)
-  const [followMode, setFollowMode] = useState(false)
+  const [cameraMode, setCameraMode] = useState<CameraMode>('orbit')
 
-  const { path, selected, playing, animT, frameR, frameU, showOverlays } = useStore()
+  const { path, selected, playing, animT, frameR, frameU, showOverlays, debugLog, mutedTracks } = useStore()
+
 
   // ── Init ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -328,7 +343,7 @@ export function PerspView() {
       renderer, scene, camera, controls, raycaster,
       wireLine, actualLine, wpGroup, bgGroup, overlayGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
-      followMode: false,
+      cameraMode: 'orbit',
       followDist: 8,
       shipPos: new THREE.Vector3(),
       shipFwd: new THREE.Vector3(1, 0, 0),
@@ -357,7 +372,7 @@ export function PerspView() {
     // Scroll: adjust follow distance when in follow mode;
     // otherwise orbit controls handles the wheel event natively.
     const onWheel = (e: WheelEvent) => {
-      if (!refs.followMode) return
+      if (refs.cameraMode !== 'follow') return
       e.preventDefault()
       const factor = e.deltaY > 0 ? 1.12 : 0.89
       refs.followDist = Math.max(1.5, Math.min(40, refs.followDist * factor))
@@ -378,21 +393,30 @@ export function PerspView() {
     // ── Render loop ───────────────────────────────────────────────────
     const render = () => {
       refs.raf = requestAnimationFrame(render)
-      if (refs.followMode && refs.shipGroup.visible) {
-        // Chase cam: sit behind + slightly above ship, look slightly ahead
-        refs.camera.position
-          .copy(refs.shipPos)
-          .addScaledVector(refs.shipFwd, -refs.followDist)
-          .addScaledVector(refs.shipUp,   refs.followDist * 0.22)
-        refs.camera.lookAt(
-          refs.shipPos.x + refs.shipFwd.x * 2,
-          refs.shipPos.y + refs.shipFwd.y * 2,
-          refs.shipPos.z + refs.shipFwd.z * 2,
-        )
-      } else if (!refs.followMode) {
-        controls.update()
+      switch (refs.cameraMode) {
+        case 'follow':
+          if (refs.shipGroup.visible) {
+            // Chase cam: sit behind + slightly above ship, look slightly ahead
+            refs.camera.position
+              .copy(refs.shipPos)
+              .addScaledVector(refs.shipFwd, -refs.followDist)
+              .addScaledVector(refs.shipUp,   refs.followDist * 0.22)
+            refs.camera.lookAt(
+              refs.shipPos.x + refs.shipFwd.x * 2,
+              refs.shipPos.y + refs.shipFwd.y * 2,
+              refs.shipPos.z + refs.shipFwd.z * 2,
+            )
+          }
+          // ship not visible: camera stays at last position; no controls.update()
+          break
+        case 'ingame':
+          refs.camera.position.set(GAME_CAM_X, GAME_CAM_Y, 0)
+          refs.camera.lookAt(GAME_CAM_X + 100, GAME_CAM_Y, 0)
+          break
+        default: // 'orbit'
+          controls.update()
+          break
       }
-      // Follow mode + ship not visible: camera stays at last position; no controls.update()
       renderer.render(scene, camera)
     }
     render()
@@ -475,17 +499,31 @@ export function PerspView() {
   useEffect(() => {
     const refs = refsRef.current
     if (!refs || path.wps.length < 2) return
-    if (!playing) { refs.shipGroup.visible = false; return }
+    // Ship is always shown while a valid path exists — paused or playing.
+    // The scrubber sets animT when paused; this effect re-runs and repositions the ship.
 
     const nSegs        = path.closed ? path.wps.length : path.wps.length - 1
+    const animFrac     = nSegs > 0 ? Math.max(0, Math.min(1, (animT % (nSegs || 1)) / (nSegs || 1))) : 0
     const wire         = evalAt(path.wps, animT, path.closed)
     const tan          = tangentAt(path.wps, animT, path.closed)
     const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
-    const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
-    const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
+    const craftRollTrack = mutedTracks['craftRoll'] ? null : path.tracks?.['craftRoll']
+    const standoffTrack  = mutedTracks['standoff']  ? null : path.tracks?.['standoff']
+    const craftRollDeg = craftRollTrack
+      ? evalTrack(craftRollTrack, animFrac)
+      : evalRollAt(path.wps, animT, path.closed, 'craftRoll')
+    const standoff = standoffTrack ? evalTrack(standoffTrack, animFrac) : path.standoff
+    const ap           = actualPos(wire, tan, pathRollDeg, standoff)
     const facing       = shipFacing(ap, tan, path.orient, path.target)
-    const R = frameR
-    const U = frameU
+    // Frame selection:
+    // • target mode: makeFrame(facing) — tangent ≠ facing, transport frame is wrong axis
+    // • path mode, playing: frameR/frameU — parallel transport, accumulated by the RAF loop
+    // • path mode, paused (scrubbing): frameR/frameU are stale from the last played position
+    //   and produce tumbling when animT jumps. Fall back to makeFrame(facing) which gives a
+    //   stable Gram-Schmidt frame relative to world-up. Craft roll still applies on top correctly.
+    const { R, U } = (path.orient === 'target' || !playing)
+      ? makeFrame(facing)
+      : { R: frameR, U: frameU }
 
     refs.shipGroup.position.set(ap.x, ap.y, ap.z)
 
@@ -516,29 +554,42 @@ export function PerspView() {
     refs.shipFwd.set(facing.x, facing.y, facing.z)
     refs.shipUp.set(rolledU.x, rolledU.y, rolledU.z)
 
-    void nSegs
-  }, [animT, playing, path, frameR, frameU])
+    if (debugLog) {
+      console.log(
+        `[path] t=${animT.toFixed(4)}`,
+        `pos=(${ap.x.toFixed(2)}, ${ap.y.toFixed(2)}, ${ap.z.toFixed(2)})`,
+        `fwd=(${facing.x.toFixed(3)}, ${facing.y.toFixed(3)}, ${facing.z.toFixed(3)})`,
+        `R=(${frameR.x.toFixed(3)}, ${frameR.y.toFixed(3)}, ${frameR.z.toFixed(3)})`,
+        `U=(${frameU.x.toFixed(3)}, ${frameU.y.toFixed(3)}, ${frameU.z.toFixed(3)})`,
+      )
+    }
 
-  // ── Follow-mode toggle ────────────────────────────────────────────────
-  const toggleFollow = useCallback(() => {
+    void nSegs
+  }, [animT, playing, path, frameR, frameU, debugLog, mutedTracks])
+
+  // ── Camera mode cycle: orbit → follow → ingame → orbit ───────────────
+  const cycleCamera = useCallback(() => {
     const refs = refsRef.current
     if (!refs) return
-    const next = !refs.followMode
-    refs.followMode = next
-    refs.controls.enabled = !next  // disable orbit controls while following
-    setFollowMode(next)
+    const next: CameraMode =
+      refs.cameraMode === 'orbit'  ? 'follow' :
+      refs.cameraMode === 'follow' ? 'ingame'  : 'orbit'
+    refs.cameraMode = next
+    refs.controls.enabled = next === 'orbit'
+    setCameraMode(next)
   }, [])
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+    <div style={{ position: 'absolute', inset: 0, outline: 'none' }} tabIndex={0}
+      onMouseEnter={e => (e.currentTarget as HTMLDivElement).focus()}>
       <div ref={mountRef} className="three-mount" />
       <button
-        className={followMode ? 'primary' : ''}
-        onClick={toggleFollow}
-        title="Toggle follow-cam — camera chases the ship; scroll to adjust distance"
+        className={cameraMode !== 'orbit' ? 'primary' : ''}
+        onClick={cycleCamera}
+        title="Cycle camera: Orbit → Follow (chases ship; scroll to adjust distance) → In-Game (fixed at game camera position)"
         style={{ position: 'absolute', top: 22, right: 6, zIndex: 3, fontSize: 10 }}
       >
-        {followMode ? '⊙ FOLLOW' : '⊙ ORBIT'}
+        {CAMERA_MODE_LABEL[cameraMode]}
       </button>
     </div>
   )

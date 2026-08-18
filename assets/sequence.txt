@@ -27,6 +27,7 @@ title:
 level:1
     CRAWL txt=stage1 mus=crawl
     PLAY type=combat mus=game trigger=10
+    ;PLAY type=boss maneuver=latest_greatest mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015
     ARRIVE mus=planet
 
 level:2

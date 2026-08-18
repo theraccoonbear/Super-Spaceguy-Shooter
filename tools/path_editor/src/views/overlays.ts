@@ -1,4 +1,4 @@
-// Gameplay context overlays for the path editor.
+// Gameplay context overlays for Trailforge.
 // All constants sourced from dims.bas and assets/models.e3d.
 // Frustum math via SpEfFrustumAtX (ExprForge-emitted — shared with game).
 
@@ -50,7 +50,7 @@ export function drawOverlaysXZ(ctx: CanvasRenderingContext2D, proj: Proj2): void
     const [x0, y0] = proj(p.x, -RANGE), [x1, y1] = proj(p.x, RANGE)
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke()
     ctx.setLineDash([]); ctx.globalAlpha = 0.45
-    ctx.fillStyle = p.color; ctx.font = '8px Courier New,monospace'
+    ctx.fillStyle = p.color; ctx.font = '11px Courier New,monospace'
     const [lx, ly] = proj(p.x, -RANGE * 0.85)
     ctx.fillText(p.label, lx + 2, ly)
   }
@@ -116,7 +116,7 @@ export function drawOverlaysXY(ctx: CanvasRenderingContext2D, proj: Proj2): void
     const [x0, y0] = proj(p.x, -RANGE), [x1, y1] = proj(p.x, RANGE)
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke()
     ctx.setLineDash([]); ctx.globalAlpha = 0.45
-    ctx.fillStyle = p.color; ctx.font = '8px Courier New,monospace'
+    ctx.fillStyle = p.color; ctx.font = '11px Courier New,monospace'
     const [lx, ly] = proj(p.x, RANGE * 0.85)
     ctx.fillText(p.label, lx + 2, ly)
   }
@@ -191,7 +191,7 @@ export function drawOverlaysYZ(ctx: CanvasRenderingContext2D, proj: Proj2): void
     ctx.closePath(); ctx.stroke()
     // Label at top-right corner
     ctx.setLineDash([]); ctx.fillStyle = p.color; ctx.globalAlpha = 0.45
-    ctx.font = '8px Courier New,monospace'
+    ctx.font = '11px Courier New,monospace'
     const [lx, ly] = proj(halfZ, pCY + halfY)
     ctx.fillText(`X=${p.x}`, lx + 2, ly)
   }

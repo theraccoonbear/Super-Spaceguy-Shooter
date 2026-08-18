@@ -71,6 +71,19 @@ html, body, #root {
   gap: 5px;
   flex-shrink: 0;
 }
+.tb-scrubber-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+}
+.tb-scrubber {
+  width: 100%;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #94a3b8; /* slate-400 — neutral, distinct from keyframe track colors */
+}
 
 .tb-label {
   color: var(--text-dim);
@@ -98,9 +111,12 @@ input[type='number']:focus {
   border-color: var(--accent);
 }
 input[type='text'] { width: 100px; }
-input[type='number'] { width: 56px; text-align: right; }
+input[type='number'] { width: 56px; text-align: right; appearance: textfield; -moz-appearance: textfield; }
 input[type='number'].narrow { width: 48px; }
-input[type='number'].wide   { width: 68px; }
+input[type='number'].wide   { width: 72px; }
+/* Hide native spinner arrows — keyboard up/down still steps by the input's step value */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 button {
   background: var(--panel2);
@@ -200,6 +216,21 @@ button.icon { padding: 3px 6px; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 10;
+}
+.sidebar-resize-handle:hover {
+  background: var(--accent);
+  opacity: 0.25;
 }
 
 .sidebar-tabs {
@@ -249,9 +280,11 @@ button.icon { padding: 3px 6px; }
 .wp-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
 .wp-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px 1fr 18px;
   align-items: center;
-  gap: 3px;
+  column-gap: 3px;
+  row-gap: 2px;
   padding: 3px 6px 3px 4px;
   border-left: 2px solid transparent;
   cursor: pointer;
@@ -283,13 +316,12 @@ button.icon { padding: 3px 6px; }
   text-align: right;
 }
 
-/* Roll inputs — shown inline below coords for the selected waypoint */
+/* Roll inputs — second grid row, spans all 3 columns */
 .wp-rolls {
   display: flex;
   gap: 4px;
   padding: 2px 0 1px 22px;   /* indent to align under coords */
-  flex-basis: 100%;
-  flex-wrap: nowrap;
+  grid-column: 1 / -1;
 }
 .roll-label {
   display: flex;
@@ -311,8 +343,7 @@ button.icon { padding: 3px 6px; }
   padding: 1px 3px;
 }
 
-/* Make wp-row a flex-wrap container so the roll row sits below coords */
-.wp-row { flex-wrap: wrap; }
+/* (grid layout handles rolls on a second row — no flex-wrap needed) */
 
 .wp-del {
   width: 16px;
@@ -345,7 +376,8 @@ button.icon { padding: 3px 6px; }
   color: var(--text-faint);
   font-size: 10px;
   line-height: 1.7;
-  flex-shrink: 0;
+  /* flex-shrink defaults to 1 — panels above with flex:1 win; hint compresses
+     out of view when space is tight. overflow:hidden on .sidebar clips it cleanly. */
 }
 .sidebar-hint span {
   color: var(--text-dim);
@@ -450,6 +482,641 @@ textarea.import-area:focus { border-color: var(--path); }
 .expand-wedge.bl { bottom: 0; left:  0; clip-path: polygon(0% 0%, 100% 100%, 0% 100%); }
 .expand-wedge.tr { top:    0; right: 0; clip-path: polygon(100% 0%, 100% 100%, 0% 0%); }
 .expand-wedge.tl { top:    0; left:  0; clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }
+
+/* ── Context menu ───────────────────────────────────────────────────────── */
+.ctx-menu {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 3px 0;
+  z-index: 200;
+  min-width: 148px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+}
+.ctx-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ctx-item:hover  { background: var(--border); color: #fff; }
+.ctx-item:active { opacity: 0.8; }
+.ctx-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 3px 0;
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+}
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  min-width: 300px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-header {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  min-width: 58px;
+  flex-shrink: 0;
+}
+.modal-footer {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+/* ── Routes panel ────────────────────────────────────────────────────────── */
+.routes-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+/* ── Behaviors panel ─────────────────────────────────────────────────────── */
+/* Outer shell — App.tsx controls height; flex-shrink:0 so it doesn't collapse */
+.behaviors-panel {
+  flex-shrink: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Drag handle — 6px strip at the very top; cursor signals resizability */
+.bpanel-handle {
+  height: 6px;
+  flex-shrink: 0;
+  cursor: ns-resize;
+  background: transparent;
+  border-bottom: 1px solid var(--border2);
+}
+.bpanel-handle:hover {
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+/* Inner scroll container */
+.bpanel-inner {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ── Path ruler ─────────────────────────────────────────────────────────── */
+.bpanel-ruler-wrap {
+  flex-shrink: 0;
+  padding: 2px 0 4px;
+}
+
+/* ALIGNMENT CONTRACT: ruler row and track row share the same 3-column grid so the
+   timeline bar is structurally identical in both — no arithmetic, no drift.
+   Column widths are locked via CSS vars; change them here and nowhere else. */
+:root {
+  --bpanel-label-w: 100px;   /* label / left spacer */
+  --bpanel-right-w: 80px;    /* right panel (eye-btn + meta + del-btn) / right spacer */
+  --bpanel-row-gap: 5px;
+}
+
+.bpanel-ruler-row {
+  display: grid;
+  grid-template-columns: var(--bpanel-label-w) 1fr var(--bpanel-right-w);
+  gap: var(--bpanel-row-gap);
+  align-items: center;
+}
+/* The two spacer divs in the ruler row need no explicit widths — grid handles it */
+.bpanel-ruler-lspacer,
+.bpanel-ruler-rspacer { /* intentionally empty — size comes from grid */ }
+
+.bpanel-ruler-bar {
+  flex: 1;
+  position: relative;
+  height: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: col-resize;
+}
+
+/* 0 / t / 1 labels overlaid inside the bar */
+.bpanel-ruler-labels {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  right: 2px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  line-height: 14px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  pointer-events: none;
+  z-index: 4;
+  user-select: none;
+}
+
+.bpanel-ruler-t {
+  color: var(--text-dim);
+}
+
+/* Animated scrubber */
+.bpanel-scrubber {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: #fbbf24;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Track keyframe tick on ruler (small tall rect) */
+.bpanel-ruler-kf {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 2px;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: default;
+  z-index: 2;
+}
+
+/* Trigger tick on ruler (full-height, distinct shape) */
+.bpanel-ruler-trigger {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 0;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: default;
+  z-index: 2;
+}
+
+/* ── Track rows ─────────────────────────────────────────────────────────── */
+.bpanel-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Same 3-column grid as .bpanel-ruler-row — timeline bars guaranteed to align */
+.bpanel-track-row {
+  display: grid;
+  grid-template-columns: var(--bpanel-label-w) 1fr var(--bpanel-right-w);
+  gap: var(--bpanel-row-gap);
+  align-items: center;
+  height: 22px;
+}
+
+.bpanel-track-label {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  width: 100px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* ▶/▼ mode indicator inside the label */
+.bpanel-mode-ind {
+  font-size: 7px;
+  opacity: 0.5;
+  margin-right: 3px;
+}
+
+.bpanel-track-bar {
+  flex: 1;
+  position: relative;
+  height: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  /* Bar is always compact — no expanded state. Editing UI lives in .bpanel-active-panel below the row. */
+}
+
+.bpanel-track-baseline {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 1px;
+  background: var(--border2);
+  pointer-events: none;
+}
+
+/* Keyframe diamond on track bar */
+.bpanel-kf-diamond {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1.5px solid;
+  border-radius: 1px;
+  cursor: pointer;   /* compact mode: click to expand + select */
+  z-index: 2;
+}
+/* Active mode: drag is possible */
+.bpanel-track-group.active .bpanel-kf-diamond { cursor: grab; }
+
+.bpanel-track-meta {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  width: 28px;
+  flex-shrink: 0;
+  text-align: right;
+  user-select: none;
+}
+
+/* ── Trigger list ────────────────────────────────────────────────────────── */
+.bpanel-triggers {
+  margin-top: 4px;
+}
+
+.bpanel-section-header {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  margin-bottom: 3px;
+  user-select: none;
+}
+
+.bpanel-trigger-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 18px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.bpanel-trigger-t {
+  width: 40px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.bpanel-trigger-type {
+  color: var(--text-dim);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.bpanel-trigger-val {
+  color: var(--text);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.bpanel-empty {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 4px 0;
+  user-select: none;
+}
+
+/* ── Behaviors panel Phase 3 additions ───────────────────────────────────── */
+
+.bpanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding-bottom: 4px;
+}
+
+.bpanel-title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  user-select: none;
+}
+
+.bp-add-btn {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.bp-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* [+] dropdown menu */
+.bp-add-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 200;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.bp-add-section {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  padding: 2px 10px;
+  user-select: none;
+}
+
+.bp-add-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.bp-add-item:hover { background: var(--surface); color: var(--text); }
+
+.bp-add-custom {
+  display: flex;
+  gap: 4px;
+  padding: 3px 8px;
+}
+
+/* Track group (row + optional active panel) */
+.bpanel-track-group { display: flex; flex-direction: column; border-radius: 3px; }
+.bpanel-track-group.hovered { background: rgba(255,255,255,0.05); }
+.bpanel-track-group.active  { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); margin: -1px; }
+/* Muted track: dim the bar and dots to signal suppression in preview */
+.bpanel-track-group.muted .bpanel-track-bar  { opacity: 0.3; }
+.bpanel-track-group.muted .bpanel-track-label { opacity: 0.5; }
+
+/* Eye-mute button — sits in the right panel, same height as icon-btn */
+.bp-eye-btn {
+  background: none; border: none; padding: 0 2px;
+  font-size: 11px; line-height: 1; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.bp-eye-btn:hover { opacity: 1 !important; }
+
+/* Right panel inside track row: eye-btn + meta + delete-track button, fills 3rd grid column */
+.bpanel-track-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  overflow: hidden;
+}
+
+/* Trigger group */
+.bpanel-trigger-group { display: flex; flex-direction: column; border-radius: 3px; }
+.bpanel-trigger-group.hovered { background: rgba(255,255,255,0.05); }
+
+.bpanel-trigger-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.bpanel-trigger-row:hover { background: var(--surface); }
+.bpanel-trigger-row.selected { background: var(--surface); }
+
+/* Keyframe diamond — hover + selected states (adds touch-action and hover from Phase 3) */
+.bpanel-kf-diamond { touch-action: none; }
+.bpanel-kf-diamond:hover { filter: brightness(1.3); }
+.bpanel-kf-diamond.selected {
+  width: 10px; height: 10px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.25);
+}
+
+/* Active panel — expands below the compact track row when a track is selected.
+   Layout: edit controls on top, graph below them. The graph NEVER covers the controls. */
+/* Active panel sits under the compact row. Its horizontal insets MUST match the grid
+   so the graph aligns exactly with the track bar in the row above:
+     left inset  = label column + gap
+     right inset = right-panel column + gap
+   Use calc() so changing the CSS variables propagates here automatically. */
+.bpanel-active-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0 0 3px 3px;
+  margin-bottom: 2px;
+  margin-left:  calc(var(--bpanel-label-w) + var(--bpanel-row-gap));
+  margin-right: calc(var(--bpanel-right-w) + var(--bpanel-row-gap));
+}
+
+/* Edit controls row — always on top, full-width */
+.bpanel-active-edit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  background: var(--surface);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border2);
+}
+
+/* Sparkline graph area — always below the controls */
+.bpanel-active-graph {
+  position: relative;
+  height: 52px;
+  background: var(--bg);
+  border-top: 1px solid var(--border2);
+}
+
+.bp-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.bp-num {
+  width: 58px;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.bp-num-t { width: 46px; }
+
+.bp-select {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 2px 4px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.bp-select:focus { border-color: var(--accent); outline: none; }
+
+.bp-text {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 2px 4px;
+  border-radius: var(--radius);
+  width: 90px;
+}
+.bp-text-sm { width: 60px; }
+.bp-text:focus { border-color: var(--accent); outline: none; }
+
+.bp-icon-btn {
+  font-size: 11px;
+  padding: 1px 5px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bp-icon-btn:hover { color: var(--text); border-color: var(--text-dim); }
+.bp-icon-btn.danger:hover { color: #f87171; border-color: #f87171; }
+
+/* Hint text inside an empty expanded edit strip */
+.bp-hint {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 2px 0;
+  user-select: none;
+}
+
+/* Checkbox + label inline in trigger editor */
+.bp-chk-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Range slider — trigger position scrubber */
+.bp-range {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Right-click keyframe context menu */
+.bp-ctx-menu {
+  position: fixed;
+  z-index: 500;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.bp-ctx-section {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  padding: 3px 10px 1px;
+  user-select: none;
+}
+.bp-ctx-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.bp-ctx-item:hover { background: var(--surface); color: var(--text); }
+.bp-ctx-item.bp-ctx-danger { color: #f87171; }
+.bp-ctx-item.bp-ctx-danger:hover { background: rgba(248,113,113,0.1); color: #f87171; }
+.bp-ctx-sep { height: 1px; background: var(--border2); margin: 3px 0; }
+.bp-ctx-note {
+  font-size: 9px;
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 2px 10px;
+  user-select: none;
+}
 
 /* ── Scrollbar global ──────────────────────────────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }

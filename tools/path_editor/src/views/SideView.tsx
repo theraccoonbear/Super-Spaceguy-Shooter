@@ -2,15 +2,18 @@
 // Screen X → world X (forward).  Screen Y up → world Y (altitude).
 // Dragging moves waypoints in X and Y; Z inherited from selected wp on click-to-add.
 
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { useStore, PathData } from '../store'
+import { CtxMenu } from '../ui/ContextMenu'
 import type { Waypoint } from '../math/vec3'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan } from './orthoCamera'
 import { drawShipModel, rollFrame } from './shipModel2D'
 import { drawOverlaysXY } from './overlays'
 import { rotateAroundZ, translateWps } from '../math/pathOps'
+import { drawBehaviorMarkers, hoveredEq, evalTrack, BehaviorHit } from './behaviorMarkers'
+import { pauseAfterCheckpoint, resumeTemporal } from './undoHelpers'
 
 const VIEW = 'side' as const
 
@@ -53,9 +56,16 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, scale: nu
 
 // ── Component ───────────────────────────────────────────────────────────
 export function SideView() {
-  const { path, selected, playing, animT, frameR, frameU, showOverlays } = useStore()
+  const { path, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, setEditGhost,
+          hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen } = useStore()
+  const behaviorHitsRef = useRef<BehaviorHit[]>([])
 
   const ghostRef = useRef<{ path: PathData; wpIdx: number } | null>(null)
+  const marqueeRef = useRef<{ startSx: number; startSy: number; curSx: number; curSy: number } | null>(null)
+
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; wpIdx: number; wx?: number; wy?: number } | null>(null)
+  const rightCtxRef  = useRef<{ idx: number; x: number; y: number; wx?: number; wy?: number } | null>(null)
+  const rightMovedRef = useRef(false)
 
   const draw = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number) => {
     const { scale, worldPan: pan } = getCam(VIEW)
@@ -72,6 +82,38 @@ export function SideView() {
     // ── Ghost ────────────────────────────────────────────────────────────
     if (ghostRef.current !== null) {
       const { path: gp, wpIdx } = ghostRef.current
+      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, standoff: gp.standoff })
+      if (gSamples.length > 1) {
+        ctx.save()
+        ctx.globalAlpha = 0.25; ctx.setLineDash([5, 4])
+        ctx.beginPath(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5
+        gSamples.forEach(({ wire }, i) => {
+          const { sx, sy } = w2s(wire.x, wire.y, w, h, scale, pan)
+          i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
+        })
+        ctx.stroke(); ctx.restore()
+      }
+      const gWp = gp.wps[wpIdx]
+      const { sx: gx, sy: gy } = w2s(gWp.x, gWp.y, w, h, scale, pan)
+      const cur = path.wps[wpIdx]
+      if (cur) {
+        const { sx: cx, sy: cy } = w2s(cur.x, cur.y, w, h, scale, pan)
+        ctx.save()
+        ctx.globalAlpha = 0.4; ctx.setLineDash([2, 3])
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1
+        ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(cx, cy); ctx.stroke()
+        ctx.restore()
+      }
+      ctx.save()
+      ctx.globalAlpha = 0.35; ctx.setLineDash([3, 3])
+      ctx.beginPath(); ctx.arc(gx, gy, 5, 0, Math.PI * 2)
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.restore()
+    }
+
+    // ── Store ghost (shown in all views while node-edit dialog is open) ───
+    if (ghostRef.current === null && editGhost !== null) {
+      const { path: gp, wpIdx } = editGhost
       const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, standoff: gp.standoff })
       if (gSamples.length > 1) {
         ctx.save()
@@ -137,26 +179,49 @@ export function SideView() {
       ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fillStyle = '#a78bfa'; ctx.fill()
     }
 
+    // Behavior track keyframe circles + trigger diamonds (under waypoint dots)
+    if (behaviorsOpen) {
+      behaviorHitsRef.current = drawBehaviorMarkers(ctx, samples, path, (v) => {
+        const s = w2s(v.x, v.y, w, h, scale, pan); return [s.sx, s.sy]
+      }, hoveredBehavior, activeBehaviorTrack)
+    } else {
+      behaviorHitsRef.current = []
+    }
+
     path.wps.forEach((wp, i) => {
       const { sx, sy } = w2s(wp.x, wp.y, w, h, scale, pan)
       const isSel = i === selected
-      ctx.beginPath(); ctx.arc(sx, sy, isSel ? 6 : 4, 0, Math.PI * 2)
-      ctx.fillStyle = isSel ? '#fbbf24' : '#94a3b8'; ctx.fill()
-      if (isSel) { ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.stroke() }
-      ctx.fillStyle = isSel ? '#fbbf24' : '#555560'
+      const isMulti = !isSel && multiSel.includes(i)
+      ctx.beginPath(); ctx.arc(sx, sy, isSel ? 6 : isMulti ? 5 : 4, 0, Math.PI * 2)
+      ctx.fillStyle = isSel ? '#fbbf24' : isMulti ? '#a78bfa' : '#94a3b8'; ctx.fill()
+      if (isSel || isMulti) { ctx.strokeStyle = isSel ? '#fbbf24' : '#a78bfa'; ctx.lineWidth = 1.5; ctx.stroke() }
+      ctx.fillStyle = isSel ? '#fbbf24' : isMulti ? '#a78bfa' : '#555560'
       ctx.font = '9px Courier New, monospace'
       ctx.fillText(String(i), sx + 7, sy - 4)
     })
 
     if (playing && path.wps.length >= 2) {
-      const wire         = evalAt(path.wps, animT, path.closed)
-      const tan          = tangentAt(path.wps, animT, path.closed)
+      const nSegs     = path.closed ? path.wps.length : path.wps.length - 1
+      const animFrac  = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
+      const wire      = evalAt(path.wps, animT, path.closed)
+      const tan       = tangentAt(path.wps, animT, path.closed)
+
+      // Apply behavior track overrides (skip muted tracks)
+      const craftRollTrack = mutedTracks['craftRoll']   ? null : path.tracks['craftRoll']
+      const standoffTrack  = mutedTracks['standoff']    ? null : path.tracks['standoff']
+      const offsetAngTrack = mutedTracks['offsetAngle'] ? null : path.tracks['offsetAngle']
       const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
-      const craftRollDeg = evalRollAt(path.wps, animT, path.closed, 'craftRoll')
-      const ap           = actualPos(wire, tan, pathRollDeg, path.standoff)
+        + (offsetAngTrack ? evalTrack(offsetAngTrack, animFrac) : 0)
+      const craftRollDeg = craftRollTrack
+        ? evalTrack(craftRollTrack, animFrac)
+        : evalRollAt(path.wps, animT, path.closed, 'craftRoll')
+      const standoff = standoffTrack ? evalTrack(standoffTrack, animFrac) : path.standoff
+
+      const ap           = actualPos(wire, tan, pathRollDeg, standoff)
       const facing       = shipFacing(ap, tan, path.orient, path.target)
-      const R = frameR
-      const U = frameU
+      const { R, U } = path.orient === 'target'
+        ? makeFrame(facing)
+        : { R: frameR, U: frameU }
       const { rolledU, rolledR } = rollFrame(U, R, craftRollDeg)
       drawShipModel(ctx, ap, facing, rolledU, rolledR, (wv) => {
         const s = w2s(wv.x, wv.y, w, h, scale, pan)
@@ -177,12 +242,25 @@ export function SideView() {
       ctx.textAlign = 'left'
       ctx.restore()
     }
-  }, [path, selected, playing, animT, frameR, frameU, showOverlays])
 
-  const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, playing, animT])
+    if (marqueeRef.current) {
+      const { startSx, startSy, curSx, curSy } = marqueeRef.current
+      const rx = Math.min(startSx, curSx), ry = Math.min(startSy, curSy)
+      const rw = Math.abs(curSx - startSx), rh = Math.abs(curSy - startSy)
+      ctx.save()
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1
+      ctx.strokeRect(rx, ry, rw, rh)
+      ctx.fillStyle = 'rgba(167,139,250,0.08)'; ctx.fillRect(rx, ry, rw, rh)
+      ctx.restore()
+    }
+  }, [path, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen])
+
+  const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, multiSel, playing, animT, editGhost, hoveredBehavior])
 
   type DragState =
     | { type: 'wp';        wpIdx: number; startSx: number; startSy: number; startWx: number; startWy: number }
+    | { type: 'mwp';       startSx: number; startSy: number; starts: Array<{ idx: number; wx: number; wy: number }> }
+    | { type: 'marquee' }
     | { type: 'pan';       startSx: number; startSy: number; startPan: WorldPan; startScale: number }
     | { type: 'rotate';    startSx: number; snapshotWps: Waypoint[] }
     | { type: 'translate'; startSx: number; startSy: number; snapshotWps: Waypoint[] }
@@ -213,36 +291,86 @@ export function SideView() {
 
     if (e.button === 0 && e.altKey) {
       const p = useStore.getState().path
+      pauseAfterCheckpoint()
       drag.current = { type: 'rotate', startSx: sx, snapshotWps: p.wps.map(w => ({ ...w })) }
       if (cvRef.current) cvRef.current.style.cursor = 'grabbing'
       return
     }
     if (e.button === 0 && e.ctrlKey) {
       const p = useStore.getState().path
+      pauseAfterCheckpoint()
       drag.current = { type: 'translate', startSx: sx, startSy: sy, snapshotWps: p.wps.map(w => ({ ...w })) }
       if (cvRef.current) cvRef.current.style.cursor = 'move'
       return
     }
 
-    if (e.button === 2 || e.button === 1) {
+    if (e.button === 1) {
+      drag.current = { type: 'pan', startSx: sx, startSy: sy, startPan: { ...cam.worldPan }, startScale: cam.scale }
+      return
+    }
+    if (e.button === 2) {
+      const nearIdx = findNearWp(sx, sy, rect.width, rect.height)
+      rightMovedRef.current = false
+      if (nearIdx >= 0) {
+        rightCtxRef.current = { idx: nearIdx, x: e.clientX, y: e.clientY }
+      } else {
+        const { scale, worldPan: pan } = getCam(VIEW)
+        const { wx, wy } = s2w(sx, sy, rect.width, rect.height, scale, pan)
+        rightCtxRef.current = { idx: -1, x: e.clientX, y: e.clientY, wx, wy }
+      }
       drag.current = { type: 'pan', startSx: sx, startSy: sy, startPan: { ...cam.worldPan }, startScale: cam.scale }
       return
     }
 
     const idx = findNearWp(sx, sy, rect.width, rect.height)
     if (idx >= 0) {
-      useStore.getState().setSelected(idx)
-      const wp = useStore.getState().path.wps[idx]
-      drag.current = { type: 'wp', wpIdx: idx, startSx: sx, startSy: sy, startWx: wp.x, startWy: wp.y }
-      const p = useStore.getState().path
-      ghostRef.current = { path: { ...p, wps: [...p.wps] }, wpIdx: idx }
+      const { multiSel: ms } = useStore.getState()
+      if (ms.length > 0 && ms.includes(idx)) {
+        const wps = useStore.getState().path.wps
+        pauseAfterCheckpoint()
+        const starts = ms.map(i => ({ idx: i, wx: wps[i].x, wy: wps[i].y }))
+        drag.current = { type: 'mwp', startSx: sx, startSy: sy, starts }
+        const p = useStore.getState().path
+        ghostRef.current = { path: { ...p, wps: [...p.wps] }, wpIdx: idx }
+      } else {
+        useStore.getState().setMultiSel([])
+        useStore.getState().setSelected(idx)
+        const wp = useStore.getState().path.wps[idx]
+        drag.current = { type: 'wp', wpIdx: idx, startSx: sx, startSy: sy, startWx: wp.x, startWy: wp.y }
+        const p = useStore.getState().path
+        pauseAfterCheckpoint()
+        ghostRef.current = { path: { ...p, wps: [...p.wps] }, wpIdx: idx }
+      }
+    } else if (e.shiftKey) {
+      marqueeRef.current = { startSx: sx, startSy: sy, curSx: sx, curSy: sy }
+      drag.current = { type: 'marquee' }
     } else {
+      useStore.getState().setMultiSel([])
       drag.current = { type: 'pan', startSx: sx, startSy: sy, startPan: { ...cam.worldPan }, startScale: cam.scale }
     }
   }, [])
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!drag.current) return
+    if (rightCtxRef.current !== null) rightMovedRef.current = true
+    // Hover hit-test for behavior markers when not dragging
+    if (!drag.current) {
+      const rect = getRect()
+      const sx = e.clientX - rect.left, sy = e.clientY - rect.top
+      const HIT_R2 = 64
+      let found = null as import('../store').HoveredBehavior
+      for (const hit of behaviorHitsRef.current) {
+        const dx = sx - hit.sx, dy = sy - hit.sy
+        if (dx * dx + dy * dy <= HIT_R2) {
+          found = hit.kind === 'track'
+            ? { type: 'track', name: hit.name }
+            : { type: 'trigger', index: hit.index }
+          break
+        }
+      }
+      const cur = useStore.getState().hoveredBehavior
+      if (!hoveredEq(found, cur)) useStore.getState().setHoveredBehavior(found)
+      return
+    }
     const rect = getRect()
     const sx = e.clientX - rect.left, sy = e.clientY - rect.top
     hasMoved.current = true
@@ -278,6 +406,26 @@ export function SideView() {
       return
     }
 
+    if (drag.current.type === 'marquee') {
+      if (marqueeRef.current) {
+        marqueeRef.current.curSx = sx
+        marqueeRef.current.curSy = sy
+        drawRef.current()
+      }
+      return
+    }
+
+    if (drag.current.type === 'mwp') {
+      const { startSx, startSy, starts } = drag.current
+      const { scale } = getCam(VIEW)
+      const dx = sx - startSx, dy = sy - startSy
+      for (const s of starts) {
+        const wps = useStore.getState().path.wps
+        useStore.getState().setWp(s.idx, { ...wps[s.idx], x: s.wx + dx / scale, y: s.wy - dy / scale })
+      }
+      return
+    }
+
     if (drag.current.type === 'wp') {
       const { startWx, startWy, startSx, startSy, wpIdx } = drag.current
       const { scale } = getCam(VIEW)
@@ -302,28 +450,63 @@ export function SideView() {
     }
   }, [])
 
-  const onMouseUp = useCallback((e: React.MouseEvent) => {
+  const onMouseUp = useCallback((_e: React.MouseEvent) => {
     if (!drag.current) return
+    const wasWpDrag        = drag.current.type === 'wp'
+    const wasMwpDrag       = drag.current.type === 'mwp'
+    const wasTransformDrag = drag.current.type === 'rotate' || drag.current.type === 'translate'
+    const wasMarquee       = drag.current.type === 'marquee'
     if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
 
-    if (drag.current.type === 'rotate' || drag.current.type === 'translate') {
+    if (wasTransformDrag) {
       opHintRef.current = ''
       if (cvRef.current) cvRef.current.style.cursor = 'crosshair'
       drag.current = null
-      drawRef.current()
+      resumeTemporal()
       return
     }
 
-    if (!hasMoved.current && drag.current.type === 'pan') {
-      const rect = getRect()
-      const sx = e.clientX - rect.left, sy = e.clientY - rect.top
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const { wx, wy } = s2w(sx, sy, rect.width, rect.height, scale, pan)
-      const sel = useStore.getState().selected
-      const wps = useStore.getState().path.wps
-      useStore.getState().addWp({ x: wx, y: wy, z: sel >= 0 ? wps[sel].z : 0 }, sel >= 0 ? sel : undefined)
+    if (wasWpDrag || wasMwpDrag) {
+      drag.current = null
+      resumeTemporal()
+      return
     }
+
+    if (wasMarquee) {
+      const mr = marqueeRef.current
+      if (mr) {
+        const rect = getRect()
+        const { scale, worldPan: pan } = getCam(VIEW)
+        const minSx = Math.min(mr.startSx, mr.curSx), maxSx = Math.max(mr.startSx, mr.curSx)
+        const minSy = Math.min(mr.startSy, mr.curSy), maxSy = Math.max(mr.startSy, mr.curSy)
+        const wps = useStore.getState().path.wps
+        const found: number[] = []
+        wps.forEach((wp, i) => {
+          const { sx, sy } = w2s(wp.x, wp.y, rect.width, rect.height, scale, pan)
+          if (sx >= minSx && sx <= maxSx && sy >= minSy && sy <= maxSy) found.push(i)
+        })
+        useStore.getState().setMultiSel(found)
+        if (found.length > 0) useStore.getState().setSelected(found[0])
+        marqueeRef.current = null
+        drawRef.current()
+      }
+      drag.current = null
+      return
+    }
+
     drag.current = null
+  }, [])
+
+  const onDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    const rect = getRect()
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top
+    if (findNearWp(sx, sy, rect.width, rect.height) >= 0) return
+    const { scale, worldPan: pan } = getCam(VIEW)
+    const { wx, wy } = s2w(sx, sy, rect.width, rect.height, scale, pan)
+    const sel = useStore.getState().selected
+    const wps = useStore.getState().path.wps
+    useStore.getState().addWp({ x: wx, y: wy, z: sel >= 0 ? wps[sel].z : 0 }, sel >= 0 ? sel : undefined)
   }, [])
 
   const onWheel = useCallback((e: React.WheelEvent) => {
@@ -348,16 +531,47 @@ export function SideView() {
   }, [])
 
   return (
-    <canvas ref={cvRef} style={{ cursor: 'crosshair' }} tabIndex={0}
-      onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
-      onMouseLeave={() => {
-        drag.current = null
-        opHintRef.current = ''
-        if (cvRef.current) cvRef.current.style.cursor = 'crosshair'
-        if (ghostRef.current !== null) ghostRef.current = null
-        drawRef.current()
-      }}
-      onWheel={onWheel} onKeyDown={onKeyDown}
-      onContextMenu={(e) => e.preventDefault()} />
+    <>
+      <canvas ref={cvRef} style={{ cursor: 'crosshair' }} tabIndex={0}
+        onMouseEnter={() => cvRef.current?.focus()}
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onDoubleClick={onDoubleClick}
+        onMouseLeave={() => {
+          drag.current = null
+          opHintRef.current = ''
+          rightCtxRef.current = null
+          if (cvRef.current) cvRef.current.style.cursor = 'crosshair'
+          if (ghostRef.current !== null) ghostRef.current = null
+          if (marqueeRef.current !== null) marqueeRef.current = null
+          useStore.getState().setHoveredBehavior(null)
+          drawRef.current()
+        }}
+        onWheel={onWheel} onKeyDown={onKeyDown}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          const rc = rightCtxRef.current
+          if (rc !== null && !rightMovedRef.current) {
+            setCtxMenu({ x: e.clientX, y: e.clientY, wpIdx: rc.idx, wx: rc.wx, wy: rc.wy })
+          }
+          rightCtxRef.current = null
+        }} />
+      {ctxMenu && (
+        <CtxMenu x={ctxMenu.x} y={ctxMenu.y} wpIdx={ctxMenu.wpIdx}
+          onClose={() => setCtxMenu(null)}
+          onAddHere={ctxMenu.wpIdx < 0 && ctxMenu.wx !== undefined ? () => {
+            const sel = useStore.getState().selected
+            const wps = useStore.getState().path.wps
+            useStore.getState().addWp(
+              { x: ctxMenu.wx!, y: ctxMenu.wy!, z: sel >= 0 ? wps[sel].z : 0 },
+              sel >= 0 ? sel : undefined,
+            )
+          } : undefined}
+          onEditCoords={ctxMenu.wpIdx >= 0 ? () => {
+            const p = useStore.getState().path
+            pauseAfterCheckpoint()
+            setEditGhost({ path: { ...p, wps: [...p.wps] }, wpIdx: ctxMenu.wpIdx })
+          } : undefined}
+        />
+      )}
+    </>
   )
 }

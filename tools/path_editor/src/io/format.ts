@@ -1,14 +1,35 @@
-import { PathData } from '../store'
+import { PathData, TriggerEvent, EaseType, FireMode, ShieldMode } from '../store'
 import { Waypoint } from '../math/vec3'
 
 // ── Export ──────────────────────────────────────────────────────────────
 function fmt(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2)
+  return Number.isInteger(n) ? String(n) : n.toFixed(4)
+}
+
+function fmtT(t: number): string {
+  // Arc-length fraction: always 4 decimal places for readability
+  return t.toFixed(4)
+}
+
+function serializeTriggerEvent(ev: TriggerEvent): string {
+  switch (ev.type) {
+    case 'fireMode':   return `fireMode, ${ev.mode}`
+    case 'weapon':     return `weapon, ${ev.name}`
+    case 'shieldMode': return `shieldMode, ${ev.mode}`
+    case 'invuln':     return `invuln, ${ev.value}`
+    case 'phase':      return `phase, ${ev.tag}`
+    case 'sound':      return `sound, ${ev.name}, ${ev.volume}, ${ev.loop ? 1 : 0}`
+    case 'custom':     return `custom, ${ev.tag}, ${ev.value}`
+  }
 }
 
 export function exportBlock(p: PathData): string {
   const lines: string[] = []
   lines.push(`[${p.name}]`)
+
+  // type= only emitted for non-default; 'craft' is implicit (backward compat)
+  if (p.type && p.type !== 'craft') lines.push(`type=${p.type}`)
+
   lines.push(`speed=${p.speed}`)
 
   if (p.orient === 'target') {
@@ -29,16 +50,36 @@ export function exportBlock(p: PathData): string {
     : p.wps
 
   for (const wp of wpsToExport) {
-    const x  = fmt(wp.x).padStart(5)
-    const y  = fmt(wp.y).padStart(5)
-    const z  = fmt(wp.z).padStart(5)
+    const x  = fmt(wp.x).padStart(8)
+    const y  = fmt(wp.y).padStart(8)
+    const z  = fmt(wp.z).padStart(8)
     const pr = wp.pathRoll  ?? 0
     const cr = wp.craftRoll ?? 0
     // Write roll fields only when non-zero (backward compatible: old parsers stop at 3 nums)
     if (Math.abs(pr) > 0.01 || Math.abs(cr) > 0.01) {
-      lines.push(`${x}  ${y}  ${z}  ${fmt(pr).padStart(7)}  ${fmt(cr).padStart(7)}`)
+      lines.push(`${x}  ${y}  ${z}  ${fmt(pr).padStart(8)}  ${fmt(cr).padStart(8)}`)
     } else {
       lines.push(`${x}  ${y}  ${z}`)
+    }
+  }
+
+  // Behavior tracks — one line per keyframe, tracks in sorted-name order
+  const trackNames = Object.keys(p.tracks ?? {}).sort()
+  if (trackNames.length > 0) {
+    lines.push('')
+    for (const name of trackNames) {
+      for (const kf of p.tracks[name]) {
+        lines.push(`track: ${name}, ${fmtT(kf.t)}, ${fmt(kf.value)}, ${kf.ease}`)
+      }
+    }
+  }
+
+  // Trigger events — sorted by t
+  const triggers = [...(p.triggers ?? [])].sort((a, b) => a.t - b.t)
+  if (triggers.length > 0) {
+    lines.push('')
+    for (const tr of triggers) {
+      lines.push(`trigger: ${fmtT(tr.t)}, ${serializeTriggerEvent(tr.event)}`)
     }
   }
 
@@ -46,6 +87,26 @@ export function exportBlock(p: PathData): string {
 }
 
 // ── Import ──────────────────────────────────────────────────────────────
+function parseTriggerEvent(parts: string[]): TriggerEvent | null {
+  const type = parts[0]
+  switch (type) {
+    case 'fireMode':
+      return { type: 'fireMode', mode: parts[1] as FireMode }
+    case 'weapon':
+      return { type: 'weapon', name: parts[1] ?? '' }
+    case 'shieldMode':
+      return { type: 'shieldMode', mode: parts[1] as ShieldMode }
+    case 'invuln':
+      return { type: 'invuln', value: (parseInt(parts[1] ?? '0') === 1 ? 1 : 0) }
+    case 'phase':
+      return { type: 'phase', tag: parts[1] ?? '' }
+    case 'custom':
+      return { type: 'custom', tag: parts[1] ?? '', value: parts[2] ?? '' }
+    default:
+      return null
+  }
+}
+
 export function parseBlocks(text: string): Map<string, PathData> {
   const result = new Map<string, PathData>()
   const lines  = text.split(/\r?\n/)
@@ -60,23 +121,58 @@ export function parseBlocks(text: string): Map<string, PathData> {
       if (cur) result.set(cur.name, stripDuplicateEndpoint(cur))
       cur = {
         name:     header[1],
+        type:     'craft',
         speed:    0.025,
         orient:   'path',
         target:   { x: 0, y: 0, z: 0 },
         closed:   true,
         standoff: 0,
         wps:      [],
+        tracks:   {},
+        triggers: [],
       }
       continue
     }
 
     if (!cur || line.startsWith('#') || line === '') continue
 
+    // Behavior track: "track: name, t, value, ease"
+    if (line.startsWith('track:')) {
+      const parts = line.slice(6).split(',').map(s => s.trim())
+      if (parts.length >= 4) {
+        const name  = parts[0]
+        const t     = parseFloat(parts[1])
+        const value = parseFloat(parts[2])
+        const ease  = parts[3] as EaseType
+        if (!isNaN(t) && !isNaN(value)) {
+          if (!cur.tracks[name]) cur.tracks[name] = []
+          cur.tracks[name].push({ t, value, ease: ease || 'linear' })
+        }
+      }
+      continue
+    }
+
+    // Trigger event: "trigger: t, type, ...args"
+    if (line.startsWith('trigger:')) {
+      const parts = line.slice(8).split(',').map(s => s.trim())
+      if (parts.length >= 2) {
+        const t = parseFloat(parts[0])
+        const event = parseTriggerEvent(parts.slice(1))
+        if (!isNaN(t) && event) {
+          cur.triggers.push({ t, event })
+        }
+      }
+      continue
+    }
+
     // key=value
     const kv = line.match(/^(\w+)=(.+)$/)
     if (kv) {
       const [, key, val] = kv
       switch (key) {
+        case 'type':
+          cur.type = (val.trim() === 'camera') ? 'camera' : 'craft'
+          break
         case 'speed':    cur.speed    = parseFloat(val); break
         case 'standoff': cur.standoff = parseFloat(val); break
         case 'closed':   cur.closed   = val.trim() === '1'; break

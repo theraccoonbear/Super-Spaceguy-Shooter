@@ -1,5 +1,5 @@
 // Import / Export panel.
-// Export: generates maneuvers.txt block → copy to clipboard or download.
+// Export: live view of the current path as a maneuvers.txt block — always current.
 // Import: open a .txt file with <input type="file"> → parse all [name] blocks → pick one.
 
 import { useState, useRef, useCallback } from 'react'
@@ -8,30 +8,25 @@ import { exportBlock, parseBlocks } from './format'
 
 export function IOPanel() {
   const { path, setPath, setStatus } = useStore()
-  const [exportText, setExportText] = useState('')
   const [importBlocks, setImportBlocks] = useState<Map<string, PathData>>(new Map())
   const [selectedBlock, setSelectedBlock] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Export ────────────────────────────────────────────────────────────
-  const handleExport = useCallback(() => {
-    const text = exportBlock(path)
-    setExportText(text)
-  }, [path])
+  // Always-current export text — no generate step needed.
+  const exportText = exportBlock(path)
 
+  // ── Export ────────────────────────────────────────────────────────────
   const handleCopy = useCallback(async () => {
-    if (!exportText) return
     try {
-      await navigator.clipboard.writeText(exportText)
+      await navigator.clipboard.writeText(exportBlock(path))
       setStatus('copied to clipboard')
     } catch {
       setStatus('copy failed — select text manually')
     }
-  }, [exportText, setStatus])
+  }, [path, setStatus])
 
   const handleDownload = useCallback(() => {
-    const text = exportText || exportBlock(path)
-    if (!exportText) setExportText(text)
+    const text = exportBlock(path)
     const blob = new Blob([text], { type: 'text/plain' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
@@ -40,7 +35,7 @@ export function IOPanel() {
     a.click()
     URL.revokeObjectURL(url)
     setStatus(`downloaded ${path.name}.txt`)
-  }, [exportText, path, setStatus])
+  }, [path, setStatus])
 
   // ── Import ────────────────────────────────────────────────────────────
   const handleFileOpen = useCallback(() => {
@@ -79,14 +74,12 @@ export function IOPanel() {
       <div className="io-section" style={{ flex: 1, minHeight: 0 }}>
         <div className="io-section-label">Export</div>
         <div className="io-row">
-          <button className="primary" onClick={handleExport}>Generate ↓</button>
-          <button onClick={handleCopy}    disabled={!exportText}>Copy</button>
+          <button onClick={handleCopy}>Copy</button>
           <button onClick={handleDownload}>Download</button>
         </div>
         <textarea
           readOnly
           value={exportText}
-          placeholder="click Generate to produce the [name] block"
           style={{ flex: 1 }}
           onClick={(e) => (e.target as HTMLTextAreaElement).select()}
         />
