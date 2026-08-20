@@ -13,11 +13,10 @@
 // Alignment guarantee: ruler and track rows use the same CSS grid columns
 //   (--bpanel-label-w | 1fr | --bpanel-right-w). No arithmetic, no drift.
 
-import React, { useRef, useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
+import React, { useRef, useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { useStore, EaseType, TriggerEvent, FireMode, ShieldMode, TrackKeyframe } from '../store'
 import { trackColor, triggerColor, evalTrack } from '../views/behaviorMarkers'
 import { pauseAfterCheckpoint, resumeTemporal } from '../views/undoHelpers'
-import { buildSpline } from '../math/spline'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -188,82 +187,33 @@ function TriggerValueEditor({ event, onChange }: {
 
 // ── PathRuler ─────────────────────────────────────────────────────────────
 // Uses same grid columns as track rows via class .bpanel-ruler-row.
-// All positions are in ARC-LENGTH fraction [0..1] so the playhead and keyframe
-// ticks move uniformly regardless of waypoint parameter-space density.
+// All positions use the same parameter fraction [0..1] as the keyframe graph —
+// one coordinate system everywhere, no conversions, no lurching.
 function PathRuler() {
   const { path, animT, setAnimT } = useStore()
   const barRef    = useRef<HTMLDivElement>(null)
   const scrubbing = useRef(false)
 
-  const nSegs = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
-
-  // Arc-length lookup table: cumulative wire distances and corresponding raw animT values.
-  const arcTable = useMemo(() => {
-    if (path.wps.length < 2) return null
-    const samples = buildSpline({ wps: path.wps, closed: path.closed, standoff: path.standoff })
-    if (samples.length < 2) return null
-    const cumArc:   number[] = [0]
-    const paramVal: number[] = [samples[0].frac * nSegs]   // raw animT at each sample
-    for (let i = 1; i < samples.length; i++) {
-      const dx = samples[i].wire.x - samples[i-1].wire.x
-      const dy = samples[i].wire.y - samples[i-1].wire.y
-      const dz = samples[i].wire.z - samples[i-1].wire.z
-      cumArc.push(cumArc[i-1] + Math.sqrt(dx*dx + dy*dy + dz*dz))
-      paramVal.push(samples[i].frac * nSegs)
-    }
-    return { cumArc, paramVal, totalArc: cumArc[cumArc.length - 1] }
-  }, [path.wps, path.closed, path.standoff, nSegs])
-
-  // raw animT → arc-length fraction [0..1]
-  const animTToArcFrac = useCallback((t: number): number => {
-    if (!arcTable || arcTable.totalArc === 0) return t / nSegs
-    const { cumArc, paramVal, totalArc } = arcTable
-    let lo = 0, hi = paramVal.length - 1
-    while (lo < hi) { const mid = (lo + hi) >> 1; if (paramVal[mid] < t) lo = mid + 1; else hi = mid }
-    if (lo === 0) return 0
-    const p0 = paramVal[lo-1], p1 = paramVal[lo]
-    const alpha = p1 === p0 ? 0 : Math.max(0, Math.min(1, (t - p0) / (p1 - p0)))
-    return (cumArc[lo-1] + alpha * (cumArc[lo] - cumArc[lo-1])) / totalArc
-  }, [arcTable, nSegs])
-
-  // arc-length fraction [0..1] → raw animT
-  const arcFracToAnimT = useCallback((f: number): number => {
-    if (!arcTable || arcTable.totalArc === 0) return Math.max(0, Math.min(1, f)) * nSegs
-    const { cumArc, paramVal, totalArc } = arcTable
-    const target = Math.max(0, Math.min(1, f)) * totalArc
-    let lo = 0, hi = cumArc.length - 1
-    while (lo < hi) { const mid = (lo + hi) >> 1; if (cumArc[mid] < target) lo = mid + 1; else hi = mid }
-    if (lo === 0) return 0
-    if (lo >= cumArc.length - 1) return paramVal[paramVal.length - 1]
-    const a0 = cumArc[lo-1], a1 = cumArc[lo]
-    const alpha = a1 === a0 ? 0 : Math.max(0, Math.min(1, (target - a0) / (a1 - a0)))
-    return paramVal[lo-1] + alpha * (paramVal[lo] - paramVal[lo-1])
-  }, [arcTable, nSegs])
-
-  // kf.t is parameter fraction 0..1 → arc-length fraction for display
-  const paramFracToArcFrac = useCallback((kfT: number): number =>
-    animTToArcFrac(kfT * nSegs), [animTToArcFrac, nSegs])
-
-  const animFrac = animTToArcFrac(animT)   // arc-length fraction of current position
+  const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+  const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
 
   const handlePointer = (e: React.PointerEvent) => {
     if (!barRef.current) return
     e.currentTarget.setPointerCapture(e.pointerId)
     scrubbing.current = true
     const rect = barRef.current.getBoundingClientRect()
-    setAnimT(arcFracToAnimT((e.clientX - rect.left) / rect.width))
+    setAnimT(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * nSegs)
   }
   const handleMove = (e: React.PointerEvent) => {
     if (!scrubbing.current || !barRef.current) return
     const rect = barRef.current.getBoundingClientRect()
-    setAnimT(arcFracToAnimT((e.clientX - rect.left) / rect.width))
+    setAnimT(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * nSegs)
   }
 
   const trackNames = Object.keys(path.tracks).sort()
 
   return (
     <div className="bpanel-ruler-wrap">
-      {/* Same 3-column grid as .bpanel-track-row */}
       <div className="bpanel-ruler-row">
         <div>{/* left spacer — grid col 1 */}</div>
         <div ref={barRef} className="bpanel-ruler-bar"
@@ -275,16 +225,17 @@ function PathRuler() {
             <span>1</span>
           </div>
           <div className="bpanel-scrubber" style={{ left: `${animFrac * 100}%` }} />
+          {/* Keyframe ticks — kf.t is already parameter fraction [0..1], same axis as graph */}
           {trackNames.flatMap(name =>
             (path.tracks[name] ?? []).map((kf, i) => (
               <div key={`${name}-${i}`} className="bpanel-ruler-kf"
-                style={{ left: `${paramFracToArcFrac(kf.t) * 100}%`, background: trackColor(name) }}
+                style={{ left: `${kf.t * 100}%`, background: trackColor(name) }}
                 title={`${name}  t=${kf.t.toFixed(3)}  ${kf.value}  ${kf.ease}`} />
             ))
           )}
           {path.triggers.map((tr, i) => (
             <div key={`tr-${i}`} className="bpanel-ruler-trigger"
-              style={{ left: `${paramFracToArcFrac(tr.t) * 100}%`, background: triggerColor(tr.event.type) }}
+              style={{ left: `${tr.t * 100}%`, background: triggerColor(tr.event.type) }}
               title={`${tr.event.type}  t=${tr.t.toFixed(3)}  ${triggerSummary(tr.event)}`} />
           ))}
         </div>
