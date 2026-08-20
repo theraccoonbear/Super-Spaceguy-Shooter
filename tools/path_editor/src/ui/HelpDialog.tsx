@@ -4,6 +4,7 @@
 
 import type { ReactNode } from 'react'
 import { SHORTCUTS } from '../shortcuts'
+import splashUrl from '../assets/trail-forge-splash.png'
 
 interface Props { onClose: () => void }
 
@@ -22,6 +23,8 @@ export function HelpDialog({ onClose }: Props) {
           <span>Trailforge Help</span>
           <button style={{ fontSize: 12, padding: '2px 8px' }} onClick={onClose}>✕</button>
         </div>
+
+        <img src={splashUrl} alt="Trailforge" className="help-splash" />
 
         {/* Registry-driven sections */}
         {contexts.map(ctx => (

@@ -18,6 +18,7 @@ import { tangentAt, makeFrame, transportFrame, arcAdvanceAt } from './math/splin
 import { evalTrack } from './views/behaviorMarkers'
 import type { Vec3 } from './math/vec3'
 import { SHORTCUTS, matchesShortcut } from './shortcuts'
+import splashUrl from './assets/trail-forge-splash.png'
 
 // ── Animation loop ──────────────────────────────────────────────────────
 function useAnimLoop() {
@@ -398,6 +399,18 @@ export function App() {
   const [isLinked,     setIsLinked]     = useState(orthoLinked)
   const [showHelp,     setShowHelp]     = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(220)
+
+  // ── Splash on load ───────────────────────────────────────────────────
+  const [splash, setSplash] = useState<'visible' | 'fading' | 'gone'>('visible')
+  const dismissSplash = useCallback(() => {
+    setSplash(s => s === 'visible' ? 'fading' : s)
+  }, [])
+  useEffect(() => {
+    const t = setTimeout(dismissSplash, 2000)
+    const onKey = () => dismissSplash()
+    window.addEventListener('keydown', onKey, { once: true })
+    return () => { clearTimeout(t); window.removeEventListener('keydown', onKey) }
+  }, [dismissSplash])
   const { maximizedPane, setMaximizedPane,
           behaviorsOpen, behaviorsHeight,
           setBehaviorsHeight } = useStore()
@@ -559,6 +572,21 @@ export function App() {
       <StatusBar />
       {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
       <NodeEditDialog />
+
+      {/* ── Load splash — blurred workspace visible behind the overlay ── */}
+      {splash !== 'gone' && (
+        <div
+          className="splash-overlay"
+          style={{
+            opacity:    splash === 'visible' ? 1 : 0,
+            transition: splash === 'fading'  ? 'opacity 600ms ease' : 'none',
+          }}
+          onClick={dismissSplash}
+          onTransitionEnd={() => { if (splash === 'fading') setSplash('gone') }}
+        >
+          <img src={splashUrl} alt="Trailforge" />
+        </div>
+      )}
     </div>
   )
 }
