@@ -64,6 +64,21 @@ function triggerSummary(ev: TriggerEvent): string {
   }
 }
 
+/** Default easing for a new keyframe in a named track.
+ *  Instant for hard-toggle tracks; smooth for analog tracks that benefit from
+ *  gradual transitions; linear left as explicit fallback. */
+function defaultTrackEasing(name: string): EaseType {
+  switch (name) {
+    case 'visible':          return 'instant'   // hard toggle — no fade
+    case 'engineBrightness': return 'smooth'    // ramp looks better eased
+    case 'craftRoll':        return 'smooth'    // roll transitions feel natural smooth
+    case 'offsetAngle':      return 'smooth'    // lateral drift same
+    case 'standoff':         return 'smooth'    // distance ramps same
+    case 'speed':            return 'smooth'    // avoids jarring acceleration kinks
+    default:                 return 'linear'
+  }
+}
+
 /** Short unit/description shown in graph value labels */
 function trackUnit(name: string): string {
   switch (name) {
@@ -78,7 +93,9 @@ function trackUnit(name: string): string {
 /** Per-track value clamps — prevents runaway values from drag overshoots. */
 function trackValueLimits(name: string): { min: number; max: number } {
   switch (name) {
-    case 'craftRoll':        return { min: -360,  max: 360  }
+    // craftRoll uses "accumulated degrees" authoring: values beyond ±360 mean
+    // multiple full rotations (720° = two rolls).  Cap at ±3600 (10 full rotations).
+    case 'craftRoll':        return { min: -3600, max: 3600 }
     case 'offsetAngle':      return { min: -180,  max: 180  }
     case 'standoff':         return { min: -200,  max: 200  }
     case 'speed':            return { min: 0,     max: 10   }
@@ -91,7 +108,7 @@ function trackValueLimits(name: string): { min: number; max: number } {
 /** Per-tick wheel step for value editing. Shift multiplies by 10. */
 function wheelStep(name: string): number {
   switch (name) {
-    case 'craftRoll':        return 1
+    case 'craftRoll':        return 5    // 5° per tick; Shift = 50° (near a quarter-turn)
     case 'offsetAngle':      return 1
     case 'standoff':         return 0.5
     case 'speed':            return 0.05
@@ -389,7 +406,7 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
     const t = arcToParam(arcFrac)
     if (frames.some(kf => Math.abs(paramToArc(kf.t) - arcFrac) < 0.02)) return
     const val    = defaultTrackValue(name)
-    const newKf: TrackKeyframe = { t, value: val, ease: 'linear' }
+    const newKf: TrackKeyframe = { t, value: val, ease: defaultTrackEasing(name) }
     addKeyframe(name, newKf)
     const sorted = [...frames, newKf].sort((a, b) => a.t - b.t)
     const idx = sorted.findIndex(kf => Math.abs(kf.t - t) < 0.001)
@@ -809,7 +826,7 @@ function AddMenu({ onClose, animFrac }: { onClose: () => void; animFrac: number 
     if (!name.trim()) return
     const existing = path.tracks[name] ?? []
     if (!existing.some(kf => Math.abs(kf.t - animFrac) < 0.01))
-      addKeyframe(name, { t: animFrac, value: defaultTrackValue(name), ease: 'linear' })
+      addKeyframe(name, { t: animFrac, value: defaultTrackValue(name), ease: defaultTrackEasing(name) })
     onClose()
   }
 

@@ -137,7 +137,7 @@ The codebase is split across `$INCLUDE` modules organized by discipline under `s
 
 ### Flight path math
 
-**All boss-flight spline math lives in [`math/spline-frame.js`](math/spline-frame.js)** — pure JavaScript using the [exprforge](https://www.npmjs.com/package/exprforge) DSL. This is the single source of truth for every flight-path calculation in the game.
+**All boss-flight spline math lives in [`math/formula.js`](math/formula.js)** — pure JavaScript using the [exprforge](https://www.npmjs.com/package/exprforge) DSL. This is the single source of truth for every flight-path calculation in the game.
 
 Do not hand-edit the generated files. Run `node tools/emit-spline.js` from the repo root to regenerate both downstream targets from the DSL:
 

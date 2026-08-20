@@ -6,11 +6,11 @@ import fs from 'fs'
 import type { IncomingMessage, ServerResponse } from 'http'
 
 // ── Spline DSL watcher ────────────────────────────────────────────────────
-// Watches math/spline-frame.expr for changes and re-runs tools/emit-spline.js.
+// Watches math/formula.expr for changes and re-runs tools/emit-spline.js.
 // The regenerated spline_gen.ts is picked up by Vite HMR automatically.
 function splineEmitPlugin(): Plugin {
   const repoRoot = resolve(__dirname, '../..')
-  const dslFile  = resolve(repoRoot, 'math/spline-frame.expr')
+  const dslFile  = resolve(repoRoot, 'math/formula.expr')
 
   return {
     name: 'spline-emit-watcher',
@@ -20,7 +20,7 @@ function splineEmitPlugin(): Plugin {
       server.watcher.on('change', (file) => {
         if (file !== dslFile) return
 
-        server.config.logger.info('[spline] spline-frame.expr changed — re-emitting...', { timestamp: true })
+        server.config.logger.info('[spline] formula.expr changed — re-emitting...', { timestamp: true })
         try {
           execSync('node tools/emit-spline.js', { cwd: repoRoot, stdio: 'inherit' })
           server.config.logger.info('[spline] emit done', { timestamp: true })
@@ -30,7 +30,7 @@ function splineEmitPlugin(): Plugin {
           if (mod) server.moduleGraph.invalidateModule(mod)
           server.hot.send({ type: 'full-reload' })
         } catch {
-          server.config.logger.error('[spline] emit failed — check math/spline-frame.expr for errors')
+          server.config.logger.error('[spline] emit failed — check math/formula.expr for errors')
         }
       })
     },
