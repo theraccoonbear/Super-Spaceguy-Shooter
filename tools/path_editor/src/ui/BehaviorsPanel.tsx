@@ -13,10 +13,12 @@
 // Alignment guarantee: ruler and track rows use the same CSS grid columns
 //   (--bpanel-label-w | 1fr | --bpanel-right-w). No arithmetic, no drift.
 
-import React, { useRef, useState, useEffect, useCallback, type CSSProperties } from 'react'
+import React, { useRef, useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import { useStore, EaseType, TriggerEvent, FireMode, ShieldMode, TrackKeyframe } from '../store'
 import { trackColor, triggerColor, evalTrack } from '../views/behaviorMarkers'
 import { pauseAfterCheckpoint, resumeTemporal } from '../views/undoHelpers'
+import { buildSpline } from '../math/spline'
+import type { PathData } from '../store'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -185,29 +187,104 @@ function TriggerValueEditor({ event, onChange }: {
   }
 }
 
+// ── Arc-length lookup table ────────────────────────────────────────────────
+// Both PathRuler (playback ruler) and TrackGraph (graph editor) must show
+// keyframe positions in the SAME coordinate system so dragging a diamond in
+// the graph bar moves the corresponding tick on the ruler by exactly the same
+// number of pixels — no lurching, no racing.
+//
+// kf.t is stored as parameter fraction [0..1]. Playback uses arc-length
+// normalization (arcAdvanceAt), so 0.5 parameter fraction ≠ 0.5 of the way
+// through the animation. This table converts between the two spaces so both
+// components display in arc-length fraction space while still storing in
+// parameter fraction space.
+interface ArcTable {
+  paramToArc(pf: number): number   // parameter fraction [0..1] → arc-length fraction [0..1]
+  arcToParam(af: number): number   // arc-length fraction [0..1] → parameter fraction [0..1]
+}
+
+const IDENTITY_ARC: ArcTable = { paramToArc: p => p, arcToParam: a => a }
+
+function makeArcTable(path: PathData): ArcTable {
+  if (path.wps.length < 2) return IDENTITY_ARC
+
+  const samples = buildSpline({ wps: path.wps, closed: path.closed, standoff: path.standoff })
+  if (samples.length < 2) return IDENTITY_ARC
+
+  // Cumulative arc lengths and matching parameter fractions for each sample
+  // SplineSample.frac is rawAt[i]/nSegs — already parameter fraction [0..1]
+  const paramFracs: number[] = [samples[0].frac]
+  const cumArc: number[]     = [0]
+  for (let i = 1; i < samples.length; i++) {
+    const s = samples[i], p = samples[i - 1]
+    const dx = s.wire.x - p.wire.x, dy = s.wire.y - p.wire.y, dz = s.wire.z - p.wire.z
+    cumArc.push(cumArc[i - 1] + Math.sqrt(dx * dx + dy * dy + dz * dz))
+    paramFracs.push(s.frac)
+  }
+  const totalArc = cumArc[cumArc.length - 1]
+  if (totalArc === 0) return IDENTITY_ARC
+
+  // Largest index where arr[i] <= val
+  function lb(arr: number[], val: number): number {
+    let lo = 0, hi = arr.length - 1
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (arr[mid] <= val) lo = mid; else hi = mid - 1 }
+    return lo
+  }
+
+  function paramToArc(pf: number): number {
+    pf = Math.max(0, Math.min(1, pf))
+    const i = lb(paramFracs, pf)
+    if (i >= paramFracs.length - 1) return 1
+    const span = paramFracs[i + 1] - paramFracs[i]
+    const t    = span < 1e-10 ? 0 : (pf - paramFracs[i]) / span
+    return (cumArc[i] + t * (cumArc[i + 1] - cumArc[i])) / totalArc
+  }
+
+  function arcToParam(af: number): number {
+    af = Math.max(0, Math.min(1, af))
+    const arcVal = af * totalArc
+    const i = lb(cumArc, arcVal)
+    if (i >= cumArc.length - 1) return 1
+    const span = cumArc[i + 1] - cumArc[i]
+    const t    = span < 1e-10 ? 0 : (arcVal - cumArc[i]) / span
+    return paramFracs[i] + t * (paramFracs[i + 1] - paramFracs[i])
+  }
+
+  return { paramToArc, arcToParam }
+}
+
 // ── PathRuler ─────────────────────────────────────────────────────────────
 // Uses same grid columns as track rows via class .bpanel-ruler-row.
-// All positions use the same parameter fraction [0..1] as the keyframe graph —
-// one coordinate system everywhere, no conversions, no lurching.
+// Positions are displayed in arc-length fraction space so they match the
+// graph editor diamonds pixel-for-pixel.
 function PathRuler() {
   const { path, animT, setAnimT } = useStore()
   const barRef    = useRef<HTMLDivElement>(null)
   const scrubbing = useRef(false)
 
   const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
-  const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
+  const arcTable = useMemo(() => makeArcTable(path), [path])
+  const { paramToArc, arcToParam } = arcTable
+
+  // Playhead in arc-length fraction space
+  const paramFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
+  const animFrac  = paramToArc(paramFrac)
+
+  const scrubAt = (clientX: number) => {
+    if (!barRef.current) return
+    const rect    = barRef.current.getBoundingClientRect()
+    const arcFrac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    setAnimT(arcToParam(arcFrac) * nSegs)
+  }
 
   const handlePointer = (e: React.PointerEvent) => {
-    if (!barRef.current) return
     e.currentTarget.setPointerCapture(e.pointerId)
     scrubbing.current = true
-    const rect = barRef.current.getBoundingClientRect()
-    setAnimT(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * nSegs)
+    scrubAt(e.clientX)
   }
   const handleMove = (e: React.PointerEvent) => {
-    if (!scrubbing.current || !barRef.current) return
-    const rect = barRef.current.getBoundingClientRect()
-    setAnimT(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * nSegs)
+    if (!scrubbing.current) return
+    scrubAt(e.clientX)
   }
 
   const trackNames = Object.keys(path.tracks).sort()
@@ -221,21 +298,21 @@ function PathRuler() {
           onPointerUp={() => { scrubbing.current = false }}>
           <div className="bpanel-ruler-labels">
             <span>0</span>
-            <span className="bpanel-ruler-t">{animFrac.toFixed(3)}</span>
+            <span className="bpanel-ruler-t">{paramFrac.toFixed(3)}</span>
             <span>1</span>
           </div>
           <div className="bpanel-scrubber" style={{ left: `${animFrac * 100}%` }} />
-          {/* Keyframe ticks — kf.t is already parameter fraction [0..1], same axis as graph */}
+          {/* Keyframe ticks — converted to arc-length fraction to match graph diamonds */}
           {trackNames.flatMap(name =>
             (path.tracks[name] ?? []).map((kf, i) => (
               <div key={`${name}-${i}`} className="bpanel-ruler-kf"
-                style={{ left: `${kf.t * 100}%`, background: trackColor(name) }}
+                style={{ left: `${paramToArc(kf.t) * 100}%`, background: trackColor(name) }}
                 title={`${name}  t=${kf.t.toFixed(3)}  ${kf.value}  ${kf.ease}`} />
             ))
           )}
           {path.triggers.map((tr, i) => (
             <div key={`tr-${i}`} className="bpanel-ruler-trigger"
-              style={{ left: `${tr.t * 100}%`, background: triggerColor(tr.event.type) }}
+              style={{ left: `${paramToArc(tr.t) * 100}%`, background: triggerColor(tr.event.type) }}
               title={`${tr.event.type}  t=${tr.t.toFixed(3)}  ${triggerSummary(tr.event)}`} />
           ))}
         </div>
@@ -260,7 +337,7 @@ function PathRuler() {
 //   • Diamond handles are absolutely-positioned CSS divs (rotated squares) → always exact
 //     pixel size regardless of the SVG's aspect ratio, no compensation math needed
 interface CtxMenuState { x: number; y: number; kfIdx: number }
-interface GraphDrag { startClientX: number; startT: number; currentT: number }
+interface GraphDrag { startClientX: number; startArcFrac: number; startT: number; currentT: number }
 
 function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, containerRef }: {
   name:         string
@@ -271,7 +348,9 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
   onCtxMenu:    (s: CtxMenuState) => void
   containerRef: React.RefObject<HTMLDivElement>
 }) {
-  const { addKeyframe, updateKeyframe } = useStore()
+  const { path, addKeyframe, updateKeyframe } = useStore()
+  const arcTable = useMemo(() => makeArcTable(path), [path])
+  const { paramToArc, arcToParam } = arcTable
   const drag        = useRef<GraphDrag | null>(null)
   const justDragged = useRef(false)
 
@@ -280,7 +359,8 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
   const { min: vMin, max: vMax } = trackValueLimits(name)
   const vRange = vMax - vMin
 
-  const toX = (t: number) => t * VW
+  // toX maps arc-length fraction [0..1] → SVG x coordinate
+  const toX = (arcFrac: number) => arcFrac * VW
   const toY = (v: number) => {
     const c = Math.max(vMin, Math.min(vMax, v))
     return VH - PAD - ((c - vMin) / vRange) * (VH - PAD * 2)
@@ -293,8 +373,9 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
   let linePoints = ''; let areaD = ''
   if (frames.length >= 1) {
     const pts = Array.from({ length: STEPS + 1 }, (_, i) => {
-      const t = i / STEPS
-      return `${toX(t).toFixed(1)},${toY(evalTrack(frames, t)).toFixed(1)}`
+      const arcFrac  = i / STEPS
+      const paramFrac = arcToParam(arcFrac)
+      return `${toX(arcFrac).toFixed(1)},${toY(evalTrack(frames, paramFrac)).toFixed(1)}`
     })
     linePoints = pts.join(' ')
     areaD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p}`).join(' ') + ` L${VW},${VH} L0,${VH} Z`
@@ -304,8 +385,9 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
   function handleSvgClick(e: React.MouseEvent<SVGSVGElement>) {
     if (justDragged.current || !containerRef.current) return
     const r = containerRef.current.getBoundingClientRect()
-    const t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
-    if (frames.some(kf => Math.abs(kf.t - t) < 0.02)) return
+    const arcFrac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+    const t = arcToParam(arcFrac)
+    if (frames.some(kf => Math.abs(paramToArc(kf.t) - arcFrac) < 0.02)) return
     const val    = defaultTrackValue(name)
     const newKf: TrackKeyframe = { t, value: val, ease: 'linear' }
     addKeyframe(name, newKf)
@@ -319,14 +401,14 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     pauseAfterCheckpoint()
-    drag.current = { startClientX: e.clientX, startT: frames[idx].t, currentT: frames[idx].t }
+    drag.current = { startClientX: e.clientX, startArcFrac: paramToArc(frames[idx].t), startT: frames[idx].t, currentT: frames[idx].t }
     onSelKf({ track: name, idx })
   }
   function handleDiamondPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!drag.current || !containerRef.current) return
-    const r  = containerRef.current.getBoundingClientRect()
-    const dt = (e.clientX - drag.current.startClientX) / r.width
-    const newT = Math.max(0, Math.min(1, drag.current.startT + dt))
+    const r     = containerRef.current.getBoundingClientRect()
+    const dArc  = (e.clientX - drag.current.startClientX) / r.width
+    const newT  = arcToParam(Math.max(0, Math.min(1, drag.current.startArcFrac + dArc)))
     const cur  = useStore.getState().path.tracks[name] ?? []
     const ai   = cur.findIndex(kf => Math.abs(kf.t - drag.current!.currentT) < 0.0005)
     if (ai >= 0) {
@@ -414,8 +496,8 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
         {/* Vertical stems — visual only, interaction handled by stem divs below */}
         {frames.map((kf, i) => (
           <line key={i}
-            x1={(kf.t * VW).toFixed(1)} y1={toY(kf.value).toFixed(1)}
-            x2={(kf.t * VW).toFixed(1)} y2={VH}
+            x1={(paramToArc(kf.t) * VW).toFixed(1)} y1={toY(kf.value).toFixed(1)}
+            x2={(paramToArc(kf.t) * VW).toFixed(1)} y2={VH}
             stroke={color} strokeWidth={i === selIdx ? '1.5' : '1'} opacity="0.25" />
         ))}
       </svg>
@@ -443,7 +525,7 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
               title={`t=${kf.t.toFixed(3)}  val=${kf.value.toFixed(3)}  ease=${kf.ease}\nDrag ← → to move in time · wheel to change value`}
               style={{
                 position: 'absolute',
-                left:   `calc(${kf.t * 100}% - ${stemW / 2}px)`,
+                left:   `calc(${paramToArc(kf.t) * 100}% - ${stemW / 2}px)`,
                 top:    `${topFrac * 100}%`,
                 width:  stemW,
                 height: `${(1 - topFrac) * 100}%`,
@@ -457,7 +539,7 @@ function TrackGraph({ name, frames, color, selIdx, onSelKf, onCtxMenu, container
             <div
               style={{
                 position:  'absolute',
-                left:      `calc(${kf.t * 100}% - ${D / 2}px)`,
+                left:      `calc(${paramToArc(kf.t) * 100}% - ${D / 2}px)`,
                 top:       `calc(${topFrac * 100}% - ${D / 2}px)`,
                 width:     D, height: D,
                 transform: 'rotate(45deg)',
