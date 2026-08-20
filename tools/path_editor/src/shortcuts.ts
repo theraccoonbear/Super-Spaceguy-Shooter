@@ -11,7 +11,7 @@ export interface Shortcut {
   keys:         string    // human-readable display in help: "Ctrl+Z", "Alt+drag", "Scroll"
   desc:         string    // what it does — shown in help panel
   context:      string    // section grouping: "Global" | "Ortho views" | "3D view" | ...
-  match?:       string    // "ctrl+z" | "b" | "ctrl+shift+z" — omit for doc-only entries
+  match?:       string    // "ctrl+z" | "space" | "ctrl+shift+z" — omit for doc-only entries
   fireInInput?: boolean   // if true, fires even when an <input> or <textarea> has focus
   handler?:     () => void  // action; only present when match is also present
 }
@@ -23,20 +23,61 @@ export const SHORTCUTS: Shortcut[] = [
     match: 'ctrl+z',       fireInInput: true,
     handler: () => useStore.temporal.getState().undo() },
 
-  { context: 'Global', keys: 'Ctrl+⇧Z',    desc: 'Redo',
+  { context: 'Global', keys: 'Ctrl+⇧Z / Ctrl+Y', desc: 'Redo',
     match: 'ctrl+shift+z', fireInInput: true,
     handler: () => useStore.temporal.getState().redo() },
 
-  { context: 'Global', keys: 'B',           desc: 'Toggle behaviors panel',
-    match: 'b',
+  { context: 'Global', keys: 'Ctrl+Y',      desc: 'Redo (alternate)',
+    match: 'ctrl+y',       fireInInput: true,
+    handler: () => useStore.temporal.getState().redo() },
+
+  // Play / timeline navigation
+  { context: 'Global', keys: 'Space',       desc: 'Play / pause (resumes from current position)',
+    match: ' ',
+    handler: () => { const s = useStore.getState(); s.setPlaying(!s.playing) } },
+
+  { context: 'Global', keys: 'Home',        desc: 'Jump to animation start',
+    match: 'home',
+    handler: () => useStore.getState().setAnimT(0) },
+
+  { context: 'Global', keys: 'End',         desc: 'Jump to animation end',
+    match: 'end',
+    handler: () => {
+      const { path, setAnimT } = useStore.getState()
+      const nSegs = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+      setAnimT(nSegs)
+    } },
+
+  // Viewport
+  { context: 'Global', keys: '`  (backtick)',  desc: 'Toggle behaviors panel',
+    match: '`',
     handler: () => { const s = useStore.getState(); s.setBehaviorsOpen(!s.behaviorsOpen) } },
 
   // Doc-only — handlers live in App.tsx (need component refs or local state)
-  { context: 'Global', keys: 'F',           desc: 'Full-frame hovered pane (toggle back to restore)' },
+  { context: 'Global', keys: 'F',           desc: 'Frame selection in hovered pane (zoom to fit selected waypoints)' },
+  { context: 'Global', keys: '⇧F',          desc: 'Maximize / restore hovered pane' },
+  { context: 'Global', keys: '. (period)',   desc: 'Frame all — fit all waypoints in all ortho views' },
   { context: 'Global', keys: 'L',           desc: 'Toggle linked ortho pan / zoom' },
   { context: 'Global', keys: 'Esc',         desc: 'Restore four-pane view' },
   { context: 'Global', keys: '?',           desc: 'Toggle this help dialog' },
   { context: 'Global', keys: '← / →',      desc: 'Step one frame (while paused)' },
+
+  // Waypoint editing
+  { context: 'Global', keys: 'Ctrl+A',      desc: 'Select all waypoints',
+    match: 'ctrl+a',
+    handler: () => {
+      const { path, setMultiSel, setSelected } = useStore.getState()
+      const all = path.wps.map((_, i) => i)
+      setMultiSel(all)
+      if (all.length > 0) setSelected(0)
+    } },
+
+  { context: 'Global', keys: '⇧D',          desc: 'Duplicate selected waypoint',
+    match: 'shift+d',
+    handler: () => {
+      const { selected, dupWp } = useStore.getState()
+      if (selected >= 0) dupWp(selected)
+    } },
 
   // ── Ortho views (Top · XZ / Side · XY / Front · YZ) ────────────────────
   { context: 'Ortho views', keys: 'Drag waypoint',        desc: 'Move waypoint in view plane' },
@@ -63,6 +104,10 @@ export const SHORTCUTS: Shortcut[] = [
   { context: 'Behaviors panel', keys: 'Click track bar',     desc: 'Add keyframe at click position' },
   { context: 'Behaviors panel', keys: 'Drag ◆',             desc: 'Move keyframe t (undo-safe)' },
   { context: 'Behaviors panel', keys: 'Click ◆ / row',      desc: 'Select — expand inline editor' },
+  { context: 'Behaviors panel', keys: 'Wheel over graph',    desc: 'Change selected keyframe value (not timeline position)' },
+  { context: 'Behaviors panel', keys: 'J',                   desc: 'Jump to previous keyframe across all tracks' },
+  { context: 'Behaviors panel', keys: 'K',                   desc: 'Jump to next keyframe across all tracks' },
+  { context: 'Behaviors panel', keys: 'I',                   desc: 'Insert keyframe at playhead (active track only)' },
   { context: 'Behaviors panel', keys: '+ Add',              desc: 'Add track or trigger at scrubber position' },
   { context: 'Behaviors panel', keys: 'Drag panel handle',  desc: 'Resize panel height' },
 

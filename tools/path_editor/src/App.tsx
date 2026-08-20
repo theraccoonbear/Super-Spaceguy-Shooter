@@ -433,8 +433,8 @@ export function App() {
   }, [])
 
   // Global keyboard handler — fires regardless of which element has focus.
-  // Registry shortcuts (undo/redo, B, etc.) are dispatched from SHORTCUTS;
-  // step-frame and ? still live here (need local state or non-registry logic).
+  // Registry shortcuts (undo/redo, Space, `, Ctrl+A, Shift+D, Home, End, etc.)
+  // are dispatched from SHORTCUTS.  Arrow-step and ? live here (local state).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
@@ -471,10 +471,34 @@ export function App() {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
     if (e.key === 'l' || e.key === 'L') handleToggleLinked()
     if (e.key === 'Escape' && maximizedPane !== null) setMaximizedPane(null)
-    if ((e.key === 'f' || e.key === 'F') && hoveredPane.current !== null) {
-      toggleMax(hoveredPane.current)
+
+    // F — frame selection in hovered ortho pane (industry standard: zoom to fit)
+    // Shift+F — maximize / restore hovered pane (old F behavior, now on Shift)
+    const hp = hoveredPane.current
+    if (e.key.toLowerCase() === 'f' && hp !== null) {
+      if (e.shiftKey) {
+        toggleMax(hp)
+      } else if (hp !== 'persp') {
+        const { path, selected, multiSel } = useStore.getState()
+        // Frame selection when a selection exists; otherwise frame all waypoints
+        const wps =
+          multiSel.length > 0 ? multiSel.map(i => path.wps[i]).filter(Boolean)
+          : selected >= 0     ? [path.wps[selected]]
+          : path.wps
+        window.dispatchEvent(new CustomEvent('tf-frame',
+          { detail: { pane: hp, wps } }))
+      }
     }
-    // B is handled by the registry window listener (fires from any focus context)
+
+    // Period — frame all waypoints in every ortho view
+    if (e.key === '.' && hp !== null) {
+      const { path } = useStore.getState()
+      for (const p of ['top', 'side', 'front'] as const) {
+        window.dispatchEvent(new CustomEvent('tf-frame',
+          { detail: { pane: p, wps: path.wps } }))
+      }
+    }
+    // ` (backtick) and Space handled by registry window listener
   }, [handleToggleLinked, maximizedPane, setMaximizedPane, toggleMax])
 
   // Resolve CSS class for each view-cell

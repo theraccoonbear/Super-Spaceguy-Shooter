@@ -2,13 +2,13 @@
 // Screen X → world X (forward).  Screen Y up → world Y (altitude).
 // Dragging moves waypoints in X and Y; Z inherited from selected wp on click-to-add.
 
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import { useStore, PathData } from '../store'
 import { CtxMenu } from '../ui/ContextMenu'
 import type { Waypoint } from '../math/vec3'
 import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
 import { useOrthoCanvas } from './useOrthoCanvas'
-import { getCam, notifyAll, WorldPan } from './orthoCamera'
+import { getCam, notifyAll, WorldPan, framePoints } from './orthoCamera'
 import { drawShipModel, rollFrame } from './shipModel2D'
 import { drawOverlaysXY } from './overlays'
 import { rotateAroundZ, translateWps } from '../math/pathOps'
@@ -256,6 +256,20 @@ export function SideView() {
   }, [path, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen])
 
   const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, multiSel, playing, animT, editGhost, hoveredBehavior])
+
+  // ── Frame-to-fit listener (F key / period) ────────────────────────────
+  useEffect(() => {
+    const fn = (e: Event) => {
+      const { pane, wps } = (e as CustomEvent<{ pane: string; wps: Array<{ x: number; y: number; z: number }> }>).detail
+      if (pane !== 'side' && pane !== 'all') return
+      const canvas = cvRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      framePoints('side', wps.length > 0 ? wps : useStore.getState().path.wps, rect.width, rect.height)
+    }
+    window.addEventListener('tf-frame', fn)
+    return () => window.removeEventListener('tf-frame', fn)
+  }, [cvRef])
 
   type DragState =
     | { type: 'wp';        wpIdx: number; startSx: number; startSy: number; startWx: number; startWy: number }

@@ -866,6 +866,54 @@ export function BehaviorsPanel() {
   const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
   const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
 
+  // Stable ref so J/K/I handler always sees current selKf without re-binding the listener
+  const selKfRef = useRef(selKf)
+  selKfRef.current = selKf
+
+  // ── J / K / I — keyframe navigation and insert (After Effects convention) ──
+  // Mounted only while BehaviorsPanel is on screen, so no behaviorsOpen guard needed.
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const s   = useStore.getState()
+      const ns  = s.path.closed ? s.path.wps.length : Math.max(s.path.wps.length - 1, 1)
+
+      if (e.key === 'j' || e.key === 'J') {
+        e.preventDefault()
+        // Collect all unique keyframe parameter fractions across every track + trigger
+        const allT = [...new Set([
+          ...Object.values(s.path.tracks).flatMap(tr => tr.map(kf => kf.t)),
+          ...s.path.triggers.map(tr => tr.t),
+        ])].sort((a, b) => a - b)
+        const cur  = Math.max(0, Math.min(1, s.animT / ns))
+        const prev = [...allT].reverse().find(t => t < cur - 0.0005)
+        if (prev !== undefined) s.setAnimT(prev * ns)
+
+      } else if (e.key === 'k' || e.key === 'K') {
+        e.preventDefault()
+        const allT = [...new Set([
+          ...Object.values(s.path.tracks).flatMap(tr => tr.map(kf => kf.t)),
+          ...s.path.triggers.map(tr => tr.t),
+        ])].sort((a, b) => a - b)
+        const cur  = Math.max(0, Math.min(1, s.animT / ns))
+        const next = allT.find(t => t > cur + 0.0005)
+        if (next !== undefined) s.setAnimT(next * ns)
+
+      } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault()
+        const sk = selKfRef.current
+        if (!sk) return  // no active track → nothing to insert into
+        const frames = s.path.tracks[sk.track] ?? []
+        const t      = Math.max(0, Math.min(1, s.animT / ns))
+        if (frames.some(kf => Math.abs(kf.t - t) < 0.01)) return  // already a kf nearby
+        const val    = frames.length > 0 ? evalTrack(frames, t) : defaultTrackValue(sk.track)
+        s.addKeyframe(sk.track, { t, value: val, ease: defaultTrackEasing(sk.track) })
+      }
+    }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [])  // mount/unmount only — reads live state via getState() and selKfRef
+
   const handleSelKf = useCallback((v: { track: string; idx: number } | null) => {
     setSelKf(v); if (v) setSelTrack(v.track)
   }, [])
