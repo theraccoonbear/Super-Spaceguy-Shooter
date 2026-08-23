@@ -8,12 +8,12 @@
 import { useStore } from './store'
 
 export interface Shortcut {
-  keys:         string    // human-readable display in help: "Ctrl+Z", "Alt+drag", "Scroll"
-  desc:         string    // what it does — shown in help panel
-  context:      string    // section grouping: "Global" | "Ortho views" | "3D view" | ...
-  match?:       string    // "ctrl+z" | "space" | "ctrl+shift+z" — omit for doc-only entries
-  fireInInput?: boolean   // if true, fires even when an <input> or <textarea> has focus
-  handler?:     () => void  // action; only present when match is also present
+  keys:         string           // human-readable display in help: "Ctrl+Z", "Alt+drag", "Scroll"
+  desc:         string           // what it does — shown in help panel
+  context:      string           // section grouping: "Global" | "Ortho views" | "3D view" | ...
+  match?:       string | string[]  // one key combo or several — omit for doc-only entries
+  fireInInput?: boolean          // if true, fires even when an <input> or <textarea> has focus
+  handler?:     () => void       // action; only present when match is also present
 }
 
 export const SHORTCUTS: Shortcut[] = [
@@ -24,11 +24,7 @@ export const SHORTCUTS: Shortcut[] = [
     handler: () => useStore.temporal.getState().undo() },
 
   { context: 'Global', keys: 'Ctrl+⇧Z / Ctrl+Y', desc: 'Redo',
-    match: 'ctrl+shift+z', fireInInput: true,
-    handler: () => useStore.temporal.getState().redo() },
-
-  { context: 'Global', keys: 'Ctrl+Y',      desc: 'Redo (alternate)',
-    match: 'ctrl+y',       fireInInput: true,
+    match: ['ctrl+shift+z', 'ctrl+y'], fireInInput: true,
     handler: () => useStore.temporal.getState().redo() },
 
   // Play / timeline navigation
@@ -116,7 +112,9 @@ export const SHORTCUTS: Shortcut[] = [
 // ── Key matching ─────────────────────────────────────────────────────────────
 // Matches a KeyboardEvent against a match string like "ctrl+z" or "ctrl+shift+z".
 // Treats Ctrl and Meta (⌘) as interchangeable for cross-platform support.
-export function matchesShortcut(e: KeyboardEvent, match: string): boolean {
+// Pass a string array to match any one of several combos.
+export function matchesShortcut(e: KeyboardEvent, match: string | string[]): boolean {
+  if (Array.isArray(match)) return match.some(m => matchesShortcut(e, m))
   const parts = match.toLowerCase().split('+')
   const key   = parts[parts.length - 1]
   const ctrl  = parts.includes('ctrl')
@@ -128,4 +126,15 @@ export function matchesShortcut(e: KeyboardEvent, match: string): boolean {
     Boolean(e.shiftKey)  === shift &&
     Boolean(e.altKey)    === alt
   )
+}
+
+// ── Shortcut lookup ───────────────────────────────────────────────────────────
+// Returns the human-readable keys string for a shortcut identified by its match
+// value.  Use this in button title= attributes so they never drift from the
+// registry: shortcutKeys('`') → '` (backtick)'
+export function shortcutKeys(match: string): string {
+  const s = SHORTCUTS.find(sc =>
+    Array.isArray(sc.match) ? sc.match.includes(match) : sc.match === match
+  )
+  return s?.keys ?? match
 }

@@ -8,6 +8,8 @@ import {
   SpEfArcAdvance,
   SpEfTransportFrame,
   SpEfFrustumAtX,
+  SpEfApplyHolonomyCorrection,
+  SpEfMeasureHolonomy,
 } from './spline_gen'
 
 // ── Frustum math ────────────────────────────────────────────────────────
@@ -72,6 +74,82 @@ export function transportFrame(T0: Vec3, T1: Vec3, R: Vec3, U: Vec3): { R: Vec3;
   return {
     R: { x: newRx, y: newRy, z: newRz },
     U: { x: newUx, y: newUy, z: newUz },
+  }
+}
+
+// Per-tick holonomy counter-twist: distributes the closed-loop geometric phase
+// correction evenly so the parallel-transport frame closes after one full pass.
+// Call after transportFrame each tick; noop when holonomy ≈ 0 (open paths).
+export function applyHolonomyCorrection(
+  R: Vec3, U: Vec3, holonomy: number, dArcFrac: number,
+): { R: Vec3; U: Vec3 } {
+  const r = SpEfApplyHolonomyCorrection(
+    R.x, R.y, R.z, U.x, U.y, U.z, holonomy, dArcFrac,
+  )
+  return {
+    R: { x: r.corrRx, y: r.corrRy, z: r.corrRz },
+    U: { x: r.corrUx, y: r.corrUy, z: r.corrUz },
+  }
+}
+
+// Returns dotRR and dotRU for atan2(dotRU, dotRR) = holonomy in radians.
+// Pass the R after one full loop and the initial R0, U0.
+export function measureHolonomy(
+  finalR: Vec3, R0: Vec3, U0: Vec3,
+): number {
+  const { dotRR, dotRU } = SpEfMeasureHolonomy(
+    finalR.x, finalR.y, finalR.z,
+    R0.x, R0.y, R0.z,
+    U0.x, U0.y, U0.z,
+  )
+  return Math.atan2(dotRU, dotRR)
+}
+
+
+// Pre-compute the holonomy-corrected parallel-transport frame at nSteps uniform
+// arc-fraction intervals across one full closed-loop traversal.
+// The returned table has nSteps+1 entries at arcFrac = 0/n, 1/n, …, n/n.
+// holonomy must already be computed via measureHolonomy().
+// For open paths, pass holonomy=0 and the table is pure parallel transport from t=0.
+export interface FrameSample { R: Vec3; U: Vec3 }
+
+export function buildFrameTable(
+  wps: Vec3[], closed: boolean, holonomy: number, nSteps = 512,
+): FrameSample[] {
+  const nSegs = closed ? wps.length : wps.length - 1
+  const tan0  = tangentAt(wps, 0, closed)
+  const f0    = makeFrame(tan0)
+  let R: Vec3 = { ...f0.R }
+  let U: Vec3 = { ...f0.U }
+  const table: FrameSample[] = [{ R: { ...R }, U: { ...U } }]
+  let prevTan = tan0
+  for (let i = 1; i <= nSteps; i++) {
+    const newTan  = tangentAt(wps, (i / nSteps) * nSegs, closed)
+    const tr      = transportFrame(prevTan, newTan, R, U)
+    R = tr.R; U = tr.U
+    if (closed && Math.abs(holonomy) > 1e-6) {
+      const cr = applyHolonomyCorrection(R, U, holonomy, 1 / nSteps)
+      R = cr.R; U = cr.U
+    }
+    prevTan = newTan
+    table.push({ R: { ...R }, U: { ...U } })
+  }
+  return table
+}
+
+// Linearly interpolate a frame table at the given arc fraction in [0, 1].
+export function sampleFrameTable(table: FrameSample[], arcFrac: number): FrameSample {
+  const n  = table.length - 1
+  const fi = Math.max(0, Math.min(1, arcFrac)) * n
+  const lo = Math.floor(fi)
+  const hi = Math.min(n, lo + 1)
+  const t  = fi - lo
+  if (lo === hi || t < 1e-6) return table[lo]
+  const { R: R0, U: U0 } = table[lo]
+  const { R: R1, U: U1 } = table[hi]
+  return {
+    R: { x: R0.x + t*(R1.x-R0.x), y: R0.y + t*(R1.y-R0.y), z: R0.z + t*(R1.z-R0.z) },
+    U: { x: U0.x + t*(U1.x-U0.x), y: U0.y + t*(U1.y-U0.y), z: U0.z + t*(U1.z-U0.z) },
   }
 }
 

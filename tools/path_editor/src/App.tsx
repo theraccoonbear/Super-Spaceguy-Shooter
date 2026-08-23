@@ -14,10 +14,11 @@ import { HelpDialog }     from './ui/HelpDialog'
 import { NodeEditDialog } from './ui/NodeEditDialog'
 import { BehaviorsPanel } from './ui/BehaviorsPanel'
 import { linked as orthoLinked, toggleLinked } from './views/orthoCamera'
-import { tangentAt, makeFrame, transportFrame, arcAdvanceAt } from './math/spline'
+import { tangentAt, makeFrame, transportFrame, arcAdvanceAt, applyHolonomyCorrection, measureHolonomy, buildFrameTable } from './math/spline'
+import { setFrameTable } from './math/frameCache'
 import { evalTrack } from './views/behaviorMarkers'
 import type { Vec3 } from './math/vec3'
-import { SHORTCUTS, matchesShortcut } from './shortcuts'
+import { SHORTCUTS, matchesShortcut, shortcutKeys } from './shortcuts'
 import splashUrl from './assets/trail-forge-splash.png'
 
 // ── Animation loop ──────────────────────────────────────────────────────
@@ -39,6 +40,45 @@ function useAnimLoop() {
   const frameRRef   = useRef<Vec3>({ x: 1, y: 0, z: 0 })
   const frameURef   = useRef<Vec3>({ x: 0, y: 0, z: 1 })
   const prevTanRef  = useRef<Vec3 | null>(null)
+  // Holonomy correction: for closed paths, the parallel-transport frame accumulates
+  // a geometric phase (holonomy) each loop. We pre-compute it and distribute a
+  // counter-twist evenly so orientation is identical at the start of every pass.
+  const holonomyRef = useRef<number>(0) // radians, updated when path changes
+
+  // Recompute holonomy + scrub frame table whenever path changes.
+  // buildFrameTable uses 512 steps (matching holonomy nSteps for identical cumulative
+  // correction), so scrub-mode and playing-mode frames agree at any arc fraction.
+  useEffect(() => {
+    if (path.wps.length < 2) {
+      holonomyRef.current = 0
+      setFrameTable(null)
+      return
+    }
+    if (!path.closed) {
+      // Open path: no holonomy. Still build a transport table so scrub
+      // frame is consistent with playing rather than world-up makeFrame.
+      holonomyRef.current = 0
+      setFrameTable(buildFrameTable(path.wps, false, 0, 512))
+      return
+    }
+    // Closed path: measure holonomy first (high-res pass), then build table.
+    const nSegs  = path.wps.length
+    const nSteps = 1200
+    const tan0   = tangentAt(path.wps, 0, true)
+    const frame0 = makeFrame(tan0)
+    let R = { ...frame0.R }
+    let U = { ...frame0.U }
+    let prevTan = tan0
+    for (let i = 1; i <= nSteps; i++) {
+      const newTan = tangentAt(path.wps, (i / nSteps) * nSegs, true)
+      const res    = transportFrame(prevTan, newTan, R, U)
+      R = res.R; U = res.U
+      prevTan = newTan
+    }
+    const h = measureHolonomy(R, frame0.R, frame0.U)
+    holonomyRef.current = h
+    setFrameTable(buildFrameTable(path.wps, true, h, 512))
+  }, [path])
 
   useEffect(() => {
     let lastTs = 0, raf = 0
@@ -85,6 +125,18 @@ function useAnimLoop() {
         frameURef.current = U
       }
       prevTanRef.current = newTan
+
+      // Holonomy correction: distribute counter-twist proportional to arc fraction
+      // advanced this tick so the frame closes exactly after one full loop.
+      // Rotation is in the (R, U) plane — the plane perpendicular to the tangent.
+      const holonomy = holonomyRef.current
+      if (p.closed && Math.abs(holonomy) > 1e-6) {
+        const corrected = applyHolonomyCorrection(
+          frameRRef.current, frameURef.current, holonomy, dT / nSegs,
+        )
+        frameRRef.current = corrected.R
+        frameURef.current = corrected.U
+      }
 
       setPlayStateRef.current(newT, frameRRef.current, frameURef.current)
     }
@@ -247,7 +299,7 @@ function Toolbar({ isLinked, onToggleLinked, onHelp }: { isLinked: boolean; onTo
       <div className="tb-group">
         <button
           className={behaviorsOpen ? 'link-btn linked' : 'link-btn'}
-          title="Toggle behaviors panel (B) — track keyframes and trigger events"
+          title={`Toggle behaviors panel (${shortcutKeys('`')}) — track keyframes and trigger events`}
           onClick={() => setBehaviorsOpen(!behaviorsOpen)}
         >
           {behaviorsOpen ? '⊞ BEHAVIORS' : '⊟ BEHAVIORS'}

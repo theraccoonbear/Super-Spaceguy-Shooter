@@ -1047,6 +1047,24 @@ textarea.import-area:focus { border-color: var(--path); }
 .bp-icon-btn:hover { color: var(--text); border-color: var(--text-dim); }
 .bp-icon-btn.danger:hover { color: #f87171; border-color: #f87171; }
 
+/* Segment direction/mode toggle buttons (CraftRollTrack) */
+.bp-seg-btn {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text-faint);
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bp-seg-btn.active {
+  background: color-mix(in srgb, currentColor 15%, var(--surface));
+  border-color: currentColor;
+  color: currentColor;
+}
+.bp-seg-btn:hover { border-color: currentColor; }
+
 /* Hint text inside an empty expanded edit strip */
 .bp-hint {
   font-size: 10px;

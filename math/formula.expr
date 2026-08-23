@@ -8,7 +8,8 @@
 #   mf = SpEfMkFrame     ap = SpEfActualPos    rf = SpEfRollFrame
 #   cw = SpEfCrWeights   dw = SpEfCrDerivWeights
 #   fn = SpEfFacingNorm  aa = SpEfArcAdvance    tf = SpEfTransportFrame
-#   fr = SpEfFrustumAtX
+#   fr = SpEfFrustumAtX  hc = SpEfApplyHolonomyCorrection
+#   mh = SpEfMeasureHolonomy
 #
 # Macros available (registered by emit-spline.js before loadExpr):
 #   len3(x,y,z)                          -- sqrt(x^2+y^2+z^2)
@@ -85,12 +86,12 @@ fn SpEfRollFrame(ux, uy, uz, rx, ry, rz, crDeg):
   let rfC   = cos(rfRad);
   let rfS   = sin(rfRad);
   return {
-    rolledUx: rfC * ux - rfS * rx,
-    rolledUy: rfC * uy - rfS * ry,
-    rolledUz: rfC * uz - rfS * rz,
-    rolledRx: rfS * ux + rfC * rx,
-    rolledRy: rfS * uy + rfC * ry,
-    rolledRz: rfS * uz + rfC * rz
+    rolledUx: rfC * ux + rfS * rx,
+    rolledUy: rfC * uy + rfS * ry,
+    rolledUz: rfC * uz + rfS * rz,
+    rolledRx: -rfS * ux + rfC * rx,
+    rolledRy: -rfS * uy + rfC * ry,
+    rolledRz: -rfS * uz + rfC * rz
   };
 
 # -- SpEfCrWeights ------------------------------------------------------------
@@ -192,4 +193,44 @@ fn SpEfFrustumAtX(atX, camX, tanHfov, aspect):
   return {
     halfY: frDist * tanHfov,
     halfZ: frDist * tanHfov * aspect
+  };
+
+# -- SpEfApplyHolonomyCorrection ---------------------------------------------
+# Distributes a per-tick holonomy counter-twist so a closed parallel-transport
+# frame returns to its starting orientation after exactly one full loop.
+# Call after SpEfTransportFrame each animation tick (closed paths only).
+#
+# angle = -holonomy * dArcFrac  (rotation in the (R,U) plane, around T)
+# corrR =  cos*R + sin*U
+# corrU = -sin*R + cos*U
+#
+# Prefix: hc
+# Outputs: corrRx, corrRy, corrRz, corrUx, corrUy, corrUz
+
+fn SpEfApplyHolonomyCorrection(rx, ry, rz, ux, uy, uz, holonomy, dArcFrac):
+  let hcAngle = -(holonomy * dArcFrac);
+  let hcC     = cos(hcAngle);
+  let hcS     = sin(hcAngle);
+  return {
+    corrRx:  hcC * rx + hcS * ux,
+    corrRy:  hcC * ry + hcS * uy,
+    corrRz:  hcC * rz + hcS * uz,
+    corrUx: -hcS * rx + hcC * ux,
+    corrUy: -hcS * ry + hcC * uy,
+    corrUz: -hcS * rz + hcC * uz
+  };
+
+# -- SpEfMeasureHolonomy ------------------------------------------------------
+# Returns the two dot products needed to compute the holonomy angle after one
+# full closed-loop parallel transport.
+# Host calls atan2(dotRU, dotRR) to get holonomy in radians.
+# (finalRx,finalRy,finalRz) = R after one full loop; (r0x..u0z) = initial frame.
+#
+# Prefix: mh
+# Outputs: dotRR, dotRU
+
+fn SpEfMeasureHolonomy(finalRx, finalRy, finalRz, r0x, r0y, r0z, u0x, u0y, u0z):
+  return {
+    dotRR: dot3(finalRx, finalRy, finalRz, r0x, r0y, r0z),
+    dotRU: dot3(finalRx, finalRy, finalRz, u0x, u0y, u0z)
   };

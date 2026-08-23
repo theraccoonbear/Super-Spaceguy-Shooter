@@ -393,6 +393,57 @@ PUT → writes `../../assets/maneuvers.txt`
 
 ---
 
+## Behaviors Panel — Invariants
+
+These rules apply to ALL behavior tracks, including `craftRoll`. Violating any is a regression.
+
+### Track visibility lifecycle
+- A track row is **only visible when it has data** (keyframes or segments > 0).
+- When the last item is removed, the row disappears immediately. Auto-collapse expansion state.
+- Tracks are added via **+ Add** menu. Removing all items ≠ deleting the track concept — the user can always re-add it via + Add.
+
+### CraftRoll vs keyframe tracks
+`craftRoll` is **segment-based** (`path.craftRollSegments: CraftRollSegment[]`), not a keyframe track in `path.tracks`. It uses a completely separate store slice and UI component (`CraftRollTrack`). Do NOT look for craftRoll in `path.tracks` — it will never be there.
+
+**All four views** (TopView, SideView, FrontView, PerspView) read craftRoll from `path.craftRollSegments` via `evalCraftRoll(segments, arcFrac)`. If you change where craftRoll data lives, update ALL four views. Grep for `evalCraftRoll` to find all callsites.
+
+### CraftRollTrack interaction contract
+| Action | How |
+|--------|-----|
+| Add segment | Right-click empty ruler → "Add roll segment here", OR press **N** when track is expanded (adds at playhead) |
+| Select segment | Click segment block body |
+| Move segment | Drag segment body |
+| Resize segment | Drag left/right edge handles |
+| Delete segment | Right-click segment body → "Delete segment", OR select + Del button in expanded editor |
+| Remove ALL segments | Click **×** button in track right panel (with confirm dialog) |
+| Clear entire track | Same as "Remove ALL" — after last segment gone, row vanishes |
+| Re-add after clear | **+ Add → craftRoll** |
+| Mute | Eye button (◉/○) in right panel |
+
+**Never** add a click-to-add handler on the ruler. Accidental clicks on the timeline create unwanted segments.
+
+### CraftRoll segment fields
+```ts
+interface CraftRollSegment {
+  id:        string
+  t:         number           // arc-length fraction [0, 1] — NOT parameter fraction
+  duration:  number           // arc-length extent, min 0.01
+  degrees:   number           // 0–360 for absolute; 1–3600 for relative
+  direction: 'cw' | 'ccw'
+  mode:      'relative' | 'absolute'
+  ease:      'linear' | 'in' | 'out' | 'in-out'
+}
+```
+
+`t` is stored in arc-length space (same coordinate system as the CraftRollTrack ruler). Do NOT apply `paramToArc` to it — unlike keyframe tracks where `kf.t` is parameter fraction, `seg.t` is already arc fraction.
+
+### Roll arc visualization
+All views draw a roll clock indicator (ring + radial arm) at each waypoint when `path.craftRollSegments.length > 0`. Orange = CW (positive degrees), Blue = CCW (negative). The arm points in the direction of the accumulated roll angle using a clock-face convention (12 o'clock = 0°, clockwise positive).
+
+PerspView adds a 3D ring (torus, perpendicular to ship forward axis) + white arm to the ship group in `buildShipGroup()`. Because the whole group rotates with the ship, these always reflect actual bank angle.
+
+---
+
 ## Common Mistakes to Avoid
 
 1. **Orient toggle — wrong frame vectors**: Use `makeFrame(facing)` when `orient==='target'`. Never pass `frameR`/`frameU` in target mode. Applies in all 4 views.
@@ -412,3 +463,5 @@ PUT → writes `../../assets/maneuvers.txt`
 8. **PerspView keyboard**: PerspView wrapper div has `tabIndex={0}` + `onMouseEnter→focus()`. Without this, F key doesn't work in full-frame persp mode because nothing is focused to bubble events to `onRootKeyDown`.
 
 9. **Save As updates store name**: `doSave(newName)` calls `setPath(updated)` so the toolbar Name field reflects the saved name. Don't forget this if you ever refactor the save path.
+
+10. **CraftRoll consumers — ALL four views**: When changing anything about craftRoll evaluation (data shape, evaluator function, store field name), update TopView, SideView, FrontView, and PerspView. Grep `evalCraftRoll`. Missing even one is a silent regression in that view's playback.

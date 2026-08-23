@@ -7,7 +7,9 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
 import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame, frustumAtX } from '../math/spline'
+import { getFrameAt } from '../math/frameCache'
 import { evalTrack } from './behaviorMarkers'
+import { evalCraftRoll } from '../math/craftRoll'
 import {
   GAME_CAM_X, GAME_CAM_Y,
   SHIP_HX, SHIP_HY, SHIP_HZ,
@@ -46,6 +48,7 @@ interface SceneRefs {
   gizmo:        THREE.Group
   gizmoHits:    THREE.Mesh[]
   raf:          number
+  kick:         () => void   // request one render (no-op if loop already running)
   // Camera mode (mutated directly — not React state)
   cameraMode: CameraMode
   followDist: number
@@ -103,6 +106,19 @@ function buildShipGroup(): THREE.Group {
 
   // Dorsal fin (+Y): root at top of body, swept back and up.
   g.add(makeTriMesh([0.2, 0.12, 0], [-0.4, 0.12, 0], [-0.2, 1.3, 0], COL_FIN))
+
+  // Roll indicator: thin ring perpendicular to forward axis, plus up-arm.
+  // The whole group rotates with the ship so these always reflect actual roll.
+  const rollRingGeo = new THREE.TorusGeometry(1.85, 0.025, 8, 48)
+  rollRingGeo.rotateZ(Math.PI / 2)  // torus normally in XY; rotate to be in YZ (⊥ to X=forward)
+  g.add(new THREE.Mesh(rollRingGeo,
+    new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.25 })))
+
+  // Up-arm: center of ring → local +Y (rolled "up" direction)
+  const armGeo = new THREE.BufferGeometry()
+  armGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0.25, 0,  0, 1.85, 0], 3))
+  g.add(new THREE.Line(armGeo,
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })))
 
   return g
 }
@@ -343,6 +359,7 @@ export function PerspView() {
       renderer, scene, camera, controls, raycaster,
       wireLine, actualLine, wpGroup, bgGroup, overlayGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
+      kick: () => {},         // replaced after render loop init
       cameraMode: 'orbit',
       followDist: 8,
       shipPos: new THREE.Vector3(),
@@ -390,13 +407,19 @@ export function PerspView() {
     const ro = new ResizeObserver(resize)
     ro.observe(mount)
 
-    // ── Render loop ───────────────────────────────────────────────────
+    // ── Render loop (demand-driven) ───────────────────────────────────
+    // Continuous only while playing or in a non-orbit camera mode (follow/ingame
+    // need per-frame camera updates). When orbit + paused, the loop stops and
+    // kick() restarts it for a single frame whenever something changes.
     const render = () => {
-      refs.raf = requestAnimationFrame(render)
+      refs.raf = 0
+      if (document.hidden) return            // tab not visible — skip & stop
+
+      const { playing } = useStore.getState()
+
       switch (refs.cameraMode) {
         case 'follow':
           if (refs.shipGroup.visible) {
-            // Chase cam: sit behind + slightly above ship, look slightly ahead
             refs.camera.position
               .copy(refs.shipPos)
               .addScaledVector(refs.shipFwd, -refs.followDist)
@@ -407,22 +430,43 @@ export function PerspView() {
               refs.shipPos.z + refs.shipFwd.z * 2,
             )
           }
-          // ship not visible: camera stays at last position; no controls.update()
           break
         case 'ingame':
           refs.camera.position.set(GAME_CAM_X, GAME_CAM_Y, 0)
           refs.camera.lookAt(GAME_CAM_X + 100, GAME_CAM_Y, 0)
           break
         default: // 'orbit'
-          controls.update()
+          controls.update()   // applies damping
           break
       }
       renderer.render(scene, camera)
+
+      // Keep looping only when the scene changes every frame on its own.
+      if (playing || refs.cameraMode !== 'orbit') {
+        refs.raf = requestAnimationFrame(render)
+      }
     }
-    render()
+
+    // Kick requests one frame; no-op if a frame is already scheduled.
+    const kick = () => {
+      if (refs.raf === 0 && !document.hidden) {
+        refs.raf = requestAnimationFrame(render)
+      }
+    }
+    refs.kick = kick
+
+    // Render when OrbitControls moves (user drag + damping settling).
+    controls.addEventListener('change', kick)
+
+    // Resume rendering when the browser tab becomes visible again.
+    const onVisibilityChange = () => { if (!document.hidden) kick() }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    kick() // initial render
 
     return () => {
       cancelAnimationFrame(refs.raf)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       ro.disconnect()
       cv.removeEventListener('pointerdown', onPointerDown)
       cv.removeEventListener('wheel', onWheel)
@@ -436,6 +480,7 @@ export function PerspView() {
     const refs = refsRef.current
     if (!refs) return
     refs.overlayGroup.visible = showOverlays
+    refs.kick()
   }, [showOverlays])
 
   // ── Update path geometry + waypoints ─────────────────────────────────
@@ -493,6 +538,7 @@ export function PerspView() {
 
     // Rebuild background scatter outside the full actual-path AABB
     buildBackground(refs.bgGroup, samples.map(s => s.actual))
+    refs.kick()
   }, [path, selected])
 
   // ── Update ship during animation ─────────────────────────────────────
@@ -507,38 +553,47 @@ export function PerspView() {
     const wire         = evalAt(path.wps, animT, path.closed)
     const tan          = tangentAt(path.wps, animT, path.closed)
     const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
-    const craftRollTrack = mutedTracks['craftRoll'] ? null : path.tracks?.['craftRoll']
-    const standoffTrack  = mutedTracks['standoff']  ? null : path.tracks?.['standoff']
-    const craftRollDeg = craftRollTrack
-      ? evalTrack(craftRollTrack, animFrac)
+    const crSegs        = mutedTracks['craftRoll'] ? [] : (path.craftRollSegments ?? [])
+    const standoffTrack = mutedTracks['standoff']  ? null : path.tracks?.['standoff']
+    const craftRollDeg  = crSegs.length > 0
+      ? evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
       : evalRollAt(path.wps, animT, path.closed, 'craftRoll')
     const standoff = standoffTrack ? evalTrack(standoffTrack, animFrac) : path.standoff
     const ap           = actualPos(wire, tan, pathRollDeg, standoff)
     const facing       = shipFacing(ap, tan, path.orient, path.target)
     // Frame selection:
-    // • target mode: makeFrame(facing) — tangent ≠ facing, transport frame is wrong axis
-    // • path mode, playing: frameR/frameU — parallel transport, accumulated by the RAF loop
-    // • path mode, paused (scrubbing): frameR/frameU are stale from the last played position
-    //   and produce tumbling when animT jumps. Fall back to makeFrame(facing) which gives a
-    //   stable Gram-Schmidt frame relative to world-up. Craft roll still applies on top correctly.
-    const { R, U } = (path.orient === 'target' || !playing)
-      ? makeFrame(facing)
-      : { R: frameR, U: frameU }
+    // • target mode: makeFrame(facing) — tangent ≠ facing, transport frame is wrong axis.
+    // • path mode, playing: frameR/frameU — parallel transport accumulated by the RAF loop,
+    //   with holonomy correction applied each tick in useAnimLoop.
+    // • path mode, scrubbing (!playing): sample the pre-computed frame table at animFrac.
+    //   The table is built by buildFrameTable in useAnimLoop's path useEffect; it contains
+    //   the same holonomy-corrected transport frame the playing loop would produce at that
+    //   arc fraction. Falls back to makeFrame if the table isn't available yet.
+    let R: typeof frameR, U: typeof frameU
+    if (path.orient === 'target') {
+      ;({ R, U } = makeFrame(facing))
+    } else if (playing) {
+      R = frameR; U = frameU
+    } else {
+      const cached = getFrameAt(animFrac)
+      ;({ R, U } = cached ?? makeFrame(facing))
+    }
 
     refs.shipGroup.position.set(ap.x, ap.y, ap.z)
 
     // Apply craftRoll: rotate U and R around the forward axis (facing).
+    // CW roll: U gains +R (right-wing-down from pilot view), R gains -U.
     const crRad = craftRollDeg * (Math.PI / 180)
     const crCos = Math.cos(crRad), crSin = Math.sin(crRad)
     const rolledU = {
-      x: crCos * U.x - crSin * R.x,
-      y: crCos * U.y - crSin * R.y,
-      z: crCos * U.z - crSin * R.z,
+      x: crCos * U.x + crSin * R.x,
+      y: crCos * U.y + crSin * R.y,
+      z: crCos * U.z + crSin * R.z,
     }
     const rolledR = {
-      x: crSin * U.x + crCos * R.x,
-      y: crSin * U.y + crCos * R.y,
-      z: crSin * U.z + crCos * R.z,
+      x: -crSin * U.x + crCos * R.x,
+      y: -crSin * U.y + crCos * R.y,
+      z: -crSin * U.z + crCos * R.z,
     }
 
     // makeBasis: col0=local X (forward), col1=local Y (up), col2=local Z (right)
@@ -565,6 +620,7 @@ export function PerspView() {
     }
 
     void nSegs
+    refs.kick()
   }, [animT, playing, path, frameR, frameU, debugLog, mutedTracks])
 
   // ── Camera mode cycle: orbit → follow → ingame → orbit ───────────────
@@ -577,6 +633,7 @@ export function PerspView() {
     refs.cameraMode = next
     refs.controls.enabled = next === 'orbit'
     setCameraMode(next)
+    refs.kick()
   }, [])
 
   return (

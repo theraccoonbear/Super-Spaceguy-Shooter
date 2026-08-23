@@ -48,6 +48,8 @@ const FN_ORDER = [
     'SpEfArcAdvance',
     'SpEfTransportFrame',
     'SpEfFrustumAtX',
+    'SpEfApplyHolonomyCorrection',
+    'SpEfMeasureHolonomy',
 ];
 
 const OUT = {

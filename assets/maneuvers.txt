@@ -145,10 +145,6 @@ closed=1
       20    9.9282        -4
       20        11         0
 
-track: craftRoll, 0.1199, 0, linear
-track: craftRoll, 0.2281, 180, linear
-track: craftRoll, 0.4304, 360, ease-in
-track: craftRoll, 0.6937, 0, linear
 track: offsetAngle, 0.5661, 0, linear
 track: standoff, 0.3723, 3, linear
 track: standoff, 0.4810, 0, linear
@@ -169,13 +165,6 @@ closed=1
  18.6353         0   13.6824
  16.4970         0  -17.0546
 
-track: craftRoll, 0.0000, 0, linear
-track: craftRoll, 0.2127, 192.5900, linear
-track: craftRoll, 0.3087, 0.5000, linear
-track: craftRoll, 0.4042, -167.5790, linear
-track: craftRoll, 0.4456, 179.3840, linear
-track: craftRoll, 0.5436, -21.3410, linear
-
 [sick_twists]
 speed=0.25
 orient=path
@@ -192,14 +181,27 @@ closed=1
  13.0229   -0.4992   12.5684
  11.1181   -4.4059  -17.0546
 
-track: craftRoll, 0.0000, 0, linear
-track: craftRoll, 0.0370, 0, linear
-track: craftRoll, 0.2000, 0, linear
-track: craftRoll, 0.2682, -223.0370, linear
-track: craftRoll, 0.3895, -360, linear
-track: craftRoll, 0.4456, 9.3840, linear
-track: craftRoll, 0.5858, 360, instant
-track: craftRoll, 0.5923, -360, smooth
-track: craftRoll, 0.7350, -21.3410, linear
-track: craftRoll, 0.8477, 360, linear
 track: offsetAngle, 0.2999, 0, linear
+
+[twist_and_roll]
+speed=0.25
+orient=path
+closed=1
+
+ 11.1181   -4.4059  -17.0546
+ 39.3595   -5.2064  -16.7136
+ 27.8394         0   15.5773
+ 45.4354         0   29.1127
+ 54.9101   11.8824  -11.0059
+ 43.3327    8.2100  -21.5096
+ 31.9313    2.0316  -21.5096
+ 21.4972   -8.5769   23.9693
+ 13.0229   -0.4992   12.5684
+ 11.1181   -4.4059  -17.0546
+
+craftroll: 0.0912, 0.0283, 45, cw, relative, in-out
+craftroll: 0.1213, 0.0263, 45, ccw, relative, in-out
+craftroll: 0.2187, 0.0303, 50, ccw, relative, in-out
+craftroll: 0.5709, 0.0611, 45, ccw, relative, in-out
+craftroll: 0.6855, 0.0740, 150, cw, relative, in-out
+craftroll: 0.8672, 0.0279, 30, ccw, relative, in-out

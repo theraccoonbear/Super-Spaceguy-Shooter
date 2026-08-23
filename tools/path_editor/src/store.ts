@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
 import { Vec3, Waypoint } from './math/vec3'
+import { CraftRollSegment, CraftRollLoopSeam } from './math/craftRoll'
 
 export type { Waypoint }
+export type { CraftRollSegment, CraftRollLoopSeam }
 export type OrientMode = 'path' | 'target'
 
 /** 'craft' = a flight path for a ship (default, backward-compat).
@@ -53,6 +55,11 @@ export interface PathData {
   tracks:   Record<string, TrackKeyframe[]>
   /** Discrete events fired when craft crosses position t. Sorted by t. */
   triggers: PathTrigger[]
+  /** Segment-based craft roll authoring. Replaces the old craftRoll keyframe track. */
+  craftRollSegments: CraftRollSegment[]
+  /** Loop-point seam: smoothly closes the roll angle gap when the path loops.
+   *  null = no seam (may produce a snap at the loop point if roll angle ≠ 0 at end). */
+  craftRollLoopSeam: CraftRollLoopSeam | null
 }
 
 export type PaneName = 'top' | 'side' | 'front' | 'persp'
@@ -98,6 +105,15 @@ export interface EditorState {
   /** Ghost snapshot shown in all views while the node-edit dialog is open. */
   editGhost: { path: PathData; wpIdx: number } | null
   setEditGhost: (g: { path: PathData; wpIdx: number } | null) => void
+
+  // ── Craft roll segment actions ────────────────────────────────────────────
+  setCraftRollSegments:    (segs: CraftRollSegment[]) => void
+  addCraftRollSegment:     (seg: CraftRollSegment) => void
+  updateCraftRollSegment:  (id: string, patch: Partial<CraftRollSegment>) => void
+  removeCraftRollSegment:  (id: string) => void
+  // ── Loop seam actions ─────────────────────────────────────────────────────
+  setLoopSeam:             (seam: CraftRollLoopSeam | null) => void
+  updateLoopSeam:          (patch: Partial<CraftRollLoopSeam>) => void
 
   // ── Behavior track actions ────────────────────────────────────────────────
   /** Replace all keyframes for a named track. Empty array removes the track. */
@@ -162,8 +178,10 @@ const DEFAULT_PATH: PathData = {
     makeWp( -5, -1,  2),
     makeWp(  8,  0,  2),
   ],
-  tracks:   {},
-  triggers: [],
+  tracks:            {},
+  triggers:          [],
+  craftRollSegments: [],
+  craftRollLoopSeam: null,
 }
 
 function ensureRolls(wp: Vec3): Waypoint {
@@ -178,14 +196,19 @@ function ensureRolls(wp: Vec3): Waypoint {
 /** Fill in fields added after the initial release so old localStorage / file
  *  data loads cleanly without crashing. */
 function migratePath(p: Partial<PathData>): PathData {
+  let tracks = (p.tracks && typeof p.tracks === 'object' && !Array.isArray(p.tracks))
+    ? { ...p.tracks as Record<string, TrackKeyframe[]> }
+    : {}
+  // Drop legacy craftRoll keyframe track — replaced by craftRollSegments
+  delete tracks['craftRoll']
   return {
     ...DEFAULT_PATH,
     ...p,
-    type:     (p.type     ?? 'craft') as PathType,
-    tracks:   (p.tracks   && typeof p.tracks === 'object' && !Array.isArray(p.tracks))
-                ? p.tracks as Record<string, TrackKeyframe[]>
-                : {},
-    triggers: Array.isArray(p.triggers) ? p.triggers : [],
+    type:              (p.type ?? 'craft') as PathType,
+    tracks,
+    triggers:          Array.isArray(p.triggers)          ? p.triggers          : [],
+    craftRollSegments: Array.isArray(p.craftRollSegments) ? p.craftRollSegments : [],
+    craftRollLoopSeam: p.craftRollLoopSeam ?? null,
   }
 }
 
@@ -301,6 +324,40 @@ export const useStore = create<EditorState>()(
       setMaximizedPane: (pane) => set({ maximizedPane: pane }),
       editGhost:    null,
       setEditGhost: (g) => set({ editGhost: g }),
+
+      // ── Craft roll segment actions ──────────────────────────────────────
+      setCraftRollSegments: (segs) => set((s) => {
+        const path = { ...s.path, craftRollSegments: segs }
+        save(path); return { path }
+      }),
+      addCraftRollSegment: (seg) => set((s) => {
+        const craftRollSegments = sortByT([...s.path.craftRollSegments, seg])
+        const path = { ...s.path, craftRollSegments }
+        save(path); return { path }
+      }),
+      updateCraftRollSegment: (id, patch) => set((s) => {
+        const craftRollSegments = sortByT(
+          s.path.craftRollSegments.map(seg => seg.id === id ? { ...seg, ...patch } : seg)
+        )
+        const path = { ...s.path, craftRollSegments }
+        save(path); return { path }
+      }),
+      removeCraftRollSegment: (id) => set((s) => {
+        const craftRollSegments = s.path.craftRollSegments.filter(seg => seg.id !== id)
+        const path = { ...s.path, craftRollSegments }
+        save(path); return { path }
+      }),
+
+      // ── Loop seam actions ───────────────────────────────────────────────
+      setLoopSeam: (seam) => set((s) => {
+        const path = { ...s.path, craftRollLoopSeam: seam }
+        save(path); return { path }
+      }),
+      updateLoopSeam: (patch) => set((s) => {
+        if (!s.path.craftRollLoopSeam) return {}
+        const path = { ...s.path, craftRollLoopSeam: { ...s.path.craftRollLoopSeam, ...patch } }
+        save(path); return { path }
+      }),
 
       // ── Behavior track actions ──────────────────────────────────────────
       setTrack: (name, frames) => set((s) => {

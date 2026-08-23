@@ -8,6 +8,8 @@ import { CtxMenu } from '../ui/ContextMenu'
 import { pauseAfterCheckpoint, resumeTemporal } from './undoHelpers'
 import type { Waypoint } from '../math/vec3'
 import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
+import { getFrameAt } from '../math/frameCache'
+import { evalCraftRoll } from '../math/craftRoll'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan, framePoints } from './orthoCamera'
 import { drawBehaviorMarkers, hoveredEq, evalTrack, BehaviorHit } from './behaviorMarkers'
@@ -194,6 +196,28 @@ export function TopView() {
       behaviorHitsRef.current = []
     }
 
+    // ── Roll arc indicators at each waypoint ──────────────────────────────
+    const crSegsAll = path.craftRollSegments ?? []
+    if (crSegsAll.length > 0) {
+      const nSegsWp = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+      path.wps.forEach((wp, i) => {
+        const pf  = nSegsWp > 0 ? i / nSegsWp : 0
+        const deg = evalCraftRoll(crSegsAll, pf, path.craftRollLoopSeam)
+        if (Math.abs(deg) < 0.5) return
+        const { sx, sy } = w2s(wp.x, wp.z, w, h, scale, pan)
+        const R   = 10
+        const rad = (deg % 360) * Math.PI / 180
+        ctx.save()
+        ctx.globalAlpha = 0.65
+        ctx.strokeStyle = deg > 0 ? '#f97316' : '#38bdf8'
+        ctx.lineWidth = 1.2
+        ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI * 2); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(sx, sy - R * 0.3)
+        ctx.lineTo(sx + R * Math.sin(rad), sy - R * Math.cos(rad)); ctx.stroke()
+        ctx.restore()
+      })
+    }
+
     path.wps.forEach((wp, i) => {
       const { sx, sy } = w2s(wp.x, wp.z, w, h, scale, pan)
       const isSel = i === selected
@@ -206,33 +230,49 @@ export function TopView() {
       ctx.fillText(String(i), sx + 7, sy - 4)
     })
 
-    if (playing && path.wps.length >= 2) {
+    if (path.wps.length >= 2) {
       const nSegs     = path.closed ? path.wps.length : path.wps.length - 1
       const animFrac  = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
       const wire      = evalAt(path.wps, animT, path.closed)
       const tan       = tangentAt(path.wps, animT, path.closed)
 
       // Apply behavior track overrides (skip muted tracks)
-      const craftRollTrack = mutedTracks['craftRoll']   ? null : path.tracks['craftRoll']
+      const crSegs         = mutedTracks['craftRoll']   ? [] : (path.craftRollSegments ?? [])
       const standoffTrack  = mutedTracks['standoff']    ? null : path.tracks['standoff']
       const offsetAngTrack = mutedTracks['offsetAngle'] ? null : path.tracks['offsetAngle']
       const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
         + (offsetAngTrack ? evalTrack(offsetAngTrack, animFrac) : 0)
-      const craftRollDeg = craftRollTrack
-        ? evalTrack(craftRollTrack, animFrac)
+      const craftRollDeg = crSegs.length > 0
+        ? evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
         : evalRollAt(path.wps, animT, path.closed, 'craftRoll')
       const standoff = standoffTrack ? evalTrack(standoffTrack, animFrac) : path.standoff
 
-      const ap           = actualPos(wire, tan, pathRollDeg, standoff)
-      const facing       = shipFacing(ap, tan, path.orient, path.target)
-      const { R, U } = path.orient === 'target'
-        ? makeFrame(facing)
-        : { R: frameR, U: frameU }
+      const ap     = actualPos(wire, tan, pathRollDeg, standoff)
+      const facing = shipFacing(ap, tan, path.orient, path.target)
+      let R, U
+      if (path.orient === 'target') {
+        ;({ R, U } = makeFrame(facing))
+      } else if (playing) {
+        R = frameR; U = frameU
+      } else {
+        ;({ R, U } = getFrameAt(animFrac) ?? makeFrame(facing))
+      }
       const { rolledU, rolledR } = rollFrame(U, R, craftRollDeg)
       drawShipModel(ctx, ap, facing, rolledU, rolledR, (wv) => {
         const s = w2s(wv.x, wv.z, w, h, scale, pan)
         return [s.sx, s.sy]
       })
+      // Roll arc overlay at playhead (always shown while path exists)
+      if (Math.abs(craftRollDeg) > 0.5) {
+        const { sx: shipSx, sy: shipSy } = w2s(ap.x, ap.z, w, h, scale, pan)
+        const Rp  = 14; const radP = (craftRollDeg % 360) * Math.PI / 180
+        const col = craftRollDeg > 0 ? '#f97316' : '#38bdf8'
+        ctx.save(); ctx.globalAlpha = 0.9; ctx.strokeStyle = col; ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.arc(shipSx, shipSy, Rp, 0, Math.PI * 2); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(shipSx, shipSy - Rp * 0.3)
+        ctx.lineTo(shipSx + Rp * Math.sin(radP), shipSy - Rp * Math.cos(radP)); ctx.stroke()
+        ctx.restore()
+      }
     }
 
     ctx.fillStyle = '#2a2a35'; ctx.font = '9px Courier New, monospace'

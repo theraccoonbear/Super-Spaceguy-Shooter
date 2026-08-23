@@ -85,8 +85,9 @@ export function rollFrame(
 ): { rolledU: Vec3; rolledR: Vec3 } {
   const rad  = craftRollDeg * (Math.PI / 180)
   const c = Math.cos(rad), s = Math.sin(rad)
+  // CW roll: U gains +R (right-wing-down from pilot view), R gains -U.
   return {
-    rolledU: { x: c*U.x - s*R.x, y: c*U.y - s*R.y, z: c*U.z - s*R.z },
-    rolledR: { x: s*U.x + c*R.x, y: s*U.y + c*R.y, z: s*U.z + c*R.z },
+    rolledU: { x: c*U.x + s*R.x, y: c*U.y + s*R.y, z: c*U.z + s*R.z },
+    rolledR: { x: -s*U.x + c*R.x, y: -s*U.y + c*R.y, z: -s*U.z + c*R.z },
   }
 }

@@ -1,4 +1,5 @@
 import { PathData, TriggerEvent, EaseType, FireMode, ShieldMode } from '../store'
+import { type CraftRollEase } from '../math/craftRoll'
 import { Waypoint } from '../math/vec3'
 
 // ── Export ──────────────────────────────────────────────────────────────
@@ -83,6 +84,22 @@ export function exportBlock(p: PathData): string {
     }
   }
 
+  // Craft roll segments — sorted by t
+  const crSegs = [...(p.craftRollSegments ?? [])].sort((a, b) => a.t - b.t)
+  if (crSegs.length > 0) {
+    lines.push('')
+    for (const seg of crSegs) {
+      lines.push(`craftroll: ${fmtT(seg.t)}, ${fmtT(seg.duration)}, ${seg.degrees}, ${seg.direction}, ${seg.mode}, ${seg.ease}`)
+    }
+  }
+
+  // Loop seam — only emit when non-null
+  if (p.craftRollLoopSeam) {
+    const s = p.craftRollLoopSeam
+    lines.push('')
+    lines.push(`loopseam: ${fmtT(s.tailFrac)}, ${fmtT(s.headFrac)}, ${fmt(s.targetAngle)}, ${s.ease}`)
+  }
+
   return lines.join('\n')
 }
 
@@ -120,16 +137,18 @@ export function parseBlocks(text: string): Map<string, PathData> {
     if (header) {
       if (cur) result.set(cur.name, stripDuplicateEndpoint(cur))
       cur = {
-        name:     header[1],
-        type:     'craft',
-        speed:    0.025,
-        orient:   'path',
-        target:   { x: 0, y: 0, z: 0 },
-        closed:   true,
-        standoff: 0,
-        wps:      [],
-        tracks:   {},
-        triggers: [],
+        name:              header[1],
+        type:              'craft',
+        speed:             0.025,
+        orient:            'path',
+        target:            { x: 0, y: 0, z: 0 },
+        closed:            true,
+        standoff:          0,
+        wps:               [],
+        tracks:            {},
+        triggers:          [],
+        craftRollSegments: [],
+        craftRollLoopSeam: null,
       }
       continue
     }
@@ -141,12 +160,49 @@ export function parseBlocks(text: string): Map<string, PathData> {
       const parts = line.slice(6).split(',').map(s => s.trim())
       if (parts.length >= 4) {
         const name  = parts[0]
+        // Drop legacy craftRoll keyframe track — replaced by craftRollSegments
+        if (name === 'craftRoll') continue
         const t     = parseFloat(parts[1])
         const value = parseFloat(parts[2])
         const ease  = parts[3] as EaseType
         if (!isNaN(t) && !isNaN(value)) {
           if (!cur.tracks[name]) cur.tracks[name] = []
           cur.tracks[name].push({ t, value, ease: ease || 'linear' })
+        }
+      }
+      continue
+    }
+
+    // Craft roll segment: "craftroll: t, duration, degrees, direction, mode, ease"
+    if (line.startsWith('craftroll:')) {
+      const parts = line.slice(10).split(',').map(s => s.trim())
+      if (parts.length >= 6) {
+        const t         = parseFloat(parts[0])
+        const duration  = parseFloat(parts[1])
+        const degrees   = parseInt(parts[2], 10)
+        const direction = parts[3] as 'cw' | 'ccw'
+        const mode      = parts[4] as 'relative' | 'absolute'
+        const ease      = parts[5] as CraftRollEase
+        if (!isNaN(t) && !isNaN(duration) && !isNaN(degrees)) {
+          cur.craftRollSegments.push({
+            id: Math.random().toString(36).slice(2, 9),
+            t, duration, degrees, direction, mode, ease,
+          })
+        }
+      }
+      continue
+    }
+
+    // Loop seam: "loopseam: tailFrac, headFrac, targetAngle, ease"
+    if (line.startsWith('loopseam:')) {
+      const parts = line.slice(9).split(',').map(s => s.trim())
+      if (parts.length >= 4) {
+        const tailFrac    = parseFloat(parts[0])
+        const headFrac    = parseFloat(parts[1])
+        const targetAngle = parseFloat(parts[2])
+        const ease        = parts[3] as CraftRollEase
+        if (!isNaN(tailFrac) && !isNaN(headFrac) && !isNaN(targetAngle)) {
+          cur.craftRollLoopSeam = { tailFrac, headFrac, targetAngle, ease: ease || 'in-out' }
         }
       }
       continue
