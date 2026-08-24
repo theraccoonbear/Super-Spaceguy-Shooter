@@ -16,10 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Debug checkout
-        run: ls -la && echo "lockfile size:" && wc -c package-lock.json 2>/dev/null || echo "NO LOCKFILE"
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install
