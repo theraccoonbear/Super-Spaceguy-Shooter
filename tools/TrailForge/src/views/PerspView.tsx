@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
+import { camPrefs, saveCamPrefs } from '../prefs'
 import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, frustumAtX } from '../math/spline'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
@@ -277,7 +278,7 @@ function getNDC(e: PointerEvent, rect: DOMRect): THREE.Vector2 {
 export function PerspView() {
   const mountRef  = useRef<HTMLDivElement>(null)
   const refsRef   = useRef<SceneRefs | null>(null)
-  const [cameraMode, setCameraMode] = useState<CameraMode>('orbit')
+  const [cameraMode, setCameraMode] = useState<CameraMode>(camPrefs.cameraMode as CameraMode)
 
   const { path, selected, playing, animT, frameR, frameU, showOverlays, debugLog, mutedTracks } = useStore()
 
@@ -359,7 +360,7 @@ export function PerspView() {
       wireLine, actualLine, wpGroup, bgGroup, overlayGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
       kick: () => {},         // replaced after render loop init
-      cameraMode: 'orbit',
+      cameraMode: camPrefs.cameraMode as CameraMode,
       followDist: 8,
       shipPos: new THREE.Vector3(),
       shipFwd: new THREE.Vector3(1, 0, 0),
@@ -612,6 +613,7 @@ export function PerspView() {
       refs.cameraMode === 'follow' ? 'ingame'  : 'orbit'
     refs.cameraMode = next
     refs.controls.enabled = next === 'orbit'
+    saveCamPrefs({ cameraMode: next })
     setCameraMode(next)
     refs.kick()
   }, [])

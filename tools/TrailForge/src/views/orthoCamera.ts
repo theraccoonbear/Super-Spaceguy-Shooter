@@ -2,6 +2,12 @@
 // When linked (default), all three ortho views share the same scale and
 // world-space pan offsets. Panning or zooming in one view moves all three.
 // Toggle linked/unlinked with L or the toolbar button.
+//
+// Camera state is persisted to localStorage via src/prefs.ts.
+// notifyAll() is the single notification point after every mutation, so
+// it also drives the save — no other code needs to call saveCamPrefs directly.
+
+import { camPrefs, saveCamPrefs } from '../prefs'
 
 export interface WorldPan { x: number; y: number; z: number }
 
@@ -12,18 +18,18 @@ interface OrthoCamera {
 
 // Shared state used by all views when linked=true
 export const sharedCam: OrthoCamera = {
-  scale:    12,
-  worldPan: { x: 0, y: 0, z: 0 },
+  scale:    camPrefs.shared.scale,
+  worldPan: { ...camPrefs.shared.worldPan },
 }
 
 // Per-view independent cameras used when linked=false
 export const localCam: Record<'top' | 'side' | 'front', OrthoCamera> = {
-  top:   { scale: 12, worldPan: { x: 0, y: 0, z: 0 } },
-  side:  { scale: 12, worldPan: { x: 0, y: 0, z: 0 } },
-  front: { scale: 12, worldPan: { x: 0, y: 0, z: 0 } },
+  top:   { scale: camPrefs.top.scale,   worldPan: { ...camPrefs.top.worldPan   } },
+  side:  { scale: camPrefs.side.scale,  worldPan: { ...camPrefs.side.worldPan  } },
+  front: { scale: camPrefs.front.scale, worldPan: { ...camPrefs.front.worldPan } },
 }
 
-export let linked = true
+export let linked = camPrefs.linked
 
 // Callbacks registered by each view to redraw on camera change
 const listeners = new Set<() => void>()
@@ -34,6 +40,15 @@ export function registerRedraw(fn: () => void): () => void {
 }
 
 export function notifyAll(): void {
+  // Persist current camera state on every notification (pan, zoom, frame, toggle).
+  // notifyAll is the single post-mutation point so we don't need save calls elsewhere.
+  saveCamPrefs({
+    linked,
+    shared: { scale: sharedCam.scale,       worldPan: { ...sharedCam.worldPan       } },
+    top:    { scale: localCam.top.scale,    worldPan: { ...localCam.top.worldPan    } },
+    side:   { scale: localCam.side.scale,   worldPan: { ...localCam.side.worldPan   } },
+    front:  { scale: localCam.front.scale,  worldPan: { ...localCam.front.worldPan  } },
+  })
   listeners.forEach((fn) => fn())
 }
 

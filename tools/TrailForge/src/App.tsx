@@ -14,6 +14,7 @@ import { HelpDialog }     from './ui/HelpDialog'
 import { NodeEditDialog } from './ui/NodeEditDialog'
 import { BehaviorsPanel } from './ui/BehaviorsPanel'
 import { linked as orthoLinked, toggleLinked } from './views/orthoCamera'
+import { uiPrefs, saveUIPrefs } from './prefs'
 import { tangentAt, makeFrame, transportFrame, arcAdvanceAt, applyHolonomyCorrection, measureHolonomy, buildFrameTable } from './math/spline'
 import { setFrameTable } from './math/frameCache'
 import { evalTrack } from './views/behaviorMarkers'
@@ -308,7 +309,8 @@ function Toolbar({ isLinked, onToggleLinked, onHelp }: { isLinked: boolean; onTo
 // ── Sidebar ─────────────────────────────────────────────────────────────
 function Sidebar({ onResizeStart }: { onResizeStart: (e: React.MouseEvent) => void }) {
   const { path, selected, setWp, addWp, delWp, dupWp, setSelected } = useStore()
-  const [tab, setTab] = useState<'wp' | 'io' | 'routes'>('wp')
+  const [tab, setTabRaw] = useState<'wp' | 'io' | 'routes'>(uiPrefs.sidebarTab)
+  const setTab = (t: 'wp' | 'io' | 'routes') => { saveUIPrefs({ sidebarTab: t }); setTabRaw(t) }
   const [showGenDialog, setShowGenDialog] = useState(false)
   const { wps } = path
 
@@ -424,7 +426,9 @@ export function App() {
 
   const [isLinked,     setIsLinked]     = useState(orthoLinked)
   const [showHelp,     setShowHelp]     = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState(220)
+  const [sidebarWidth, setSidebarWidth] = useState(uiPrefs.sidebarWidth)
+  // Ref so the drag mouseUp handler can read the latest width without stale closure.
+  const sidebarWidthRef = useRef(uiPrefs.sidebarWidth)
 
   // ── Splash on load ───────────────────────────────────────────────────
   const [splash, setSplash] = useState<'visible' | 'fading' | 'gone'>('visible')
@@ -456,9 +460,14 @@ export function App() {
         const delta = sDragStart.current.x - e.clientX   // drag LEFT = wider sidebar
         const newW  = Math.max(160, Math.min(500, sDragStart.current.w + delta))
         setSidebarWidth(newW)
+        sidebarWidthRef.current = newW
       }
     }
-    const onUp = () => { bDragStart.current = null; sDragStart.current = null }
+    const onUp = () => {
+      if (sDragStart.current) saveUIPrefs({ sidebarWidth: sidebarWidthRef.current })
+      bDragStart.current = null
+      sDragStart.current = null
+    }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
     return () => {

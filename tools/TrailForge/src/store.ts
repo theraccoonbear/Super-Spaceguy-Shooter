@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import { Vec3, Waypoint } from './math/vec3'
 import { CraftRollSegment, CraftRollLoopSeam } from './math/craftRoll'
+import { uiPrefs, saveUIPrefs } from './prefs'
 
 export type { Waypoint }
 export type { CraftRollSegment, CraftRollLoopSeam }
@@ -249,7 +250,7 @@ export const useStore = create<EditorState>()(
       frameR:   { x: 1, y: 0, z: 0 },
       frameU:   { x: 0, y: 0, z: 1 },
       status:   'session restored',
-      debugLog: false,
+      debugLog: uiPrefs.debugLog,
 
       setPath: (p) => {
         const path = normalizePath(p)
@@ -309,9 +310,9 @@ export const useStore = create<EditorState>()(
       setAnimT:        (v) => set({ animT: v }),
       setPlayState:    (animT, frameR, frameU) => set({ animT, frameR, frameU }),
       setStatus:       (s) => set({ status: s }),
-      setDebugLog:     (v) => set({ debugLog: v }),
-      showOverlays:    true,
-      setShowOverlays: (v) => set({ showOverlays: v }),
+      setDebugLog:     (v) => { saveUIPrefs({ debugLog: v }); set({ debugLog: v }) },
+      showOverlays:    uiPrefs.showOverlays,
+      setShowOverlays: (v) => { saveUIPrefs({ showOverlays: v }); set({ showOverlays: v }) },
       maximizedPane:    null,
       setMaximizedPane: (pane) => set({ maximizedPane: pane }),
       editGhost:    null,
@@ -436,10 +437,10 @@ export const useStore = create<EditorState>()(
       }),
 
       // ── Behaviors panel UI state (NOT undo-tracked) ─────────────────────
-      behaviorsOpen:      false,
-      behaviorsHeight:    220,
-      setBehaviorsOpen:   (v) => set({ behaviorsOpen: v }),
-      setBehaviorsHeight: (v) => set({ behaviorsHeight: v }),
+      behaviorsOpen:      uiPrefs.behaviorsOpen,
+      behaviorsHeight:    uiPrefs.behaviorsHeight,
+      setBehaviorsOpen:   (v) => { saveUIPrefs({ behaviorsOpen: v }); set({ behaviorsOpen: v }) },
+      setBehaviorsHeight: (v) => { saveUIPrefs({ behaviorsHeight: v }); set({ behaviorsHeight: v }) },
       hoveredBehavior:    null,
       setHoveredBehavior: (h) => set({ hoveredBehavior: h }),
 
