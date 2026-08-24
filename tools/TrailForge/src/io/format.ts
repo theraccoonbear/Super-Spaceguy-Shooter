@@ -262,6 +262,27 @@ export function parseBlocks(text: string): Map<string, PathData> {
   return result
 }
 
+// ── Per-file helpers ────────────────────────────────────────────────────
+
+// Convert a route name to a safe kebab-case filename stem (no .mvr extension).
+// Must stay in sync with the same function in tools/migrate-maneuvers.js.
+export function nameToFilename(name: string): string {
+  return name.trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-')      // spaces and underscores → hyphens
+    .replace(/[^a-z0-9-]/g, '')   // strip anything else
+    .replace(/-{2,}/g, '-')       // collapse runs of hyphens
+    .replace(/^-+|-+$/g, '')      // trim leading/trailing hyphens
+    || 'unnamed'
+}
+
+// Parse a single .mvr file's text. Returns the PathData or null on failure.
+export function parseFile(text: string): PathData | null {
+  const map   = parseBlocks(text)
+  const first = map.values().next().value
+  return (first as PathData | undefined) ?? null
+}
+
 // Strip duplicate endpoint from old-format files where wps[last] === wps[0].
 function stripDuplicateEndpoint(p: PathData): PathData {
   if (!p.closed || p.wps.length < 2) return p

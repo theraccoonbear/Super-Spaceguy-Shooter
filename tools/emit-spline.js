@@ -54,7 +54,7 @@ const FN_ORDER = [
 
 const OUT = {
     qb64: path.join(REPO, 'src/gameplay/spline_path_gen.bi'),
-    ts:   path.join(REPO, 'tools/path_editor/src/math/spline_gen.ts'),
+    ts:   path.join(REPO, 'tools/TrailForge/src/math/spline_gen.ts'),
 };
 
 // ── Emit (only the two targets we use) ───────────────────────────────────────

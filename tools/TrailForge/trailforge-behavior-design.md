@@ -1,7 +1,7 @@
 # Path Behavior System — Design Plan
 
 Status: **Design / pre-implementation spitball**  
-Context: path editor at `tools/path_editor/`; game at `3d/`
+Context: TrailForge at `tools/TrailForge/`; game at `3d/`
 
 ---
 

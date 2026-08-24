@@ -144,7 +144,7 @@ Do not hand-edit the generated files. Run `node tools/emit-spline.js` from the r
 | Generated file | Language | Consumer |
 |---|---|---|
 | `src/gameplay/spline_path_gen.bi` | QB64-PE | Game runtime (`behavior.bas`) |
-| `tools/path_editor/src/math/spline_gen.ts` | TypeScript | Path editor preview |
+| `tools/TrailForge/src/math/spline_gen.ts` | TypeScript | TrailForge preview |
 
 The CI pipeline regenerates both files on every build, so the generated code is always fresh. If you add or change a function in the DSL, run the emit script locally and commit the regenerated files.
 

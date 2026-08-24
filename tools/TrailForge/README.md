@@ -1,17 +1,19 @@
-# Path Editor
+# TrailForge
 
 A four-pane 3D spline path editor for Super Spaceguy Shooter. Lets you design and preview flight paths that the game reads from `assets/maneuvers.txt`.
 
 ## Running
 
 ```bash
-cd tools/path_editor
+cd tools/TrailForge
 npm install
 npm run dev        # dev server at http://localhost:5173
 npm run build      # production build → dist/
 ```
 
-The Vite dev server also hosts a `/api/maneuvers` endpoint that reads and writes `assets/maneuvers.txt` directly — live save/load without touching the file system manually.
+The Vite dev server hosts a `/api/maneuvers` REST API that reads and writes individual `.mvr` files under `assets/maneuvers/` — one file per route, atomic writes, no whole-file rewrites.
+
+To migrate an existing `maneuvers.txt`: `node tools/migrate-maneuvers.js` from the repo root.
 
 ---
 

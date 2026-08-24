@@ -20,7 +20,7 @@
 #
 # Downstream generated files (never hand-edit):
 #   src/gameplay/spline_path_gen.bi           QB64
-#   tools/path_editor/src/math/spline_gen.ts  TypeScript
+#   tools/TrailForge/src/math/spline_gen.ts  TypeScript
 #
 # Regenerate both with:  node tools/emit-spline.js
 

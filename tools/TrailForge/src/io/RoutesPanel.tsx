@@ -1,86 +1,89 @@
-// Live maneuvers.txt integration (dev-server only).
-// Fetches /api/maneuvers (served by the Vite plugin in vite.config.ts),
-// lets you load / save / create routes directly in the file.
+// Live maneuvers/ directory integration (dev-server only).
+// Each route is stored as a separate .mvr file under assets/maneuvers/.
+// Fetches the route list from /api/maneuvers; loads/saves individual routes
+// via /api/maneuvers/:name. Writes are atomic (tmp → rename on the server).
 // Falls back gracefully when the API is not available (production build).
 
 import { useState, useEffect, useCallback } from 'react'
 import { useStore, PathData } from '../store'
-import { exportBlock, parseBlocks } from './format'
+import { exportBlock, parseFile, nameToFilename } from './format'
 import { GenerateDialog } from '../ui/GenerateDialog'
 
 export function RoutesPanel() {
   const { path, setPath, setStatus } = useStore()
 
-  const [apiAvail,     setApiAvail]     = useState<boolean | null>(null) // null = loading
-  const [allBlocks,    setAllBlocks]    = useState<Map<string, PathData>>(new Map())
-  const [selectedName, setSelectedName] = useState('')
-  const [savedPath,    setSavedPath]    = useState<PathData | null>(null)
-  const [saving,       setSaving]       = useState(false)
+  const [apiAvail,      setApiAvail]      = useState<boolean | null>(null) // null = loading
+  const [routeNames,    setRouteNames]    = useState<string[]>([])
+  const [selectedName,  setSelectedName]  = useState('')
+  const [savedPath,     setSavedPath]     = useState<PathData | null>(null)
+  const [loading,       setLoading]       = useState(false)
+  const [saving,        setSaving]        = useState(false)
   const [showNewDialog, setShowNewDialog] = useState(false)
 
   // Consider the current path dirty if it differs from the last loaded / saved snapshot.
   const isDirty = savedPath !== null &&
     JSON.stringify({ ...path, name: savedPath.name }) !== JSON.stringify(savedPath)
 
-  // ── Fetch on mount ─────────────────────────────────────────────────────
-  const fetchFile = useCallback(() => {
+  // ── Fetch route list ───────────────────────────────────────────────────
+  const fetchList = useCallback(() => {
     fetch('/api/maneuvers')
-      .then(r => { if (!r.ok) throw new Error('not ok'); return r.text() })
-      .then(text => {
+      .then(r => { if (!r.ok) throw new Error('not ok'); return r.json() })
+      .then(({ routes }: { routes: string[] }) => {
         setApiAvail(true)
-        const parsed = parseBlocks(text)
-        setAllBlocks(parsed)
-        // Preserve selection if it still exists, otherwise take first
-        setSelectedName(prev =>
-          parsed.has(prev) ? prev : ((parsed.keys().next().value as string | undefined) ?? ''))
+        setRouteNames(routes)
+        setSelectedName(prev => routes.includes(prev) ? prev : (routes[0] ?? ''))
       })
       .catch(() => setApiAvail(false))
   }, [])
 
-  useEffect(() => { fetchFile() }, [fetchFile])
+  useEffect(() => { fetchList() }, [fetchList])
 
   // ── Load ───────────────────────────────────────────────────────────────
-  const handleLoad = useCallback(() => {
-    const block = allBlocks.get(selectedName)
-    if (!block) return
+  const handleLoad = useCallback(async () => {
+    if (!selectedName) return
     if (isDirty && !window.confirm(
       `"${path.name}" has unsaved changes.\nDiscard and load "${selectedName}"?`
     )) return
-    setPath(block)
-    setSavedPath(block)
-    setStatus(`loaded [${selectedName}]`)
-  }, [allBlocks, selectedName, setPath, setStatus, isDirty, path.name])
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/maneuvers/${encodeURIComponent(selectedName)}`)
+      if (!r.ok) throw new Error(`${r.status}`)
+      const text   = await r.text()
+      const loaded = parseFile(text)
+      if (!loaded) throw new Error('parse error')
+      setPath(loaded)
+      setSavedPath(loaded)
+      setStatus(`loaded [${loaded.name}]`)
+    } catch (err) {
+      setStatus(`load failed -- ${err}`)
+    }
+    setLoading(false)
+  }, [selectedName, isDirty, path.name, setPath, setStatus])
 
   // ── Save (shared impl) ─────────────────────────────────────────────────
   const doSave = useCallback(async (name: string) => {
-    const updated: PathData = { ...path, name }
-
-    // Rebuild the entire file: update or append the current block
-    const newBlocks = new Map(allBlocks)
-    newBlocks.set(name, updated)
-
-    const fileText = Array.from(newBlocks.values())
-      .map(b => exportBlock(b))
-      .join('\n\n') + '\n'
-
+    const updated  = { ...path, name } as PathData
+    const filename = nameToFilename(name)
     setSaving(true)
     try {
-      const r = await fetch('/api/maneuvers', {
-        method: 'PUT',
+      const r = await fetch(`/api/maneuvers/${encodeURIComponent(filename)}`, {
+        method:  'PUT',
         headers: { 'Content-Type': 'text/plain' },
-        body: fileText,
+        body:    exportBlock(updated),
       })
       if (!r.ok) throw new Error(`${r.status}`)
       setPath(updated)
-      setAllBlocks(newBlocks)
-      setSelectedName(name)
+      setSelectedName(filename)
       setSavedPath(updated)
-      setStatus(`saved [${name}] to maneuvers.txt`)
+      setRouteNames(prev =>
+        prev.includes(filename) ? prev : [...prev, filename].sort()
+      )
+      setStatus(`saved → maneuvers/${filename}.mvr`)
     } catch (err) {
       setStatus(`save failed -- ${err}`)
     }
     setSaving(false)
-  }, [path, allBlocks, setPath, setStatus])
+  }, [path, setPath, setStatus])
 
   const handleSave = useCallback(() => {
     doSave(path.name.trim() || selectedName || 'unnamed')
@@ -91,6 +94,25 @@ export function RoutesPanel() {
     if (!newName) return
     doSave(newName)
   }, [doSave, path.name, selectedName])
+
+  // ── Delete ─────────────────────────────────────────────────────────────
+  const handleDelete = useCallback(async () => {
+    if (!selectedName) return
+    if (!window.confirm(`Delete "${selectedName}.mvr"?\nThis cannot be undone.`)) return
+    try {
+      const r = await fetch(`/api/maneuvers/${encodeURIComponent(selectedName)}`, {
+        method: 'DELETE',
+      })
+      if (!r.ok) throw new Error(`${r.status}`)
+      const remaining = routeNames.filter(n => n !== selectedName)
+      setRouteNames(remaining)
+      setSelectedName(remaining[0] ?? '')
+      if (savedPath && nameToFilename(savedPath.name) === selectedName) setSavedPath(null)
+      setStatus(`deleted ${selectedName}.mvr`)
+    } catch (err) {
+      setStatus(`delete failed -- ${err}`)
+    }
+  }, [selectedName, routeNames, savedPath, setStatus])
 
   // ── New route ──────────────────────────────────────────────────────────
   // Opens the shape picker; GenerateDialog handles creation with name='untitled'/speed=0.25
@@ -120,24 +142,24 @@ export function RoutesPanel() {
         <div className="io-section">
           <div className="io-section-label">Routes (dev server only)</div>
           <div style={{ color: 'var(--text-faint)', fontSize: 10, lineHeight: 1.7, marginBottom: 6 }}>
-            Start the Vite dev server<br />(npm run dev) to enable<br />live maneuvers.txt editing.
+            Start the Vite dev server<br />(npm run dev) to enable<br />live maneuvers/ editing.
           </div>
           <div className="io-row">
-            <button onClick={fetchFile}>Retry</button>
+            <button onClick={fetchList}>Retry</button>
           </div>
         </div>
       </div>
     )
   }
 
-  const blockNames = Array.from(allBlocks.keys())
+  const saveName = path.name.trim() || selectedName || 'unnamed'
 
   // ── Main UI ────────────────────────────────────────────────────────────
   return (
     <div className="io-panel">
       <div className="io-section">
         <div className="io-section-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>maneuvers.txt</span>
+          <span>maneuvers/</span>
           {isDirty && <span style={{ color: 'var(--sel)' }}>● unsaved</span>}
         </div>
 
@@ -151,22 +173,22 @@ export function RoutesPanel() {
               padding: '3px 4px', borderRadius: 'var(--radius)', outline: 'none',
             }}
           >
-            {blockNames.map(n => <option key={n} value={n}>{n}</option>)}
+            {routeNames.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
-          <button title="Reload from disk" onClick={fetchFile} style={{ padding: '3px 7px' }}>↺</button>
+          <button title="Refresh route list" onClick={fetchList} style={{ padding: '3px 7px' }}>↺</button>
         </div>
 
         <div className="io-row">
           <button className="primary"
             onClick={handleLoad}
-            disabled={!selectedName || !allBlocks.has(selectedName)}>
-            Load →
+            disabled={!selectedName || loading}>
+            {loading ? '…' : 'Load →'}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className={isDirty ? 'primary' : ''}
-            title={`Overwrite [${path.name.trim() || selectedName || 'unnamed'}] in maneuvers.txt`}>
+            title={`Save as maneuvers/${nameToFilename(saveName)}.mvr`}>
             {saving ? '...' : 'Save'}
           </button>
           <button
@@ -176,11 +198,18 @@ export function RoutesPanel() {
             Save As…
           </button>
           <button onClick={handleNew} title="Create a new blank route">+ New</button>
+          <button
+            onClick={handleDelete}
+            disabled={!selectedName}
+            title={selectedName ? `Delete ${selectedName}.mvr` : ''}
+            style={{ color: 'var(--text-dim)' }}>
+            Del
+          </button>
         </div>
 
-        {blockNames.length > 0 && (
+        {routeNames.length > 0 && (
           <div style={{ color: 'var(--text-faint)', fontSize: 10, marginTop: 2 }}>
-            {blockNames.length} route{blockNames.length !== 1 ? 's' : ''} in file
+            {routeNames.length} route{routeNames.length !== 1 ? 's' : ''}
           </div>
         )}
       </div>

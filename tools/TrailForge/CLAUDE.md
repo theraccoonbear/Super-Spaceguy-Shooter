@@ -7,9 +7,9 @@ Internal orientation document. Read this before touching anything.
 ## What This Tool Is
 
 A four-pane 3D spline path editor (Trailforge) for Super Spaceguy Shooter. Designed
-paths are saved to `../../assets/maneuvers.txt` and read by the QB64-PE
-game at runtime. The editor runs as a Vite/React SPA; the dev server also
-exposes a `/api/maneuvers` endpoint that reads/writes the file directly.
+paths are saved as individual `.mvr` files under `../../assets/maneuvers/` and read
+by the QB64-PE game at runtime. The editor runs as a Vite/React SPA; the dev server
+exposes a REST-ish `/api/maneuvers` endpoint that reads/writes those files directly.
 
 **Run:** `npm run dev` → http://localhost:5173  
 **Build:** `npm run build` → `dist/`  
@@ -358,26 +358,40 @@ Shapes: `blank | circle | ellipse | figure8 | helix | arc`
 ### `format.ts`
 
 ```ts
-exportBlock(path: PathData): string    // → one [route_name]\n... block
-parseBlocks(text: string): Map<string, PathData>   // ← full maneuvers.txt
+exportBlock(path: PathData): string          // → one [route_name]\n... block (file body)
+parseBlocks(text: string): Map<string, PathData>  // parses one or more blocks
+parseFile(text: string): PathData | null     // parses a single .mvr file
+nameToFilename(name: string): string         // "Boss Spiral" → "boss-spiral" (no .mvr)
 ```
 
 Node format: `x,y,z,pathRoll,craftRoll`
 
 ### `RoutesPanel.tsx`
 
-- Fetches `/api/maneuvers` on mount (GET); PUT to save
+- On mount: `GET /api/maneuvers` → `{ routes: string[] }` (filename stems); populates dropdown
+- Routes are loaded **on demand** — no eager parse of all files
 - `isDirty` = `savedPath !== null && JSON.stringify({...path,name:savedPath.name}) !== JSON.stringify(savedPath)`
-- **Load**: dirty guard → `setPath(block)` + `setSavedPath(block)`
-- **Save**: writes under `path.name`; updates both `allBlocks` and `setSavedPath`
-- **Save As**: `window.prompt` for new name → `doSave(newName)` → also calls `setPath(updated)` to rename in store
+- **Load**: `GET /api/maneuvers/:name` → `parseFile` → `setPath` + `setSavedPath`
+- **Save**: `PUT /api/maneuvers/${nameToFilename(path.name)}` with `exportBlock` body; atomic on server
+- **Save As**: prompt for new name → same PUT flow
+- **Delete**: `DELETE /api/maneuvers/:name` with confirm; removes file, updates list
 - **+ New**: dirty guard → shows `GenerateDialog` with `newRoute` prop
 - API only available in dev server; falls back gracefully in production
 
 ### `/api/maneuvers` (Vite plugin in `vite.config.ts`)
 
-GET → reads `../../assets/maneuvers.txt`  
-PUT → writes `../../assets/maneuvers.txt`
+```
+GET  /api/maneuvers           → { routes: string[] }   (filename stems, sorted)
+GET  /api/maneuvers/:name     → .mvr file content (text/plain)
+PUT  /api/maneuvers/:name     → atomic write: tmp file → fs.renameSync → final path
+DELETE /api/maneuvers/:name   → unlinks the .mvr file
+```
+
+Files live in `../../assets/maneuvers/`. One `.mvr` file per route; the `[name]` header
+inside is the canonical route name; the filename stem is its kebab-case encoding.
+
+Migration: `node tools/migrate-maneuvers.js` splits the old `maneuvers.txt` into
+individual `.mvr` files. Run once; the script is idempotent (skips existing files).
 
 ---
 
