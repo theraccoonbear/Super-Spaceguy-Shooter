@@ -2,20 +2,27 @@
 
 [![CI](https://github.com/theraccoonbear/TrailForge/actions/workflows/ci.yml/badge.svg)](https://github.com/theraccoonbear/TrailForge/actions/workflows/ci.yml)
 
-A four-pane 3D spline path editor for Super Spaceguy Shooter. Lets you design and preview flight paths stored as individual `.mvr` files under `assets/maneuvers/`.
+A four-pane 3D spline path editor for designing and previewing flight paths. Routes are stored as individual `.mvr` files in a directory you configure; the dev server reads and writes them live.
 
-## Running
+## Quick start
 
 ```bash
-cd tools/TrailForge
+git clone https://github.com/theraccoonbear/TrailForge.git
+cd TrailForge
+cp .env.example .env          # then edit MANEUVERS_DIR (see below)
 npm install
-npm run dev        # dev server at http://localhost:5173
-npm run build      # production build → dist/
+npm run dev                   # dev server at http://localhost:5173
 ```
 
-The Vite dev server hosts a `/api/maneuvers` REST API that reads and writes individual `.mvr` files under `assets/maneuvers/` — one file per route, atomic writes, no whole-file rewrites.
+### Configuring your routes directory
 
-To migrate an existing `maneuvers.txt`: `node tools/migrate-maneuvers.js` from the repo root.
+TrailForge reads and writes `.mvr` files from a directory on your machine. Set it in `.env`:
+
+```
+MANEUVERS_DIR=/absolute/path/to/your/maneuvers
+```
+
+The directory is created automatically if it doesn't exist. Without this set, TrailForge falls back to `../../assets/maneuvers` relative to the project root (useful only when running inside the SSS game repo).
 
 ---
 
@@ -67,7 +74,7 @@ Click the corner wedge on any pane to maximise/restore it. Press **Esc** to rest
 
 | Control | Description |
 |---------|-------------|
-| **Name** | Route name as it appears in `maneuvers.txt` |
+| **Name** | Route name (becomes the filename stem when saved) |
 | **Speed** | World-unit/frame speed (arc-length correct — constant regardless of node spacing) |
 | **Orient** | PATH-FOLLOWING = nose follows the curve; FIXED TARGET = nose always faces the target point |
 | **Closed** | Loop the path back to the first waypoint |
@@ -91,7 +98,7 @@ Lists every waypoint with X/Y/Z coordinate inputs.
 - `⬡ Gen` — open shape generator (circle, ellipse, figure-8, helix, arc)
 
 ### Routes
-Connects to `assets/maneuvers/` via the dev-server REST API. Load/save named `.mvr` routes directly. Only available when `npm run dev` is running.
+Connects to your configured maneuvers directory via the dev-server REST API. Load, save, rename, and delete named `.mvr` routes directly. Only available when `npm run dev` is running.
 
 ### I / O
 Export/import the current path as JSON, or clear to defaults.
