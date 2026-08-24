@@ -6,9 +6,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame, frustumAtX } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, frustumAtX } from '../math/spline'
 import { getFrameAt } from '../math/frameCache'
-import { evalTrack } from './behaviorMarkers'
 import { evalCraftRoll } from '../math/craftRoll'
 import {
   GAME_CAM_X, GAME_CAM_Y,
@@ -124,7 +123,7 @@ function buildShipGroup(): THREE.Group {
 }
 
 // Scatter dark reference cubes well outside the flight path.
-// Called from the path useEffect with all actual ship positions (wire + standoff),
+// Called from the path useEffect with all wire positions,
 // so the exclusion zone covers every rotational variant of the offset.
 // Deterministic LCG — consistent placement for a given path AABB.
 function buildBackground(
@@ -139,7 +138,7 @@ function buildBackground(
   })
   bgGroup.clear()
 
-  // AABB of all actual ship positions (covers wire + standoff in every orientation)
+  // AABB of all wire positions
   let x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0
   if (actualPts.length > 0) {
     x0 = x1 = actualPts[0].x
@@ -488,9 +487,7 @@ export function PerspView() {
     const refs = refsRef.current
     if (!refs) return
 
-    const samples = buildSpline({
-      wps: path.wps, closed: path.closed, standoff: path.standoff,
-    })
+    const samples = buildSpline({ wps: path.wps, closed: path.closed })
 
     if (samples.length > 1) {
       const wirePos = new Float32Array(samples.length * 3)
@@ -500,18 +497,7 @@ export function PerspView() {
       refs.wireLine.geometry.setAttribute('position', new THREE.BufferAttribute(wirePos, 3))
       refs.wireLine.geometry.computeBoundingSphere()
       refs.wireLine.visible = true
-
-      if (path.standoff > 0.001) {
-        const aPos = new Float32Array(samples.length * 3)
-        samples.forEach(({ actual }, i) => {
-          aPos[i*3]=actual.x; aPos[i*3+1]=actual.y; aPos[i*3+2]=actual.z
-        })
-        refs.actualLine.geometry.setAttribute('position', new THREE.BufferAttribute(aPos, 3))
-        refs.actualLine.geometry.computeBoundingSphere()
-        refs.actualLine.visible = true
-      } else {
-        refs.actualLine.visible = false
-      }
+      refs.actualLine.visible = false
     } else {
       refs.wireLine.visible   = false
       refs.actualLine.visible = false
@@ -537,7 +523,7 @@ export function PerspView() {
     refs.gizmo.visible = false
 
     // Rebuild background scatter outside the full actual-path AABB
-    buildBackground(refs.bgGroup, samples.map(s => s.actual))
+    buildBackground(refs.bgGroup, samples.map(s => s.wire))
     refs.kick()
   }, [path, selected])
 
@@ -552,15 +538,9 @@ export function PerspView() {
     const animFrac     = nSegs > 0 ? Math.max(0, Math.min(1, (animT % (nSegs || 1)) / (nSegs || 1))) : 0
     const wire         = evalAt(path.wps, animT, path.closed)
     const tan          = tangentAt(path.wps, animT, path.closed)
-    const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
-    const crSegs        = mutedTracks['craftRoll'] ? [] : (path.craftRollSegments ?? [])
-    const standoffTrack = mutedTracks['standoff']  ? null : path.tracks?.['standoff']
-    const craftRollDeg  = crSegs.length > 0
-      ? evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
-      : evalRollAt(path.wps, animT, path.closed, 'craftRoll')
-    const standoff = standoffTrack ? evalTrack(standoffTrack, animFrac) : path.standoff
-    const ap           = actualPos(wire, tan, pathRollDeg, standoff)
-    const facing       = shipFacing(ap, tan, path.orient, path.target)
+    const crSegs       = mutedTracks['craftRoll'] ? [] : (path.craftRollSegments ?? [])
+    const craftRollDeg = evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
+    const facing       = shipFacing(wire, tan, path.orient, path.target)
     // Frame selection:
     // • target mode: makeFrame(facing) — tangent ≠ facing, transport frame is wrong axis.
     // • path mode, playing: frameR/frameU — parallel transport accumulated by the RAF loop,
@@ -579,7 +559,7 @@ export function PerspView() {
       ;({ R, U } = cached ?? makeFrame(facing))
     }
 
-    refs.shipGroup.position.set(ap.x, ap.y, ap.z)
+    refs.shipGroup.position.set(wire.x, wire.y, wire.z)
 
     // Apply craftRoll: rotate U and R around the forward axis (facing).
     // CW roll: U gains +R (right-wing-down from pilot view), R gains -U.
@@ -605,14 +585,14 @@ export function PerspView() {
     refs.shipGroup.visible = true
 
     // Store ship state so the follow-cam render loop can read it.
-    refs.shipPos.set(ap.x, ap.y, ap.z)
+    refs.shipPos.set(wire.x, wire.y, wire.z)
     refs.shipFwd.set(facing.x, facing.y, facing.z)
     refs.shipUp.set(rolledU.x, rolledU.y, rolledU.z)
 
     if (debugLog) {
       console.log(
         `[path] t=${animT.toFixed(4)}`,
-        `pos=(${ap.x.toFixed(2)}, ${ap.y.toFixed(2)}, ${ap.z.toFixed(2)})`,
+        `pos=(${wire.x.toFixed(2)}, ${wire.y.toFixed(2)}, ${wire.z.toFixed(2)})`,
         `fwd=(${facing.x.toFixed(3)}, ${facing.y.toFixed(3)}, ${facing.z.toFixed(3)})`,
         `R=(${frameR.x.toFixed(3)}, ${frameR.y.toFixed(3)}, ${frameR.z.toFixed(3)})`,
         `U=(${frameU.x.toFixed(3)}, ${frameU.y.toFixed(3)}, ${frameU.z.toFixed(3)})`,

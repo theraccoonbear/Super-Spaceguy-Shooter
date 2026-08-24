@@ -68,7 +68,6 @@ Click the corner wedge on any pane to maximise/restore it. Press **Esc** to rest
 | **Name** | Route name as it appears in `maneuvers.txt` |
 | **Speed** | World-unit/frame speed (arc-length correct — constant regardless of node spacing) |
 | **Orient** | PATH-FOLLOWING = nose follows the curve; FIXED TARGET = nose always faces the target point |
-| **Standoff** | Perpendicular offset from the wire curve (world units); use node P° to angle it |
 | **Closed** | Loop the path back to the first waypoint |
 | **▶ Play / ■ Stop** | Start/stop animation |
 | **↺ Reset** | Stop and rewind to t=0 |
@@ -81,10 +80,7 @@ Click the corner wedge on any pane to maximise/restore it. Press **Esc** to rest
 ## Sidebar tabs
 
 ### Waypoints (WPs)
-Lists every waypoint with X/Y/Z coordinate inputs. Select a waypoint to see its roll controls:
-
-- **P° (Path Roll)** — rotates the standoff offset at this node
-- **C° (Craft Roll)** — banks the ship body at this node
+Lists every waypoint with X/Y/Z coordinate inputs.
 
 **Buttons:**
 - `+ Add` — insert after the selected node (or append)
@@ -93,7 +89,7 @@ Lists every waypoint with X/Y/Z coordinate inputs. Select a waypoint to see its 
 - `⬡ Gen` — open shape generator (circle, ellipse, figure-8, helix, arc)
 
 ### Routes
-Connects to `maneuvers.txt` via the dev-server API. Load/save named routes directly. Only available when `npm run dev` is running.
+Connects to `assets/maneuvers/` via the dev-server REST API. Load/save named `.mvr` routes directly. Only available when `npm run dev` is running.
 
 ### I / O
 Export/import the current path as JSON, or clear to defaults.
@@ -126,19 +122,9 @@ Opens a dialog to replace the current waypoints with a geometric shape:
 
 ---
 
-## maneuvers.txt format
+## .mvr file format
 
-Each block:
-```
-[route_name]
-speed=0.025
-orient=path
-target=0,6,0
-closed=true
-standoff=0
-node=20,0,0,0,0
-node=8,1,3,0,0
-...
-```
-
-Node format: `x,y,z,pathRoll,craftRoll`
+See [`maneuver-format.md`](maneuver-format.md) for the full specification.
+Each file holds one named route: a `[name]` header, `key=value` settings,
+whitespace-separated `X Y Z` waypoint lines, and optional `track:`,
+`trigger:`, `craftroll:`, `loopseam:` behavior lines.

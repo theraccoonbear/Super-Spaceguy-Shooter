@@ -46,11 +46,6 @@ export function HelpDialog({ onClose }: Props) {
           <Row k="BEHAVIORS" v="Toggle behaviors panel (B key toggles)" />
         </Section>
 
-        <Section title="Waypoint rolls (sidebar)">
-          <Row k="P° — Path Roll" v="Rotates the standoff offset direction at this node" />
-          <Row k="C° — Craft Roll" v="Banks the ship body at this node (cosmetic)" />
-        </Section>
-
         <Section title="Shape generator (⬡ Gen)">
           <Row k="Circle / Ellipse" v="Parametric loop in chosen axis plane" />
           <Row k="Figure-8" v="Lemniscate of Gerono — figure-of-eight loop" />

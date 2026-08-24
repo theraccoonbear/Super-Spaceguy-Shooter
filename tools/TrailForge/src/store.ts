@@ -48,7 +48,6 @@ export interface PathData {
   orient:   OrientMode
   target:   Vec3
   closed:   boolean
-  standoff: number
   wps:      Waypoint[]
   /** Named continuous behavior tracks. Key = track name, value = keyframes sorted by t.
    *  Empty object ({}) when no tracks are defined. */
@@ -158,8 +157,8 @@ export interface EditorState {
   setActiveBehaviorTrack: (name: string | null) => void
 }
 
-function makeWp(x: number, y: number, z: number, pathRoll = 0, craftRoll = 0): Waypoint {
-  return { x, y, z, pathRoll, craftRoll }
+function makeWp(x: number, y: number, z: number): Waypoint {
+  return { x, y, z }
 }
 
 const DEFAULT_PATH: PathData = {
@@ -169,7 +168,6 @@ const DEFAULT_PATH: PathData = {
   orient:   'path',
   target:   { x: 0, y: 6, z: 0 },  // offset from origin so it's visible when orient='target'
   closed:   true,
-  standoff: 0,
   wps: [
     makeWp( 20,  0,  0),
     makeWp(  8,  1,  3),
@@ -184,13 +182,8 @@ const DEFAULT_PATH: PathData = {
   craftRollLoopSeam: null,
 }
 
-function ensureRolls(wp: Vec3): Waypoint {
-  const w = wp as Partial<Waypoint>
-  return {
-    x: w.x ?? 0, y: w.y ?? 0, z: w.z ?? 0,
-    pathRoll:  w.pathRoll  ?? 0,
-    craftRoll: w.craftRoll ?? 0,
-  }
+function ensureWp(wp: Vec3): Waypoint {
+  return { x: wp.x ?? 0, y: wp.y ?? 0, z: wp.z ?? 0 }
 }
 
 /** Fill in fields added after the initial release so old localStorage / file
@@ -199,8 +192,7 @@ function migratePath(p: Partial<PathData>): PathData {
   let tracks = (p.tracks && typeof p.tracks === 'object' && !Array.isArray(p.tracks))
     ? { ...p.tracks as Record<string, TrackKeyframe[]> }
     : {}
-  // Drop legacy craftRoll keyframe track — replaced by craftRollSegments
-  delete tracks['craftRoll']
+  delete tracks['craftRoll']  // unsupported track name
   return {
     ...DEFAULT_PATH,
     ...p,
@@ -213,7 +205,7 @@ function migratePath(p: Partial<PathData>): PathData {
 }
 
 function normalizePath(p: PathData): PathData {
-  let wps = p.wps.map(ensureRolls)
+  let wps = p.wps.map(ensureWp)
   if (p.closed && wps.length >= 2) {
     const first = wps[0], last = wps[wps.length - 1]
     const eps = 0.001
@@ -274,21 +266,21 @@ export const useStore = create<EditorState>()(
 
       setWp: (i, wp) => set((s) => {
         const wps = [...s.path.wps]
-        wps[i] = ensureRolls(wp)
+        wps[i] = ensureWp(wp)
         const path = { ...s.path, wps }
         save(path)
         return { path, status: 'modified' }
       }),
 
       replaceWps: (wps) => set((s) => {
-        const path = { ...s.path, wps: wps.map(ensureRolls) }
+        const path = { ...s.path, wps: wps.map(ensureWp) }
         save(path)
         return { path, status: 'modified' }
       }),
 
       addWp: (wp, after) => set((s) => {
         const wps = [...s.path.wps]
-        const fullWp = ensureRolls(wp)
+        const fullWp = ensureWp(wp)
         const idx = after !== undefined ? after + 1 : wps.length
         wps.splice(idx, 0, fullWp)
         const path = { ...s.path, wps }

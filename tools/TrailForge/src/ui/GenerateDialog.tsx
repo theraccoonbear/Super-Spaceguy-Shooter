@@ -66,7 +66,7 @@ function DeferredNumInput({ value, setter, step = 1, min, style }: {
 const TAU = 2 * Math.PI
 
 function wp(x: number, y: number, z: number): Waypoint {
-  return { x, y, z, pathRoll: 0, craftRoll: 0 }
+  return { x, y, z }
 }
 
 function genCircle(n: number, r: number, cx: number, cy: number, cz: number, plane: Plane): Waypoint[] {
@@ -157,7 +157,7 @@ export function GenerateDialog({ onClose, newRoute }: Props) {
     let wps: Waypoint[]
     const nClamped = Math.max(3, n)
     switch (shape) {
-      case 'blank':   wps = [{ x: 10, y: 0, z: 0, pathRoll: 0, craftRoll: 0 }];                  break
+      case 'blank':   wps = [{ x: 10, y: 0, z: 0 }];                                             break
       case 'circle':  wps = genCircle(nClamped, r, cx, cy, cz, plane);                           break
       case 'ellipse': wps = genEllipse(nClamped, ra, rb, cx, cy, cz, plane);                     break
       case 'figure8': wps = genFigure8(nClamped, r, cx, cy, cz, plane);                          break
@@ -172,7 +172,6 @@ export function GenerateDialog({ onClose, newRoute }: Props) {
         speed:    0.25,
         orient:   'path',
         target:   { x: 0, y: 6, z: 0 },
-        standoff: 0,
         closed:   isClosed,
         wps:      wps!,
         tracks:            {},

@@ -233,15 +233,6 @@ function Toolbar({ isLinked, onToggleLinked, onHelp }: { isLinked: boolean; onTo
       <div className="tb-sep" />
 
       <div className="tb-group">
-        <span className="tb-label">Standoff</span>
-        <NumInput value={path.standoff} step={0.5} min={0}
-          title="Perpendicular offset from wire (world units). Use node pathRoll to angle the offset."
-          commit={(n) => patchPath('standoff', n)} />
-        <span className="tb-label">u</span>
-      </div>
-      <div className="tb-sep" />
-
-      <div className="tb-group">
         <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
           <input type="checkbox" checked={path.closed}
             onChange={(e) => patchPath('closed', e.target.checked)} />
@@ -364,21 +355,6 @@ function Sidebar({ onResizeStart }: { onResizeStart: (e: React.MouseEvent) => vo
                 </div>
                 <button className="wp-del" title="Delete"
                   onClick={(e) => { e.stopPropagation(); delWp(i) }}>×</button>
-                {/* Roll controls — shown only for the selected node */}
-                {i === selected && (
-                  <div className="wp-rolls" onClick={(e) => e.stopPropagation()}>
-                    <label className="roll-label" title="Path Roll — standoff offset angle at this node (°)">
-                      <span className="roll-tag" style={{ color:'var(--accent)' }}>P°</span>
-                      <NumInput step={15} value={wp.pathRoll ?? 0}
-                        commit={(n) => setWp(i, { ...wps[i], pathRoll: n })} />
-                    </label>
-                    <label className="roll-label" title="Craft Roll — ship body bank angle at this node (°)">
-                      <span className="roll-tag" style={{ color:'#f472b6' }}>C°</span>
-                      <NumInput step={15} value={wp.craftRoll ?? 0}
-                        commit={(n) => setWp(i, { ...wps[i], craftRoll: n })} />
-                    </label>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -400,9 +376,7 @@ function Sidebar({ onResizeStart }: { onResizeStart: (e: React.MouseEvent) => vo
 
       {/* Hotkey reference — always visible regardless of active tab */}
       <div className="sidebar-hint">
-        <span>Click node</span> → select + edit rolls<br />
-        <span>P°</span> = path roll (standoff angle)<br />
-        <span>C°</span> = craft roll (ship bank)<br />
+        <span>Click node</span> → select<br />
         <span>Drag wp</span> → move in view plane<br />
         <span>Alt drag</span> → rotate entire path<br />
         <span>Ctrl drag</span> → translate entire path<br />

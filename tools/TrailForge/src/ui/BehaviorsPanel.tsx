@@ -37,7 +37,7 @@ function defaultTrackValue(name: string): number {
     case 'speed':            return 1   // 1× multiplier — ship moves at path speed
     case 'visible':          return 1   // 1 = visible
     case 'engineBrightness': return 1   // 1 = full brightness
-    default:                 return 0   // craftRoll, standoff, offsetAngle → neutral
+    default:                 return 0   // standoff, offsetAngle → neutral
   }
 }
 
@@ -72,7 +72,6 @@ function defaultTrackEasing(name: string): EaseType {
   switch (name) {
     case 'visible':          return 'instant'   // hard toggle — no fade
     case 'engineBrightness': return 'smooth'    // ramp looks better eased
-    case 'craftRoll':        return 'smooth'    // roll transitions feel natural smooth
     case 'offsetAngle':      return 'smooth'    // lateral drift same
     case 'standoff':         return 'smooth'    // distance ramps same
     case 'speed':            return 'smooth'    // avoids jarring acceleration kinks
@@ -83,7 +82,6 @@ function defaultTrackEasing(name: string): EaseType {
 /** Short unit/description shown in graph value labels */
 function trackUnit(name: string): string {
   switch (name) {
-    case 'craftRoll':  return '°'
     case 'offsetAngle': return '°'
     case 'standoff':   return 'u'
     case 'speed':      return '×'
@@ -94,9 +92,6 @@ function trackUnit(name: string): string {
 /** Per-track value clamps — prevents runaway values from drag overshoots. */
 function trackValueLimits(name: string): { min: number; max: number } {
   switch (name) {
-    // craftRoll uses "accumulated degrees" authoring: values beyond ±360 mean
-    // multiple full rotations (720° = two rolls).  Cap at ±3600 (10 full rotations).
-    case 'craftRoll':        return { min: -3600, max: 3600 }
     case 'offsetAngle':      return { min: -180,  max: 180  }
     case 'standoff':         return { min: -200,  max: 200  }
     case 'speed':            return { min: 0,     max: 10   }
@@ -109,7 +104,6 @@ function trackValueLimits(name: string): { min: number; max: number } {
 /** Per-tick wheel step for value editing. Shift multiplies by 10. */
 function wheelStep(name: string): number {
   switch (name) {
-    case 'craftRoll':        return 5    // 5° per tick; Shift = 50° (near a quarter-turn)
     case 'offsetAngle':      return 1
     case 'standoff':         return 0.5
     case 'speed':            return 0.05
@@ -122,7 +116,6 @@ function wheelStep(name: string): number {
 /** Arrow-button step for the inline value NumInput. */
 function trackStep(name: string): number {
   switch (name) {
-    case 'craftRoll':        return 1
     case 'offsetAngle':      return 1
     case 'standoff':         return 0.1
     case 'speed':            return 0.01
@@ -135,7 +128,6 @@ function trackStep(name: string): number {
 /** Decimal places to display and round to on commit. */
 function trackDecimals(name: string): number {
   switch (name) {
-    case 'craftRoll':        return 0
     case 'offsetAngle':      return 0
     case 'standoff':         return 1
     case 'speed':            return 2
@@ -259,7 +251,7 @@ const IDENTITY_ARC: ArcTable = { paramToArc: p => p, arcToParam: a => a }
 function makeArcTable(path: PathData): ArcTable {
   if (path.wps.length < 2) return IDENTITY_ARC
 
-  const samples = buildSpline({ wps: path.wps, closed: path.closed, standoff: path.standoff })
+  const samples = buildSpline({ wps: path.wps, closed: path.closed })
   if (samples.length < 2) return IDENTITY_ARC
 
   // Cumulative arc lengths and matching parameter fractions for each sample

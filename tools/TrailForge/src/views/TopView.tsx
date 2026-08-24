@@ -7,12 +7,12 @@ import { useStore, PathData } from '../store'
 import { CtxMenu } from '../ui/ContextMenu'
 import { pauseAfterCheckpoint, resumeTemporal } from './undoHelpers'
 import type { Waypoint } from '../math/vec3'
-import { buildSpline, evalAt, tangentAt, actualPos, evalRollAt, shipFacing, makeFrame } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame } from '../math/spline'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan, framePoints } from './orthoCamera'
-import { drawBehaviorMarkers, hoveredEq, evalTrack, BehaviorHit } from './behaviorMarkers'
+import { drawBehaviorMarkers, hoveredEq, BehaviorHit } from './behaviorMarkers'
 import { drawShipModel, rollFrame } from './shipModel2D'
 import { drawOverlaysXZ } from './overlays'
 import { rotateAroundY, translateWps } from '../math/pathOps'
@@ -88,7 +88,7 @@ export function TopView() {
     // ── Ghost (drawn behind live path while dragging a node) ────────────
     if (ghostRef.current !== null) {
       const { path: gp, wpIdx } = ghostRef.current
-      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, standoff: gp.standoff })
+      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed })
       if (gSamples.length > 1) {
         ctx.save()
         ctx.globalAlpha = 0.25; ctx.setLineDash([5, 4])
@@ -121,7 +121,7 @@ export function TopView() {
     const activeGhost = ghostRef.current ?? editGhost
     if (activeGhost !== null && ghostRef.current === null && editGhost !== null) {
       const { path: gp, wpIdx } = editGhost
-      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed, standoff: gp.standoff })
+      const gSamples = buildSpline({ wps: gp.wps, closed: gp.closed })
       if (gSamples.length > 1) {
         ctx.save()
         ctx.globalAlpha = 0.25; ctx.setLineDash([5, 4])
@@ -151,7 +151,7 @@ export function TopView() {
     }
     void activeGhost // suppress unused warning
 
-    const samples = buildSpline({ wps: path.wps, closed: path.closed, standoff: path.standoff })
+    const samples = buildSpline({ wps: path.wps, closed: path.closed })
 
     if (samples.length > 1) {
       ctx.beginPath(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5
@@ -160,15 +160,6 @@ export function TopView() {
         i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
       })
       ctx.stroke()
-
-      if (path.standoff > 0.001) {
-        ctx.beginPath(); ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1; ctx.setLineDash([3, 3])
-        samples.forEach(({ actual }, i) => {
-          const { sx, sy } = w2s(actual.x, actual.z, w, h, scale, pan)
-          i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
-        })
-        ctx.stroke(); ctx.setLineDash([])
-      }
     }
 
     const { sx: px, sy: py } = w2s(0, 0, w, h, scale, pan)
@@ -237,18 +228,10 @@ export function TopView() {
       const tan       = tangentAt(path.wps, animT, path.closed)
 
       // Apply behavior track overrides (skip muted tracks)
-      const crSegs         = mutedTracks['craftRoll']   ? [] : (path.craftRollSegments ?? [])
-      const standoffTrack  = mutedTracks['standoff']    ? null : path.tracks['standoff']
-      const offsetAngTrack = mutedTracks['offsetAngle'] ? null : path.tracks['offsetAngle']
-      const pathRollDeg  = evalRollAt(path.wps, animT, path.closed, 'pathRoll')
-        + (offsetAngTrack ? evalTrack(offsetAngTrack, animFrac) : 0)
-      const craftRollDeg = crSegs.length > 0
-        ? evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
-        : evalRollAt(path.wps, animT, path.closed, 'craftRoll')
-      const standoff = standoffTrack ? evalTrack(standoffTrack, animFrac) : path.standoff
+      const crSegs       = mutedTracks['craftRoll'] ? [] : (path.craftRollSegments ?? [])
+      const craftRollDeg = evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
 
-      const ap     = actualPos(wire, tan, pathRollDeg, standoff)
-      const facing = shipFacing(ap, tan, path.orient, path.target)
+      const facing = shipFacing(wire, tan, path.orient, path.target)
       let R, U
       if (path.orient === 'target') {
         ;({ R, U } = makeFrame(facing))
@@ -258,13 +241,13 @@ export function TopView() {
         ;({ R, U } = getFrameAt(animFrac) ?? makeFrame(facing))
       }
       const { rolledU, rolledR } = rollFrame(U, R, craftRollDeg)
-      drawShipModel(ctx, ap, facing, rolledU, rolledR, (wv) => {
+      drawShipModel(ctx, wire, facing, rolledU, rolledR, (wv) => {
         const s = w2s(wv.x, wv.z, w, h, scale, pan)
         return [s.sx, s.sy]
       })
       // Roll arc overlay at playhead (always shown while path exists)
       if (Math.abs(craftRollDeg) > 0.5) {
-        const { sx: shipSx, sy: shipSy } = w2s(ap.x, ap.z, w, h, scale, pan)
+        const { sx: shipSx, sy: shipSy } = w2s(wire.x, wire.z, w, h, scale, pan)
         const Rp  = 14; const radP = (craftRollDeg % 360) * Math.PI / 180
         const col = craftRollDeg > 0 ? '#f97316' : '#38bdf8'
         ctx.save(); ctx.globalAlpha = 0.9; ctx.strokeStyle = col; ctx.lineWidth = 1.5

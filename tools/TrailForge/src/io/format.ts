@@ -39,7 +39,6 @@ export function exportBlock(p: PathData): string {
     lines.push(`orient=path`)
   }
 
-  if (Math.abs(p.standoff) > 0.01) lines.push(`standoff=${fmt(p.standoff)}`)
   lines.push(`closed=${p.closed ? 1 : 0}`)
 
   lines.push('')
@@ -51,17 +50,10 @@ export function exportBlock(p: PathData): string {
     : p.wps
 
   for (const wp of wpsToExport) {
-    const x  = fmt(wp.x).padStart(8)
-    const y  = fmt(wp.y).padStart(8)
-    const z  = fmt(wp.z).padStart(8)
-    const pr = wp.pathRoll  ?? 0
-    const cr = wp.craftRoll ?? 0
-    // Write roll fields only when non-zero (backward compatible: old parsers stop at 3 nums)
-    if (Math.abs(pr) > 0.01 || Math.abs(cr) > 0.01) {
-      lines.push(`${x}  ${y}  ${z}  ${fmt(pr).padStart(8)}  ${fmt(cr).padStart(8)}`)
-    } else {
-      lines.push(`${x}  ${y}  ${z}`)
-    }
+    const x = fmt(wp.x).padStart(8)
+    const y = fmt(wp.y).padStart(8)
+    const z = fmt(wp.z).padStart(8)
+    lines.push(`${x}  ${y}  ${z}`)
   }
 
   // Behavior tracks — one line per keyframe, tracks in sorted-name order
@@ -143,7 +135,6 @@ export function parseBlocks(text: string): Map<string, PathData> {
         orient:            'path',
         target:            { x: 0, y: 0, z: 0 },
         closed:            true,
-        standoff:          0,
         wps:               [],
         tracks:            {},
         triggers:          [],
@@ -160,8 +151,7 @@ export function parseBlocks(text: string): Map<string, PathData> {
       const parts = line.slice(6).split(',').map(s => s.trim())
       if (parts.length >= 4) {
         const name  = parts[0]
-        // Drop legacy craftRoll keyframe track — replaced by craftRollSegments
-        if (name === 'craftRoll') continue
+        if (name === 'craftRoll') continue  // unsupported track name; skip
         const t     = parseFloat(parts[1])
         const value = parseFloat(parts[2])
         const ease  = parts[3] as EaseType
@@ -229,9 +219,8 @@ export function parseBlocks(text: string): Map<string, PathData> {
         case 'type':
           cur.type = (val.trim() === 'camera') ? 'camera' : 'craft'
           break
-        case 'speed':    cur.speed    = parseFloat(val); break
-        case 'standoff': cur.standoff = parseFloat(val); break
-        case 'closed':   cur.closed   = val.trim() === '1'; break
+        case 'speed':  cur.speed  = parseFloat(val); break
+        case 'closed': cur.closed = val.trim() === '1'; break
         // Legacy: old files had a global 'roll' — ignore it (per-node rolls are on waypoint lines)
         case 'roll': break
         case 'orient':
@@ -247,14 +236,10 @@ export function parseBlocks(text: string): Map<string, PathData> {
       continue
     }
 
-    // Waypoint: X Y Z [pathRoll [craftRoll]]
+    // Waypoint: X Y Z (extra columns ignored)
     const nums = line.split(/\s+/).filter(Boolean).map(Number)
-    if (nums.length >= 3 && nums.every((n) => !isNaN(n))) {
-      cur.wps.push({
-        x: nums[0], y: nums[1], z: nums[2],
-        pathRoll:  nums[3] ?? 0,
-        craftRoll: nums[4] ?? 0,
-      })
+    if (nums.length >= 3 && nums.slice(0, 3).every((n) => !isNaN(n))) {
+      cur.wps.push({ x: nums[0], y: nums[1], z: nums[2] })
     }
   }
 

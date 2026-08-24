@@ -30,7 +30,7 @@ function applyEase(t: number, ease: CraftRollEase): number {
 /**
  * Evaluate accumulated craft roll angle (degrees) at arc-fraction af ∈ [0..1].
  * Segments are walked in t order; each one transitions the accumulated angle.
- * Returns 0 for an empty list (caller falls back to waypoint craftRoll).
+ * Returns 0 for an empty list (ship remains level).
  *
  * loopSeam (optional): if present and af is within the seam's tail or head zone,
  * the seam transition overrides the regular segments, easing the angle accumulated

@@ -4,13 +4,8 @@ export interface Vec3 {
   z: number
 }
 
-// A path waypoint: position + per-node roll angles (degrees).
-// pathRoll  — standoff offset angle at this node (helix position around wire).
-// craftRoll — ship body rotation around its forward axis at this node (banking).
-export interface Waypoint extends Vec3 {
-  pathRoll:  number
-  craftRoll: number
-}
+// A path waypoint: a world-space position on the spline.
+export interface Waypoint extends Vec3 {}
 
 export const v3 = {
   make:  (x: number, y: number, z: number): Vec3 => ({ x, y, z }),

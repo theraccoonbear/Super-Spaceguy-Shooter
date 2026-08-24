@@ -1,224 +1,179 @@
 # Maneuver File Format (`.mvr`)
 
-Each file in `assets/maneuvers/` describes one flight-path route.
-One route per file; no multi-block files.
+One `.mvr` file = one named flight-path route.
+Files live in `assets/maneuvers/`.
 
 ---
 
-## File Naming
+## File naming
 
-Filename stem is the **kebab-case encoding** of the route name:
-
-| Route name (`[name]` header) | Filename |
-|------------------------------|----------|
-| `drift`                      | `drift.mvr` |
-| `browser_built`              | `browser-built.mvr` |
-| `Boss Spiral`                | `boss-spiral.mvr` |
-
-The `[name]` header inside the file is the **canonical** route name;
-the filename is derived from it. Parsers should use the header value,
-not the filename, as the route identifier.
-
----
-
-## Overall Structure
+The filename stem is a **kebab-case encoding** of the route name.
+The `[name]` header inside the file is the canonical identifier —
+use it, not the filename.
 
 ```
-[route-name]
-<key=value headers>
-
-<waypoints>
-
-<optional sections in any order>
-```
-
-Blank lines are ignored. Lines starting with `#` are comments.
-Sections (waypoints, tracks, triggers, craftroll, loopseam) may appear
-in any order after the headers, though the serializer always emits them
-in the order shown below.
-
----
-
-## 1. Route Header
-
-The first non-blank, non-comment line must be `[route-name]`.
-
-```
-[my-route]
+assets/maneuvers/boss-spiral.mvr   →   [boss-spiral]
+assets/maneuvers/browser-built.mvr →   [browser_built]   ← header wins
 ```
 
 ---
 
-## 2. Key=Value Fields
+## Structure
 
-All fields except `speed` and `closed` are optional; defaults are shown.
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `type` | `craft` | Route type. `craft` = ship-piloted flight path. `camera` = camera path. |
-| `speed` | `0.025` | Arc-length units per game tick at 60 Hz. `0.025` ≈ 1.5 u/s. |
-| `orient` | `path` | Ship orientation mode. See §2.1. |
-| `standoff` | `0` | Perpendicular offset from the wire curve, in world units. Omitted when zero. |
-| `closed` | `1` | `1` = loop (last waypoint connects back to first). `0` = open path. |
-
-### 2.1 `orient` values
+Lines are processed top-to-bottom. Blank lines and lines beginning
+with `#` are ignored. Sections may appear in any order after the
+header block, though TrailForge always emits them in the order below.
 
 ```
-orient=path
-```
-Ship faces its direction of travel (tangent to the spline).
-
-```
-orient=target:X,Y,Z
-```
-Ship always faces the world-space point `(X, Y, Z)`, e.g. `orient=target:0,6,0`.
-
----
-
-## 3. Waypoints
-
-One waypoint per line, after a blank line following the headers.
-Fields are whitespace-separated; extra whitespace is ignored.
-
-```
-X  Y  Z  [pathRoll  [craftRoll]]
-```
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `X Y Z` | float | World-space position, world units. |
-| `pathRoll` | float (degrees) | Bank angle applied perpendicular to the spline tangent. Positive = right-wing-down (CW from pilot view). Omit or `0` when unused. |
-| `craftRoll` | float (degrees) | Legacy per-waypoint craft roll (interpolated). Superseded by `craftroll:` segments. Omit or `0` when unused. |
-
-**Closed-path convention:** For `closed=1` routes the serializer appends a
-copy of waypoint 0 as the final line (so the game receives `n+1` waypoints
-with `wps[last] == wps[0]`). Parsers **should strip** this duplicate
-before storing, or handle the wrap-around explicitly. TrailForge's
-`parseBlocks` / `parseFile` strip it automatically.
-
-### Example — 4-waypoint closed loop
-
-```
-[drift]
-speed=0.025
-orient=path
-closed=1
-
-      20         0         0
-      12         2         4
-       8        -2         7
-      16         0         1
-      20         0         0   ← duplicate of first wp; strip on load
+[route-name]          ← required; first non-blank line
+key=value …           ← route-level settings
+                      ← blank line separates settings from waypoints
+X  Y  Z …            ← one waypoint per line
+…
+track: …              ← behavior keyframes (optional)
+trigger: …            ← one-shot events (optional)
+craftroll: …          ← craft-roll animation segments (optional)
+loopseam: …           ← loop-seam correction (optional, closed paths only)
 ```
 
 ---
 
-## 4. Behavior Tracks (`track:`)
+## Route settings (`key=value`)
 
-Keyframe tracks for continuously-interpolated values. Any number of
-keyframes per named track; any number of named tracks per route.
+All fields except `speed` have defaults; omit them when using defaults.
+
+| Key | Default | Values | Meaning |
+|-----|---------|--------|---------|
+| `type` | `craft` | `craft` \| `camera` | Route type. `type=` line is omitted when `craft`. |
+| `speed` | `0.025` | float | Arc-length units advanced per game tick (60 Hz). |
+| `orient` | `path` | `path` \| `target:X,Y,Z` | Ship-facing mode (see below). |
+| `closed` | `1` | `0` \| `1` | Whether path loops. |
+
+**`orient=path`** — ship faces its direction of travel (tangent).  
+**`orient=target:X,Y,Z`** — ship always faces world point `(X,Y,Z)`.
+
+---
+
+## Waypoints
+
+One waypoint per line; fields are whitespace-separated.
+
+```
+X  Y  Z
+```
+
+| Column | Type | Meaning |
+|--------|------|---------|
+| `X Y Z` | float | World-space position. |
+
+### Closed-path endpoint convention
+
+When `closed=1`, TrailForge appends a copy of waypoint 0 as the final
+waypoint line so that `wps[last] == wps[0]`. **Strip this duplicate on
+load** (check if the last point is within ~0.001 world units of the
+first and drop it). TrailForge's own parser does this automatically.
+
+---
+
+## Behavior tracks (`track:`)
+
+Continuously-interpolated keyframe values keyed by arc-length fraction.
 
 ```
 track: <name>, <t>, <value>, <ease>
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Track identifier. Game-defined; unknown names are ignored. |
-| `t` | float [0, 1] | Arc-length fraction along the route. `0` = start, `1` = end (or loop point). |
-| `value` | float | Track-specific meaning; game-defined. |
-| `ease` | enum | Interpolation shape. See §4.1. |
+| Field | Type | Meaning |
+|-------|------|---------|
+| `name` | string | Track identifier — game-defined; unknown names are ignored. |
+| `t` | float [0,1] | Arc-length fraction. `0` = path start, `1` = end/loop point. |
+| `value` | float | Track-specific meaning (game-defined). |
+| `ease` | `linear`\|`in`\|`out`\|`in-out` | Interpolation shape toward the next keyframe. |
 
-### 4.1 Ease types
+Multiple keyframes per track, multiple tracks per file. TrailForge
+round-trips unknown track names without loss.
 
-| Value | Shape |
-|-------|-------|
-| `linear` | Constant rate |
-| `in` | Ease in (slow start) |
-| `out` | Ease out (slow end) |
-| `in-out` | Ease in and out |
-
-### Known track names (game-defined)
+**Known tracks:**
 
 | Name | Value meaning |
 |------|---------------|
-| `offsetAngle` | Angular offset applied to the ship's lateral aim direction (degrees). |
-
-Unknown track names are stored by TrailForge and round-tripped without loss;
-the game silently ignores tracks it doesn't recognize.
+| `offsetAngle` | Angular offset on the ship's lateral aim direction (degrees). |
 
 ---
 
-## 5. Trigger Events (`trigger:`)
+## Trigger events (`trigger:`)
 
-One-shot events fired when the ship passes arc-length fraction `t`.
+One-shot events fired when the ship crosses arc-length fraction `t`.
 
 ```
-trigger: <t>, <type>, [args...]
+trigger: <t>, <type>, [args…]
 ```
 
-| Event type | Arguments | Description |
-|------------|-----------|-------------|
-| `fireMode` | `<mode>` | Switch weapon fire mode. |
+| Type | Args | Meaning |
+|------|------|---------|
+| `fireMode` | `<mode>` | Change weapon fire mode. |
 | `weapon` | `<name>` | Switch active weapon. |
-| `shieldMode` | `<mode>` | Switch shield behaviour. |
-| `invuln` | `0` or `1` | Set invulnerability off (`0`) or on (`1`). |
-| `phase` | `<tag>` | Signal a boss-phase transition. Tag is game-defined. |
-| `sound` | `<name>, <volume>, <loop>` | Play a sound. `volume` ∈ [0, 1]. `loop` = `1` to loop. |
-| `custom` | `<tag>, <value>` | Game-specific event; both fields are arbitrary strings. |
+| `shieldMode` | `<mode>` | Change shield behaviour. |
+| `invuln` | `0`\|`1` | Disable/enable invulnerability. |
+| `phase` | `<tag>` | Signal a boss-phase transition. |
+| `sound` | `<name>, <volume>, <loop>` | Play a sound. `volume` ∈ [0,1]; `loop` = `1` to loop. |
+| `custom` | `<tag>, <value>` | Freeform game event; both fields are arbitrary strings. |
 
-Triggers are emitted sorted by `t`; parsers need not assume sorted order.
+`mode` and `name` values for `fireMode`, `weapon`, and `shieldMode`
+are game-defined enumerations. Unknown trigger types are ignored.
 
 ---
 
-## 6. Craft Roll Segments (`craftroll:`)
+## Craft-roll segments (`craftroll:`)
 
-Time-windowed bank-angle animations along the arc. Multiple segments may
-overlap or chain; they are evaluated in order of increasing `t`.
+Time-windowed bank-angle animations. Controls the ship's rolling
+motion independently of the path frame. Multiple segments may be
+active simultaneously; they are applied in order of increasing `t`.
 
 ```
 craftroll: <t>, <duration>, <degrees>, <direction>, <mode>, <ease>
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `t` | float [0, 1] | Arc-length fraction where the segment begins. |
-| `duration` | float (0, 1] | Arc-length extent of the segment. `t + duration` may exceed 1 on open paths; clamped on evaluation. |
+| Field | Type | Meaning |
+|-------|------|---------|
+| `t` | float [0,1] | Arc-length fraction where the segment begins. |
+| `duration` | float (0,1] | Arc-length extent of the segment. |
 | `degrees` | integer ≥ 0 | Rotation magnitude. |
-| `direction` | `cw` or `ccw` | CW = right-wing-down from pilot view. CCW = left-wing-down. |
-| `mode` | `relative` or `absolute` | `relative`: rotate by `degrees` from current roll. `absolute`: arrive at `degrees` regardless of current roll. |
-| `ease` | enum | See §4.1. |
-
-Segments are emitted sorted by `t`; parsers need not assume sorted order.
+| `direction` | `cw`\|`ccw` | `cw` = right-wing-down from pilot view. |
+| `mode` | `relative`\|`absolute` | `relative`: rotate by `degrees` from current roll. `absolute`: arrive at `degrees` regardless of current roll. |
+| `ease` | `linear`\|`in`\|`out`\|`in-out` | Interpolation shape. |
 
 ---
 
-## 7. Loop Seam (`loopseam:`)
+## Loop seam (`loopseam:`)
 
-**Closed paths only.** A single optional line that smoothly bridges the
-roll-angle discontinuity at the loop point (arc `1.0` / `0.0`).
+**Closed paths only. At most one per file.**
 
-At most one `loopseam:` line per file.
+Smoothly bridges the craft-roll discontinuity at the loop point
+(where arc fraction `1.0` meets `0.0`). Without a seam, a sudden
+jump in roll angle occurs if the cumulative craft roll at the end of
+the loop differs from the start.
 
 ```
 loopseam: <tailFrac>, <headFrac>, <targetAngle>, <ease>
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `tailFrac` | float [0, 0.45] | Arc fraction before the loop point blended into the seam. `0.05` means the last 5 % of the arc is the seam tail. |
-| `headFrac` | float [0, 0.45] | Arc fraction after the loop point blended from the seam. `0.05` means the first 5 % of the arc is the seam head. |
-| `targetAngle` | float (degrees) | The craft-roll angle to target at the loop point itself. `0` = level flight. |
-| `ease` | enum | See §4.1. |
+| Field | Type | Meaning |
+|-------|------|---------|
+| `tailFrac` | float [0,0.45] | Arc fraction *before* the loop point to blend into the seam. |
+| `headFrac` | float [0,0.45] | Arc fraction *after* the loop point to blend out of the seam. |
+| `targetAngle` | float° | Craft-roll angle at the loop point itself (`0` = level). |
+| `ease` | `linear`\|`in`\|`out`\|`in-out` | Interpolation shape for both sides of the seam. |
 
-The seam occupies `[1 - tailFrac, 1]` (tail) and `[0, headFrac]` (head).
-Within the seam the roll angle is interpolated from the angle at `1 - tailFrac`
-toward `targetAngle` (tail side) or from `targetAngle` toward the angle
-at `headFrac` (head side), ensuring continuity at both ends.
+The seam occupies `[1-tailFrac, 1]` (tail side) and `[0, headFrac]`
+(head side). Within the tail the roll blends from the angle at
+`1-tailFrac` toward `targetAngle`; within the head it blends from
+`targetAngle` toward the angle at `headFrac`. Continuity is guaranteed
+at both loop-point ends.
 
 ---
 
-## 8. Complete Example
+## Full example
 
 ```
 [twist_and_roll]
@@ -235,41 +190,25 @@ closed=1
  31.9313    2.0316  -21.5096
  21.4972   -8.5769   23.9693
  13.0229   -0.4992   12.5684
- 11.1181   -4.4059  -17.0546   ← duplicate endpoint; strip on load
+ 11.1181   -4.4059  -17.0546
 
-craftroll: 0.0912, 0.0283, 45, cw, relative, in-out
-craftroll: 0.1213, 0.0263, 45, ccw, relative, in-out
-craftroll: 0.2187, 0.0303, 50, ccw, relative, in-out
-craftroll: 0.5709, 0.0611, 45, ccw, relative, in-out
-craftroll: 0.6855, 0.0740, 150, cw, relative, in-out
-craftroll: 0.8672, 0.0279, 30, ccw, relative, in-out
+craftroll: 0.0912, 0.0283,  45, cw,  relative, in-out
+craftroll: 0.1213, 0.0263,  45, ccw, relative, in-out
+craftroll: 0.2187, 0.0303,  50, ccw, relative, in-out
+craftroll: 0.5709, 0.0611,  45, ccw, relative, in-out
+craftroll: 0.6855, 0.0740, 150, cw,  relative, in-out
+craftroll: 0.8672, 0.0279,  30, ccw, relative, in-out
 ```
 
 ---
 
-## 9. Parser Guidance
+## Parser rules
 
-- **Unknown `key=value` lines** — skip silently. Future fields will be added.
-- **Unknown section keywords** (e.g. a new `fx:` prefix) — skip the line silently.
-- **Unknown track names** — store and round-trip; ignore during gameplay.
-- **Unknown trigger types** — skip silently.
-- **Field count mismatches** — skip the malformed line; do not abort.
-- **Numeric parse failures** — skip the line; do not abort.
-- **`type=craft` is the default** — the `type=` line is omitted from files
-  where the type is `craft`; assume `craft` if the line is absent.
-- **`standoff=`** is omitted when zero (< 0.01); assume `0` if absent.
-- **Arc-length `t` values** are always in `[0, 1]`. Values outside this
-  range should be clamped on evaluation.
-- **Closed-path duplicate endpoint**: if `closed=1` and the last waypoint
-  is within 0.001 world units of the first, discard the last waypoint.
-  The game may instead choose to keep it and let its Catmull-Rom sampler
-  handle the wrap — either approach is correct as long as the loop closes.
-
----
-
-## 10. Versioning
-
-There is no explicit version field. The format is designed to be
-**forward-compatible**: parsers that follow §9 will silently ignore
-unknown fields added in future versions. New fields are always optional
-with a sensible default so older files remain valid.
+- **Unknown `key=value` fields** — skip; new fields are added without bumping a version.
+- **Unknown section prefixes** (e.g. a future `fx:` line) — skip the line.
+- **Unknown track names** — skip during gameplay; round-trip without loss if re-saving.
+- **Unknown trigger types** — skip.
+- **Malformed lines** (wrong field count, non-numeric where numeric expected) — skip the line; do not abort parsing.
+- **`type=craft`** is the default; the line is omitted when the type is `craft`.
+- **`t` values** are always [0,1]; clamp on evaluation.
+- **Extra waypoint columns** — any columns beyond X Y Z are ignored.
