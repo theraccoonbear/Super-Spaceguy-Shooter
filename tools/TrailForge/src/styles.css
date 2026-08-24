@@ -780,7 +780,7 @@ textarea.import-area:focus { border-color: var(--path); }
 .bpanel-track-meta {
   font-size: 9px;
   font-family: var(--font-mono);
-  width: 28px;
+  min-width: 28px;
   flex-shrink: 0;
   text-align: right;
   user-select: none;

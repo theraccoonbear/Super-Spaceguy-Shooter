@@ -710,6 +710,7 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
 
   const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
   const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
+  const liveRoll = evalCraftRoll(segments, arcTable.paramToArc(animFrac), loopSeam)
   const sel      = segments.find(s => s.id === selSegId) ?? null
 
   function rulerFrac(clientX: number): number {
@@ -981,7 +982,9 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
             onClick={e => { e.stopPropagation(); toggleMutedTrack('craftRoll') }}>
             {isMuted ? '○' : '◉'}
           </button>
-          <span className="bpanel-track-meta">{segments.length} seg</span>
+          <span className="bpanel-track-meta" style={{ color: isMuted ? 'var(--text-faint)' : CR_CW }}>
+            {liveRoll.toFixed(1)}°
+          </span>
           {path.closed && !loopSeam && (
             <button className="bp-seg-btn" title="Add loop seam — smooths the roll angle gap at the loop point"
               style={{ color: '#a78bfa', padding: '0 4px', fontSize: 10 }}
@@ -1178,7 +1181,7 @@ function TrackRow({ name, selKf, onSelKf, isExpanded, onExpand }: {
   isExpanded: boolean
   onExpand: () => void
 }) {
-  const { path, updateKeyframe, removeKeyframe, setTrack,
+  const { path, animT, updateKeyframe, removeKeyframe, setTrack,
           hoveredBehavior, setHoveredBehavior,
           mutedTracks, toggleMutedTrack } = useStore()
   const isMuted    = !!mutedTracks[name]
@@ -1190,6 +1193,10 @@ function TrackRow({ name, selKf, onSelKf, isExpanded, onExpand }: {
   const isHovered  = hoveredBehavior?.type === 'track' && hoveredBehavior.name === name
   const sel        = selIdx >= 0 ? frames[selIdx] : null
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null)
+
+  const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+  const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
+  const liveVal  = evalTrack(frames, animFrac)
 
   function commitT(t: number) {
     if (!sel) return; updateKeyframe(name, selIdx, { ...sel, t: Math.max(0, Math.min(1, t)) })
@@ -1243,7 +1250,9 @@ function TrackRow({ name, selKf, onSelKf, isExpanded, onExpand }: {
             onClick={e => { e.stopPropagation(); toggleMutedTrack(name) }}>
             {isMuted ? '○' : '◉'}
           </button>
-          <span className="bpanel-track-meta">{frames.length} kf</span>
+          <span className="bpanel-track-meta" style={{ color: isMuted ? 'var(--text-faint)' : color }}>
+            {liveVal.toFixed(trackDecimals(name))}{unit}
+          </span>
           <button className="bp-icon-btn danger" title="Remove entire track (discards all keyframes)"
             onClick={e => {
               e.stopPropagation()
