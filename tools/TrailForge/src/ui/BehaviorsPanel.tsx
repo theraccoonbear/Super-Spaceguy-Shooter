@@ -830,6 +830,7 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
           onClick={e => { e.stopPropagation(); onExpand() }}>
           <span className="bpanel-mode-ind">{isExpanded ? '▼' : '▶'}</span>
           craftRoll
+          <span className="bpanel-live-val">{liveRoll.toFixed(1)}°</span>
         </span>
 
         {/* Ruler with draggable blocks — right-click empty area to add */}
@@ -982,9 +983,7 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
             onClick={e => { e.stopPropagation(); toggleMutedTrack('craftRoll') }}>
             {isMuted ? '○' : '◉'}
           </button>
-          <span className="bpanel-track-meta" style={{ color: isMuted ? 'var(--text-faint)' : CR_CW }}>
-            {liveRoll.toFixed(1)}°
-          </span>
+          <span className="bpanel-track-meta">{segments.length} seg</span>
           {path.closed && !loopSeam && (
             <button className="bp-seg-btn" title="Add loop seam — smooths the roll angle gap at the loop point"
               style={{ color: '#a78bfa', padding: '0 4px', fontSize: 10 }}
@@ -1228,6 +1227,7 @@ function TrackRow({ name, selKf, onSelKf, isExpanded, onExpand }: {
           onClick={e => { e.stopPropagation(); onExpand() }}>
           <span className="bpanel-mode-ind">{isExpanded ? '▼' : '▶'}</span>
           {name}
+          <span className="bpanel-live-val">{liveVal.toFixed(trackDecimals(name))}{unit}</span>
         </span>
 
         {/* Col 2: thin bar — passive position dots in compact, clean in active */}
@@ -1250,9 +1250,7 @@ function TrackRow({ name, selKf, onSelKf, isExpanded, onExpand }: {
             onClick={e => { e.stopPropagation(); toggleMutedTrack(name) }}>
             {isMuted ? '○' : '◉'}
           </button>
-          <span className="bpanel-track-meta" style={{ color: isMuted ? 'var(--text-faint)' : color }}>
-            {liveVal.toFixed(trackDecimals(name))}{unit}
-          </span>
+          <span className="bpanel-track-meta">{frames.length} kf</span>
           <button className="bp-icon-btn danger" title="Remove entire track (discards all keyframes)"
             onClick={e => {
               e.stopPropagation()
