@@ -15,6 +15,9 @@ function splineEmitPlugin(): Plugin {
   return {
     name: 'spline-emit-watcher',
     configureServer(server) {
+      // Only active when living inside the SSS repo — noop in standalone TrailForge.
+      if (!fs.existsSync(dslFile)) return
+
       server.watcher.add(dslFile)
 
       server.watcher.on('change', (file) => {
@@ -49,7 +52,9 @@ function maneuversDirApiPlugin(): Plugin {
   return {
     name: 'maneuvers-dir-api',
     configureServer(server) {
-      const MANEUVERS_DIR = resolve(__dirname, '../../assets/maneuvers')
+      const MANEUVERS_DIR = process.env.MANEUVERS_DIR
+        ? resolve(process.env.MANEUVERS_DIR)
+        : resolve(__dirname, '../../assets/maneuvers')
 
       // Ensure directory exists at startup
       if (!fs.existsSync(MANEUVERS_DIR)) {
