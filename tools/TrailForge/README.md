@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/theraccoonbear/TrailForge/actions/workflows/ci.yml/badge.svg)](https://github.com/theraccoonbear/TrailForge/actions/workflows/ci.yml)
 
-A four-pane 3D spline path editor for Super Spaceguy Shooter. Lets you design and preview flight paths that the game reads from `assets/maneuvers.txt`.
+A four-pane 3D spline path editor for Super Spaceguy Shooter. Lets you design and preview flight paths stored as individual `.mvr` files under `assets/maneuvers/`.
 
 ## Running
 
