@@ -408,7 +408,6 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
   const isMuted  = !!mutedTracks['craftRoll']
   const arcTable = useMemo(() => makeArcTable(path.wps, path.closed), [path])
   const rulerRef = useRef<HTMLDivElement>(null)
-  const graphRef = useRef<HTMLDivElement>(null)
   const drag     = useRef<CRDrag | null>(null)
   const [crCtxMenu,    setCrCtxMenu]    = useState<CRCtxMenu | null>(null)
   const [seamSelected, setSeamSelected] = useState(false)
@@ -505,19 +504,6 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
   function handleRulerPointerUp() {
     if (drag.current) { drag.current = null; resumeTemporal() }
   }
-
-  // Graph: sample the accumulated angle curve
-  const STEPS = 80; const VW = 200; const VH = 52; const PAD = 4
-  const angles = useMemo(
-    () => Array.from({ length: STEPS + 1 }, (_, i) => evalCraftRoll(segments, i / STEPS, loopSeam)),
-    [segments, loopSeam]
-  )
-  const maxAbs = Math.max(360, ...angles.map(Math.abs))
-  const toGX   = (f: number) => f * VW
-  const toGY   = (a: number) => VH / 2 - (a / maxAbs) * (VH / 2 - PAD)
-  const linePts = segments.length > 0
-    ? angles.map((a, i) => `${toGX(i / STEPS).toFixed(1)},${toGY(a).toFixed(1)}`).join(' ')
-    : ''
 
   function update(patch: Partial<CraftRollSegment>) {
     if (!sel) return
@@ -806,35 +792,6 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
               </span>
             )}
           </div>
-
-          {/* Accumulated angle graph */}
-          <div ref={graphRef} className="bpanel-active-graph" style={{ position: 'relative' }}>
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-              viewBox={`0 0 ${VW} ${VH}`} preserveAspectRatio="none">
-              <line x1={0} y1={VH/2} x2={VW} y2={VH/2}
-                stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3 4" />
-              {segments.map(seg => (
-                <rect key={seg.id} x={seg.t * VW} y={0}
-                  width={Math.max(1, seg.duration * VW)} height={VH}
-                  fill={seg.direction === 'cw' ? CR_CW : CR_CCW} opacity={0.07} />
-              ))}
-              {linePts && (
-                <polyline points={linePts} fill="none" stroke={CR_CW} strokeWidth="2" opacity="0.75" />
-              )}
-              <line x1={arcTable.paramToArc(animFrac) * VW} y1={0}
-                x2={arcTable.paramToArc(animFrac) * VW} y2={VH}
-                stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-            </svg>
-            {segments.length === 0 && (
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, color: 'rgba(255,255,255,0.2)',
-                pointerEvents: 'none',
-              }}>accumulated roll angle</div>
-            )}
-          </div>
-
         </div>
       )}
     </div>
@@ -881,7 +838,6 @@ function ScalarSegmentTrack({ name, selSegId, onSelSegId, isExpanded, onExpand }
   const { min: vMin, max: vMax } = trackValueLimits(name)
   const arcTable = useMemo(() => makeArcTable(path.wps, path.closed), [path])
   const rulerRef = useRef<HTMLDivElement>(null)
-  const graphRef = useRef<HTMLDivElement>(null)
   const drag     = useRef<SegDrag | null>(null)
   const [segCtxMenu,   setSegCtxMenu]   = useState<SegCtxMenu | null>(null)
   const [seamSelected, setSeamSelected] = useState(false)
@@ -976,19 +932,6 @@ function ScalarSegmentTrack({ name, selSegId, onSelSegId, isExpanded, onExpand }
   function handleRulerPointerUp() {
     if (drag.current) { drag.current = null; resumeTemporal() }
   }
-
-  // Graph: sample the eased value curve
-  const STEPS = 80; const VW = 200; const VH = 52; const PAD = 4
-  const values = useMemo(
-    () => Array.from({ length: STEPS + 1 }, (_, i) => evalScalarSegments(segments, i / STEPS, loopSeam)),
-    [segments, loopSeam]
-  )
-  const maxAbs = Math.max(Math.abs(vMax), Math.abs(vMin), ...values.map(Math.abs), 1e-6)
-  const toGX   = (f: number) => f * VW
-  const toGY   = (v: number) => VH / 2 - (v / maxAbs) * (VH / 2 - PAD)
-  const linePts = segments.length > 0
-    ? values.map((v, i) => `${toGX(i / STEPS).toFixed(1)},${toGY(v).toFixed(1)}`).join(' ')
-    : ''
 
   function update(patch: Partial<ScalarSegment>) {
     if (!sel) return
@@ -1263,35 +1206,6 @@ function ScalarSegmentTrack({ name, selSegId, onSelSegId, isExpanded, onExpand }
               </span>
             )}
           </div>
-
-          {/* Value graph */}
-          <div ref={graphRef} className="bpanel-active-graph" style={{ position: 'relative' }}>
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-              viewBox={`0 0 ${VW} ${VH}`} preserveAspectRatio="none">
-              <line x1={0} y1={VH/2} x2={VW} y2={VH/2}
-                stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3 4" />
-              {segments.map(seg => (
-                <rect key={seg.id} x={seg.t * VW} y={0}
-                  width={Math.max(1, seg.duration * VW)} height={VH}
-                  fill={color} opacity={0.07} />
-              ))}
-              {linePts && (
-                <polyline points={linePts} fill="none" stroke={color} strokeWidth="2" opacity="0.75" />
-              )}
-              <line x1={arcTable.paramToArc(animFrac) * VW} y1={0}
-                x2={arcTable.paramToArc(animFrac) * VW} y2={VH}
-                stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-            </svg>
-            {segments.length === 0 && (
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, color: 'rgba(255,255,255,0.2)',
-                pointerEvents: 'none',
-              }}>{name} value over the path</div>
-            )}
-          </div>
-
         </div>
       )}
     </div>
@@ -1303,6 +1217,10 @@ function ScalarSegmentTrack({ name, selSegId, onSelSegId, isExpanded, onExpand }
 // mirrors the segment tracks' rulers: a single row per behavior, markers for
 // each instance positioned along it. Right-click the bar to add a new
 // instance at that position; click a marker to select it for editing below.
+type TrigCtxMenu =
+  | { mode: 'add'; x: number; y: number; t: number }
+  | { mode: 'evt'; x: number; y: number; i: number }
+
 function TriggerTypeRow({ type, selTrig, onSelTrig }: {
   type: TriggerType; selTrig: number | null; onSelTrig: (i: number | null) => void
 }) {
@@ -1313,40 +1231,68 @@ function TriggerTypeRow({ type, selTrig, onSelTrig }: {
   const color  = triggerColor(type)
   const sel    = selTrig !== null ? items.find(x => x.i === selTrig) ?? null : null
   const barRef = useRef<HTMLDivElement>(null)
+  const drag   = useRef<{ i: number } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<TrigCtxMenu | null>(null)
 
-  function addHere(e: React.MouseEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const rect = e.currentTarget.getBoundingClientRect()
-    const t = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    addTrigger({ t, event: defaultEvent(type) })
+  function barFrac(clientX: number): number {
+    const rect = barRef.current?.getBoundingClientRect()
+    return rect ? Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) : 0
   }
 
-  // Whole row is clickable, not just the tiny diamond — with one event (the common
-  // case) any click on the row selects it unambiguously; with several, the click
-  // selects whichever marker is closest to it along the bar.
-  function selectNearest(clientX: number) {
-    if (items.length === 0) return
+  function nearest(clientX: number): number | null {
+    if (items.length === 0) return null
+    const frac = barFrac(clientX)
     let best = items[0].i, bestDist = Infinity
-    const rect = barRef.current?.getBoundingClientRect()
-    const frac = rect ? Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) : null
     for (const it of items) {
-      const d = frac === null ? 0 : Math.abs(it.tr.t - frac)
+      const d = Math.abs(it.tr.t - frac)
       if (d < bestDist) { best = it.i; bestDist = d }
     }
-    onSelTrig(best)
+    return best
+  }
+
+  // Compact diamond is directly draggable — no separate "select first, then use
+  // a second bar" step. Mirrors the segment tracks' direct-manipulation model.
+  function handleDiamondPointerDown(e: React.PointerEvent<HTMLDivElement>, i: number) {
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    pauseAfterCheckpoint()
+    drag.current = { i }
+    onSelTrig(i)
+  }
+  function handleBarPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!drag.current || e.buttons !== 1) return
+    const t = barFrac(e.clientX)
+    const tr = path.triggers[drag.current.i]
+    if (tr) updateTrigger(drag.current.i, { ...tr, t })
+  }
+  function handleBarPointerUp() {
+    if (drag.current) { drag.current = null; resumeTemporal() }
   }
 
   return (
     <div className="bpanel-track-group">
-      <div className="bpanel-track-row" style={{ cursor: 'pointer' }} onClick={e => selectNearest(e.clientX)}>
+      <div className="bpanel-track-row"
+        style={{ cursor: 'pointer' }}
+        onClick={e => { const n = nearest(e.clientX); if (n !== null) onSelTrig(n) }}>
         <span className="bpanel-track-label" style={{ color }}>{type}</span>
-        <div ref={barRef} className="bpanel-track-bar" title="Right-click to add an event here" onContextMenu={addHere}>
+        <div ref={barRef} className="bpanel-track-bar"
+          onContextMenu={e => {
+            e.preventDefault()
+            if (drag.current) return
+            const t = barFrac(e.clientX)
+            const onEvt = items.some(it => Math.abs(it.tr.t - t) < 0.01)
+            if (!onEvt) setCtxMenu({ mode: 'add', x: e.clientX, y: e.clientY, t })
+          }}
+          onPointerMove={handleBarPointerMove}
+          onPointerUp={handleBarPointerUp}>
           <div className="bpanel-track-baseline" />
           {items.map(({ tr, i }) => (
             <div key={i}
               className={`bpanel-kf-diamond${selTrig === i ? ' selected' : ''}`}
-              style={{ left: `${tr.t * 100}%`, background: color, borderColor: color }}
+              style={{ left: `${tr.t * 100}%`, background: color, borderColor: color, cursor: 'grab' }}
               title={`t=${tr.t.toFixed(3)}  ${triggerSummary(tr.event)}`}
+              onPointerDown={e => handleDiamondPointerDown(e, i)}
+              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ mode: 'evt', x: e.clientX, y: e.clientY, i }) }}
               onMouseEnter={() => setHoveredBehavior({ type: 'trigger', index: i })}
               onMouseLeave={() => setHoveredBehavior(null)} />
           ))}
@@ -1366,28 +1312,19 @@ function TriggerTypeRow({ type, selTrig, onSelTrig }: {
         </div>
       </div>
 
+      {ctxMenu?.mode === 'add' && (
+        <CRSegContextMenu x={ctxMenu.x} y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          onAdd={() => addTrigger({ t: ctxMenu.t, event: defaultEvent(type) })} />
+      )}
+      {ctxMenu?.mode === 'evt' && (
+        <CRSegContextMenu x={ctxMenu.x} y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          onDelete={() => { removeTrigger(ctxMenu.i); if (selTrig === ctxMenu.i) onSelTrig(null) }} />
+      )}
+
       {sel && (
         <div className="bpanel-active-panel">
-          {/* Reuses the compact row's own bar classes so this handle sits at the exact
-              same pixel x as the diamond above it — both are `left: t*100%` in the same
-              width container. A native <input type=range> can NOT be made to match this:
-              its thumb insets by half the thumb width at each end, so value*100% never
-              equals the thumb's actual pixel position. */}
-          <div className="bpanel-track-bar bpanel-pos-scrub"
-            onPointerDown={e => {
-              e.currentTarget.setPointerCapture(e.pointerId)
-              const rect = e.currentTarget.getBoundingClientRect()
-              updateTrigger(sel.i, { ...sel.tr, t: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) })
-            }}
-            onPointerMove={e => {
-              if (e.buttons !== 1) return
-              const rect = e.currentTarget.getBoundingClientRect()
-              updateTrigger(sel.i, { ...sel.tr, t: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) })
-            }}>
-            <div className="bpanel-track-baseline" />
-            <div className="bpanel-kf-diamond selected"
-              style={{ left: `${sel.tr.t * 100}%`, background: color, borderColor: color }} />
-          </div>
           <div className="bpanel-active-edit">
             <span className="bp-label">pos</span>
             <NumInput value={sel.tr.t} step={0.01} min={0} max={1}

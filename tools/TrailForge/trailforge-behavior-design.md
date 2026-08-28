@@ -124,13 +124,14 @@ Trigger
 
 **Interaction contract (identical for every trigger type — implemented once
 in `TriggerTypeRow`, one row per type):**
-- Add: right-click the type's ruler bar → places a new instance there.
-- Select: click the marker (or the row, which selects the nearest instance).
-- Move: drag the marker — 1D, `t` only (in the panel's position-scrub bar, or
-  on the canvas via the same nearest-point-on-curve mechanics segment tracks
-  use).
-- Delete: the expanded editor's "Del evt" button, or the row's × to clear all
-  instances of that type.
+- Add: right-click the type's ruler bar → confirm menu → "Add event here"
+  (never an instant/silent add — matches the segment tracks' contract).
+- Select: click the marker directly (or the row, which selects the nearest instance).
+- Move: drag the marker directly — 1D, `t` only — right on the compact ruler,
+  no separate "select first, then use a second bar" step. Same on canvas, via
+  the shared nearest-point-on-curve mechanics segment tracks use.
+- Delete: right-click the marker → "Delete event", the expanded editor's
+  "Del evt" button, or the row's × to clear all instances of that type.
 - Value editing: a type-specific widget (dropdown, text field, etc. — see
   `TriggerValueEditor`) — this is the *only* thing that varies between
   trigger types.
