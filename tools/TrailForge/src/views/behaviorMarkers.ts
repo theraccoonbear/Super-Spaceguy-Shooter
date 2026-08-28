@@ -262,7 +262,7 @@ export function drawBehaviorMarkers(
     hits.push({ kind: 'trigger', index, sx, sy })
 
     const isHov = hovered?.type === 'trigger' && hovered.index === index
-    const s     = isHov ? 6 : 4
+    const s     = isHov ? 7 : 5
 
     if (isHov) {
       const g = s + 4
@@ -301,7 +301,7 @@ export function hitTestBehaviors(
   path: PathData,
   project: (v: Vec3) => [number, number],
   sx: number, sy: number,
-  hitR2 = 64,
+  hitR2 = 144,
 ): { hit: BehaviorHit; distSq: number } | null {
   let best: BehaviorHit | null = null
   let bestD = hitR2

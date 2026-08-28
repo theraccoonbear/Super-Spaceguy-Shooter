@@ -402,6 +402,7 @@ export function SideView() {
       }
       drag.current = { type: 'behavior', hit, startArcFrac, startT, startDur }
       useStore.getState().setHoveredBehavior(hitToHovered(hit))
+      if (cvRef.current) cvRef.current.style.cursor = 'grabbing'
       return
     }
 
@@ -447,6 +448,7 @@ export function SideView() {
       const found = hitToHovered(result?.hit ?? null)
       const cur = useStore.getState().hoveredBehavior
       if (!hoveredEq(found, cur)) useStore.getState().setHoveredBehavior(found)
+      if (cvRef.current) cvRef.current.style.cursor = found ? 'grab' : 'crosshair'
       return
     }
     const rect = getRect()
@@ -581,6 +583,7 @@ export function SideView() {
 
     if (wasBehaviorDrag) {
       drag.current = null
+      if (cvRef.current) cvRef.current.style.cursor = 'grab'
       resumeTemporal()
       return
     }
