@@ -1,6 +1,11 @@
 # Path Behavior System — Design Plan
 
-Status: **Design / pre-implementation spitball**  
+Status: **Implemented.** Tier 2 below (segment tracks + discrete triggers) reflects
+the current `store.ts`/`math/segmentTrack.ts`/`math/craftRoll.ts`/`io/format.ts`
+implementation, not just a proposal. The "Phased Implementation," "Resolved
+Questions," and cinematic-track sections further down are historical design
+record from before the segment-track model existed — read them for context on
+*why*, not as a spec for *what's currently there*.  
 Context: TrailForge at `tools/TrailForge/`; game at `3d/`
 
 ---
@@ -30,58 +35,86 @@ them when present.
 Do NOT collapse these into tracks. Waypoints have spatial meaning and belong in
 the path editor's primary ortho/persp UI.
 
-### Tier 2 — Behavior overlay (new)
+### Tier 2 — Behavior overlay
 
-Two sub-systems:
+**Exactly two categories.** Every current and future behavioral timeline
+belongs to one or the other and inherits that category's full interaction
+contract — canvas rendering, hit-testing/drag mechanics, add/delete UX, value
+editing, and (optionally) loop-seam behavior. No per-item special-casing of
+*interaction mechanics* is allowed; only the domain-specific value/glyph may
+differ between members of a category (e.g. craftRoll's degrees+direction
+fields vs. a scalar track's plain value field — same drag zones, same ease
+model, same everything else).
 
-#### A. Continuous tracks
+#### A. Segment tracks (continuous)
 
-A named array of keyframes. Each keyframe specifies a value at an arc-length
-position. Between keyframes the value is interpolated using the outgoing
-keyframe's easing.
+A named array of **spans**, not points. Each segment covers `[t, t+duration)`
+and eases the accumulated value toward a target over that span; the value
+**holds** at whatever it arrived at between segments (and before the first /
+after the last one, where it holds at 0). This is the same mechanics for
+every segment track — implemented once in `math/segmentTrack.ts`'s
+`evalGenericSegments()` / shared `SegmentTrackRow`-style panel UI /
+`behaviorMarkers.ts` rendering+drag — and reused, not duplicated, by each
+member:
 
 ```
-Track
-  name:   string                 e.g. "craftRoll", "standoff"
-  frames: Keyframe[]
-    .t:     number (0..1)        arc-length fraction (NOT Catmull-Rom t)
-    .value: number
-    .ease:  EaseType             governs transition FROM this keyframe onward
+Segment (generic shape; craftRoll's is its own domain-specific variant — see below)
+  id:       string                stable id, not persisted (regenerated on file load)
+  t:        number (0..1)         arc-length fraction where the segment begins
+  duration: number (0..1)         arc-length extent (min 0.005)
+  value:    number                relative: signed delta · absolute: target value (no wraparound)
+  mode:     'relative' | 'absolute'
+  ease:     'linear' | 'in' | 'out' | 'in-out'
 ```
 
-Tracks take effect when present; absent = waypoint/global values apply.
-A track with a single keyframe is a constant override (useful for "hold at 15°
-the whole way").
+`craftRoll` is the reference member of this category and predates the
+generic engine — it keeps its own domain-specific fields (`degrees`,
+`direction: 'cw'|'ccw'`) instead of a plain signed `value`, because absolute
+mode needs a real "which way around" bit independent of the target angle
+(mod-360 wraparound has no equivalent for a non-circular scalar like
+standoff). Every other segment track uses the plain `value`/`mode` shape
+above. Both plug into the same shared engine via a small `computeTarget`
+adapter — see `math/craftRoll.ts`.
 
-**Initial named tracks (confirmed):**
+**Interaction contract (identical for every segment track):**
+- Add: right-click empty ruler → "Add segment here", or **N** when the track
+  is expanded (adds at the playhead). **Never** click-to-add — accidental
+  clicks on the timeline must never create a segment.
+- Select: click the segment block body.
+- Move: drag the block body (changes `t` only).
+- Resize: drag the left/right edge handles (changes `t`+`duration` or
+  `duration` alone).
+- Delete: right-click → "Delete segment", or select + Del in the expanded editor.
+- Value editing: **NumInput only, never by dragging or mouse-wheel.**
+- Canvas (ortho-view) drag: same body/left-edge/right-edge zones as the panel
+  ruler, projected onto the wire — see "Canvas Interaction" below.
+- Optional loop seam (⟲, only offered when the path is closed): eases the
+  value from wherever the regular segments left it at `1−tailFrac` toward a
+  `targetValue`, across `[1−tailFrac, 1]` and `[0, headFrac]`, so a looped
+  pass starts identically every time. One seam per track, generic shape:
+  `{ tailFrac, headFrac, ease, targetValue }` (craftRoll's is the same shape
+  with `targetAngle` instead of `targetValue`, for the same historical reason
+  as its segment fields above).
+
+**Named segment tracks:**
 
 | Track name        | Units       | Overrides                 | Notes |
-|-------------------|-------------|---------------------------|-------|
-| `craftRoll`       | degrees     | wp-interpolated craftRoll | visual roll of ship model; overrides wp values when present |
+|--------------------|-------------|---------------------------|-------|
+| `craftRoll`       | degrees     | wp-interpolated craftRoll | visual roll of ship model; reference implementation of this category |
 | `standoff`        | world units | global `standoff` field   | distance of craft from wire curve |
-| `offsetAngle`     | degrees     | (new; none currently)     | rotates standoff offset vector around spline tangent; 0=up, 90=left |
-| `speed`           | world-units/frame | global `speed` field | actual travel speed; scales the global value; use to make craft slow/accelerate at specific path positions |
-| `visible`         | 0..1        | (new)                     | craft opacity; 0=fully cloaked, 1=fully visible |
-| `engineBrightness`| 0..1        | (new)                     | engine trail/glow intensity; visual only |
+| `offsetAngle`     | degrees     | (none currently)          | rotates standoff offset vector around spline tangent; 0=up, 90=left |
+| `speed`           | multiplier (×) | global `speed` field   | scales travel speed; use to make craft slow/accelerate at specific path positions. Note: with no segment active yet, the accumulated value is 0 (not 1×) — the craft doesn't move until the first speed segment fires, same as craftRoll holds at 0° before its first segment. This is the segment model's accumulate-from-zero semantics applied consistently, not a per-track special case. |
+| `visible`         | 0..1        | (none)                    | craft opacity; 0=fully cloaked, 1=fully visible |
+| `engineBrightness`| 0..1        | (none)                    | engine trail/glow intensity; visual only |
 
-System is open — any string name is valid. Consumers silently ignore names they
-don't understand. No format versioning needed to add tracks.
-
-**Discrete trigger event types (confirmed):**
-
-| type        | args              | Meaning |
-|-------------|-------------------|---------|
-| `fireMode`  | `off\|on\|target\|willful` | halt / open / target-only / fire at will |
-| `weapon`    | weapon name       | switch weapon type |
-| `shieldMode`| `off\|on\|partial`| boss shield state change |
-| `invuln`    | `0\|1`            | invulnerability window open/close |
-| `phase`     | tag string        | signal game state machine (phase transition hook) |
-| `custom`    | tag, value        | forward-compat escape hatch; both strings |
+System is open — any string name is valid (`+ Add` → custom name…).
+Consumers silently ignore names they don't understand.
 
 #### B. Discrete triggers
 
 An event list. Each trigger fires exactly once when the craft crosses its `t`
-position. Order within a `t` is FIFO (insertion order). Events do not lerp.
+position (a single point, not a span). Order within a `t` is FIFO (insertion
+order). Events do not lerp — there is no "value between two triggers."
 
 ```
 Trigger
@@ -89,17 +122,46 @@ Trigger
   .event: TriggerEvent (union)
 ```
 
-**Initial trigger event types:**
+**Interaction contract (identical for every trigger type — implemented once
+in `TriggerTypeRow`, one row per type):**
+- Add: right-click the type's ruler bar → places a new instance there.
+- Select: click the marker (or the row, which selects the nearest instance).
+- Move: drag the marker — 1D, `t` only (in the panel's position-scrub bar, or
+  on the canvas via the same nearest-point-on-curve mechanics segment tracks
+  use).
+- Delete: the expanded editor's "Del evt" button, or the row's × to clear all
+  instances of that type.
+- Value editing: a type-specific widget (dropdown, text field, etc. — see
+  `TriggerValueEditor`) — this is the *only* thing that varies between
+  trigger types.
+
+**Trigger event types:**
 
 | type        | fields              | Meaning |
 |-------------|---------------------|---------|
 | `fireMode`  | `mode`              | `off` \| `on` \| `target` \| `willful` — "target" fires only when player is in arc; "willful" fires at will regardless |
 | `weapon`    | `name`              | switch to named weapon (string key; game maps to actual weapon) |
+| `shieldMode`| `mode`              | `off` \| `on` \| `partial` — boss shield state change |
+| `invuln`    | `value`             | `0` \| `1` — invulnerability window close/open |
 | `phase`     | `tag`               | signal the game state machine; game interprets meaning |
+| `sound`     | `name`, `volume`, `loop` | trigger a sound cue |
 | `custom`    | `tag`, `value`      | forward-compat escape hatch; both are strings |
 
-More types added as needed. The `custom` type means we never need to version-bump
-the format just to add a one-off game signal.
+More types added as needed. The `custom` type means we never need to
+version-bump the format just to add a one-off game signal.
+
+### Canvas Interaction (ortho views)
+
+Both categories support click-and-drag directly on the 3D/ortho spline
+curve, not just in the Behaviors panel — mirroring the panel's own
+mechanics exactly (segment tracks: body/left-edge/right-edge zones,
+`t`+`duration` only; triggers: `t` only). This is implemented once in
+`views/behaviorMarkers.ts` (`hitTestBehaviors()`, `nearestArcFracOnScreen()`)
+and wired identically into `TopView`, `SideView`, `FrontView` — not
+duplicated per view. `nearestArcFracOnScreen()` is the screen-point → `t`
+inverse of `wireAtFrac()`, used to convert cursor position into an
+arc-length delta during a drag. PerspView remains read-only, consistent with
+its existing "all editing happens in ortho views" design.
 
 ---
 
@@ -156,44 +218,75 @@ After the last keyframe: hold the last keyframe's value.
 ```ts
 type PathType = 'craft' | 'camera'   // omitted in file → 'craft'; old files unaffected
 
-type EaseType = 'linear' | 'smooth' | 'ease-in' | 'ease-out' | 'instant'
+// ── Segment tracks (math/segmentTrack.ts) ──────────────────────────────────
+type SegEase = 'linear' | 'in' | 'out' | 'in-out'
 
-interface TrackKeyframe {
-  t:     number       // 0..1 arc-length normalized
-  value: number
-  ease:  EaseType     // outgoing: governs transition to NEXT keyframe
+interface ScalarSegment {
+  id:       string
+  t:        number             // 0..1 arc-length fraction — start
+  duration: number              // 0..1 arc-length fraction — extent, min 0.005
+  value:    number              // relative: signed delta · absolute: target
+  mode:     'relative' | 'absolute'
+  ease:     SegEase
 }
 
-type FireMode = 'off' | 'on' | 'target' | 'willful'
+interface SegmentLoopSeam {
+  tailFrac:    number           // [0, 0.45]
+  headFrac:    number           // [0, 0.45]
+  ease:        SegEase
+  targetValue: number
+}
+
+// craftRoll's own segment shape (math/craftRoll.ts) — same mechanics, its
+// own domain fields instead of a plain signed value (see Tier 2A above)
+interface CraftRollSegment {
+  id: string; t: number; duration: number
+  degrees: number; direction: 'cw' | 'ccw'
+  mode: 'relative' | 'absolute'; ease: SegEase
+}
+interface CraftRollLoopSeam {
+  tailFrac: number; headFrac: number; ease: SegEase; targetAngle: number
+}
+
+// ── Discrete triggers ───────────────────────────────────────────────────────
+type FireMode   = 'off' | 'on' | 'target' | 'willful'
+type ShieldMode = 'off' | 'on' | 'partial'
 
 type TriggerEvent =
-  | { type: 'fireMode'; mode: FireMode }
-  | { type: 'weapon';   name: string }
-  | { type: 'phase';    tag: string }
-  | { type: 'custom';   tag: string; value: string }
+  | { type: 'fireMode';   mode: FireMode }
+  | { type: 'weapon';     name: string }
+  | { type: 'shieldMode'; mode: ShieldMode }
+  | { type: 'invuln';     value: 0 | 1 }
+  | { type: 'phase';      tag: string }
+  | { type: 'sound';      name: string; volume: number; loop: boolean }
+  | { type: 'custom';     tag: string; value: string }
 
 interface PathTrigger {
   t:     number
   event: TriggerEvent
 }
 
-// PathData extended (src/store.ts)
+// PathData (src/store.ts)
 interface PathData {
   name:     string
-  type:     PathType                          // default 'craft'; absent = 'craft'
+  type:     PathType                                  // default 'craft'; absent = 'craft'
   speed:    number
   orient:   'path' | 'target'
   target:   Vec3
-  standoff: number
   closed:   boolean
   wps:      Waypoint[]
-  tracks:   Record<string, TrackKeyframe[]>   // {} when no tracks
-  triggers: PathTrigger[]                     // [] when no triggers
+  triggers:          PathTrigger[]                     // [] when no triggers
+  craftRollSegments: CraftRollSegment[]                 // [] when no roll segments
+  craftRollLoopSeam: CraftRollLoopSeam | null
+  segmentTracks:     Record<string, ScalarSegment[]>    // {} when no tracks
+  segmentLoopSeams:  Record<string, SegmentLoopSeam | null>
 }
 ```
 
-`tracks` and `triggers` default to empty; existing paths without them parse
-identically to today.
+`triggers`, `craftRollSegments`, and `segmentTracks` default to empty;
+existing paths without them parse identically. Segment `id`s are UI-only
+(React keys + drag tracking) — they are **not** persisted in the `.mvr`
+format and are regenerated randomly on every file load.
 
 ---
 
@@ -203,32 +296,35 @@ The existing parser silently skips any line that doesn't match `[header]`,
 `key=value` (alphanumeric key only), or "all numbers". New line prefixes are
 therefore backward-compatible — old parsers ignore them.
 
-**New line types:**
+**Line types (current, `io/format.ts`):**
 
 ```
-track: <name>, <t>, <value>, <ease>
+segment: <name>, <t>, <duration>, <value>, <mode>, <ease>     — scalar segment tracks
+segseam: <name>, <tailFrac>, <headFrac>, <targetValue>, <ease> — their loop seams
+craftroll: <t>, <duration>, <degrees>, <direction>, <mode>, <ease>  — craftRoll (own line, own fields)
+loopseam: <tailFrac>, <headFrac>, <targetAngle>, <ease>             — craftRoll's own seam
 trigger: <t>, <eventType>, <args...>
 ```
 
-Examples:
+craftRoll keeps distinct `craftroll:`/`loopseam:` lines (no `<name>` column —
+the line prefix itself is the identity) rather than the generic `segment:`/
+`segseam:` shape, matching its own domain-specific field set from Tier 2A.
+
+Example:
 ```
 [boss_sweep]
 speed=0.25
 orient=target:0,20,0
-standoff=8
 closed=0
 
   10   0   0
   25   8  15
   40   0   0
 
-track: craftRoll,   0.00,   0, linear
-track: craftRoll,   0.30,  45, smooth
-track: craftRoll,   0.70, -30, smooth
-track: craftRoll,   1.00,   0, instant
-track: standoff,    0.00,   8, linear
-track: standoff,    0.50,  18, ease-in
-track: standoff,    1.00,   8, ease-out
+segment: standoff, 0.00, 0.20,  8, absolute, linear
+segment: standoff, 0.50, 0.20, 18, absolute, ease-in
+craftroll: 0.00, 0.30, 45, cw, relative, in-out
+craftroll: 0.70, 0.15, 30, ccw, relative, in-out
 trigger: 0.05, fireMode, on
 trigger: 0.55, fireMode, target
 trigger: 0.95, fireMode, off
@@ -236,15 +332,22 @@ trigger: 0.95, fireMode, off
 
 **Trigger event serialization:**
 
-| type      | wire format |
-|-----------|-------------|
-| fireMode  | `trigger: 0.1, fireMode, on` |
-| weapon    | `trigger: 0.2, weapon, spreadshot` |
-| phase     | `trigger: 0.5, phase, angry` |
-| custom    | `trigger: 0.8, custom, myTag, myValue` |
+| type       | wire format |
+|------------|-------------|
+| fireMode   | `trigger: 0.1, fireMode, on` |
+| weapon     | `trigger: 0.2, weapon, spreadshot` |
+| shieldMode | `trigger: 0.3, shieldMode, partial` |
+| invuln     | `trigger: 0.4, invuln, 1` |
+| phase      | `trigger: 0.5, phase, angry` |
+| sound      | `trigger: 0.6, sound, klaxon, 1, 0` |
+| custom     | `trigger: 0.8, custom, myTag, myValue` |
 
-The `custom` type takes two trailing args; all others take one. Parser splits on
-`, ` (comma-space) after the t field.
+The `custom` and `sound` types take multiple trailing args; the rest take
+one. Parser splits on `, ` (comma-space) after the t field.
+
+No file-format back-compat is maintained for the old point-keyframe `track:`
+line — there are no external consumers of `.mvr` yet, so it was replaced
+outright rather than migrated.
 
 ---
 
