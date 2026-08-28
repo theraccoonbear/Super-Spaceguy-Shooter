@@ -2,11 +2,11 @@
 // Screen X → world Z (lateral).  Screen Y up → world Y (altitude).
 // Dragging moves waypoints in Y and Z; X inherited from selected wp on click-to-add.
 
-import { useRef, useCallback, useState, useEffect } from 'react'
+import { useRef, useCallback, useMemo, useState, useEffect } from 'react'
 import { useStore, PathData } from '../store'
 import { CtxMenu } from '../ui/ContextMenu'
-import type { Waypoint } from '../math/vec3'
-import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame } from '../math/spline'
+import type { Waypoint, Vec3 } from '../math/vec3'
+import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, makeArcTable, type SplineSample } from '../math/spline'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
 import { useOrthoCanvas } from './useOrthoCanvas'
@@ -15,7 +15,10 @@ import { drawShipModel, rollFrame } from './shipModel2D'
 import { drawOverlaysYZ } from './overlays'
 import { rotateAroundX, translateWps } from '../math/pathOps'
 import { pauseAfterCheckpoint, resumeTemporal } from './undoHelpers'
-import { drawBehaviorMarkers, hoveredEq, BehaviorHit } from './behaviorMarkers'
+import {
+  drawBehaviorMarkers, hoveredEq, BehaviorHit,
+  nearestArcFracOnScreen, hitTestBehaviors, hitToHovered, drawRollIndicator,
+} from './behaviorMarkers'
 
 const VIEW = 'front' as const
 
@@ -29,6 +32,12 @@ function s2w(sx: number, sy: number, w: number, h: number, scale: number, pan: W
   return {
     wz: (sx - w / 2) / scale - pan.z,
     wy: (h / 2 - sy) / scale - pan.y,
+  }
+}
+function projectFor(w: number, h: number, scale: number, pan: WorldPan) {
+  return (v: Vec3): [number, number] => {
+    const s = w2s(v.z, v.y, w, h, scale, pan)
+    return [s.sx, s.sy]
   }
 }
 
@@ -61,6 +70,12 @@ export function FrontView() {
   const { path, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, setEditGhost,
           hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen } = useStore()
   const behaviorHitsRef = useRef<BehaviorHit[]>([])
+  const samplesRef = useRef<SplineSample[]>([])
+
+  // craftRollSegments' t is arc-length fraction; animT/wp-index are parameter-space —
+  // must convert or roll timing drifts against the visual position (worse the more
+  // unevenly waypoints are spaced). See math/spline.ts makeArcTable.
+  const arcTable = useMemo(() => makeArcTable(path.wps, path.closed), [path])
 
   const ghostRef = useRef<{ path: PathData; wpIdx: number } | null>(null)
   const marqueeRef = useRef<{ startSx: number; startSy: number; curSx: number; curSy: number } | null>(null)
@@ -146,6 +161,7 @@ export function FrontView() {
     }
 
     const samples = buildSpline({ wps: path.wps, closed: path.closed })
+    samplesRef.current = samples
 
     if (samples.length > 1) {
       ctx.beginPath(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5
@@ -172,11 +188,10 @@ export function FrontView() {
       ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fillStyle = '#a78bfa'; ctx.fill()
     }
 
-    // Behavior track keyframe circles + trigger diamonds (under waypoint dots)
+    // Segment-track spans + craftRoll spans + trigger diamonds (draggable; under waypoint dots)
     if (behaviorsOpen) {
-      behaviorHitsRef.current = drawBehaviorMarkers(ctx, samples, path, (v) => {
-        const s = w2s(v.z, v.y, w, h, scale, pan); return [s.sx, s.sy]
-      }, hoveredBehavior, activeBehaviorTrack)
+      behaviorHitsRef.current = drawBehaviorMarkers(ctx, samples, path, projectFor(w, h, scale, pan),
+        hoveredBehavior, activeBehaviorTrack)
     } else {
       behaviorHitsRef.current = []
     }
@@ -187,16 +202,10 @@ export function FrontView() {
       const nSegsWp = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
       path.wps.forEach((wp, i) => {
         const pf  = nSegsWp > 0 ? i / nSegsWp : 0
-        const deg = evalCraftRoll(crSegsAll, pf, path.craftRollLoopSeam)
+        const deg = evalCraftRoll(crSegsAll, arcTable.paramToArc(pf), path.craftRollLoopSeam)
         if (Math.abs(deg) < 0.5) return
         const { sx, sy } = w2s(wp.z, wp.y, w, h, scale, pan)
-        const R = 10; const rad = (deg % 360) * Math.PI / 180
-        ctx.save(); ctx.globalAlpha = 0.65
-        ctx.strokeStyle = deg > 0 ? '#f97316' : '#38bdf8'; ctx.lineWidth = 1.2
-        ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI * 2); ctx.stroke()
-        ctx.beginPath(); ctx.moveTo(sx, sy - R * 0.3)
-        ctx.lineTo(sx + R * Math.sin(rad), sy - R * Math.cos(rad)); ctx.stroke()
-        ctx.restore()
+        drawRollIndicator(ctx, sx, sy, deg, 10, 0.65, 1.2)
       })
     }
 
@@ -220,7 +229,7 @@ export function FrontView() {
 
       // Apply behavior track overrides (skip muted tracks)
       const crSegs       = mutedTracks['craftRoll'] ? [] : (path.craftRollSegments ?? [])
-      const craftRollDeg = evalCraftRoll(crSegs, animFrac, path.craftRollLoopSeam)
+      const craftRollDeg = evalCraftRoll(crSegs, arcTable.paramToArc(animFrac), path.craftRollLoopSeam)
 
       const facing = shipFacing(wire, tan, path.orient, path.target)
       let R, U
@@ -239,13 +248,7 @@ export function FrontView() {
       // Roll arc overlay at playhead (always shown while path exists)
       if (Math.abs(craftRollDeg) > 0.5) {
         const { sx: shipSx, sy: shipSy } = w2s(wire.z, wire.y, w, h, scale, pan)
-        const Rp = 14; const radP = (craftRollDeg % 360) * Math.PI / 180
-        const colP = craftRollDeg > 0 ? '#f97316' : '#38bdf8'
-        ctx.save(); ctx.globalAlpha = 0.9; ctx.strokeStyle = colP; ctx.lineWidth = 1.5
-        ctx.beginPath(); ctx.arc(shipSx, shipSy, Rp, 0, Math.PI * 2); ctx.stroke()
-        ctx.beginPath(); ctx.moveTo(shipSx, shipSy - Rp * 0.3)
-        ctx.lineTo(shipSx + Rp * Math.sin(radP), shipSy - Rp * Math.cos(radP)); ctx.stroke()
-        ctx.restore()
+        drawRollIndicator(ctx, shipSx, shipSy, craftRollDeg, 14, 0.9, 1.5)
       }
     }
 
@@ -273,7 +276,7 @@ export function FrontView() {
       ctx.fillStyle = 'rgba(167,139,250,0.08)'; ctx.fillRect(rx, ry, rw, rh)
       ctx.restore()
     }
-  }, [path, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen])
+  }, [path, arcTable, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen])
 
   const { cvRef, draw: redraw } = useOrthoCanvas(draw, [path, selected, multiSel, playing, animT, editGhost, hoveredBehavior])
 
@@ -298,6 +301,7 @@ export function FrontView() {
     | { type: 'pan';       startSx: number; startSy: number; startPan: WorldPan; startScale: number }
     | { type: 'rotate';    startSx: number; snapshotWps: Waypoint[] }
     | { type: 'translate'; startSx: number; startSy: number; snapshotWps: Waypoint[] }
+    | { type: 'behavior';  hit: BehaviorHit; startArcFrac: number; startT: number; startDur: number }
   const drag      = useRef<DragState | null>(null)
   const hasMoved  = useRef(false)
   const drawRef   = useRef(redraw)
@@ -375,14 +379,41 @@ export function FrontView() {
         pauseAfterCheckpoint()
         ghostRef.current = { path: { ...p, wps: [...p.wps] }, wpIdx: idx }
       }
-    } else if (e.shiftKey) {
+      return
+    }
+
+    if (behaviorsOpen) {
+      const { scale, worldPan: pan } = getCam(VIEW)
+      const project = projectFor(rect.width, rect.height, scale, pan)
+      const hit = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
+      if (hit) {
+        pauseAfterCheckpoint()
+        const startArcFrac = nearestArcFracOnScreen(samplesRef.current, project, sx, sy)
+        const st = useStore.getState()
+        let startT = 0, startDur = 0
+        if (hit.kind === 'trigger') {
+          startT = st.path.triggers[hit.index]?.t ?? 0
+        } else if (hit.category === 'craftRoll') {
+          const seg = st.path.craftRollSegments.find(s => s.id === hit.id)
+          startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
+        } else {
+          const seg = (st.path.segmentTracks[hit.trackName] ?? []).find(s => s.id === hit.id)
+          startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
+        }
+        drag.current = { type: 'behavior', hit, startArcFrac, startT, startDur }
+        useStore.getState().setHoveredBehavior(hitToHovered(hit))
+        return
+      }
+    }
+
+    if (e.shiftKey) {
       marqueeRef.current = { startSx: sx, startSy: sy, curSx: sx, curSy: sy }
       drag.current = { type: 'marquee' }
     } else {
       useStore.getState().setMultiSel([])
       drag.current = { type: 'pan', startSx: sx, startSy: sy, startPan: { ...cam.worldPan }, startScale: cam.scale }
     }
-  }, [])
+  }, [behaviorsOpen])
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (rightCtxRef.current !== null) rightMovedRef.current = true
@@ -390,17 +421,10 @@ export function FrontView() {
     if (!drag.current) {
       const rect = getRect()
       const sx = e.clientX - rect.left, sy = e.clientY - rect.top
-      const HIT_R2 = 64
-      let found = null as import('../store').HoveredBehavior
-      for (const hit of behaviorHitsRef.current) {
-        const dx = sx - hit.sx, dy = sy - hit.sy
-        if (dx * dx + dy * dy <= HIT_R2) {
-          found = hit.kind === 'track'
-            ? { type: 'track', name: hit.name }
-            : { type: 'trigger', index: hit.index }
-          break
-        }
-      }
+      const { scale, worldPan: pan } = getCam(VIEW)
+      const project = projectFor(rect.width, rect.height, scale, pan)
+      const hit = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
+      const found = hitToHovered(hit)
       const cur = useStore.getState().hoveredBehavior
       if (!hoveredEq(found, cur)) useStore.getState().setHoveredBehavior(found)
       return
@@ -460,6 +484,48 @@ export function FrontView() {
       return
     }
 
+    if (drag.current.type === 'behavior') {
+      const { hit, startArcFrac, startT, startDur } = drag.current
+      const { scale, worldPan: pan } = getCam(VIEW)
+      const project = projectFor(rect.width, rect.height, scale, pan)
+      const curArcFrac = nearestArcFracOnScreen(samplesRef.current, project, sx, sy)
+      const delta = curArcFrac - startArcFrac
+      const st = useStore.getState()
+
+      if (hit.kind === 'trigger') {
+        const tr = st.path.triggers[hit.index]
+        if (tr) st.updateTrigger(hit.index, { ...tr, t: Math.max(0, Math.min(1, startT + delta)) })
+      } else if (hit.category === 'craftRoll') {
+        const seg = st.path.craftRollSegments.find(s => s.id === hit.id)
+        if (seg) {
+          if (hit.zone === 'body') {
+            st.updateCraftRollSegment(hit.id, { t: Math.max(0, Math.min(1 - seg.duration, startT + delta)) })
+          } else if (hit.zone === 'right') {
+            st.updateCraftRollSegment(hit.id, { duration: Math.max(0.01, Math.min(1 - seg.t, startDur + delta)) })
+          } else {
+            const newT   = Math.max(0, Math.min(startT + startDur - 0.01, startT + delta))
+            const newDur = Math.max(0.01, startT + startDur - newT)
+            st.updateCraftRollSegment(hit.id, { t: newT, duration: newDur })
+          }
+        }
+      } else {
+        const seg = (st.path.segmentTracks[hit.trackName] ?? []).find(s => s.id === hit.id)
+        if (seg) {
+          if (hit.zone === 'body') {
+            st.updateSegment(hit.trackName, hit.id, { t: Math.max(0, Math.min(1 - seg.duration, startT + delta)) })
+          } else if (hit.zone === 'right') {
+            st.updateSegment(hit.trackName, hit.id, { duration: Math.max(0.01, Math.min(1 - seg.t, startDur + delta)) })
+          } else {
+            const newT   = Math.max(0, Math.min(startT + startDur - 0.01, startT + delta))
+            const newDur = Math.max(0.01, startT + startDur - newT)
+            st.updateSegment(hit.trackName, hit.id, { t: newT, duration: newDur })
+          }
+        }
+      }
+      drawRef.current()
+      return
+    }
+
     if (drag.current.type === 'wp') {
       const { startWz, startWy, startSx, startSy, wpIdx } = drag.current
       const { scale } = getCam(VIEW)
@@ -490,7 +556,14 @@ export function FrontView() {
     const wasMwpDrag       = drag.current.type === 'mwp'
     const wasTransformDrag = drag.current.type === 'rotate' || drag.current.type === 'translate'
     const wasMarquee       = drag.current.type === 'marquee'
+    const wasBehaviorDrag  = drag.current.type === 'behavior'
     if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
+
+    if (wasBehaviorDrag) {
+      drag.current = null
+      resumeTemporal()
+      return
+    }
 
     if (wasTransformDrag) {
       opHintRef.current = ''
