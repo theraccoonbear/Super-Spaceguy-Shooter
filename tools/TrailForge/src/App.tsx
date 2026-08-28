@@ -1,7 +1,7 @@
 // Root layout + animation loop + toolbar + waypoint sidebar.
 // Layout: Top XZ | Side XY | Front YZ | 3D Persp, with sidebar (waypoints + I/O).
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useStore, type PaneName } from './store'
 import { TopView }   from './views/TopView'
 import { SideView }  from './views/SideView'
@@ -15,9 +15,9 @@ import { NodeEditDialog } from './ui/NodeEditDialog'
 import { BehaviorsPanel } from './ui/BehaviorsPanel'
 import { linked as orthoLinked, toggleLinked } from './views/orthoCamera'
 import { uiPrefs, saveUIPrefs } from './prefs'
-import { tangentAt, makeFrame, transportFrame, arcAdvanceAt, applyHolonomyCorrection, measureHolonomy, buildFrameTable } from './math/spline'
+import { tangentAt, makeFrame, transportFrame, arcAdvanceAt, applyHolonomyCorrection, measureHolonomy, buildFrameTable, makeArcTable } from './math/spline'
 import { setFrameTable } from './math/frameCache'
-import { evalTrack } from './views/behaviorMarkers'
+import { evalScalarSegments } from './math/segmentTrack'
 import type { Vec3 } from './math/vec3'
 import { SHORTCUTS, matchesShortcut, shortcutKeys } from './shortcuts'
 import splashUrl from './assets/trail-forge-splash.png'
@@ -36,6 +36,13 @@ function useAnimLoop() {
   animTRef.current        = animT
   setPlayStateRef.current = setPlayState
   mutedTracksRef.current  = mutedTracks
+
+  // Segment tracks' t is arc-length fraction; the RAF loop's animFrac below is
+  // parameter-space — must convert via arcTable or speed timing drifts against
+  // the visual position. Recomputed only when path changes, not per-frame.
+  const arcTable    = useMemo(() => makeArcTable(path.wps, path.closed), [path])
+  const arcTableRef = useRef(arcTable)
+  arcTableRef.current = arcTable
 
   // Frame accumulation state — lives in refs so RAF closure stays stale-free
   const frameRRef   = useRef<Vec3>({ x: 1, y: 0, z: 0 })
@@ -108,11 +115,13 @@ function useAnimLoop() {
       // Arc-length-correct advance: dT is scaled by local derivative magnitude so
       // world-space speed stays constant regardless of inter-node spacing.
       const framesElapsed = dt / 16.667
-      // Apply speed track: scale base speed by track value at current parameter fraction
+      // Apply speed track: scale base speed by segment value at current arc-length fraction
       const muted      = mutedTracksRef.current
-      const speedTrack = muted['speed'] ? null : p.tracks['speed']
-      const animFrac   = nSegs > 0 ? Math.max(0, Math.min(1, (animTRef.current % nSegs) / nSegs)) : 0
-      const speedScale = speedTrack ? evalTrack(speedTrack, animFrac) : 1
+      const speedSegs  = muted['speed'] ? [] : (p.segmentTracks['speed'] ?? [])
+      const speedSeam  = muted['speed'] ? null : (p.segmentLoopSeams['speed'] ?? null)
+      const paramFrac  = nSegs > 0 ? Math.max(0, Math.min(1, (animTRef.current % nSegs) / nSegs)) : 0
+      const arcFrac    = arcTableRef.current.paramToArc(paramFrac)
+      const speedScale = speedSegs.length > 0 ? evalScalarSegments(speedSegs, arcFrac, speedSeam) : 1
       const dT   = arcAdvanceAt(p.wps, animTRef.current, p.closed, p.speed * speedScale * framesElapsed)
       let newT   = animTRef.current + dT
       if (newT >= nSegs) newT -= nSegs
