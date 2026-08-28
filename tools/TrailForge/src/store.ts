@@ -2,26 +2,17 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import { Vec3, Waypoint } from './math/vec3'
 import { CraftRollSegment, CraftRollLoopSeam } from './math/craftRoll'
+import { ScalarSegment, SegmentLoopSeam } from './math/segmentTrack'
 import { uiPrefs, saveUIPrefs } from './prefs'
 
 export type { Waypoint }
 export type { CraftRollSegment, CraftRollLoopSeam }
+export type { ScalarSegment, SegmentLoopSeam }
 export type OrientMode = 'path' | 'target'
 
 /** 'craft' = a flight path for a ship (default, backward-compat).
  *  'camera' = a cinematic camera path; ignored by the game engine. */
 export type PathType = 'craft' | 'camera'
-
-/** Easing applied from this keyframe outward toward the next one.
- *  'instant' = hold value until the next keyframe, then snap. */
-export type EaseType = 'linear' | 'smooth' | 'ease-in' | 'ease-out' | 'instant'
-
-/** One keyframe in a continuous behavior track. t is arc-length fraction 0..1. */
-export interface TrackKeyframe {
-  t:     number
-  value: number
-  ease:  EaseType
-}
 
 export type FireMode = 'off' | 'on' | 'target' | 'willful'
 export type ShieldMode = 'off' | 'on' | 'partial'
@@ -50,16 +41,19 @@ export interface PathData {
   target:   Vec3
   closed:   boolean
   wps:      Waypoint[]
-  /** Named continuous behavior tracks. Key = track name, value = keyframes sorted by t.
-   *  Empty object ({}) when no tracks are defined. */
-  tracks:   Record<string, TrackKeyframe[]>
   /** Discrete events fired when craft crosses position t. Sorted by t. */
   triggers: PathTrigger[]
-  /** Segment-based craft roll authoring. Replaces the old craftRoll keyframe track. */
+  /** Segment-based craft roll authoring. */
   craftRollSegments: CraftRollSegment[]
   /** Loop-point seam: smoothly closes the roll angle gap when the path loops.
    *  null = no seam (may produce a snap at the loop point if roll angle ≠ 0 at end). */
   craftRollLoopSeam: CraftRollLoopSeam | null
+  /** Named continuous behavior tracks — same span/ease/hold model as craftRoll,
+   *  keyed by track name. Key = track name, value = segments sorted by t.
+   *  Empty object ({}) when no tracks are defined. */
+  segmentTracks: Record<string, ScalarSegment[]>
+  /** Per-track loop-point seam, same purpose as craftRollLoopSeam. Key = track name. */
+  segmentLoopSeams: Record<string, SegmentLoopSeam | null>
 }
 
 export type PaneName = 'top' | 'side' | 'front' | 'persp'
@@ -68,8 +62,9 @@ export type PaneName = 'top' | 'side' | 'front' | 'persp'
  *  by hovering a row in the panel or a spatial marker in an ortho view.
  *  UI-only state — NOT tracked in undo history. */
 export type HoveredBehavior =
-  | { type: 'track';   name:  string }
-  | { type: 'trigger'; index: number }
+  | { type: 'track';     name:  string }
+  | { type: 'trigger';   index: number }
+  | { type: 'craftRoll' }
   | null
 
 export interface EditorState {
@@ -111,22 +106,24 @@ export interface EditorState {
   addCraftRollSegment:     (seg: CraftRollSegment) => void
   updateCraftRollSegment:  (id: string, patch: Partial<CraftRollSegment>) => void
   removeCraftRollSegment:  (id: string) => void
-  // ── Loop seam actions ─────────────────────────────────────────────────────
+  // ── Craft roll loop seam actions ──────────────────────────────────────────
   setLoopSeam:             (seam: CraftRollLoopSeam | null) => void
   updateLoopSeam:          (patch: Partial<CraftRollLoopSeam>) => void
 
-  // ── Behavior track actions ────────────────────────────────────────────────
-  /** Replace all keyframes for a named track. Empty array removes the track. */
-  setTrack:       (name: string, frames: TrackKeyframe[]) => void
-  /** Insert a keyframe into a track, keeping the track sorted by t. Creates track if absent. */
-  addKeyframe:    (trackName: string, kf: TrackKeyframe) => void
-  /** Replace one keyframe by index within its track. Re-sorts by t afterward. */
-  updateKeyframe: (trackName: string, index: number, kf: TrackKeyframe) => void
-  /** Remove one keyframe by index. Removes the track entirely if it becomes empty. */
-  removeKeyframe: (trackName: string, index: number) => void
+  // ── Generic segment-track actions (standoff, speed, offsetAngle, etc.) ────
+  /** Replace all segments for a named track. Empty array removes the track. */
+  setSegmentTrack:    (name: string, segs: ScalarSegment[]) => void
+  addSegment:         (name: string, seg: ScalarSegment) => void
+  updateSegment:      (name: string, id: string, patch: Partial<ScalarSegment>) => void
+  removeSegment:      (name: string, id: string) => void
+  // ── Generic segment-track loop seam actions ───────────────────────────────
+  setSegmentLoopSeam:    (name: string, seam: SegmentLoopSeam | null) => void
+  updateSegmentLoopSeam: (name: string, patch: Partial<SegmentLoopSeam>) => void
 
-  /** Reverse the waypoint order, mirroring track/trigger t-values so spatial positions stay
-   *  consistent (t_new = 1 − t_old after direction flip). */
+  /** Reverse the waypoint order, mirroring trigger t-values so spatial positions stay
+   *  consistent (t_new = 1 − t_old after direction flip). Segment tracks (craftRoll and
+   *  the generic segment tracks) are NOT mirrored here — a pre-existing gap, tracked
+   *  identically across every segment track rather than fixed ad hoc for just one. */
   reverseWps: () => void
 
   // ── Trigger event actions ─────────────────────────────────────────────────
@@ -177,10 +174,11 @@ const DEFAULT_PATH: PathData = {
     makeWp( -5, -1,  2),
     makeWp(  8,  0,  2),
   ],
-  tracks:            {},
   triggers:          [],
   craftRollSegments: [],
   craftRollLoopSeam: null,
+  segmentTracks:     {},
+  segmentLoopSeams:  {},
 }
 
 function ensureWp(wp: Vec3): Waypoint {
@@ -190,18 +188,17 @@ function ensureWp(wp: Vec3): Waypoint {
 /** Fill in fields added after the initial release so old localStorage / file
  *  data loads cleanly without crashing. */
 function migratePath(p: Partial<PathData>): PathData {
-  let tracks = (p.tracks && typeof p.tracks === 'object' && !Array.isArray(p.tracks))
-    ? { ...p.tracks as Record<string, TrackKeyframe[]> }
-    : {}
-  delete tracks['craftRoll']  // unsupported track name
   return {
     ...DEFAULT_PATH,
     ...p,
     type:              (p.type ?? 'craft') as PathType,
-    tracks,
     triggers:          Array.isArray(p.triggers)          ? p.triggers          : [],
     craftRollSegments: Array.isArray(p.craftRollSegments) ? p.craftRollSegments : [],
     craftRollLoopSeam: p.craftRollLoopSeam ?? null,
+    segmentTracks:     (p.segmentTracks && typeof p.segmentTracks === 'object' && !Array.isArray(p.segmentTracks))
+      ? p.segmentTracks : {},
+    segmentLoopSeams:  (p.segmentLoopSeams && typeof p.segmentLoopSeams === 'object' && !Array.isArray(p.segmentLoopSeams))
+      ? p.segmentLoopSeams : {},
   }
 }
 
@@ -341,7 +338,7 @@ export const useStore = create<EditorState>()(
         save(path); return { path }
       }),
 
-      // ── Loop seam actions ───────────────────────────────────────────────
+      // ── Craft roll loop seam actions ─────────────────────────────────────
       setLoopSeam: (seam) => set((s) => {
         const path = { ...s.path, craftRollLoopSeam: seam }
         save(path); return { path }
@@ -352,62 +349,59 @@ export const useStore = create<EditorState>()(
         save(path); return { path }
       }),
 
-      // ── Behavior track actions ──────────────────────────────────────────
-      setTrack: (name, frames) => set((s) => {
-        const tracks = { ...s.path.tracks }
-        if (frames.length === 0) {
-          delete tracks[name]
-        } else {
-          tracks[name] = sortByT(frames)
+      // ── Generic segment-track actions ─────────────────────────────────────
+      setSegmentTrack: (name, segs) => set((s) => {
+        const segmentTracks = { ...s.path.segmentTracks }
+        if (segs.length === 0) delete segmentTracks[name]
+        else segmentTracks[name] = sortByT(segs)
+        const path = { ...s.path, segmentTracks }
+        save(path); return { path }
+      }),
+      addSegment: (name, seg) => set((s) => {
+        const existing = s.path.segmentTracks[name] ?? []
+        const segmentTracks = { ...s.path.segmentTracks, [name]: sortByT([...existing, seg]) }
+        const path = { ...s.path, segmentTracks }
+        save(path); return { path }
+      }),
+      updateSegment: (name, id, patch) => set((s) => {
+        const existing = s.path.segmentTracks[name] ?? []
+        const segmentTracks = {
+          ...s.path.segmentTracks,
+          [name]: sortByT(existing.map(seg => seg.id === id ? { ...seg, ...patch } : seg)),
         }
-        const path = { ...s.path, tracks }
-        save(path)
-        return { path }
+        const path = { ...s.path, segmentTracks }
+        save(path); return { path }
+      }),
+      removeSegment: (name, id) => set((s) => {
+        const existing = (s.path.segmentTracks[name] ?? []).filter(seg => seg.id !== id)
+        const segmentTracks = { ...s.path.segmentTracks }
+        if (existing.length === 0) delete segmentTracks[name]
+        else segmentTracks[name] = existing
+        const path = { ...s.path, segmentTracks }
+        save(path); return { path }
       }),
 
-      addKeyframe: (trackName, kf) => set((s) => {
-        const existing = s.path.tracks[trackName] ?? []
-        const tracks = { ...s.path.tracks, [trackName]: sortByT([...existing, kf]) }
-        const path = { ...s.path, tracks }
-        save(path)
-        return { path }
+      // ── Generic segment-track loop seam actions ───────────────────────────
+      setSegmentLoopSeam: (name, seam) => set((s) => {
+        const segmentLoopSeams = { ...s.path.segmentLoopSeams, [name]: seam }
+        const path = { ...s.path, segmentLoopSeams }
+        save(path); return { path }
       }),
-
-      updateKeyframe: (trackName, index, kf) => set((s) => {
-        const existing = [...(s.path.tracks[trackName] ?? [])]
-        existing[index] = kf
-        const tracks = { ...s.path.tracks, [trackName]: sortByT(existing) }
-        const path = { ...s.path, tracks }
-        save(path)
-        return { path }
-      }),
-
-      removeKeyframe: (trackName, index) => set((s) => {
-        const existing = [...(s.path.tracks[trackName] ?? [])]
-        existing.splice(index, 1)
-        const tracks = { ...s.path.tracks }
-        if (existing.length === 0) {
-          delete tracks[trackName]
-        } else {
-          tracks[trackName] = existing
-        }
-        const path = { ...s.path, tracks }
-        save(path)
-        return { path }
+      updateSegmentLoopSeam: (name, patch) => set((s) => {
+        const cur = s.path.segmentLoopSeams[name]
+        if (!cur) return {}
+        const segmentLoopSeams = { ...s.path.segmentLoopSeams, [name]: { ...cur, ...patch } }
+        const path = { ...s.path, segmentLoopSeams }
+        save(path); return { path }
       }),
 
       reverseWps: () => set((s) => {
         const wps = [...s.path.wps].reverse()
-        // Mirror all track keyframe t-values: t_new = 1 - t_old, re-sort ascending
-        const tracks: Record<string, TrackKeyframe[]> = {}
-        for (const [name, frames] of Object.entries(s.path.tracks)) {
-          tracks[name] = frames.map(kf => ({ ...kf, t: 1 - kf.t })).sort((a, b) => a.t - b.t)
-        }
-        // Mirror trigger t-values the same way
+        // Mirror trigger t-values: t_new = 1 - t_old, re-sort ascending
         const triggers = s.path.triggers
           .map(tr => ({ ...tr, t: 1 - tr.t }))
           .sort((a, b) => a.t - b.t)
-        const path = { ...s.path, wps, tracks, triggers }
+        const path = { ...s.path, wps, triggers }
         save(path)
         return { path, status: 'path direction reversed' }
       }),

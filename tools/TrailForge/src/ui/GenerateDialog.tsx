@@ -174,10 +174,11 @@ export function GenerateDialog({ onClose, newRoute }: Props) {
         target:   { x: 0, y: 6, z: 0 },
         closed:   isClosed,
         wps:      wps!,
-        tracks:            {},
         triggers:          [],
         craftRollSegments: [],
         craftRollLoopSeam: null,
+        segmentTracks:     {},
+        segmentLoopSeams:  {},
       })
     } else {
       replaceWps(wps!)

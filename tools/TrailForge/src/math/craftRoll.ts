@@ -4,8 +4,17 @@
 // absolute) with a duration over the arc-length fraction [0..1].
 // Segments are evaluated in t order; angle accumulates across them.
 // Between segments the ship holds at the angle it arrived at.
+//
+// The walk/hold/ease/loop-seam mechanics are shared with every other
+// continuous behavior track via evalGenericSegments (math/segmentTrack.ts).
+// craftRoll supplies only its own domain-specific target computation
+// (mod-360 CW/CCW arithmetic) — everything else routes through the same
+// engine every scalar track uses, so behavior here is unchanged from
+// before this was factored out.
 
-export type CraftRollEase = 'linear' | 'in' | 'out' | 'in-out'
+import { evalGenericSegments, type SegEase } from './segmentTrack'
+
+export type CraftRollEase = SegEase
 
 export interface CraftRollSegment {
   id:        string           // stable id for React keys + drag tracking
@@ -17,14 +26,22 @@ export interface CraftRollSegment {
   ease:      CraftRollEase
 }
 
-function applyEase(t: number, ease: CraftRollEase): number {
-  t = Math.max(0, Math.min(1, t))
-  switch (ease) {
-    case 'linear':  return t
-    case 'in':      return t * t
-    case 'out':     return 1 - (1 - t) * (1 - t)
-    case 'in-out':  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
+// Rotate `entryValue` degrees by this segment's intent — mod-360 CW/CCW math,
+// used by both 'relative' (accumulate a signed delta) and 'absolute' (reach
+// a target heading, rotating the specified direction) modes.
+function craftRollTarget(entryValue: number, seg: CraftRollSegment): number {
+  if (seg.mode === 'relative') {
+    return entryValue + (seg.direction === 'cw' ? seg.degrees : -seg.degrees)
   }
+  // Absolute: reach the given orientation (in the ship's path-following frame)
+  // by rotating in the specified direction. 0° = level, 90° = right wing down, etc.
+  const currentMod = ((entryValue % 360) + 360) % 360
+  if (seg.direction === 'cw') {
+    const dist = (seg.degrees - currentMod + 360) % 360
+    return entryValue + dist
+  }
+  const dist = (currentMod - seg.degrees + 360) % 360
+  return entryValue - dist
 }
 
 /**
@@ -41,63 +58,10 @@ export function evalCraftRoll(
   af:        number,
   loopSeam?: CraftRollLoopSeam | null,
 ): number {
-  // ── Seam zones ─────────────────────────────────────────────────────────────
-  if (loopSeam) {
-    const { tailFrac, headFrac, ease, targetAngle } = loopSeam
-    const tailStart  = Math.max(0, 1 - tailFrac)
-    const totalDur   = Math.max(0.001, tailFrac + headFrac)
-    // Compute the angle at the start of the tail without the seam (no seam arg = no recursion)
-    const tailAngle  = evalCraftRoll(segments, tailStart)
-    const seamAngle  = (localT: number) =>
-      tailAngle + (targetAngle - tailAngle) * applyEase(localT, ease)
-
-    if (af >= tailStart && tailFrac > 0) {
-      // Tail zone: [1−tail, 1]
-      return seamAngle((af - tailStart) / totalDur)
-    }
-    if (af <= headFrac && headFrac > 0) {
-      // Head zone: [0, head]
-      return seamAngle((tailFrac + af) / totalDur)
-    }
-  }
-
-  // ── Regular segment evaluation ──────────────────────────────────────────────
-  if (segments.length === 0) return 0
-  const sorted = [...segments].sort((a, b) => a.t - b.t)
-  let angle = 0
-
-  for (const seg of sorted) {
-    if (af <= seg.t) break
-    const dur          = Math.max(0.005, seg.duration)
-    const segEnd       = seg.t + dur
-    const angleAtEntry = angle
-
-    let target: number
-    if (seg.mode === 'relative') {
-      target = angleAtEntry + (seg.direction === 'cw' ? seg.degrees : -seg.degrees)
-    } else {
-      // Absolute: reach the given orientation (in the ship's path-following frame)
-      // by rotating in the specified direction. 0° = level, 90° = right wing down, etc.
-      const currentMod = ((angleAtEntry % 360) + 360) % 360
-      if (seg.direction === 'cw') {
-        const dist = (seg.degrees - currentMod + 360) % 360
-        target = angleAtEntry + dist
-      } else {
-        const dist = (currentMod - seg.degrees + 360) % 360
-        target = angleAtEntry - dist
-      }
-    }
-
-    if (af >= segEnd) {
-      angle = target
-    } else {
-      const localT = (af - seg.t) / dur
-      angle = angleAtEntry + (target - angleAtEntry) * applyEase(localT, seg.ease)
-      break
-    }
-  }
-
-  return angle
+  const seam = loopSeam
+    ? { tailFrac: loopSeam.tailFrac, headFrac: loopSeam.headFrac, ease: loopSeam.ease, target: loopSeam.targetAngle }
+    : null
+  return evalGenericSegments(segments, af, craftRollTarget, seam)
 }
 
 // ── Loop seam ────────────────────────────────────────────────────────────────

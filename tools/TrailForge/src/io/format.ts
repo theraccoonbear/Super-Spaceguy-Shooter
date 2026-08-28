@@ -1,4 +1,4 @@
-import { PathData, TriggerEvent, EaseType, FireMode, ShieldMode } from '../store'
+import { PathData, TriggerEvent, FireMode, ShieldMode, ScalarSegment, SegmentLoopSeam } from '../store'
 import { type CraftRollEase } from '../math/craftRoll'
 import { Waypoint } from '../math/vec3'
 
@@ -56,13 +56,19 @@ export function exportBlock(p: PathData): string {
     lines.push(`${x}  ${y}  ${z}`)
   }
 
-  // Behavior tracks — one line per keyframe, tracks in sorted-name order
-  const trackNames = Object.keys(p.tracks ?? {}).sort()
+  // Segment tracks — one line per segment, tracks in sorted-name order
+  const trackNames = Object.keys(p.segmentTracks ?? {}).sort()
   if (trackNames.length > 0) {
     lines.push('')
     for (const name of trackNames) {
-      for (const kf of p.tracks[name]) {
-        lines.push(`track: ${name}, ${fmtT(kf.t)}, ${fmt(kf.value)}, ${kf.ease}`)
+      for (const seg of p.segmentTracks[name]) {
+        lines.push(`segment: ${name}, ${fmtT(seg.t)}, ${fmtT(seg.duration)}, ${fmt(seg.value)}, ${seg.mode}, ${seg.ease}`)
+      }
+    }
+    for (const name of trackNames) {
+      const seam = p.segmentLoopSeams?.[name]
+      if (seam) {
+        lines.push(`segseam: ${name}, ${fmtT(seam.tailFrac)}, ${fmtT(seam.headFrac)}, ${fmt(seam.targetValue)}, ${seam.ease}`)
       }
     }
   }
@@ -136,28 +142,51 @@ export function parseBlocks(text: string): Map<string, PathData> {
         target:            { x: 0, y: 0, z: 0 },
         closed:            true,
         wps:               [],
-        tracks:            {},
         triggers:          [],
         craftRollSegments: [],
         craftRollLoopSeam: null,
+        segmentTracks:     {},
+        segmentLoopSeams:  {},
       }
       continue
     }
 
     if (!cur || line.startsWith('#') || line === '') continue
 
-    // Behavior track: "track: name, t, value, ease"
-    if (line.startsWith('track:')) {
-      const parts = line.slice(6).split(',').map(s => s.trim())
-      if (parts.length >= 4) {
-        const name  = parts[0]
-        if (name === 'craftRoll') continue  // unsupported track name; skip
-        const t     = parseFloat(parts[1])
-        const value = parseFloat(parts[2])
-        const ease  = parts[3] as EaseType
-        if (!isNaN(t) && !isNaN(value)) {
-          if (!cur.tracks[name]) cur.tracks[name] = []
-          cur.tracks[name].push({ t, value, ease: ease || 'linear' })
+    // Segment track: "segment: name, t, duration, value, mode, ease"
+    if (line.startsWith('segment:')) {
+      const parts = line.slice(8).split(',').map(s => s.trim())
+      if (parts.length >= 6) {
+        const name     = parts[0]
+        const t        = parseFloat(parts[1])
+        const duration = parseFloat(parts[2])
+        const value    = parseFloat(parts[3])
+        const mode     = parts[4] as 'relative' | 'absolute'
+        const ease     = parts[5] as CraftRollEase
+        if (!isNaN(t) && !isNaN(duration) && !isNaN(value)) {
+          const seg: ScalarSegment = {
+            id: Math.random().toString(36).slice(2, 9),
+            t, duration, value, mode, ease,
+          }
+          if (!cur.segmentTracks[name]) cur.segmentTracks[name] = []
+          cur.segmentTracks[name].push(seg)
+        }
+      }
+      continue
+    }
+
+    // Segment track loop seam: "segseam: name, tailFrac, headFrac, targetValue, ease"
+    if (line.startsWith('segseam:')) {
+      const parts = line.slice(8).split(',').map(s => s.trim())
+      if (parts.length >= 5) {
+        const name        = parts[0]
+        const tailFrac    = parseFloat(parts[1])
+        const headFrac    = parseFloat(parts[2])
+        const targetValue = parseFloat(parts[3])
+        const ease        = parts[4] as CraftRollEase
+        if (!isNaN(tailFrac) && !isNaN(headFrac) && !isNaN(targetValue)) {
+          const seam: SegmentLoopSeam = { tailFrac, headFrac, targetValue, ease: ease || 'in-out' }
+          cur.segmentLoopSeams[name] = seam
         }
       }
       continue
