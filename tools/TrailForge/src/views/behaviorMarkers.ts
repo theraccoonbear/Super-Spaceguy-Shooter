@@ -284,9 +284,17 @@ export function drawBehaviorMarkers(
   return hits
 }
 
-/** Nearest BehaviorHit to a screen point within HIT_R2, or null. Segment
- *  'body' hits are tested against the drawn polyline (not just the midpoint
- *  marker) so grabbing anywhere along a span works, not just its center. */
+/** Nearest BehaviorHit to a screen point within hitR2, with its squared
+ *  distance — callers that also hit-test other elements (waypoints) at the
+ *  same cursor position use the distance to decide which one actually wins
+ *  the click, rather than always favoring one kind. Without this, a trigger
+ *  or segment sitting at (or near) a waypoint — which is the common case,
+ *  since behaviors are naturally placed at meaningful path landmarks — would
+ *  be permanently un-clickable in the canvas.
+ *
+ *  Segment 'body' hits are tested against the drawn polyline (not just the
+ *  midpoint marker) so grabbing anywhere along a span works, not just its
+ *  center. */
 export function hitTestBehaviors(
   hits: BehaviorHit[],
   samples: Array<{ wire: Vec3 }>,
@@ -294,7 +302,7 @@ export function hitTestBehaviors(
   project: (v: Vec3) => [number, number],
   sx: number, sy: number,
   hitR2 = 64,
-): BehaviorHit | null {
+): { hit: BehaviorHit; distSq: number } | null {
   let best: BehaviorHit | null = null
   let bestD = hitR2
   for (const hit of hits) {
@@ -318,7 +326,7 @@ export function hitTestBehaviors(
     const d = dx * dx + dy * dy
     if (d < bestD) { bestD = d; best = hit }
   }
-  return best
+  return best ? { hit: best, distSq: bestD } : null
 }
 
 /** Convert a BehaviorHit to the HoveredBehavior it should light up in the panel. */

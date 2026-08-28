@@ -373,6 +373,50 @@ export function TopView() {
     }
 
     const idx = findNearWp(sx, sy, rect.width, rect.height)
+
+    // Distance to the nearest waypoint under the cursor, if any -- compared
+    // below against the nearest behavior marker so whichever is actually
+    // closer wins the click. Without this, a trigger/segment sitting at (or
+    // near) a waypoint -- the common case, since behaviors are naturally
+    // placed at meaningful path landmarks -- would be permanently shadowed
+    // by the waypoint and never clickable.
+    let wpDistSq = Infinity
+    if (idx >= 0) {
+      const wp = useStore.getState().path.wps[idx]
+      const { scale, worldPan: pan } = getCam(VIEW)
+      const { sx: wx, sy: wy } = w2s(wp.x, wp.z, rect.width, rect.height, scale, pan)
+      wpDistSq = (sx - wx) ** 2 + (sy - wy) ** 2
+    }
+
+    let behaviorResult: { hit: BehaviorHit; distSq: number } | null = null
+    if (behaviorsOpen) {
+      const { scale, worldPan: pan } = getCam(VIEW)
+      const project = projectFor(rect.width, rect.height, scale, pan)
+      behaviorResult = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
+    }
+
+    if (behaviorResult && behaviorResult.distSq <= wpDistSq) {
+      const { hit } = behaviorResult
+      pauseAfterCheckpoint()
+      const { scale, worldPan: pan } = getCam(VIEW)
+      const project = projectFor(rect.width, rect.height, scale, pan)
+      const startArcFrac = nearestArcFracOnScreen(samplesRef.current, project, sx, sy)
+      const st = useStore.getState()
+      let startT = 0, startDur = 0
+      if (hit.kind === 'trigger') {
+        startT = st.path.triggers[hit.index]?.t ?? 0
+      } else if (hit.category === 'craftRoll') {
+        const seg = st.path.craftRollSegments.find(s => s.id === hit.id)
+        startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
+      } else {
+        const seg = (st.path.segmentTracks[hit.trackName] ?? []).find(s => s.id === hit.id)
+        startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
+      }
+      drag.current = { type: 'behavior', hit, startArcFrac, startT, startDur }
+      useStore.getState().setHoveredBehavior(hitToHovered(hit))
+      return
+    }
+
     if (idx >= 0) {
       const { multiSel: ms } = useStore.getState()
       if (ms.length > 0 && ms.includes(idx)) {
@@ -396,30 +440,6 @@ export function TopView() {
       return
     }
 
-    if (behaviorsOpen) {
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const project = projectFor(rect.width, rect.height, scale, pan)
-      const hit = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
-      if (hit) {
-        pauseAfterCheckpoint()
-        const startArcFrac = nearestArcFracOnScreen(samplesRef.current, project, sx, sy)
-        const st = useStore.getState()
-        let startT = 0, startDur = 0
-        if (hit.kind === 'trigger') {
-          startT = st.path.triggers[hit.index]?.t ?? 0
-        } else if (hit.category === 'craftRoll') {
-          const seg = st.path.craftRollSegments.find(s => s.id === hit.id)
-          startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
-        } else {
-          const seg = (st.path.segmentTracks[hit.trackName] ?? []).find(s => s.id === hit.id)
-          startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
-        }
-        drag.current = { type: 'behavior', hit, startArcFrac, startT, startDur }
-        useStore.getState().setHoveredBehavior(hitToHovered(hit))
-        return
-      }
-    }
-
     if (e.shiftKey) {
       // Shift+drag on empty → marquee selection
       marqueeRef.current = { startSx: sx, startSy: sy, curSx: sx, curSy: sy }
@@ -439,8 +459,8 @@ export function TopView() {
       const sx = e.clientX - rect.left, sy = e.clientY - rect.top
       const { scale, worldPan: pan } = getCam(VIEW)
       const project = projectFor(rect.width, rect.height, scale, pan)
-      const hit = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
-      const found = hitToHovered(hit)
+      const result = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
+      const found = hitToHovered(result?.hit ?? null)
       const cur = useStore.getState().hoveredBehavior
       if (!hoveredEq(found, cur)) useStore.getState().setHoveredBehavior(found)
       return
