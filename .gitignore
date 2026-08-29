@@ -46,11 +46,6 @@ src/sys/version.bas
 # Regenerated automatically by buildqb and CI -- never commit these
 src/gameplay/spline_path_gen.bi
 
-# tools/TrailForge is a separate repo (github.com/theraccoonbear/TrailForge),
-# cloned here locally for dev so builds can regenerate its spline_gen.ts too:
-#   git clone git@github.com:theraccoonbear/TrailForge.git tools/TrailForge
-tools/TrailForge/
-
 # Claude Code session memory
 memory/
 .aider*
