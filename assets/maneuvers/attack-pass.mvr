@@ -16,8 +16,14 @@ closed=1
  40.5307    1.1726  -18.9272
  44.5581    6.6549    0.5603
 
+trigger: 0.0000, fireMode, on
+trigger: 0.1760, fireMode, on
+trigger: 0.2767, fireMode, off
+trigger: 0.6302, fireMode, on
+trigger: 0.7296, fireMode, off
+
 craftroll: 0.0621, 0.0639, 30, cw, relative, in-out
-craftroll: 0.3108, 0.0597, 30, ccw, relative, in-out
+craftroll: 0.3108, 0.0636, 30, ccw, relative, in-out
 craftroll: 0.5091, 0.0804, 30, cw, relative, in-out
 craftroll: 0.8005, 0.0833, 30, cw, relative, in-out
 

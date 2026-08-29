@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash tools/hooks/post-bash-ci-check.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/tools/hooks/post-bash-ci-check.sh\""
           }
         ]
       }
