@@ -32,6 +32,17 @@ Dim Shared bsmTargetY    As Single
 Dim Shared bsmTargetZ    As Single
 Dim Shared bsmPathRoll(0 To BSM_WP_MAX - 1)  As Single  ' per-wp path roll (degrees)
 Dim Shared bsmCraftRoll(0 To BSM_WP_MAX - 1) As Single  ' per-wp craft roll (degrees)
+
+' ── phase triggers -- trigger: <t>, phase, <n> lines from the .mvr file ──
+' t is a simplified parameter-space fraction (0..1 of one pass), not true
+' arc-length -- same known simplification TrailForge itself hasn't resolved
+' yet for trigger t (see its issue #209). Good enough for choreographed
+' phase handoffs; not claiming frame-accurate timing.
+Const BSM_TRIG_MAX = 16
+Dim Shared bsmPhaseTrigT(0 To BSM_TRIG_MAX - 1)     As Single   ' 0..1 fraction of one pass
+Dim Shared bsmPhaseTrigVal(0 To BSM_TRIG_MAX - 1)   As Integer  ' target boss.phase
+Dim Shared bsmPhaseTrigCount                        As Integer
+Dim Shared bsmPhaseTrigFired(0 To BSM_TRIG_MAX - 1) As Integer  ' re-armed each pass by BOSS_FlyoverInit
 Dim Shared bsmFlTnX As Single, bsmFlTnY As Single, bsmFlTnZ As Single  ' normalized tangent at current t — written by Case 6, read by boss.bas
 Dim Shared bsmFlCR  As Single                                           ' interpolated craftRoll at current t
 ' Parallel-transport frame (Rodrigues) — updated each Case 6 tick via SpEfTransportFrame.
@@ -123,6 +134,17 @@ Sub BOSS_UpdateMovement()
                 bsmFlTnX = 1 : bsmFlTnY = 0 : bsmFlTnZ = 0
             End If
 
+            ' Phase triggers: trigger: <t>, phase, <n> lines from the .mvr file.
+            ' t is fraction-of-one-pass in parameter space; fires once per pass,
+            ' re-armed by BOSS_FlyoverInit at the start of each new pass.
+            Dim bsmPtI As Integer
+            For bsmPtI = 0 To bsmPhaseTrigCount - 1
+                If bsmPhaseTrigFired(bsmPtI) = 0 And boss.arcAngle >= bsmPhaseTrigT(bsmPtI) * bsmFlNS Then
+                    bsmPhaseTrigFired(bsmPtI) = 1
+                    boss.phase = bsmPhaseTrigVal(bsmPtI)
+                End If
+            Next bsmPtI
+
             ' Parallel transport: maintain frame (R,U) across ticks using Rodrigues rotation.
             ' Matches editor exactly — same SpEfTransportFrame function, same 100% shared math.
             If bsmFlFrameReady = 0 Then
@@ -183,6 +205,10 @@ Sub BOSS_FlyoverInit
         bsmWp(0).z = boss.pz - player.pz
     End If
     bsmFlFrameReady = 0   ' transport frame will be initialized on the first Case 6 tick
+    Dim bfiT As Integer
+    For bfiT = 0 To bsmPhaseTrigCount - 1
+        bsmPhaseTrigFired(bfiT) = 0
+    Next bfiT
 End Sub
 
 ' Called each time the boss fires a volley, when not already mid-flyover.

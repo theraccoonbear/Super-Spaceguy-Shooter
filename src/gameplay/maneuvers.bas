@@ -48,6 +48,7 @@ Sub MNV_ParseBlock(mnvpbRaw As String)
     mnvpbScale   = 1.0
     bsmOrientMode = 0
     bsmTargetX   = 0 : bsmTargetY = 0 : bsmTargetZ = 0
+    bsmPhaseTrigCount = 0
     For mnvpbJ = 0 To BSM_WP_MAX - 1
         bsmPathRoll(mnvpbJ) = 0 : bsmCraftRoll(mnvpbJ) = 0
     Next mnvpbJ
@@ -109,14 +110,38 @@ Sub MNV_ParseBlock(mnvpbRaw As String)
 
         If LCase$(Left$(mnvpbLine, 5)) = "type=" Then GoTo mnvpbNext   ' craft|camera -- only craft used today
 
-        ' ── Behavioral lines (Phase 2, not yet consumed) -- must be skipped
-        ' here, not fall through to waypoint parsing below, or they corrupt
-        ' bsmWpCount with bogus entries (the exact bug this replaces).
+        ' ── Behavioral lines (Phase 2, mostly not yet consumed) -- must be
+        ' skipped here, not fall through to waypoint parsing below, or they
+        ' corrupt bsmWpCount with bogus entries (the exact bug this replaces).
         If LCase$(Left$(mnvpbLine, 8))  = "segment:" Then GoTo mnvpbNext
         If LCase$(Left$(mnvpbLine, 8))  = "segseam:" Then GoTo mnvpbNext
-        If LCase$(Left$(mnvpbLine, 8))  = "trigger:" Then GoTo mnvpbNext
         If LCase$(Left$(mnvpbLine, 10)) = "craftroll:" Then GoTo mnvpbNext
         If LCase$(Left$(mnvpbLine, 9))  = "loopseam:" Then GoTo mnvpbNext
+
+        ' ── trigger: <t>, <type>, <args...> -- only "phase" is consumed today ──
+        If LCase$(Left$(mnvpbLine, 8)) = "trigger:" Then
+            Dim mnvpbTrigRest As String : mnvpbTrigRest = LTrim$(Mid$(mnvpbLine, 9))
+            Dim mnvpbTrigT As Single
+            Dim mnvpbTrigType As String
+            mnvpbSp = InStr(mnvpbTrigRest, ",")
+            If mnvpbSp > 0 Then
+                mnvpbTrigT    = Val(Left$(mnvpbTrigRest, mnvpbSp))
+                mnvpbTrigRest = LTrim$(Mid$(mnvpbTrigRest, mnvpbSp + 1))
+                mnvpbSp       = InStr(mnvpbTrigRest, ",")
+                If mnvpbSp > 0 Then
+                    mnvpbTrigType = LCase$(RTrim$(Left$(mnvpbTrigRest, mnvpbSp - 1)))
+                Else
+                    mnvpbTrigType = LCase$(RTrim$(mnvpbTrigRest))
+                End If
+                If mnvpbTrigType = "phase" And mnvpbSp > 0 And bsmPhaseTrigCount < BSM_TRIG_MAX Then
+                    mnvpbTrigRest = LTrim$(Mid$(mnvpbTrigRest, mnvpbSp + 1))
+                    bsmPhaseTrigT(bsmPhaseTrigCount)   = mnvpbTrigT
+                    bsmPhaseTrigVal(bsmPhaseTrigCount) = Val(mnvpbTrigRest)
+                    bsmPhaseTrigCount = bsmPhaseTrigCount + 1
+                End If
+            End If
+            GoTo mnvpbNext
+        End If
 
         ' ── Waypoint line: X Y Z [pathRoll [craftRoll]] ─────────────────
         If bsmWpCount < BSM_WP_MAX Then

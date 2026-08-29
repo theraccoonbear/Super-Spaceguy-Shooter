@@ -10,3 +10,4 @@ closed=1
  20.0737    7.2170  -15.3361
 
 trigger: 0.0000, fireMode, on
+trigger: 0.9500, phase, 3

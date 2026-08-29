@@ -37,6 +37,14 @@ Dim Shared bsmTargetZ    As Single
 Dim Shared bsmPathRoll(0 To BSM_WP_MAX - 1)  As Single
 Dim Shared bsmCraftRoll(0 To BSM_WP_MAX - 1) As Single
 
+Const BSM_TRIG_MAX = 16
+' bsmPhaseTrigFired isn't declared here -- MNV_ParseBlock never touches it,
+' only BOSS_FlyoverInit/BOSS_UpdateMovement (behavior.bas) do, which this
+' test doesn't include.
+Dim Shared bsmPhaseTrigT(0 To BSM_TRIG_MAX - 1)   As Single
+Dim Shared bsmPhaseTrigVal(0 To BSM_TRIG_MAX - 1) As Integer
+Dim Shared bsmPhaseTrigCount                      As Integer
+
 '$INCLUDE:'../src/gameplay/maneuvers.bas'
 
 ' ── test helpers ─────────────────────────────────────────────────────────────
@@ -145,6 +153,31 @@ For mlbI = 0 To mlbCount - 1
     If mlbNames(mlbI) = "boss-x-flight" Then mlbFoundNew = -1
 Next mlbI
 MT_Assert mlbFoundNew, "ListBlocks: boss-x-flight present"
+Print ""
+
+' -- Scenario 6: phase triggers -- trigger: <t>, phase, <n> is parsed; every
+'    other trigger type is still skipped (not yet consumed, per the header).
+Dim fixture6 As String
+fixture6 = "[phase-trig]" + Chr$(10) + _
+    "speed=0.1" + Chr$(10) + _
+    "orient=path" + Chr$(10) + _
+    "closed=1" + Chr$(10) + _
+    Chr$(10) + _
+    " 0 0 0" + Chr$(10) + _
+    " 5 5 5" + Chr$(10) + _
+    Chr$(10) + _
+    "trigger: 0.1000, fireMode, on" + Chr$(10) + _
+    "trigger: 0.9500, phase, 2" + Chr$(10)
+
+MNV_ParseBlock fixture6
+
+MT_Assert bsmPhaseTrigCount = 1, "phase-trig: only the phase trigger is counted (got " + LTrim$(Str$(bsmPhaseTrigCount)) + ")"
+MT_Assert NearlyEq%(bsmPhaseTrigT(0), 0.95), "phase-trig: t parsed correctly"
+MT_Assert bsmPhaseTrigVal(0) = 2, "phase-trig: target phase parsed correctly (got " + LTrim$(Str$(bsmPhaseTrigVal(0))) + ")"
+
+' re-parsing a block with no trigger: lines must clear the count (no leak)
+MNV_ParseBlock fixture2
+MT_Assert bsmPhaseTrigCount = 0, "phase-trig: count resets on next parse (got " + LTrim$(Str$(bsmPhaseTrigCount)) + ")"
 
 ' ─────────────────────────────────────────────────────────────────────────────
 Print ""

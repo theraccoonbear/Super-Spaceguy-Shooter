@@ -60,15 +60,10 @@ Sub BOSS_Update
 
     If boss.active = 0 Then Exit Sub
 
-    ' phase thresholds
+    ' boss.phase is set at spawn (1) and advanced only by phase triggers
+    ' (trigger: <t>, phase, <n> in the current maneuver -- see behavior.bas
+    ' Case 6); no longer HP-derived.
     bssOldPhase = boss.phase
-    If boss.hp > 20 Then
-        boss.phase = 1
-    ElseIf boss.hp > 10 Then
-        boss.phase = 2
-    Else
-        boss.phase = 3
-    End If
 
     ' phase transition: music tick and speech
     If boss.phase <> bssOldPhase Then
