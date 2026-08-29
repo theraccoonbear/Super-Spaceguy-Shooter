@@ -88,8 +88,8 @@ Sub BOSS_Update
         telemBossPhaseLog = boss.phase
     End If
 
-    ' initial approach: close to combat range (hunt/evade/arc only; charge/flyover handle own X)
-    If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then
+    ' initial approach: close spawn distance down to combat range before the first flyover pass
+    If boss.state = 0 Then
         If boss.px > player.px + BOSS_COMBAT_DIST Then
             boss.px = boss.px + boss.vx * (1.0 + (boss.phase - 1) * 0.4)
         End If
@@ -160,7 +160,7 @@ Sub BOSS_Update
                 End If
             Next bssEJ
             boss.fireTimer = BOSS_FIRE1
-            If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then BOSS_PickMode boss.phase
+            If boss.state = 0 Then BOSS_PickMode
 
         Case 2  ' 5-shot aimed cross
             bssShots = 0
@@ -182,7 +182,7 @@ Sub BOSS_Update
                 End If
             Next bssEJ
             boss.fireTimer = BOSS_FIRE2
-            If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then BOSS_PickMode boss.phase
+            If boss.state = 0 Then BOSS_PickMode
 
         Case 3  ' 7-shot diagonal fan, fast
             bssShots = 0
@@ -199,7 +199,7 @@ Sub BOSS_Update
                 End If
             Next bssEJ
             boss.fireTimer = BOSS_FIRE3
-            If boss.state = 0 Or boss.state = 1 Or boss.state = 4 Then BOSS_PickMode boss.phase
+            If boss.state = 0 Then BOSS_PickMode
         End Select
     End If
 
