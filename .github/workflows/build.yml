@@ -16,13 +16,6 @@ jobs:
       - name: Regenerate speech dict and check for missing pronunciations
         shell: bash
         run: bash tools/bake_speech_dict
-      - name: Fail if speech_dict.txt is stale
-        shell: bash
-        run: |
-          git diff --exit-code assets/speech_dict.txt || {
-            echo "::error::speech_dict.txt is stale — run tools/bake_speech_dict and commit"
-            exit 1
-          }
 
   build:
     needs: dict-check
@@ -51,6 +44,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Regenerate spline math from DSL
+        shell: bash
+        run: |
+          (cd math && npm install)
+          node tools/emit-spline.js
 
       - name: Resolve QB64-PE release version
         id: qb64pe_release

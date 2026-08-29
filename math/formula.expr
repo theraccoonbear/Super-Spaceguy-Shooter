@@ -1,0 +1,309 @@
+# math/spline-frame.expr
+# ALL boss-flight spline math in ExprForge DSL.
+# Single source of truth -- no QB64, no TypeScript here.
+#
+# QB64-PE SCOPE RULE: All Dim statements inside Subs share a module-wide
+# namespace. Every let binding uses a function-specific prefix to avoid
+# collisions across the 9 generated SUBs:
+#   mf = SpEfMkFrame     ap = SpEfActualPos    rf = SpEfRollFrame
+#   cw = SpEfCrWeights   dw = SpEfCrDerivWeights
+#   fn = SpEfFacingNorm  aa = SpEfArcAdvance    tf = SpEfTransportFrame
+#   fr = SpEfFrustumAtX  hc = SpEfApplyHolonomyCorrection
+#   mh = SpEfMeasureHolonomy  yp = SpEfYawPitch  rl = SpEfRollFromFrame
+#   pa = SpEfPhaseApproachRate  va = SpEfVelocityAttitude  ha = SpEfHolonomyAngle
+#
+# Macros available (registered by emit-spline.js before loadExpr):
+#   len3(x,y,z)                          -- sqrt(x^2+y^2+z^2)
+#   safeDiv(a,b,fallback)                -- a/b guarded against abs(b)<EPS
+#   dot3(ax,ay,az,bx,by,bz)             -- scalar dot product
+#   cross3(ax,ay,az,bx,by,bz)           -- { x, y, z } cross product
+#   normalize3(ax,ay,az,fx,fy,fz)       -- { x, y, z } unit vector, fallback f
+#
+# Downstream generated files (never hand-edit):
+#   src/gameplay/spline_path_gen.bi           QB64
+#   tools/TrailForge/src/math/spline_gen.ts  TypeScript
+#
+# Regenerate both with:  node tools/emit-spline.js
+
+# -- SpEfMkFrame --------------------------------------------------------------
+# Gram-Schmidt frame from normalised tangent (tx, ty, tz).
+# worldUp = (0,0,1) when abs(ty)>0.98, else (0,1,0).
+# R = normalize(T x worldUp),  U = R x T
+# Outputs: rx, ry, rz, ux, uy, uz
+
+fn SpEfMkFrame(tx, ty, tz):
+  let mfWy     = abs(ty) > 0.98 ? 0 : 1;
+  let mfWz     = abs(ty) > 0.98 ? 1 : 0;
+  let mfCrossX = ty * mfWz - tz * mfWy;
+  let mfCrossY = -(tx * mfWz);
+  let mfCrossZ = tx * mfWy;
+  let mfRLen   = len3(mfCrossX, mfCrossY, mfCrossZ);
+  let mfRxN    = safeDiv(mfCrossX, mfRLen, 0);
+  let mfRyN    = safeDiv(mfCrossY, mfRLen, 0);
+  let mfRzN    = safeDiv(mfCrossZ, mfRLen, 1);
+  return {
+    rx: mfRxN,
+    ry: mfRyN,
+    rz: mfRzN,
+    ux: mfRyN * tz - mfRzN * ty,
+    uy: mfRzN * tx - mfRxN * tz,
+    uz: mfRxN * ty - mfRyN * tx
+  };
+
+# -- SpEfActualPos ------------------------------------------------------------
+# actual = wire + standoff*(cos(pathRoll)*U + sin(pathRoll)*R)
+# (wy_wire/wz_wire avoid collision with local ap-prefixed bindings)
+# Outputs: x, y, z
+
+fn SpEfActualPos(wx, wy_wire, wz_wire, tx, ty, tz, prDeg, so):
+  let apWy     = abs(ty) > 0.98 ? 0 : 1;
+  let apWz     = abs(ty) > 0.98 ? 1 : 0;
+  let apCrossX = ty * apWz - tz * apWy;
+  let apCrossY = -(tx * apWz);
+  let apCrossZ = tx * apWy;
+  let apRLen   = len3(apCrossX, apCrossY, apCrossZ);
+  let apRxN    = safeDiv(apCrossX, apRLen, 0);
+  let apRyN    = safeDiv(apCrossY, apRLen, 0);
+  let apRzN    = safeDiv(apCrossZ, apRLen, 1);
+  let apUx     = apRyN * tz - apRzN * ty;
+  let apUy     = apRzN * tx - apRxN * tz;
+  let apUz     = apRxN * ty - apRyN * tx;
+  let apRad    = prDeg * (3.141592653589793 / 180);
+  let apC      = cos(apRad);
+  let apS      = sin(apRad);
+  return {
+    x: wx      + so * (apC * apUx + apS * apRxN),
+    y: wy_wire + so * (apC * apUy + apS * apRyN),
+    z: wz_wire + so * (apC * apUz + apS * apRzN)
+  };
+
+# -- SpEfRollFrame ------------------------------------------------------------
+# rolledU = cos(rad)*U - sin(rad)*R
+# rolledR = sin(rad)*U + cos(rad)*R
+# Outputs: rolledUx, rolledUy, rolledUz, rolledRx, rolledRy, rolledRz
+
+fn SpEfRollFrame(ux, uy, uz, rx, ry, rz, crDeg):
+  let rfRad = crDeg * (3.141592653589793 / 180);
+  let rfC   = cos(rfRad);
+  let rfS   = sin(rfRad);
+  return {
+    rolledUx: rfC * ux + rfS * rx,
+    rolledUy: rfC * uy + rfS * ry,
+    rolledUz: rfC * uz + rfS * rz,
+    rolledRx: -rfS * ux + rfC * rx,
+    rolledRy: -rfS * uy + rfC * ry,
+    rolledRz: -rfS * uz + rfC * rz
+  };
+
+# -- SpEfCrWeights ------------------------------------------------------------
+# Catmull-Rom basis weights for position interpolation (pre-multiplied by 0.5).
+# Outputs: w0, w1, w2, w3
+
+fn SpEfCrWeights(t):
+  let cwT2 = t * t;
+  let cwT3 = cwT2 * t;
+  return {
+    w0: 0.5 * (-cwT3 + 2 * cwT2 - t),
+    w1: 0.5 * (3 * cwT3 - 5 * cwT2 + 2),
+    w2: 0.5 * (-3 * cwT3 + 4 * cwT2 + t),
+    w3: 0.5 * (cwT3 - cwT2)
+  };
+
+# -- SpEfCrDerivWeights ------------------------------------------------------
+# Catmull-Rom derivative (tangent) basis weights.
+# Mirrors SpTangentAt in spline_path.bi and the inline tangent in behavior.bas.
+# Outputs: dw0, dw1, dw2, dw3
+
+fn SpEfCrDerivWeights(t):
+  let dwT2 = t * t;
+  return {
+    dw0: 0.5 * (-3 * dwT2 + 4 * t - 1),
+    dw1: 0.5 * (9 * dwT2 - 10 * t),
+    dw2: 0.5 * (-9 * dwT2 + 8 * t + 1),
+    dw3: 0.5 * (3 * dwT2 - 2 * t)
+  };
+
+# -- SpEfFacingNorm ----------------------------------------------------------
+# Safe-normalize direction vector (dx, dy, dz).
+# Fallback (0,1,0) when len < EPS so callers always receive a unit vector.
+# NOTE: normalize3 injects a shared binding (__exprforgeMathNrmLen2).
+# Only one fn in this file may call normalize3 (QB64 Dim scope constraint).
+# Outputs: fx, fy, fz
+
+fn SpEfFacingNorm(dx, dy, dz):
+  let fnNorm = normalize3(dx, dy, dz, 0, 1, 0);
+  return { fx: fnNorm.x, fy: fnNorm.y, fz: fnNorm.z };
+
+# -- SpEfArcAdvance ----------------------------------------------------------
+# Arc-length reparameterization: advance = speed / abs(tangent)
+# Falls back to speed when the tangent is near-zero (degenerate segment).
+# Outputs: advance
+
+fn SpEfArcAdvance(tx, ty, tz, speed):
+  let aaTanLen = len3(tx, ty, tz);
+  return { advance: safeDiv(speed, aaTanLen, speed) };
+
+# -- SpEfTransportFrame ------------------------------------------------------
+# Rodrigues parallel-transport: rotates frame (rx,ry,rz, ux,uy,uz) from
+# unit tangent T0 to unit tangent T1, preserving orientation with no twist.
+#
+# Rotation axis  b  = T0 x T1  (abs(b) = sinA for unit tangents)
+# Rodrigues:  vOut = v*cosA + (bxv)*sinA + k*(k.v)*(1-cosA)
+#             where k = b/abs(b) (unit axis), sinA = abs(b), cosA = T0.T1
+#
+# Falls back to identity (frame unchanged) when T0 approx T1 (abs(b) < EPS).
+# Outputs: newRx, newRy, newRz, newUx, newUy, newUz
+
+fn SpEfTransportFrame(tx0, ty0, tz0, tx1, ty1, tz1, rx, ry, rz, ux, uy, uz):
+  let tfB    = cross3(tx0, ty0, tz0, tx1, ty1, tz1);
+  let tfBx   = tfB.x;
+  let tfBy   = tfB.y;
+  let tfBz   = tfB.z;
+  let tfBLen = len3(tfBx, tfBy, tfBz);
+  let tfCosA = dot3(tx0, ty0, tz0, tx1, ty1, tz1);
+  let tfKx   = safeDiv(tfBx, tfBLen, 0);
+  let tfKy   = safeDiv(tfBy, tfBLen, 0);
+  let tfKz   = safeDiv(tfBz, tfBLen, 1);
+  let tf1mC  = 1 - tfCosA;
+  let tfKdR  = dot3(tfKx, tfKy, tfKz, rx, ry, rz);
+  let kXr    = cross3(tfKx, tfKy, tfKz, rx, ry, rz);
+  let tfCKRx = kXr.x;
+  let tfCKRy = kXr.y;
+  let tfCKRz = kXr.z;
+  let tfKdU  = dot3(tfKx, tfKy, tfKz, ux, uy, uz);
+  let kXu    = cross3(tfKx, tfKy, tfKz, ux, uy, uz);
+  let tfCKUx = kXu.x;
+  let tfCKUy = kXu.y;
+  let tfCKUz = kXu.z;
+  return {
+    newRx: tfBLen > 0.000001 ? rx * tfCosA + tfCKRx * tfBLen + tfKx * tfKdR * tf1mC : rx,
+    newRy: tfBLen > 0.000001 ? ry * tfCosA + tfCKRy * tfBLen + tfKy * tfKdR * tf1mC : ry,
+    newRz: tfBLen > 0.000001 ? rz * tfCosA + tfCKRz * tfBLen + tfKz * tfKdR * tf1mC : rz,
+    newUx: tfBLen > 0.000001 ? ux * tfCosA + tfCKUx * tfBLen + tfKx * tfKdU * tf1mC : ux,
+    newUy: tfBLen > 0.000001 ? uy * tfCosA + tfCKUy * tfBLen + tfKy * tfKdU * tf1mC : uy,
+    newUz: tfBLen > 0.000001 ? uz * tfCosA + tfCKUz * tfBLen + tfKz * tfKdU * tf1mC : uz
+  };
+
+# -- SpEfFrustumAtX ----------------------------------------------------------
+# Half-extents of the visible frustum at world X depth atX.
+# dist = atX - camX;  halfY = dist * tanHfov;  halfZ = halfY * aspect
+# Outputs: halfY, halfZ
+
+fn SpEfFrustumAtX(atX, camX, tanHfov, aspect):
+  let frDist = atX - camX;
+  return {
+    halfY: frDist * tanHfov,
+    halfZ: frDist * tanHfov * aspect
+  };
+
+# -- SpEfApplyHolonomyCorrection ---------------------------------------------
+# Distributes a per-tick holonomy counter-twist so a closed parallel-transport
+# frame returns to its starting orientation after exactly one full loop.
+# Call after SpEfTransportFrame each animation tick (closed paths only).
+#
+# angle = -holonomy * dArcFrac  (rotation in the (R,U) plane, around T)
+# corrR =  cos*R + sin*U
+# corrU = -sin*R + cos*U
+#
+# Prefix: hc
+# Outputs: corrRx, corrRy, corrRz, corrUx, corrUy, corrUz
+
+fn SpEfApplyHolonomyCorrection(rx, ry, rz, ux, uy, uz, holonomy, dArcFrac):
+  let hcAngle = -(holonomy * dArcFrac);
+  let hcC     = cos(hcAngle);
+  let hcS     = sin(hcAngle);
+  return {
+    corrRx:  hcC * rx + hcS * ux,
+    corrRy:  hcC * ry + hcS * uy,
+    corrRz:  hcC * rz + hcS * uz,
+    corrUx: -hcS * rx + hcC * ux,
+    corrUy: -hcS * ry + hcC * uy,
+    corrUz: -hcS * rz + hcC * uz
+  };
+
+# -- SpEfMeasureHolonomy ------------------------------------------------------
+# Returns the two dot products needed to compute the holonomy angle after one
+# full closed-loop parallel transport.
+# Host calls atan2(dotRU, dotRR) to get holonomy in radians.
+# (finalRx,finalRy,finalRz) = R after one full loop; (r0x..u0z) = initial frame.
+#
+# Prefix: mh
+# Outputs: dotRR, dotRU
+
+fn SpEfMeasureHolonomy(finalRx, finalRy, finalRz, r0x, r0y, r0z, u0x, u0y, u0z):
+  return {
+    dotRR: dot3(finalRx, finalRy, finalRz, r0x, r0y, r0z),
+    dotRU: dot3(finalRx, finalRy, finalRz, u0x, u0y, u0z)
+  };
+
+# -- SpEfYawPitch --------------------------------------------------------------
+# Ship-body yaw/pitch (degrees) from any direction vector (path tangent or a
+# fixed-target facing vector -- same formula either way). horizLen is returned
+# so the host can guard the near-vertical case exactly as before (pitch is
+# still computed, just noisy when horizLen is tiny -- host decides whether to
+# use it, matching the prior "leave previous value" fallback behavior).
+#
+# Prefix: yp
+# Outputs: yaw, pitch, horizLen
+
+fn SpEfYawPitch(dx, dy, dz):
+  let ypHoriz = sqrt(dx * dx + dz * dz);
+  return {
+    yaw:      atan2(dz, -dx) * (180 / 3.141592653589793),
+    pitch:    atan2(-dy, ypHoriz) * (180 / 3.141592653589793),
+    horizLen: ypHoriz
+  };
+
+# -- SpEfRollFromFrame ---------------------------------------------------------
+# Banking angle (degrees) from a right/up frame's Y components: atan2(R.y, U.y).
+# Feed it the tangent-based transport frame (R,U) for path-following orient,
+# or SpEfMkFrame's output on the facing vector for fixed-target orient -- using
+# the tangent frame in target mode gives a roll unrelated to which way the
+# ship is actually facing (this was the boss-flip bug).
+#
+# Prefix: rl
+# Outputs: roll
+
+fn SpEfRollFromFrame(ry, uy):
+  return { roll: atan2(ry, uy) * (180 / 3.141592653589793) };
+
+# -- SpEfPhaseApproachRate -----------------------------------------------------
+# Pre-flyover approach: X-closing rate scales up with boss phase (30% faster
+# per phase). Used for the state-0 "close spawn distance to combat range"
+# step, before the boss's first flyover pass.
+#
+# Prefix: pa
+# Outputs: rate
+
+fn SpEfPhaseApproachRate(baseVx, phase):
+  return { rate: baseVx * (1 + (phase - 1) * 0.4) };
+
+# -- SpEfVelocityAttitude -------------------------------------------------------
+# Approximate roll/pitch/yaw (degrees) from frame-delta velocity, clamped to
+# sane ranges. Used only outside flyover (state 0, before the spline tangent
+# is available) -- state 6 uses SpEfYawPitch/SpEfRollFromFrame on the actual
+# tangent instead.
+#
+# Prefix: va
+# Outputs: rx, ry, rz
+
+fn SpEfVelocityAttitude(vx, vy, vz):
+  let vaRxRaw = vz * 90 - vx * 15;
+  let vaRyRaw = -(vz * 35);
+  let vaRzRaw = vy * 60;
+  return {
+    rx: vaRxRaw > 70 ? 70 : (vaRxRaw < -70 ? -70 : vaRxRaw),
+    ry: vaRyRaw > 28 ? 28 : (vaRyRaw < -28 ? -28 : vaRyRaw),
+    rz: vaRzRaw > 50 ? 50 : (vaRzRaw < -50 ? -50 : vaRzRaw)
+  };
+
+# -- SpEfHolonomyAngle ----------------------------------------------------------
+# Combines SpEfMeasureHolonomy's two dot products into the holonomy angle
+# (radians) via atan2. Split out so no consumer (QB64 or TS) ever calls
+# atan2 by hand on these dot products.
+#
+# Prefix: ha
+# Outputs: angle
+
+fn SpEfHolonomyAngle(dotRR, dotRU):
+  return { angle: atan2(dotRU, dotRR) };

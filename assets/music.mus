@@ -75,7 +75,7 @@ CHORD em_pad
 DRUMS game_norm
 
 # ================================================================
-# BOSS  (same BPM, harder pattern, reuses bass/lead insts)
+# BOSS  (phase 1 — 140 BPM, harder pattern, reuses bass/lead insts)
 # ================================================================
 SEQ boss_bass   E2 4  R 4   E2 4  Eb2 4  G2 4  R 4  F2 4  E2 4
 SEQ boss_lead   E5 2  R 2   F5 2  R 2   E5 2  D5 2  Db5 2  B4 2  E5 2  R 2  G5 2  R 2  F5 2  E5 2  Eb5 2  R 2
@@ -85,6 +85,28 @@ DRUM game_boss  KH H H KH SH H H H KH H H KH SH H H H
 CUE boss  140
 VOICE bass  boss_bass
 VOICE lead  boss_lead
+DRUMS game_boss
+
+# ================================================================
+# BOSS2  (phase 2 — 158 BPM, denser syncopation, same drum faster)
+# ================================================================
+SEQ boss2_bass  E2 2  R 2  Eb2 2  D2 2  E2 4  G2 2  R 2  F2 2  E2 2
+SEQ boss2_lead  E5 1  R 1  G5 2  F5 1  R 1  E5 2  D5 1  Db5 1  B4 2  E5 1  R 1  G5 1  F5 1  E5 2  Eb5 1  R 1  D5 2
+
+CUE boss2  158
+VOICE bass  boss2_bass
+VOICE lead  boss2_lead
+DRUMS game_boss
+
+# ================================================================
+# BOSS3  (phase 3 — 176 BPM, relentless 8ths, same drum at peak tempo)
+# ================================================================
+SEQ boss3_bass  E2 2  Eb2 2  D2 2  E2 2  G2 2  F2 2  E2 2  D2 2
+SEQ boss3_lead  E5 1  G5 1  F5 1  E5 1  D5 2  Db5 1  B4 1  E5 1  G5 1  F5 2  E5 1  Eb5 1  D5 1  Db5 1  B4 2  E5 2
+
+CUE boss3  176
+VOICE bass  boss3_bass
+VOICE lead  boss3_lead
 DRUMS game_boss
 
 # ================================================================

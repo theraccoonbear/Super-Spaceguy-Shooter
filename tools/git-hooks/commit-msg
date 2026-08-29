@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# commit-msg hook -- blocks AI-attribution trailers from ever landing in a
+# commit message again (Co-Authored-By: Claude / Claude-Session: lines).
+#
+# Enabled per-clone via: git config core.hooksPath tools/git-hooks
+# (not automatic -- git does not auto-discover a tracked hooks directory)
+
+msg_file="$1"
+
+if grep -qiE '^Co-Authored-By:\s*Claude|^Claude-Session:' "$msg_file"; then
+    echo "commit-msg hook: blocked -- AI attribution trailer found in commit message." >&2
+    echo "Remove any 'Co-Authored-By: Claude ...' or 'Claude-Session: ...' line and retry." >&2
+    exit 1
+fi
+
+exit 0
