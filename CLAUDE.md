@@ -29,6 +29,10 @@
 - Every PR body must include `Closes #N` (or `Fixes #N`) for each GitHub issue the PR resolves. Without it the issue will not auto-close on merge.
 - After every commit on a PR branch, push immediately. The user tests from a separate working copy and cannot see local commits.
 
+## Commit hygiene
+- No AI attribution trailers in commit messages or PR bodies -- no `Co-Authored-By: Claude ...`, no `Claude-Session:`, nothing similar. `.claude/settings.json`'s `attribution` block disables these at the source; `tools/git-hooks/commit-msg` is a backstop that rejects a commit containing one.
+- One-time per clone: `git config core.hooksPath tools/git-hooks` (git does not auto-discover a tracked hooks directory).
+
 ## Pre-commit checklist — run ALL of these locally before every commit/push
 1. **Build**: `./tools/buildqb sss.bas` — must complete with no errors
 2. **Smoke test**: `builds/sss --version` — must print the version and exit 0
