@@ -9,7 +9,8 @@
 #   cw = SpEfCrWeights   dw = SpEfCrDerivWeights
 #   fn = SpEfFacingNorm  aa = SpEfArcAdvance    tf = SpEfTransportFrame
 #   fr = SpEfFrustumAtX  hc = SpEfApplyHolonomyCorrection
-#   mh = SpEfMeasureHolonomy
+#   mh = SpEfMeasureHolonomy  yp = SpEfYawPitch  rl = SpEfRollFromFrame
+#   pa = SpEfPhaseApproachRate  va = SpEfVelocityAttitude  ha = SpEfHolonomyAngle
 #
 # Macros available (registered by emit-spline.js before loadExpr):
 #   len3(x,y,z)                          -- sqrt(x^2+y^2+z^2)
@@ -234,3 +235,75 @@ fn SpEfMeasureHolonomy(finalRx, finalRy, finalRz, r0x, r0y, r0z, u0x, u0y, u0z):
     dotRR: dot3(finalRx, finalRy, finalRz, r0x, r0y, r0z),
     dotRU: dot3(finalRx, finalRy, finalRz, u0x, u0y, u0z)
   };
+
+# -- SpEfYawPitch --------------------------------------------------------------
+# Ship-body yaw/pitch (degrees) from any direction vector (path tangent or a
+# fixed-target facing vector -- same formula either way). horizLen is returned
+# so the host can guard the near-vertical case exactly as before (pitch is
+# still computed, just noisy when horizLen is tiny -- host decides whether to
+# use it, matching the prior "leave previous value" fallback behavior).
+#
+# Prefix: yp
+# Outputs: yaw, pitch, horizLen
+
+fn SpEfYawPitch(dx, dy, dz):
+  let ypHoriz = sqrt(dx * dx + dz * dz);
+  return {
+    yaw:      atan2(dz, -dx) * (180 / 3.141592653589793),
+    pitch:    atan2(-dy, ypHoriz) * (180 / 3.141592653589793),
+    horizLen: ypHoriz
+  };
+
+# -- SpEfRollFromFrame ---------------------------------------------------------
+# Banking angle (degrees) from a right/up frame's Y components: atan2(R.y, U.y).
+# Feed it the tangent-based transport frame (R,U) for path-following orient,
+# or SpEfMkFrame's output on the facing vector for fixed-target orient -- using
+# the tangent frame in target mode gives a roll unrelated to which way the
+# ship is actually facing (this was the boss-flip bug).
+#
+# Prefix: rl
+# Outputs: roll
+
+fn SpEfRollFromFrame(ry, uy):
+  return { roll: atan2(ry, uy) * (180 / 3.141592653589793) };
+
+# -- SpEfPhaseApproachRate -----------------------------------------------------
+# Pre-flyover approach: X-closing rate scales up with boss phase (30% faster
+# per phase). Used for the state-0 "close spawn distance to combat range"
+# step, before the boss's first flyover pass.
+#
+# Prefix: pa
+# Outputs: rate
+
+fn SpEfPhaseApproachRate(baseVx, phase):
+  return { rate: baseVx * (1 + (phase - 1) * 0.4) };
+
+# -- SpEfVelocityAttitude -------------------------------------------------------
+# Approximate roll/pitch/yaw (degrees) from frame-delta velocity, clamped to
+# sane ranges. Used only outside flyover (state 0, before the spline tangent
+# is available) -- state 6 uses SpEfYawPitch/SpEfRollFromFrame on the actual
+# tangent instead.
+#
+# Prefix: va
+# Outputs: rx, ry, rz
+
+fn SpEfVelocityAttitude(vx, vy, vz):
+  let vaRxRaw = vz * 90 - vx * 15;
+  let vaRyRaw = -(vz * 35);
+  let vaRzRaw = vy * 60;
+  return {
+    rx: vaRxRaw > 70 ? 70 : (vaRxRaw < -70 ? -70 : vaRxRaw),
+    ry: vaRyRaw > 28 ? 28 : (vaRyRaw < -28 ? -28 : vaRyRaw),
+    rz: vaRzRaw > 50 ? 50 : (vaRzRaw < -50 ? -50 : vaRzRaw)
+  };
+
+# -- SpEfHolonomyAngle ----------------------------------------------------------
+# Combines SpEfMeasureHolonomy's two dot products into the holonomy angle
+# (radians) via atan2. Split out so no consumer (QB64 or TS) ever calls
+# atan2 by hand on these dot products.
+#
+# Prefix: ha
+# Outputs: angle
+
+fn SpEfHolonomyAngle(dotRR, dotRU):
+  return { angle: atan2(dotRU, dotRR) };

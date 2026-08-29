@@ -54,15 +54,19 @@ Dim Shared bsmFlFrameReady As Integer                                         ' 
 
 Sub BOSS_UpdateMovement()
     Dim bsmFt As Single, bsmFseg As Integer
-    Dim bsmFu As Single, bsmFu2 As Single, bsmFu3 As Single
+    Dim bsmFu As Single
     Dim bsmFi0 As Integer, bsmFi1 As Integer, bsmFi2 As Integer, bsmFi3 As Integer
-    Dim bsmFw0 As Single, bsmFw1 As Single, bsmFw2 As Single, bsmFw3 As Single
     Dim bsmFlNS As Integer     ' number of segments (nWps for closed, nWps-1 for open)
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
     Dim bsmFlAXD As Double, bsmFlAYD As Double, bsmFlAZD As Double  ' Double temps for SpEfActualPos
     Dim bsmTfNRX As Double, bsmTfNRY As Double, bsmTfNRZ As Double  ' SpEfTransportFrame output R
     Dim bsmTfNUX As Double, bsmTfNUY As Double, bsmTfNUZ As Double  ' SpEfTransportFrame output U
+    Dim bsmEvX As Single, bsmEvY As Single, bsmEvZ As Single        ' SpEvalAt output (player-relative)
+    Dim bsmDw0D As Double, bsmDw1D As Double, bsmDw2D As Double, bsmDw3D As Double  ' SpEfCrDerivWeights output
+    Dim bsmDXD As Double, bsmDYD As Double, bsmDZD As Double        ' raw (unnormalized) derivative
+    Dim bsmArcAdvD As Double                                        ' SpEfArcAdvance output
+    Dim bsmTanLen As Single
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -87,52 +91,29 @@ Sub BOSS_UpdateMovement()
             End Select
             boss.state = 0
         Else
-            bsmFu  = bsmFt - bsmFseg
-            bsmFu2 = bsmFu * bsmFu
-            bsmFu3 = bsmFu2 * bsmFu
+            bsmFu = bsmFt - bsmFseg
 
-            ' Ghost indices: modular wrap for closed paths, clamp for open (JS: ghosts())
-            If bsmClosed Then
-                bsmFi0 = ((bsmFseg - 1) Mod bsmWpCount + bsmWpCount) Mod bsmWpCount
-                bsmFi1 = bsmFseg Mod bsmWpCount
-                bsmFi2 = (bsmFseg + 1) Mod bsmWpCount
-                bsmFi3 = (bsmFseg + 2) Mod bsmWpCount
-            Else
-                bsmFi0 = bsmFseg - 1 : If bsmFi0 < 0 Then bsmFi0 = bsmWpCount - 2
-                bsmFi1 = bsmFseg
-                bsmFi2 = bsmFseg + 1
-                bsmFi3 = bsmFseg + 2 : If bsmFi3 >= bsmWpCount Then bsmFi3 = bsmFi3 - (bsmWpCount - 1)
-            End If
+            ' Position and normalized tangent: both fully delegated to the shared,
+            ' ExprForge-backed evaluators (spline_path.bi) -- no hand-copied CR math.
+            SpEvalAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmEvX, bsmEvY, bsmEvZ
+            boss.px = player.px + bsmEvX
+            boss.py = player.py + bsmEvY
+            boss.pz = player.pz + bsmEvZ
+            SpTangentAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmFlTnX, bsmFlTnY, bsmFlTnZ
 
-            ' CR basis weights (bsmFw without the 0.5 — applied at sum)
-            bsmFw0 = -bsmFu3 + 2*bsmFu2 - bsmFu
-            bsmFw1 =  3*bsmFu3 - 5*bsmFu2 + 2
-            bsmFw2 = -3*bsmFu3 + 4*bsmFu2 + bsmFu
-            bsmFw3 =  bsmFu3 - bsmFu2
-
-            ' Wire position (player-relative offset converted to world)
-            boss.px = player.px + 0.5 * (bsmWp(bsmFi0).x*bsmFw0 + bsmWp(bsmFi1).x*bsmFw1 + bsmWp(bsmFi2).x*bsmFw2 + bsmWp(bsmFi3).x*bsmFw3)
-            boss.py = player.py + 0.5 * (bsmWp(bsmFi0).y*bsmFw0 + bsmWp(bsmFi1).y*bsmFw1 + bsmWp(bsmFi2).y*bsmFw2 + bsmWp(bsmFi3).y*bsmFw3)
-            boss.pz = player.pz + 0.5 * (bsmWp(bsmFi0).z*bsmFw0 + bsmWp(bsmFi1).z*bsmFw1 + bsmWp(bsmFi2).z*bsmFw2 + bsmWp(bsmFi3).z*bsmFw3)
-
-            ' arc-length reparameterization: advance t by speed/|dq/dt| for constant world speed
-            Dim bsmDw0 As Single : bsmDw0 = 0.5 * (-3*bsmFu2 + 4*bsmFu - 1)
-            Dim bsmDw1 As Single : bsmDw1 = 0.5 * ( 9*bsmFu2 - 10*bsmFu)
-            Dim bsmDw2 As Single : bsmDw2 = 0.5 * (-9*bsmFu2 +  8*bsmFu + 1)
-            Dim bsmDw3 As Single : bsmDw3 = 0.5 * ( 3*bsmFu2 -  2*bsmFu)
-            Dim bsmDX As Single : bsmDX = bsmWp(bsmFi0).x*bsmDw0 + bsmWp(bsmFi1).x*bsmDw1 + bsmWp(bsmFi2).x*bsmDw2 + bsmWp(bsmFi3).x*bsmDw3
-            Dim bsmDY As Single : bsmDY = bsmWp(bsmFi0).y*bsmDw0 + bsmWp(bsmFi1).y*bsmDw1 + bsmWp(bsmFi2).y*bsmDw2 + bsmWp(bsmFi3).y*bsmDw3
-            Dim bsmDZ As Single : bsmDZ = bsmWp(bsmFi0).z*bsmDw0 + bsmWp(bsmFi1).z*bsmDw1 + bsmWp(bsmFi2).z*bsmDw2 + bsmWp(bsmFi3).z*bsmDw3
-            Dim bsmTanLen As Single : bsmTanLen = Sqr(bsmDX*bsmDX + bsmDY*bsmDY + bsmDZ*bsmDZ)
-            If bsmTanLen > 0.001 Then
-                boss.arcAngle = boss.arcAngle + bsmFlySpd / bsmTanLen
-                bsmFlTnX = bsmDX / bsmTanLen
-                bsmFlTnY = bsmDY / bsmTanLen
-                bsmFlTnZ = bsmDZ / bsmTanLen
-            Else
-                boss.arcAngle = boss.arcAngle + bsmFlySpd
-                bsmFlTnX = 1 : bsmFlTnY = 0 : bsmFlTnZ = 0
-            End If
+            ' Raw (unnormalized) derivative -- needed only for the arc-length speed
+            ' correction below, since SpTangentAt returns just the normalized tangent.
+            ' SpCrGhosts/SpEfCrDerivWeights are the same generated/shared calls
+            ' SpTangentAt makes internally; recomputed here rather than changing its
+            ' signature to expose them.
+            SpCrGhosts bsmFseg, bsmWpCount, bsmClosed, bsmFi0, bsmFi1, bsmFi2, bsmFi3
+            SpEfCrDerivWeights CDbl(bsmFu), bsmDw0D, bsmDw1D, bsmDw2D, bsmDw3D
+            bsmDXD = bsmDw0D*bsmWp(bsmFi0).x + bsmDw1D*bsmWp(bsmFi1).x + bsmDw2D*bsmWp(bsmFi2).x + bsmDw3D*bsmWp(bsmFi3).x
+            bsmDYD = bsmDw0D*bsmWp(bsmFi0).y + bsmDw1D*bsmWp(bsmFi1).y + bsmDw2D*bsmWp(bsmFi2).y + bsmDw3D*bsmWp(bsmFi3).y
+            bsmDZD = bsmDw0D*bsmWp(bsmFi0).z + bsmDw1D*bsmWp(bsmFi1).z + bsmDw2D*bsmWp(bsmFi2).z + bsmDw3D*bsmWp(bsmFi3).z
+            SpEfArcAdvance bsmDXD, bsmDYD, bsmDZD, CDbl(bsmFlySpd), bsmArcAdvD
+            boss.arcAngle = boss.arcAngle + CSng(bsmArcAdvD)
+            bsmTanLen = CSng(Sqr(bsmDXD*bsmDXD + bsmDYD*bsmDYD + bsmDZD*bsmDZD))
 
             ' Phase triggers: trigger: <t>, phase, <n> lines from the .mvr file.
             ' t is fraction-of-one-pass in parameter space; fires once per pass,

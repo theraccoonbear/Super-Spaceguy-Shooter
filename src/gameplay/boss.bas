@@ -86,7 +86,9 @@ Sub BOSS_Update
     ' initial approach: close spawn distance down to combat range before the first flyover pass
     If boss.state = 0 Then
         If boss.px > player.px + BOSS_COMBAT_DIST Then
-            boss.px = boss.px + boss.vx * (1.0 + (boss.phase - 1) * 0.4)
+            Dim bssApproachRateD As Double
+            SpEfPhaseApproachRate CDbl(boss.vx), CDbl(boss.phase), bssApproachRateD
+            boss.px = boss.px + CSng(bssApproachRateD)
         End If
     End If
 
@@ -97,19 +99,25 @@ Sub BOSS_Update
     bssVY = boss.py - bssPrevY
     bssVZ = boss.pz - bssPrevZ
 
-    ' attitude: roll/yaw from Z velocity, pitch from Y velocity; X charge adds nose-down tilt
-    bssTgtRx = bssVZ * 90 - bssVX * 15 : If bssTgtRx > 70 Then bssTgtRx = 70 : If bssTgtRx < -70 Then bssTgtRx = -70
-    bssTgtRy = -bssVZ * 35              : If bssTgtRy > 28 Then bssTgtRy = 28 : If bssTgtRy < -28 Then bssTgtRy = -28
-    bssTgtRz = bssVY * 60              : If bssTgtRz > 50 Then bssTgtRz = 50 : If bssTgtRz < -50 Then bssTgtRz = -50
-    ' flyover: derive yaw/pitch/roll from spline tangent (the actual velocity vector)
+    ' attitude: roll/yaw from Z velocity, pitch from Y velocity; X charge adds nose-down tilt.
+    ' ExprForge-generated (SpEfVelocityAttitude) -- ships the same clamp behavior as before.
+    Dim bssVaRxD As Double, bssVaRyD As Double, bssVaRzD As Double
+    SpEfVelocityAttitude CDbl(bssVX), CDbl(bssVY), CDbl(bssVZ), bssVaRxD, bssVaRyD, bssVaRzD
+    bssTgtRx = CSng(bssVaRxD)
+    bssTgtRy = CSng(bssVaRyD)
+    bssTgtRz = CSng(bssVaRzD)
+    ' flyover: derive yaw/pitch/roll from spline tangent (the actual velocity vector).
+    ' Euler extraction is ExprForge-generated (SpEfYawPitch/SpEfRollFromFrame) --
+    ' the game's object-transform pipeline needs degrees; TrailForge doesn't (it
+    ' renders straight from the tangent/R/U vectors), so this conversion is a
+    ' QB64-only consumer of formula.expr, generated for TS too but unused there.
     If boss.state = 6 Then
-        ' Use exact CR tangent (already normalized) — velocity delta is too noisy at slow speeds
-        Dim bssFlySpdH As Single : bssFlySpdH = Sqr(bsmFlTnX*bsmFlTnX + bsmFlTnZ*bsmFlTnZ)
-        bssTgtRy = _ATAN2(bsmFlTnZ, -bsmFlTnX) * 57.2958
-        If bssFlySpdH > 0.001 Then bssTgtRx = _ATAN2(-bsmFlTnY, bssFlySpdH) * 57.2958
-        ' Roll from transported frame: atan2(R.y, U.y) gives the banking angle.
-        ' Physically correct — no approximation; same math as the path editor.
-        bssTgtRz = _ATAN2(bsmFlFRY, bsmFlFUY) * 57.2958
+        Dim bssYawD As Double, bssPitchD As Double, bssHorizD As Double, bssRollD As Double
+        SpEfYawPitch CDbl(bsmFlTnX), CDbl(bsmFlTnY), CDbl(bsmFlTnZ), bssYawD, bssPitchD, bssHorizD
+        bssTgtRy = CSng(bssYawD)
+        If bssHorizD > 0.001 Then bssTgtRx = CSng(bssPitchD)
+        SpEfRollFromFrame CDbl(bsmFlFRY), CDbl(bsmFlFUY), bssRollD
+        bssTgtRz = CSng(bssRollD)
         If bsmOrientMode = 1 Then
             Dim bssFlyFX As Single, bssFlyFY As Single, bssFlyFZ As Single
             SpShipFacing boss.px, boss.py, boss.pz, _
@@ -117,9 +125,20 @@ Sub BOSS_Update
                          bsmOrientMode, _
                          player.px + bsmTargetX, player.py + bsmTargetY, player.pz + bsmTargetZ, _
                          bssFlyFX, bssFlyFY, bssFlyFZ
-            Dim bssFlyFH As Single : bssFlyFH = Sqr(bssFlyFX*bssFlyFX + bssFlyFZ*bssFlyFZ)
-            bssTgtRy = _ATAN2(bssFlyFZ, -bssFlyFX) * 57.2958
-            If bssFlyFH > 0.001 Then bssTgtRx = _ATAN2(-bssFlyFY, bssFlyFH) * 57.2958
+            SpEfYawPitch CDbl(bssFlyFX), CDbl(bssFlyFY), CDbl(bssFlyFZ), bssYawD, bssPitchD, bssHorizD
+            bssTgtRy = CSng(bssYawD)
+            If bssHorizD > 0.001 Then bssTgtRx = CSng(bssPitchD)
+            ' Fix for the boss flipping when orient=target: roll must come from a
+            ' frame built on the FACING direction, not the stale tangent-based
+            ' transport frame (bsmFlFRY/bsmFlFUY above) -- that frame rotates
+            ' with the path tangent, which can point anywhere relative to a fixed
+            ' facing target, producing an unrelated (and wildly varying) roll.
+            Dim bssFrRxD As Double, bssFrRyD As Double, bssFrRzD As Double
+            Dim bssFrUxD As Double, bssFrUyD As Double, bssFrUzD As Double
+            SpEfMkFrame CDbl(bssFlyFX), CDbl(bssFlyFY), CDbl(bssFlyFZ), _
+                        bssFrRxD, bssFrRyD, bssFrRzD, bssFrUxD, bssFrUyD, bssFrUzD
+            SpEfRollFromFrame bssFrRyD, bssFrUyD, bssRollD
+            bssTgtRz = CSng(bssRollD)
         End If
     End If
     Dim bssAttLerp As Single : bssAttLerp = BOSS_ATTITUDE_LERP

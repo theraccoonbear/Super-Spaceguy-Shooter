@@ -9,6 +9,7 @@ import {
   SpEfFrustumAtX,
   SpEfApplyHolonomyCorrection,
   SpEfMeasureHolonomy,
+  SpEfHolonomyAngle,
 } from './spline_gen'
 
 // ── Frustum math ────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ export function measureHolonomy(
     R0.x, R0.y, R0.z,
     U0.x, U0.y, U0.z,
   )
-  return Math.atan2(dotRU, dotRR)
+  return SpEfHolonomyAngle(dotRR, dotRU).angle
 }
 
 
