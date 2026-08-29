@@ -534,29 +534,29 @@ ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "--- 18. boss maneuver= parsed into bossManeuverList$ ---"
-' level:3 boss has maneuver=drift (single entry)
+' level:3 boss has maneuver=boss-x-flight,boss-v-flight,attack-pass (three entries)
 ST_Reset
 ST_GoTo "boss3"
 SEQ_Advance
-ST_Assert bossManeuverCnt = 1,                    "18.01  level3 maneuver=drift -> count=1"
-ST_Assert bossManeuverList$(0) = "drift",         "18.02  level3 maneuver=drift -> [0]=drift"
-' level:5 boss has maneuver=drift,weave (two entries)
+ST_Assert bossManeuverCnt = 3,                     "18.01  level3 maneuver= -> count=3"
+ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.02  level3 phase1=boss-x-flight"
+' level:5 boss has maneuver=boss-x-flight,boss-v-flight,attack-pass (three entries)
 ST_Reset
 levelNum = 4
 ST_GoTo "boss5"
 SEQ_Advance
-ST_Assert bossManeuverCnt = 2,                    "18.03  level5 maneuver=drift,weave -> count=2"
-ST_Assert bossManeuverList$(0) = "drift",         "18.04  level5 phase1=drift"
-ST_Assert bossManeuverList$(1) = "weave",         "18.05  level5 phase2=weave"
-' level:6 boss has maneuver=weave,browser_built,plotted (three entries)
+ST_Assert bossManeuverCnt = 3,                     "18.03  level5 maneuver= -> count=3"
+ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.04  level5 phase1=boss-x-flight"
+ST_Assert bossManeuverList$(1) = "boss-v-flight",  "18.05  level5 phase2=boss-v-flight"
+' level:6 boss has maneuver=boss-x-flight,boss-v-flight,attack-pass (three entries)
 ST_Reset
 levelNum = 5
 ST_GoTo "boss6"
 SEQ_Advance
-ST_Assert bossManeuverCnt = 3,                    "18.06  level6 maneuver=weave,browser_built,plotted -> count=3"
-ST_Assert bossManeuverList$(0) = "weave",         "18.07  level6 phase1=weave"
-ST_Assert bossManeuverList$(1) = "browser_built", "18.08  level6 phase2=browser_built"
-ST_Assert bossManeuverList$(2) = "plotted",       "18.09  level6 phase3=plotted"
+ST_Assert bossManeuverCnt = 3,                     "18.06  level6 maneuver= -> count=3"
+ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.07  level6 phase1=boss-x-flight"
+ST_Assert bossManeuverList$(1) = "boss-v-flight",  "18.08  level6 phase2=boss-v-flight"
+ST_Assert bossManeuverList$(2) = "attack-pass",    "18.09  level6 phase3=attack-pass"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="

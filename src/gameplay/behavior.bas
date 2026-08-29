@@ -33,7 +33,7 @@ Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
 
-Dim Shared bsmFlySpd      As Single   ' t-advance per frame; set by MNV_Load from maneuvers.txt
+Dim Shared bsmFlySpd      As Single   ' t-advance per frame; set by MNV_Load
 Dim Shared bsmManeuverName As String   ' which [block] to load; set before BOSS_FlyoverInit
 
 ' ── flyover waypoint array -- populated by BOSS_FlyoverInit at state-6 entry ──
@@ -257,7 +257,7 @@ Sub BOSS_UpdateMovement()
     End Select
 End Sub
 
-' Load the named flyover maneuver from assets/maneuvers.txt (via MNV_Load),
+' Load the named flyover maneuver (via MNV_Load, from assets/maneuvers/*.mvr),
 ' apply bsmTurnDir sign to the Z column, then anchor P0 to the boss's actual
 ' position so there is no positional snap at flyover entry.
 Sub BOSS_FlyoverInit

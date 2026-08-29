@@ -1,150 +1,152 @@
 ' maneuvers.bas -- boss flight-path data loader
 '
-' MNV_Init  : call once at startup with the embedded maneuvers.txt content
-' MNV_Load  : parse a named [block] into the bsmWp* arrays (behavior.bas)
-'             sets bsmFlySpd; Z values are unsigned, caller applies bsmTurnDir sign
-
-Dim Shared mnvRawData As String
-
-Sub MNV_Init(mnviData As String)
-    mnvRawData = mnviData
-End Sub
+' The 3 boss flight-path maneuvers are each their own independent $EMBED'd
+' .mvr file (assets/maneuvers/*.mvr, listed in sss.bas) -- no concatenation,
+' no bake step. $EMBED requires a literal string id (QB64-PE rejects a
+' computed one), so MNV_Load dispatches by name straight to each literal
+' _EMBEDDED$() call, handing the raw content to MNV_ParseBlock -- the actual
+' line-by-line parser, kept separate so it's testable with fixture strings.
 
 Sub MNV_ListBlocks(mnvlbNames() As String, mnvlbCount As Integer)
     mnvlbCount = 0
-    Dim mnvlbI As Integer, mnvlbNL As Integer
-    Dim mnvlbRaw As String, mnvlbLine As String, mnvlbClose As Integer
-    mnvlbI = 1
-    Do While mnvlbI <= Len(mnvRawData)
-        mnvlbNL = InStr(mnvlbI, mnvRawData, Chr$(10))
-        If mnvlbNL = 0 Then mnvlbNL = Len(mnvRawData) + 1
-        mnvlbRaw  = Mid$(mnvRawData, mnvlbI, mnvlbNL - mnvlbI)
-        mnvlbI    = mnvlbNL + 1
-        If Right$(mnvlbRaw, 1) = Chr$(13) Then mnvlbRaw = Left$(mnvlbRaw, Len(mnvlbRaw) - 1)
-        mnvlbLine = LTrim$(RTrim$(mnvlbRaw))
-        If Left$(mnvlbLine, 1) = "[" Then
-            mnvlbClose = InStr(mnvlbLine, "]")
-            If mnvlbClose > 2 And mnvlbCount <= 15 Then
-                mnvlbNames(mnvlbCount) = Mid$(mnvlbLine, 2, mnvlbClose - 2)
-                mnvlbCount = mnvlbCount + 1
-            End If
-        End If
-    Loop
+    mnvlbNames(mnvlbCount) = "boss-x-flight"  : mnvlbCount = mnvlbCount + 1
+    mnvlbNames(mnvlbCount) = "boss-v-flight"  : mnvlbCount = mnvlbCount + 1
+    mnvlbNames(mnvlbCount) = "attack-pass"    : mnvlbCount = mnvlbCount + 1
 End Sub
 
 Sub MNV_Load(mnvlName As String)
-    Dim mnvldI As Integer, mnvldNL As Integer
-    Dim mnvldRaw As String, mnvldLine As String
-    Dim mnvldHdr As String, mnvldRest As String
-    Dim mnvldSp As Integer
-    Dim mnvldCapture As Integer
-    Dim mnvldOrV As String   ' value side of orient= key
-    Dim mnvldJ As Integer    ' roll-array clear loop counter
-    Dim mnvldScale As Single ' scale= multiplier applied to all waypoint coords
+    Dim mnvlKey As String
+    mnvlKey = LCase$(mnvlName)
+    If mnvlKey = "boss-x-flight" Then
+        MNV_ParseBlock _EMBEDDED$("MNVBOSSXFLIGHT")
+    ElseIf mnvlKey = "boss-v-flight" Then
+        MNV_ParseBlock _EMBEDDED$("MNVBOSSVFLIGHT")
+    ElseIf mnvlKey = "attack-pass" Then
+        MNV_ParseBlock _EMBEDDED$("MNVATTACKPASS")
+    Else
+        MNV_ParseBlock ""   ' unknown name -- 0 waypoints, same as before
+    End If
+End Sub
+
+' Parses one maneuver's raw .mvr content into the bsmWp* arrays (behavior.bas).
+' Exactly one block per call -- no [name] matching needed, unlike the old
+' single-blob format. Sets bsmFlySpd; Z values are unsigned, caller applies
+' bsmTurnDir sign.
+Sub MNV_ParseBlock(mnvpbRaw As String)
+    Dim mnvpbI As Integer, mnvpbNL As Integer
+    Dim mnvpbRawLine As String, mnvpbLine As String
+    Dim mnvpbRest As String
+    Dim mnvpbSp As Integer
+    Dim mnvpbOrV As String   ' value side of orient= key
+    Dim mnvpbJ As Integer    ' roll-array clear loop counter
+    Dim mnvpbScale As Single ' scale= multiplier applied to all waypoint coords
 
     bsmWpCount   = 0
     bsmFlySpd    = 0.025     ' fallback if speed= line is missing
     bsmClosed    = 0
     bsmStandoff  = 0
-    mnvldScale   = 1.0
+    mnvpbScale   = 1.0
     bsmOrientMode = 0
     bsmTargetX   = 0 : bsmTargetY = 0 : bsmTargetZ = 0
-    For mnvldJ = 0 To BSM_WP_MAX - 1
-        bsmPathRoll(mnvldJ) = 0 : bsmCraftRoll(mnvldJ) = 0
-    Next mnvldJ
-    mnvldCapture = 0
-    mnvldI       = 1
+    For mnvpbJ = 0 To BSM_WP_MAX - 1
+        bsmPathRoll(mnvpbJ) = 0 : bsmCraftRoll(mnvpbJ) = 0
+    Next mnvpbJ
+    mnvpbI = 1
 
-    Do While mnvldI <= Len(mnvRawData)
-        mnvldNL  = InStr(mnvldI, mnvRawData, Chr$(10))
-        If mnvldNL = 0 Then mnvldNL = Len(mnvRawData) + 1
-        mnvldRaw  = Mid$(mnvRawData, mnvldI, mnvldNL - mnvldI)
-        mnvldI    = mnvldNL + 1
-        If Right$(mnvldRaw, 1) = Chr$(13) Then mnvldRaw = Left$(mnvldRaw, Len(mnvldRaw) - 1)
-        mnvldLine = LTrim$(RTrim$(mnvldRaw))
-        If Len(mnvldLine) = 0 Or Left$(mnvldLine, 1) = "#" Then GoTo mnvldNext
+    Do While mnvpbI <= Len(mnvpbRaw)
+        mnvpbNL  = InStr(mnvpbI, mnvpbRaw, Chr$(10))
+        If mnvpbNL = 0 Then mnvpbNL = Len(mnvpbRaw) + 1
+        mnvpbRawLine = Mid$(mnvpbRaw, mnvpbI, mnvpbNL - mnvpbI)
+        mnvpbI       = mnvpbNL + 1
+        If Right$(mnvpbRawLine, 1) = Chr$(13) Then mnvpbRawLine = Left$(mnvpbRawLine, Len(mnvpbRawLine) - 1)
+        mnvpbLine = LTrim$(RTrim$(mnvpbRawLine))
+        If Len(mnvpbLine) = 0 Or Left$(mnvpbLine, 1) = "#" Then GoTo mnvpbNext
 
-        If Left$(mnvldLine, 1) = "[" Then
-            If mnvldCapture Then Exit Do       ' new section: done
-            mnvldHdr     = Mid$(mnvldLine, 2, InStr(mnvldLine, "]") - 2)
-            mnvldCapture = (LCase$(mnvldHdr) = LCase$(mnvlName))
-            GoTo mnvldNext
-        End If
-
-        If mnvldCapture = 0 Then GoTo mnvldNext
+        If Left$(mnvpbLine, 1) = "[" Then GoTo mnvpbNext   ' [name] header -- informational only now
 
         ' ── Key=value lines ──────────────────────────────────────────────
-        If LCase$(Left$(mnvldLine, 6)) = "speed=" Then
-            bsmFlySpd = Val(Mid$(mnvldLine, 7))
-            GoTo mnvldNext
+        If LCase$(Left$(mnvpbLine, 6)) = "speed=" Then
+            bsmFlySpd = Val(Mid$(mnvpbLine, 7))
+            GoTo mnvpbNext
         End If
 
-        If LCase$(Left$(mnvldLine, 9)) = "standoff=" Then
-            bsmStandoff = Val(Mid$(mnvldLine, 10))
-            GoTo mnvldNext
+        If LCase$(Left$(mnvpbLine, 9)) = "standoff=" Then
+            bsmStandoff = Val(Mid$(mnvpbLine, 10))
+            GoTo mnvpbNext
         End If
 
-        If LCase$(Left$(mnvldLine, 6)) = "scale=" Then
-            mnvldScale = Val(Mid$(mnvldLine, 7))
-            If mnvldScale < 0.001 Then mnvldScale = 1.0
-            GoTo mnvldNext
+        If LCase$(Left$(mnvpbLine, 6)) = "scale=" Then
+            mnvpbScale = Val(Mid$(mnvpbLine, 7))
+            If mnvpbScale < 0.001 Then mnvpbScale = 1.0
+            GoTo mnvpbNext
         End If
 
-        If LCase$(Left$(mnvldLine, 7)) = "closed=" Then
-            bsmClosed = Val(Mid$(mnvldLine, 8))
-            GoTo mnvldNext
+        If LCase$(Left$(mnvpbLine, 7)) = "closed=" Then
+            bsmClosed = Val(Mid$(mnvpbLine, 8))
+            GoTo mnvpbNext
         End If
 
-        If LCase$(Left$(mnvldLine, 7)) = "orient=" Then
-            mnvldOrV = Mid$(mnvldLine, 8)
-            If LCase$(Left$(mnvldOrV, 7)) = "target:" Then
+        If LCase$(Left$(mnvpbLine, 7)) = "orient=" Then
+            mnvpbOrV = Mid$(mnvpbLine, 8)
+            If LCase$(Left$(mnvpbOrV, 7)) = "target:" Then
                 bsmOrientMode = 1
-                mnvldRest = Mid$(mnvldOrV, 8)          ' "x,y,z"
-                mnvldSp   = InStr(mnvldRest, ",")
-                If mnvldSp > 0 Then
-                    bsmTargetX = Val(Left$(mnvldRest, mnvldSp))
-                    mnvldRest  = Mid$(mnvldRest, mnvldSp + 1)
-                    mnvldSp    = InStr(mnvldRest, ",")
-                    If mnvldSp > 0 Then
-                        bsmTargetY = Val(Left$(mnvldRest, mnvldSp))
-                        bsmTargetZ = Val(Mid$(mnvldRest, mnvldSp + 1))
+                mnvpbRest = Mid$(mnvpbOrV, 8)          ' "x,y,z"
+                mnvpbSp   = InStr(mnvpbRest, ",")
+                If mnvpbSp > 0 Then
+                    bsmTargetX = Val(Left$(mnvpbRest, mnvpbSp))
+                    mnvpbRest  = Mid$(mnvpbRest, mnvpbSp + 1)
+                    mnvpbSp    = InStr(mnvpbRest, ",")
+                    If mnvpbSp > 0 Then
+                        bsmTargetY = Val(Left$(mnvpbRest, mnvpbSp))
+                        bsmTargetZ = Val(Mid$(mnvpbRest, mnvpbSp + 1))
                     End If
                 End If
             Else
                 bsmOrientMode = 0
             End If
-            GoTo mnvldNext
+            GoTo mnvpbNext
         End If
+
+        If LCase$(Left$(mnvpbLine, 5)) = "type=" Then GoTo mnvpbNext   ' craft|camera -- only craft used today
+
+        ' ── Behavioral lines (Phase 2, not yet consumed) -- must be skipped
+        ' here, not fall through to waypoint parsing below, or they corrupt
+        ' bsmWpCount with bogus entries (the exact bug this replaces).
+        If LCase$(Left$(mnvpbLine, 8))  = "segment:" Then GoTo mnvpbNext
+        If LCase$(Left$(mnvpbLine, 8))  = "segseam:" Then GoTo mnvpbNext
+        If LCase$(Left$(mnvpbLine, 8))  = "trigger:" Then GoTo mnvpbNext
+        If LCase$(Left$(mnvpbLine, 10)) = "craftroll:" Then GoTo mnvpbNext
+        If LCase$(Left$(mnvpbLine, 9))  = "loopseam:" Then GoTo mnvpbNext
 
         ' ── Waypoint line: X Y Z [pathRoll [craftRoll]] ─────────────────
         If bsmWpCount < BSM_WP_MAX Then
-            mnvldSp = InStr(mnvldLine, " ")
-            If mnvldSp > 0 Then
-                bsmWp(bsmWpCount).x = Val(Left$(mnvldLine, mnvldSp)) * mnvldScale
-                mnvldRest = LTrim$(Mid$(mnvldLine, mnvldSp))  ' "Y Z [pR [cR]]"
-                mnvldSp   = InStr(mnvldRest, " ")
-                If mnvldSp > 0 Then
-                    bsmWp(bsmWpCount).y = Val(Left$(mnvldRest, mnvldSp)) * mnvldScale
-                    mnvldRest = LTrim$(Mid$(mnvldRest, mnvldSp)) ' "Z [pR [cR]]"
-                    mnvldSp   = InStr(mnvldRest, " ")
-                    If mnvldSp > 0 Then
-                        bsmWp(bsmWpCount).z = Val(Left$(mnvldRest, mnvldSp)) * mnvldScale
-                        mnvldRest = LTrim$(Mid$(mnvldRest, mnvldSp)) ' "[pR [cR]]"
-                        mnvldSp   = InStr(mnvldRest, " ")
-                        If mnvldSp > 0 Then
-                            bsmPathRoll(bsmWpCount)  = Val(Left$(mnvldRest, mnvldSp))
-                            bsmCraftRoll(bsmWpCount) = Val(LTrim$(Mid$(mnvldRest, mnvldSp)))
-                        ElseIf Len(mnvldRest) > 0 Then
-                            bsmPathRoll(bsmWpCount) = Val(mnvldRest)
+            mnvpbSp = InStr(mnvpbLine, " ")
+            If mnvpbSp > 0 Then
+                bsmWp(bsmWpCount).x = Val(Left$(mnvpbLine, mnvpbSp)) * mnvpbScale
+                mnvpbRest = LTrim$(Mid$(mnvpbLine, mnvpbSp))  ' "Y Z [pR [cR]]"
+                mnvpbSp   = InStr(mnvpbRest, " ")
+                If mnvpbSp > 0 Then
+                    bsmWp(bsmWpCount).y = Val(Left$(mnvpbRest, mnvpbSp)) * mnvpbScale
+                    mnvpbRest = LTrim$(Mid$(mnvpbRest, mnvpbSp)) ' "Z [pR [cR]]"
+                    mnvpbSp   = InStr(mnvpbRest, " ")
+                    If mnvpbSp > 0 Then
+                        bsmWp(bsmWpCount).z = Val(Left$(mnvpbRest, mnvpbSp)) * mnvpbScale
+                        mnvpbRest = LTrim$(Mid$(mnvpbRest, mnvpbSp)) ' "[pR [cR]]"
+                        mnvpbSp   = InStr(mnvpbRest, " ")
+                        If mnvpbSp > 0 Then
+                            bsmPathRoll(bsmWpCount)  = Val(Left$(mnvpbRest, mnvpbSp))
+                            bsmCraftRoll(bsmWpCount) = Val(LTrim$(Mid$(mnvpbRest, mnvpbSp)))
+                        ElseIf Len(mnvpbRest) > 0 Then
+                            bsmPathRoll(bsmWpCount) = Val(mnvpbRest)
                         End If
                     Else
-                        bsmWp(bsmWpCount).z = Val(mnvldRest) * mnvldScale  ' Z is last token
+                        bsmWp(bsmWpCount).z = Val(mnvpbRest) * mnvpbScale  ' Z is last token
                     End If
                     bsmWpCount = bsmWpCount + 1
                 End If
             End If
         End If
 
-        mnvldNext:
+        mnvpbNext:
     Loop
 End Sub

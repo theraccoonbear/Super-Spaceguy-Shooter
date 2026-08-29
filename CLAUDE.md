@@ -44,6 +44,7 @@
    ./tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
    ./tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
    ./tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
+   ./tools/buildqb tests/mnv_load_test.bas          && builds/mnv_load_test
    tools/http_queue_test   # builds + runs http_queue_test.bas against a local mock server
    ```
    All tests must pass (exit 0) before committing. No exceptions.

@@ -2,7 +2,9 @@ $RESIZE:ON
 $SCREENHIDE
 $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
-$EMBED:'assets/maneuvers.txt':'MANEUVERS'
+$EMBED:'assets/maneuvers/attack-pass.mvr':'MNVATTACKPASS'
+$EMBED:'assets/maneuvers/boss-v-flight.mvr':'MNVBOSSVFLIGHT'
+$EMBED:'assets/maneuvers/boss-x-flight.mvr':'MNVBOSSXFLIGHT'
 
 ' DBG_Print stub -- input.bas calls this; we don't need real debug output
 Sub DBG_Print(dbgMsg As String)
@@ -389,7 +391,6 @@ scrW = 320 : scrH = 240
 Screen _NewImage(scrW, scrH, 32)
 backBuffer = _NewImage(scrW, scrH, 32)
 TOOL_Init "Boss Flyover Visualizer"
-MNV_Init _EMBEDDED$("MANEUVERS")
 
 ' enumerate block names from data file
 MNV_ListBlocks vzBlockNames(), vzBlockCount

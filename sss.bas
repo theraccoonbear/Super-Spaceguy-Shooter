@@ -31,7 +31,12 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
-$EMBED:'assets/maneuvers.txt':'MANEUVERS'
+' Each boss flight-path maneuver is its own independent embedded file --
+' no concatenation/bake step. Adding a new one means adding its .mvr file
+' AND a line here AND an entry in MNV_ListBlocks (maneuvers.bas).
+$EMBED:'assets/maneuvers/attack-pass.mvr':'MNVATTACKPASS'
+$EMBED:'assets/maneuvers/boss-v-flight.mvr':'MNVBOSSVFLIGHT'
+$EMBED:'assets/maneuvers/boss-x-flight.mvr':'MNVBOSSXFLIGHT'
 $EMBED:'assets/.env':'ENVCONFIG'
 
 DIM SHARED ctrlDev AS INTEGER
@@ -83,7 +88,6 @@ titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
-MNV_Init _EMBEDDED$("MANEUVERS")
 bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
 bossManeuverList$(0) = "flyover"
 bossManeuverCnt = 1
