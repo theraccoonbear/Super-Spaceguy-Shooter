@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: qb64pe-bin
-          key: qb64pe-${{ steps.qb64pe_release.outputs.version }}-${{ runner.os }}
+          key: qb64pe-${{ steps.qb64pe_release.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
