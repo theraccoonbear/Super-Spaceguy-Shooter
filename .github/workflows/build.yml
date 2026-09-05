@@ -40,6 +40,11 @@ jobs:
             artifact-name: sss-macos
             artifact-path: builds/sss
             release-asset-name: sss-macos
+          - os: macos-15-intel
+            name: Build macOS (Intel)
+            artifact-name: sss-macos-intel
+            artifact-path: builds/sss
+            release-asset-name: sss-macos-intel
           - os: windows-latest
             name: Build Windows
             artifact-name: sss-windows
