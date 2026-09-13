@@ -229,7 +229,7 @@ function PathRuler() {
   const barRef    = useRef<HTMLDivElement>(null)
   const scrubbing = useRef(false)
 
-  const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+  const nSegs    = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
   const arcTable = useMemo(() => makeArcTable(path.wps, path.closed), [path])
   const { paramToArc, arcToParam } = arcTable
 
@@ -412,7 +412,7 @@ function CraftRollTrack({ selSegId, onSelSegId, isExpanded, onExpand }: {
   const [crCtxMenu,    setCrCtxMenu]    = useState<CRCtxMenu | null>(null)
   const [seamSelected, setSeamSelected] = useState(false)
 
-  const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+  const nSegs    = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
   const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
   const liveRoll = evalCraftRoll(segments, arcTable.paramToArc(animFrac), loopSeam)
   const sel      = segments.find(s => s.id === selSegId) ?? null
@@ -842,7 +842,7 @@ function ScalarSegmentTrack({ name, selSegId, onSelSegId, isExpanded, onExpand }
   const [segCtxMenu,   setSegCtxMenu]   = useState<SegCtxMenu | null>(null)
   const [seamSelected, setSeamSelected] = useState(false)
 
-  const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+  const nSegs    = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
   const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
   const liveVal  = evalScalarSegments(segments, arcTable.paramToArc(animFrac), loopSeam)
   const sel      = segments.find(s => s.id === selSegId) ?? null
@@ -1402,7 +1402,7 @@ export function BehaviorsPanel() {
   const [crExpanded,   setCrExpanded]   = useState(false)
   const [selScalarSeg, setSelScalarSeg] = useState<{ track: string; id: string } | null>(null)
 
-  const nSegs    = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+  const nSegs    = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
   const animFrac = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
 
   // ── J / K — jump to previous/next segment or trigger start (After Effects convention) ──
@@ -1411,7 +1411,7 @@ export function BehaviorsPanel() {
     const fn = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       const s   = useStore.getState()
-      const ns  = s.path.closed ? s.path.wps.length : Math.max(s.path.wps.length - 1, 1)
+      const ns  = Math.max(s.path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
 
       if (e.key === 'j' || e.key === 'J') {
         e.preventDefault()

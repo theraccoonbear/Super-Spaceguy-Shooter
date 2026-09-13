@@ -40,7 +40,7 @@ export const SHORTCUTS: Shortcut[] = [
     match: 'end',
     handler: () => {
       const { path, setAnimT } = useStore.getState()
-      const nSegs = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+      const nSegs = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
       setAnimT(nSegs)
     } },
 

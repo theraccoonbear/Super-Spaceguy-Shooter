@@ -21,17 +21,23 @@ export function frustumAtX(worldX: number): { halfY: number; halfZ: number } {
 }
 
 // ── Ghost index wrapping ────────────────────────────────────────────────
-// Mirrors the game's behavior.bas logic exactly.
-// For a closed path: true modular wrap — no duplicate endpoint in wps[].
+// Mirrors the game's spline_path.bi (SpCrGhosts) exactly.
+// Closed paths store an explicit duplicate of wps[0] as their last waypoint
+// (see format.ts's exportBlock) rather than being truly cyclic over n distinct
+// points. So segment count is n-1 either way (see nSegs below) and only the
+// two boundary segments need wraparound ghost points, taken from the *other*
+// end of the array, to keep curvature smooth across the seam without an extra
+// zero-length closing segment (issue #211).
 // For an open path: clamp to endpoints.
 function ghosts<T extends Vec3>(wps: T[], seg: number, closed: boolean): [T, T, T, T] {
   const n = wps.length
   if (closed) {
+    const last = n - 2   // index of the last unique point (n-1 duplicates index 0)
     return [
-      wps[((seg - 1) % n + n) % n],
-      wps[seg % n],
-      wps[(seg + 1) % n],
-      wps[(seg + 2) % n],
+      wps[seg === 0 ? last : seg - 1],
+      wps[seg],
+      wps[seg + 1],
+      wps[seg === last ? 1 : seg + 2],
     ]
   }
   return [
@@ -116,7 +122,7 @@ export interface FrameSample { R: Vec3; U: Vec3 }
 export function buildFrameTable(
   wps: Vec3[], closed: boolean, holonomy: number, nSteps = 512,
 ): FrameSample[] {
-  const nSegs = closed ? wps.length : wps.length - 1
+  const nSegs = wps.length - 1   // closed paths store a duplicate closing waypoint -- see ghosts()
   const tan0  = tangentAt(wps, 0, closed)
   const f0    = makeFrame(tan0)
   let R: Vec3 = { ...f0.R }
@@ -166,7 +172,7 @@ export function shipFacing(wirePos: Vec3, tangent: Vec3, orient: 'path' | 'targe
 
 // ── Public evaluation API ───────────────────────────────────────────────
 export function evalAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
-  const nSegs = closed ? wps.length : wps.length - 1
+  const nSegs = wps.length - 1   // closed paths store a duplicate closing waypoint -- see ghosts()
   const seg = Math.min(Math.floor(at), nSegs - 1)
   const t = at - seg
   const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
@@ -179,7 +185,7 @@ export function evalAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
 }
 
 export function tangentAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
-  const nSegs = closed ? wps.length : wps.length - 1
+  const nSegs = wps.length - 1   // closed paths store a duplicate closing waypoint -- see ghosts()
   const seg = Math.min(Math.floor(at), nSegs - 1)
   const t = at - seg
   const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
@@ -195,7 +201,7 @@ export function tangentAt(wps: Vec3[], at: number, closed: boolean): Vec3 {
 // Use this for animating along the path; tangentAt returns a unit vector and cannot
 // be used for arc-length compensation.
 export function arcAdvanceAt(wps: Vec3[], at: number, closed: boolean, speed: number): number {
-  const nSegs = closed ? wps.length : wps.length - 1
+  const nSegs = wps.length - 1   // closed paths store a duplicate closing waypoint -- see ghosts()
   const seg = Math.min(Math.floor(at), nSegs - 1)
   const t = at - seg
   const [p0, p1, p2, p3] = ghosts(wps, seg, closed)
@@ -221,7 +227,7 @@ export interface SplineParams {
 
 export function buildSpline({ wps, closed, stepsPerSeg = 32 }: SplineParams): SplineSample[] {
   if (wps.length < 2) return []
-  const nSegs = closed ? wps.length : wps.length - 1
+  const nSegs = wps.length - 1   // closed paths store a duplicate closing waypoint -- see ghosts()
 
   const samples: SplineSample[] = []
 

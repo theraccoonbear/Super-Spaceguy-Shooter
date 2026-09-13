@@ -10,8 +10,10 @@
 ' Flyover path (state 6): boss.arcAngle is repurposed as the spline t parameter (0..bsmWpCount-1).
 ' Waypoints are player-relative, set by MNV_Load at flyover entry (via BOSS_PickMode); Z column
 ' is signed by bsmTurnDir so the arc alternates sides each pass. Attitude (yaw/pitch/roll) is
-' derived from the spline tangent (velocity vector) each frame, so banking follows the curve
-' naturally -- same is true during state 5, off the Hermite tangent instead.
+' derived from bsmFlTnX/Y/Z (the exposed facing) each frame, so banking follows the curve
+' naturally -- same is true during state 5, off the Hermite tangent instead. bsmFlTnX/Y/Z is
+' the true spline tangent slewed toward a max turn rate (BOSS_FLYOVER_MAX_FACE_TURN_COS), not
+' the raw tangent itself -- see Case 6 -- so a real curve cusp eases rather than snaps.
 '
 ' Every BOSS_PickMode call (first-ever entry from spawn, and every pass-to-pass handoff) goes
 ' through state 5 first: entry into a maneuver is no longer a hand-anchored special case, it's
@@ -23,6 +25,27 @@ Const BOSS_COMBAT_DIST = 20    ' standard X distance for combat
 Const BOSS_CHARGE_CD1 = 300    ' frames between charge eligibility, phase 1
 Const BOSS_CHARGE_CD2 = 190    ' phase 2
 Const BOSS_CHARGE_CD3 = 110    ' phase 3
+
+' Flyover (state 6) splits each tick's arc-length advance into this many smaller,
+' fixed-size steps, resampling the raw derivative each time: a single Euler step
+' samples |D| once and can badly overshoot near a sharp knot, where |D| changes
+' fast over a short arc-length span. Improves position accuracy near tight turns;
+' see BOSS_FLYOVER_MAX_FACE_TURN_COS below for the actual issue #211 fix.
+Const BOSS_FLYOVER_SUBSTEPS = 8
+
+' issue #211: a real Catmull-Rom cusp (a knot where the analytic derivative
+' genuinely reverses direction, e.g. boss-x-flight's sharp out-and-back spike)
+' makes the raw tangent flip discontinuously right at that point -- position
+' stays correct (it truly does reverse there), but no amount of finer position
+' stepping can make a real discontinuity in the curve look continuous, because
+' facing is only ever sampled/rendered once per tick. So the actual fix is at
+' the orientation layer: bsmFlTnX/Y/Z (the facing vector boss.bas reads) is
+' slewed toward each sub-step's raw sampled tangent at most this much per
+' sub-step (cos of 1.25 deg), rather than snapping straight to it -- 8 sub-steps
+' x 1.25 deg caps the worst-case facing turn at 10 deg/tick. The true, unsmoothed
+' curve still drives position and the arc-length speed correction; only the
+' *displayed* facing/banking eases through a cusp instead of snapping.
+Const BOSS_FLYOVER_MAX_FACE_TURN_COS = 0.9997621
 
 Dim Shared bsmFlySpd      As Single   ' t-advance per frame; set by MNV_Load
 Dim Shared bsmManeuverName As String   ' which [block] to load; set before BOSS_FlyoverInit
@@ -72,7 +95,7 @@ Sub BOSS_UpdateMovement()
     Dim bsmFt As Single, bsmFseg As Integer
     Dim bsmFu As Single
     Dim bsmFi0 As Integer, bsmFi1 As Integer, bsmFi2 As Integer, bsmFi3 As Integer
-    Dim bsmFlNS As Integer     ' number of segments (nWps for closed, nWps-1 for open)
+    Dim bsmFlNS As Integer     ' number of segments (always nWps-1 -- see SpCrGhosts)
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
     Dim bsmFlAXD As Double, bsmFlAYD As Double, bsmFlAZD As Double  ' Double temps for SpEfActualPos
@@ -85,6 +108,8 @@ Sub BOSS_UpdateMovement()
     Dim bsmTrRawXD As Double, bsmTrRawYD As Double, bsmTrRawZD As Double  ' SpEfHermiteTangent raw output
     Dim bsmTrFxD As Double, bsmTrFyD As Double, bsmTrFzD As Double        ' SpEfFacingNorm output
     Dim bsmTrAdvD As Double                                                ' SpEfArcAdvance output (transition)
+    Dim bsmSubI As Integer, bsmSubSpd As Single   ' flyover sub-step loop (see BOSS_FLYOVER_SUBSTEPS)
+    Dim bsmRawTnX As Single, bsmRawTnY As Single, bsmRawTnZ As Single   ' true (unsmoothed) tangent this sub-step
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
@@ -131,10 +156,12 @@ Sub BOSS_UpdateMovement()
         End If
 
     Case 6  ' flyover: Catmull-Rom spline — supports standoff, closed paths, pathRoll
-        bsmFt    = boss.arcAngle
-        bsmFseg  = Int(bsmFt)
+        bsmFseg  = Int(boss.arcAngle)
+        ' Closed maneuvers store an explicit duplicate of waypoint 0 as their last
+        ' waypoint (see SpCrGhosts) rather than being truly cyclic, so segment count
+        ' is bsmWpCount-1 either way -- issue #211's zero-length closing segment came
+        ' from double-counting this as an extra wraparound segment on top of it.
         bsmFlNS  = bsmWpCount - 1
-        If bsmClosed Then bsmFlNS = bsmWpCount   ' closed: N segments (one extra wraps back)
         If bsmFseg >= bsmFlNS Then
             ' path complete: land on final waypoint, flip arc dir, return to combat
             boss.px = player.px + bsmWp(bsmWpCount - 1).x
@@ -149,47 +176,68 @@ Sub BOSS_UpdateMovement()
             End Select
             boss.state = 0
         Else
-            bsmFu = bsmFt - bsmFseg
+            ' Sub-step the tick's arc-length advance (see BOSS_FLYOVER_SUBSTEPS above):
+            ' split the tick's speed budget into smaller steps, resampling the raw
+            ' derivative each time, rather than one Euler step from a single stale
+            ' sample. Position/arc-length speed always follow the true, unsmoothed
+            ' curve; bsmFlTnX/Y/Z (the exposed facing) is slewed toward each
+            ' sub-step's raw tangent rather than snapped to it -- see
+            ' BOSS_FLYOVER_MAX_FACE_TURN_COS above (issue #211).
+            bsmSubSpd = bsmFlySpd / BOSS_FLYOVER_SUBSTEPS
 
-            ' Position and normalized tangent: both fully delegated to the shared,
-            ' ExprForge-backed evaluators (spline_path.bi) -- no hand-copied CR math.
-            SpEvalAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmEvX, bsmEvY, bsmEvZ
-            boss.px = player.px + bsmEvX
-            boss.py = player.py + bsmEvY
-            boss.pz = player.pz + bsmEvZ
-            SpTangentAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmFlTnX, bsmFlTnY, bsmFlTnZ
+            For bsmSubI = 1 To BOSS_FLYOVER_SUBSTEPS
+                If Int(boss.arcAngle) >= bsmFlNS Then Exit For   ' pass finished mid-loop
 
-            ' Raw (unnormalized) derivative -- needed only for the arc-length speed
-            ' correction below, since SpTangentAt returns just the normalized tangent.
-            ' SpCrGhosts/SpEfCrDerivWeights are the same generated/shared calls
-            ' SpTangentAt makes internally; recomputed here rather than changing its
-            ' signature to expose them.
-            SpCrGhosts bsmFseg, bsmWpCount, bsmClosed, bsmFi0, bsmFi1, bsmFi2, bsmFi3
-            SpEfCrDerivWeights CDbl(bsmFu), bsmDw0D, bsmDw1D, bsmDw2D, bsmDw3D
-            bsmDXD = bsmDw0D*bsmWp(bsmFi0).x + bsmDw1D*bsmWp(bsmFi1).x + bsmDw2D*bsmWp(bsmFi2).x + bsmDw3D*bsmWp(bsmFi3).x
-            bsmDYD = bsmDw0D*bsmWp(bsmFi0).y + bsmDw1D*bsmWp(bsmFi1).y + bsmDw2D*bsmWp(bsmFi2).y + bsmDw3D*bsmWp(bsmFi3).y
-            bsmDZD = bsmDw0D*bsmWp(bsmFi0).z + bsmDw1D*bsmWp(bsmFi1).z + bsmDw2D*bsmWp(bsmFi2).z + bsmDw3D*bsmWp(bsmFi3).z
-            SpEfArcAdvance bsmDXD, bsmDYD, bsmDZD, CDbl(bsmFlySpd), bsmArcAdvD
-            boss.arcAngle = boss.arcAngle + CSng(bsmArcAdvD)
-            bsmTanLen = CSng(Sqr(bsmDXD*bsmDXD + bsmDYD*bsmDYD + bsmDZD*bsmDZD))
+                bsmFt   = boss.arcAngle
+                bsmFseg = Int(bsmFt)
+                If bsmFseg >= bsmFlNS Then bsmFseg = bsmFlNS - 1
+                bsmFu   = bsmFt - bsmFseg
 
-            ' Phase triggers: trigger: <t>, phase, <n> lines from the .mvr file.
-            ' t is fraction-of-one-pass in parameter space; fires once per pass,
-            ' re-armed by BOSS_FlyoverInit at the start of each new pass.
-            Dim bsmPtI As Integer
-            For bsmPtI = 0 To bsmPhaseTrigCount - 1
-                If bsmPhaseTrigFired(bsmPtI) = 0 And boss.arcAngle >= bsmPhaseTrigT(bsmPtI) * bsmFlNS Then
-                    bsmPhaseTrigFired(bsmPtI) = 1
-                    boss.phase = bsmPhaseTrigVal(bsmPtI)
-                End If
-            Next bsmPtI
+                ' Position and true tangent: both fully delegated to the shared,
+                ' ExprForge-backed evaluators (spline_path.bi) -- no hand-copied CR math.
+                SpEvalAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmEvX, bsmEvY, bsmEvZ
+                boss.px = player.px + bsmEvX
+                boss.py = player.py + bsmEvY
+                boss.pz = player.pz + bsmEvZ
+                SpTangentAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmRawTnX, bsmRawTnY, bsmRawTnZ
+                SpSlewToward bsmFlTnX, bsmFlTnY, bsmFlTnZ, bsmRawTnX, bsmRawTnY, bsmRawTnZ, _
+                             BOSS_FLYOVER_MAX_FACE_TURN_COS, bsmFlTnX, bsmFlTnY, bsmFlTnZ
 
-            ' Parallel transport: maintain frame (R,U) across ticks using Rodrigues rotation.
-            ' Shared with state 5 (BOSS_UpdateTransportFrame) so roll stays continuous through
-            ' the transition-into-flyover handoff, not just position/heading.
-            BOSS_UpdateTransportFrame
+                ' Raw (unnormalized) derivative -- needed only for the arc-length speed
+                ' correction below, since SpTangentAt returns just the normalized tangent.
+                ' SpCrGhosts/SpEfCrDerivWeights are the same generated/shared calls
+                ' SpTangentAt makes internally; recomputed here rather than changing its
+                ' signature to expose them.
+                SpCrGhosts bsmFseg, bsmWpCount, bsmClosed, bsmFi0, bsmFi1, bsmFi2, bsmFi3
+                SpEfCrDerivWeights CDbl(bsmFu), bsmDw0D, bsmDw1D, bsmDw2D, bsmDw3D
+                bsmDXD = bsmDw0D*bsmWp(bsmFi0).x + bsmDw1D*bsmWp(bsmFi1).x + bsmDw2D*bsmWp(bsmFi2).x + bsmDw3D*bsmWp(bsmFi3).x
+                bsmDYD = bsmDw0D*bsmWp(bsmFi0).y + bsmDw1D*bsmWp(bsmFi1).y + bsmDw2D*bsmWp(bsmFi2).y + bsmDw3D*bsmWp(bsmFi3).y
+                bsmDZD = bsmDw0D*bsmWp(bsmFi0).z + bsmDw1D*bsmWp(bsmFi1).z + bsmDw2D*bsmWp(bsmFi2).z + bsmDw3D*bsmWp(bsmFi3).z
+                SpEfArcAdvance bsmDXD, bsmDYD, bsmDZD, CDbl(bsmSubSpd), bsmArcAdvD
+                boss.arcAngle = boss.arcAngle + CSng(bsmArcAdvD)
+                bsmTanLen = CSng(Sqr(bsmDXD*bsmDXD + bsmDYD*bsmDYD + bsmDZD*bsmDZD))
 
-            ' Standoff: offset wire position perpendicular to tangent by pathRoll angle (JS: actualPos)
+                ' Phase triggers: trigger: <t>, phase, <n> lines from the .mvr file.
+                ' t is fraction-of-one-pass in parameter space; fires once per pass,
+                ' re-armed by BOSS_FlyoverInit at the start of each new pass.
+                Dim bsmPtI As Integer
+                For bsmPtI = 0 To bsmPhaseTrigCount - 1
+                    If bsmPhaseTrigFired(bsmPtI) = 0 And boss.arcAngle >= bsmPhaseTrigT(bsmPtI) * bsmFlNS Then
+                        bsmPhaseTrigFired(bsmPtI) = 1
+                        boss.phase = bsmPhaseTrigVal(bsmPtI)
+                    End If
+                Next bsmPtI
+
+                ' Parallel transport: maintain frame (R,U) across ticks using Rodrigues rotation,
+                ' driven off the smoothed facing (bsmFlTnX/Y/Z) so banking eases through a cusp
+                ' in step with the nose, rather than snapping independently of it. Shared with
+                ' state 5 (BOSS_UpdateTransportFrame) so roll stays continuous through the
+                ' transition-into-flyover handoff too, not just position/heading.
+                BOSS_UpdateTransportFrame
+            Next bsmSubI
+
+            ' Standoff/craftRoll: cosmetic offsets of the tick's ending position, computed
+            ' once against the final sub-step's parameter -- no benefit to redoing per sub-step.
             If bsmStandoff > 0.001 And bsmTanLen > 0.001 Then
                 SpEvalRollAt bsmPathRoll(), bsmWpCount, bsmFt, bsmClosed, bsmFlPR
                 SpEfActualPos CDbl(boss.px), CDbl(boss.py), CDbl(boss.pz), CDbl(bsmFlTnX), CDbl(bsmFlTnY), CDbl(bsmFlTnZ), _

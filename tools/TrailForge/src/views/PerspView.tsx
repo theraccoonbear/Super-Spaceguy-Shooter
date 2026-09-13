@@ -539,7 +539,7 @@ export function PerspView() {
     // Ship is always shown while a valid path exists — paused or playing.
     // The scrubber sets animT when paused; this effect re-runs and repositions the ship.
 
-    const nSegs        = path.closed ? path.wps.length : path.wps.length - 1
+    const nSegs        = path.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
     const animFrac     = nSegs > 0 ? Math.max(0, Math.min(1, (animT % (nSegs || 1)) / (nSegs || 1))) : 0
     const wire         = evalAt(path.wps, animT, path.closed)
     const tan          = tangentAt(path.wps, animT, path.closed)

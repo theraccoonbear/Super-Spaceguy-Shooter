@@ -1,14 +1,14 @@
-' mnv_transition_test.bas -- regression guard for boss maneuver entry/handoff
-' continuity (issue #212): position and tangent must not jump discontinuously
-' at any state 5 (transition) <-> state 6 (flyover) boundary, across all three
-' real boss maneuvers.
+' mnv_transition_test.bas -- regression guard for boss maneuver flight continuity:
+'  - issue #212: position/tangent must not jump discontinuously at any state 5
+'    (transition) <-> state 6 (flyover) boundary.
+'  - issue #211: the tangent must not flip sharply mid-pass, within state 6
+'    itself, on closed-loop maneuvers.
+' Covers all three real boss maneuvers.
 '
 ' Drives BOSS_PickMode/BOSS_UpdateMovement through 1500 ticks cycling
 ' boss-x-flight, boss-v-flight, and attack-pass, and flags any state-boundary
-' position jump that exceeds 3x the maneuver's own steady-state per-tick
-' travel. Tangent jump is printed for diagnostic visibility but not yet
-' asserted -- issue #211 (tangent flip on closed-loop maneuvers) is a
-' separate, still-open bug this test does not yet guard against.
+' position jump, or any in-flight tangent jump, that exceeds a multiple of the
+' maneuver's own steady-state per-tick travel/turning.
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/mnv_transition_test.bas
@@ -45,6 +45,7 @@ Dim prevTX As Single, prevTY As Single, prevTZ As Single
 Dim prevState As Integer
 Dim cruiseJumpEMA As Single   ' rolling steady-state per-tick travel, to judge boundary jumps against
 Dim worstBoundaryRatio As Single, worstBoundaryTick As Integer
+Dim worstTanJump As Single, worstTanTick As Integer   ' issue #211: absolute per-tick tangent change, mid-flight
 Dim i As Integer, entries As Integer
 
 prevPX = boss.px : prevPY = boss.py : prevPZ = boss.pz
@@ -73,17 +74,47 @@ For i = 1 To 1500
         cruiseJumpEMA = cruiseJumpEMA * 0.9 + posJump * 0.1   ' only learn steady-state speed away from boundaries
     End If
 
+    ' Mid-flight tangent continuity (issue #211): checked every tick within a single
+    ' flyover pass, not just at state boundaries -- the bug this guards against is a
+    ' tangent flip *inside* state 6, unrelated to entry/exit. Measured as an ABSOLUTE
+    ' per-tick chord distance, not a ratio to steady-state turning: unlike position
+    ' (which travels a fairly consistent distance/tick throughout a pass), a flight
+    ' path can legitimately have long straight stretches and a few genuine tight
+    ' turns, so "many times the average turn rate" is expected and fine on any real
+    ' turn -- what actually matters is an absolute cap on how far facing can rotate
+    ' in one tick, which is exactly what BOSS_FLYOVER_MAX_FACE_TURN_COS enforces.
+    If boss.state = 6 And prevState = 6 And i > 1 Then
+        If tanJump > worstTanJump Then worstTanJump = tanJump : worstTanTick = i
+    End If
+
     prevPX = boss.px : prevPY = boss.py : prevPZ = boss.pz
     prevTX = bsmFlTnX : prevTY = bsmFlTnY : prevTZ = bsmFlTnZ
     prevState = boss.state
 Next i
 
+' Chord distance between unit vectors for a 20 deg angle: 2*sin(10 deg) ~= 0.347.
+' BOSS_FLYOVER_MAX_FACE_TURN_COS nominally caps facing turn at 10 deg/tick; this
+' gives a 2x margin above nominal before failing, while still catching anything
+' resembling the original ~158 deg instantaneous flip (chord ~1.87) by a wide mile.
+Const MT_MAX_TAN_JUMP = 0.35
+
 Print
 Print "entries=" + LTrim$(Str$(entries)) + "  steady-state cruise~=" + Str$(cruiseJumpEMA) + "/tick  worst entry/exit boundary=" + Str$(worstBoundaryRatio) + "x @tick " + LTrim$(Str$(worstBoundaryTick))
-If worstBoundaryRatio < 3.0 Then
-    Print "PASS  no boundary meaningfully exceeds steady-state per-tick travel"
+Print "worst mid-flight tangent jump=" + Str$(worstTanJump) + " @tick " + LTrim$(Str$(worstTanTick)) + "  (cap=" + Str$(MT_MAX_TAN_JUMP) + ")"
+
+Dim mtFail As Integer : mtFail = 0
+If worstBoundaryRatio >= 3.0 Then
+    Print "FAIL  a state-transition boundary jump exceeds steady-state travel by 3x+ -- see [state x->y] lines above"
+    mtFail = 1
+End If
+If worstTanJump >= MT_MAX_TAN_JUMP Then
+    Print "FAIL  a mid-flight tangent jump exceeds the absolute turn-rate cap @tick " + LTrim$(Str$(worstTanTick)) + " -- issue #211 regression"
+    mtFail = 1
+End If
+
+If mtFail = 0 Then
+    Print "PASS  no boundary or mid-flight jump meaningfully exceeds steady-state travel/turning"
     System 0
 Else
-    Print "FAIL  a state-transition boundary jump exceeds steady-state travel by 3x+ -- see [state x->y] lines above"
     System 1
 End If

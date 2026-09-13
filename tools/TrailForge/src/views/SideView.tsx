@@ -199,7 +199,7 @@ export function SideView() {
     // ── Roll arc indicators at each waypoint ──────────────────────────────
     const crSegsAll = path.craftRollSegments ?? []
     if (crSegsAll.length > 0) {
-      const nSegsWp = path.closed ? path.wps.length : Math.max(path.wps.length - 1, 1)
+      const nSegsWp = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
       path.wps.forEach((wp, i) => {
         const pf  = nSegsWp > 0 ? i / nSegsWp : 0
         const deg = evalCraftRoll(crSegsAll, arcTable.paramToArc(pf), path.craftRollLoopSeam)
@@ -222,7 +222,7 @@ export function SideView() {
     })
 
     if (path.wps.length >= 2) {
-      const nSegs     = path.closed ? path.wps.length : path.wps.length - 1
+      const nSegs     = path.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
       const animFrac  = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
       const wire      = evalAt(path.wps, animT, path.closed)
       const tan       = tangentAt(path.wps, animT, path.closed)
