@@ -144,6 +144,7 @@ run_test snd_init_test
 run_test telem_creds_test
 run_test dbg_output_test
 run_test mnv_load_test
+run_test mnv_transition_test
 run_http_test http_queue_test
 
 echo "==> All tests passed"

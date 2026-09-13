@@ -106,12 +106,14 @@ Sub BOSS_Update
     bssTgtRx = CSng(bssVaRxD)
     bssTgtRy = CSng(bssVaRyD)
     bssTgtRz = CSng(bssVaRzD)
-    ' flyover: derive yaw/pitch/roll from spline tangent (the actual velocity vector).
+    ' flyover + transition: derive yaw/pitch/roll from the spline/Hermite tangent
+    ' (the actual velocity vector) -- same treatment for both so orientation stays
+    ' continuous across the maneuver-entry handoff, not just position.
     ' Euler extraction is ExprForge-generated (SpEfYawPitch/SpEfRollFromFrame) --
     ' the game's object-transform pipeline needs degrees; TrailForge doesn't (it
     ' renders straight from the tangent/R/U vectors), so this conversion is a
     ' QB64-only consumer of formula.expr, generated for TS too but unused there.
-    If boss.state = 6 Then
+    If boss.state = 6 Or boss.state = 5 Then
         Dim bssYawD As Double, bssPitchD As Double, bssHorizD As Double, bssRollD As Double
         SpEfYawPitch CDbl(bsmFlTnX), CDbl(bsmFlTnY), CDbl(bsmFlTnZ), bssYawD, bssPitchD, bssHorizD
         bssTgtRy = CSng(bssYawD)
@@ -142,7 +144,7 @@ Sub BOSS_Update
         End If
     End If
     Dim bssAttLerp As Single : bssAttLerp = BOSS_ATTITUDE_LERP
-    If boss.state = 6 Then bssAttLerp = 0.18  ' faster tracking during spline flight
+    If boss.state = 6 Or boss.state = 5 Then bssAttLerp = 0.18  ' faster tracking during spline flight/transition
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * bssAttLerp
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * bssAttLerp
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * bssAttLerp

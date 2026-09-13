@@ -55,6 +55,9 @@ const FN_ORDER = [
     'SpEfPhaseApproachRate',
     'SpEfVelocityAttitude',
     'SpEfHolonomyAngle',
+    'SpEfHermiteTangentScale',
+    'SpEfHermitePos',
+    'SpEfHermiteTangent',
 ];
 
 const OUT = {

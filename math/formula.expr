@@ -11,6 +11,7 @@
 #   fr = SpEfFrustumAtX  hc = SpEfApplyHolonomyCorrection
 #   mh = SpEfMeasureHolonomy  yp = SpEfYawPitch  rl = SpEfRollFromFrame
 #   pa = SpEfPhaseApproachRate  va = SpEfVelocityAttitude  ha = SpEfHolonomyAngle
+#   hs = SpEfHermiteTangentScale  hp = SpEfHermitePos  ht = SpEfHermiteTangent
 #
 # Macros available (registered by emit-spline.js before loadExpr):
 #   len3(x,y,z)                          -- sqrt(x^2+y^2+z^2)
@@ -307,3 +308,79 @@ fn SpEfVelocityAttitude(vx, vy, vz):
 
 fn SpEfHolonomyAngle(dotRR, dotRU):
   return { angle: atan2(dotRU, dotRR) };
+
+# -- SpEfHermiteTangentScale ----------------------------------------------------
+# Scales the entry/exit tangent directions of a maneuver-entry transition into
+# Hermite-basis tangent vectors (m0, m1). Both direction inputs are normalized
+# defensively (t0 in particular is not guaranteed unit -- it may come straight
+# from boss.vx on the very first-ever transition, before any spline tangent
+# exists). Magnitude is the endpoint distance, the same convention Kochanek-
+# Bartels/Cardinal splines use to keep curvature comparable to a CR segment
+# of similar length.
+#
+# NOTE: manual safeDiv-normalize, not the normalize3 macro -- SpEfFacingNorm
+# already holds the file's one normalize3 call (QB64 Dim scope constraint).
+#
+# Prefix: hs
+# Outputs: m0x, m0y, m0z, m1x, m1y, m1z
+
+fn SpEfHermiteTangentScale(p0x, p0y, p0z, t0x, t0y, t0z, p1x, p1y, p1z, t1x, t1y, t1z):
+  let hsDx    = p1x - p0x;
+  let hsDy    = p1y - p0y;
+  let hsDz    = p1z - p0z;
+  let hsDist  = len3(hsDx, hsDy, hsDz);
+  let hsT0Len = len3(t0x, t0y, t0z);
+  let hsT0xN  = safeDiv(t0x, hsT0Len, -1);
+  let hsT0yN  = safeDiv(t0y, hsT0Len, 0);
+  let hsT0zN  = safeDiv(t0z, hsT0Len, 0);
+  let hsT1Len = len3(t1x, t1y, t1z);
+  let hsT1xN  = safeDiv(t1x, hsT1Len, -1);
+  let hsT1yN  = safeDiv(t1y, hsT1Len, 0);
+  let hsT1zN  = safeDiv(t1z, hsT1Len, 0);
+  return {
+    m0x: hsT0xN * hsDist, m0y: hsT0yN * hsDist, m0z: hsT0zN * hsDist,
+    m1x: hsT1xN * hsDist, m1y: hsT1yN * hsDist, m1z: hsT1zN * hsDist
+  };
+
+# -- SpEfHermitePos --------------------------------------------------------------
+# Cubic Hermite position at t in [0,1] given endpoints P0,P1 and scaled
+# tangents m0,m1 (from SpEfHermiteTangentScale). Used for the short blend
+# segment from wherever the boss actually is/is heading into a maneuver's
+# real entry point -- continuous position AND heading, no snap.
+#
+# Prefix: hp
+# Outputs: x, y, z
+
+fn SpEfHermitePos(p0x, p0y, p0z, m0x, m0y, m0z, p1x, p1y, p1z, m1x, m1y, m1z, t):
+  let hpT2  = t * t;
+  let hpT3  = hpT2 * t;
+  let hpH00 = 2 * hpT3 - 3 * hpT2 + 1;
+  let hpH10 = hpT3 - 2 * hpT2 + t;
+  let hpH01 = -2 * hpT3 + 3 * hpT2;
+  let hpH11 = hpT3 - hpT2;
+  return {
+    x: hpH00 * p0x + hpH10 * m0x + hpH01 * p1x + hpH11 * m1x,
+    y: hpH00 * p0y + hpH10 * m0y + hpH01 * p1y + hpH11 * m1y,
+    z: hpH00 * p0z + hpH10 * m0z + hpH01 * p1z + hpH11 * m1z
+  };
+
+# -- SpEfHermiteTangent -----------------------------------------------------------
+# Raw (unnormalized) derivative of the same Hermite curve at t -- mirrors the
+# CR case (SpEfCrDerivWeights): host normalizes via SpEfFacingNorm and feeds
+# the raw magnitude to SpEfArcAdvance for constant world-speed, exactly like
+# SpTangentAt does for maneuver playback.
+#
+# Prefix: ht
+# Outputs: dx, dy, dz
+
+fn SpEfHermiteTangent(p0x, p0y, p0z, m0x, m0y, m0z, p1x, p1y, p1z, m1x, m1y, m1z, t):
+  let htT2   = t * t;
+  let htDh00 = 6 * htT2 - 6 * t;
+  let htDh10 = 3 * htT2 - 4 * t + 1;
+  let htDh01 = -6 * htT2 + 6 * t;
+  let htDh11 = 3 * htT2 - 2 * t;
+  return {
+    dx: htDh00 * p0x + htDh10 * m0x + htDh01 * p1x + htDh11 * m1x,
+    dy: htDh00 * p0y + htDh10 * m0y + htDh01 * p1y + htDh11 * m1y,
+    dz: htDh00 * p0z + htDh10 * m0z + htDh01 * p1z + htDh11 * m1z
+  };
