@@ -170,7 +170,62 @@ function maneuversDirApiPlugin(): Plugin {
   }
 }
 
+// ── Model data API ──────────────────────────────────────────────────────────
+// Serves individual object blocks out of assets/models.e3d so PerspView can
+// render the actual game asset instead of a generic placeholder ship -- see
+// issue #181's follow-up: the placeholder never validated real mesh orientation.
+//
+// GET /api/models/:name → raw text of the "o NAME ... end" block (404 if absent)
+function modelsDataApiPlugin(): Plugin {
+  return {
+    name: 'models-data-api',
+    configureServer(server) {
+      const MODELS_FILE = process.env.MODELS_FILE
+        ? resolve(process.env.MODELS_FILE)
+        : resolve(__dirname, '../../assets/models.e3d')
+
+      function safeName(name: string): boolean {
+        return Boolean(name) && /^[A-Z0-9][A-Z0-9_]*$/i.test(name)
+      }
+
+      function cors(res: ServerResponse): void {
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Cache-Control', 'no-store')
+      }
+
+      server.middlewares.use('/api/models', (req: IncomingMessage, res: ServerResponse) => {
+        cors(res)
+        if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return }
+        if (req.method !== 'GET') { res.writeHead(405); res.end(); return }
+
+        const url  = req.url || '/'
+        const name = decodeURIComponent(url.slice(1).split('?')[0])
+        if (!safeName(name)) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' })
+          res.end('invalid model name')
+          return
+        }
+
+        try {
+          const text  = fs.readFileSync(MODELS_FILE, 'utf-8')
+          const lines = text.split('\n')
+          const start = lines.findIndex(l => l.trim() === `o ${name}`)
+          if (start === -1) throw new Error('not found')
+          const endOffset = lines.slice(start).findIndex(l => l.trim() === 'end')
+          if (endOffset === -1) throw new Error('unterminated block')
+          const block = lines.slice(start, start + endOffset + 1).join('\n')
+          res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+          res.end(block)
+        } catch {
+          res.writeHead(404, { 'Content-Type': 'text/plain' })
+          res.end(`model not found: ${name}`)
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), splineEmitPlugin(), maneuversDirApiPlugin()],
+  plugins: [react(), splineEmitPlugin(), maneuversDirApiPlugin(), modelsDataApiPlugin()],
   base: './',
 })

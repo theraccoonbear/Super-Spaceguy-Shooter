@@ -152,6 +152,15 @@ Sub BOSS_UpdateMovement()
             boss.py = player.py + bsmTrP1Y
             boss.pz = player.pz + bsmTrP1Z
             boss.arcAngle = 0       ' state 6 starts its own spline parameter fresh
+            ' Re-seed the transport frame instead of carrying over whatever the
+            ' transition accumulated: parallel transport is path-dependent, and
+            ' transporting through a large, unrelated re-orientation (e.g. the
+            ' very first entry, blending from spawn's straight approach) picks
+            ' up a real, exact (not a numerical error -- confirmed unchanged at
+            ' 20000x finer sampling) twist that has nothing to do with the
+            ' flyover maneuver itself. Re-seeding here makes every entry behave
+            ' identically regardless of where the boss was coming from.
+            bsmFlFrameReady = 0
             boss.state = 6
         End If
 

@@ -15,7 +15,7 @@ import { NodeEditDialog } from './ui/NodeEditDialog'
 import { BehaviorsPanel } from './ui/BehaviorsPanel'
 import { linked as orthoLinked, toggleLinked } from './views/orthoCamera'
 import { uiPrefs, saveUIPrefs } from './prefs'
-import { tangentAt, makeFrame, transportFrame, arcAdvanceAt, applyHolonomyCorrection, measureHolonomy, buildFrameTable, makeArcTable } from './math/spline'
+import { tangentAt, makeFrame, transportFrame, arcAdvanceAt, applyHolonomyCorrection, measureHolonomy, buildFrameTable, makeArcTable, segCount } from './math/spline'
 import { setFrameTable } from './math/frameCache'
 import { evalScalarSegments } from './math/segmentTrack'
 import type { Vec3 } from './math/vec3'
@@ -70,7 +70,7 @@ function useAnimLoop() {
       return
     }
     // Closed path: measure holonomy first (high-res pass), then build table.
-    const nSegs  = path.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+    const nSegs  = segCount(path.wps, true)
     const nSteps = 1200
     const tan0   = tangentAt(path.wps, 0, true)
     const frame0 = makeFrame(tan0)
@@ -94,7 +94,7 @@ function useAnimLoop() {
       raf = requestAnimationFrame(tick)
       if (!playingRef.current) { lastTs = 0; prevTanRef.current = null; return }
       const p     = pathRef.current
-      const nSegs = p.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+      const nSegs = segCount(p.wps, p.closed)
       if (nSegs < 1) return
 
       if (lastTs === 0) {
@@ -122,34 +122,19 @@ function useAnimLoop() {
       const paramFrac  = nSegs > 0 ? Math.max(0, Math.min(1, (animTRef.current % nSegs) / nSegs)) : 0
       const arcFrac    = arcTableRef.current.paramToArc(paramFrac)
       const speedScale = speedSegs.length > 0 ? evalScalarSegments(speedSegs, arcFrac, speedSeam) : 1
+      const dT   = arcAdvanceAt(p.wps, animTRef.current, p.closed, p.speed * speedScale * framesElapsed)
+      let newT   = animTRef.current + dT
+      if (newT >= nSegs) newT -= nSegs
 
-      // Sub-step the frame's arc-length advance (mirrors BOSS_FLYOVER_SUBSTEPS in
-      // src/gameplay/behavior.bas, issue #211): one big Euler step samples the raw
-      // derivative once and can badly overshoot near a sharp knot, where |D| changes
-      // fast over a short arc-length span -- reading as a ~180 deg tangent flip.
-      // Smaller, resampled steps track the curve's actual shape instead.
-      const FLYOVER_SUBSTEPS = 8
-      const subSpeed = (p.speed * speedScale * framesElapsed) / FLYOVER_SUBSTEPS
-      let curT = animTRef.current
-      let totalDT = 0
-      for (let s = 0; s < FLYOVER_SUBSTEPS; s++) {
-        const subDT = arcAdvanceAt(p.wps, curT, p.closed, subSpeed)
-        curT += subDT
-        if (curT >= nSegs) curT -= nSegs
-        totalDT += subDT
-
-        // Parallel transport: rotate frame from previous tangent to current tangent,
-        // accumulated over each sub-step so a sharp turn is several small rotations.
-        const subTan = tangentAt(p.wps, curT, p.closed)
-        const prevTan = prevTanRef.current
-        if (prevTan) {
-          const { R, U } = transportFrame(prevTan, subTan, frameRRef.current, frameURef.current)
-          frameRRef.current = R
-          frameURef.current = U
-        }
-        prevTanRef.current = subTan
+      // Parallel transport: rotate frame from previous tangent to current tangent
+      const newTan = tangentAt(p.wps, newT, p.closed)
+      const prevTan = prevTanRef.current
+      if (prevTan) {
+        const { R, U } = transportFrame(prevTan, newTan, frameRRef.current, frameURef.current)
+        frameRRef.current = R
+        frameURef.current = U
       }
-      const newT = curT
+      prevTanRef.current = newTan
 
       // Holonomy correction: distribute counter-twist proportional to arc fraction
       // advanced this tick so the frame closes exactly after one full loop.
@@ -157,7 +142,7 @@ function useAnimLoop() {
       const holonomy = holonomyRef.current
       if (p.closed && Math.abs(holonomy) > 1e-6) {
         const corrected = applyHolonomyCorrection(
-          frameRRef.current, frameURef.current, holonomy, totalDT / nSegs,
+          frameRRef.current, frameURef.current, holonomy, dT / nSegs,
         )
         frameRRef.current = corrected.R
         frameURef.current = corrected.U
@@ -429,7 +414,7 @@ function StatusBar() {
 function stepFrame(dir: 1 | -1) {
   const { path, animT, playing, setPlayState } = useStore.getState()
   if (playing) return
-  const nSegs = path.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+  const nSegs = segCount(path.wps, path.closed)
   if (nSegs < 1) return
   const STEP = 1 / 20   // 1/20 of a segment per arrow key
   let newT = animT + dir * STEP

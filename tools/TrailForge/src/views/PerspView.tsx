@@ -7,9 +7,10 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
 import { camPrefs, saveCamPrefs } from '../prefs'
-import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, frustumAtX, makeArcTable } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, frustumAtX, makeArcTable, segCount } from '../math/spline'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
+import { fetchE3DModel, type E3DMesh } from '../math/e3d'
 import {
   GAME_CAM_X, GAME_CAM_Y,
   SHIP_HX, SHIP_HY, SHIP_HZ,
@@ -123,6 +124,57 @@ function buildShipGroup(): THREE.Group {
   return g
 }
 
+// Build a ship group directly from a baked .e3d mesh (the actual asset the
+// game renders) instead of the generic placeholder above. The mesh's
+// "axisfix" correction (a model whose source .obj axes don't match this
+// app's forward=+X/up=+Y/right=+Z convention -- e.g. BOSS, nose authored at
+// local -X, confirmed empirically; see src/gameplay/boss.bas's orientation
+// comments and tools/turn_viz.bas's VIZ_BuildBossObjMat) is already applied
+// to mesh.vertices by parseE3DBlock, from the SAME declared fact the game's
+// E3D_LoadMesh reads -- no separate correction needed here.
+function buildRealShipGroup(mesh: E3DMesh): THREE.Group {
+  const g = new THREE.Group()
+  const positions: number[] = []
+  const colors: number[] = []
+
+  const pushTri = (ia: number, ib: number, ic: number, color: [number, number, number]) => {
+    const va = mesh.vertices[ia - 1], vb = mesh.vertices[ib - 1], vc = mesh.vertices[ic - 1]
+    if (!va || !vb || !vc) return
+    positions.push(...va, ...vb, ...vc)
+    const [r, gr, b] = color
+    for (let k = 0; k < 3; k++) colors.push(r / 255, gr / 255, b / 255)
+  }
+
+  for (const face of mesh.faces) {
+    const [i1, i2, i3, i4] = face.indices
+    pushTri(i1, i2, i3, face.color)
+    if (i4 !== undefined) pushTri(i1, i3, i4, face.color)   // quad -> two triangles
+  }
+
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+  geo.computeVertexNormals()
+
+  g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true })))
+  return g
+}
+
+// Replace a ship group's children in place (keeps the same Group instance,
+// since other code holds long-lived references to it via refs.shipGroup).
+function swapShipGeometry(target: THREE.Group, replacement: THREE.Group): void {
+  while (target.children.length > 0) {
+    const child = target.children[0]
+    target.remove(child)
+    if ((child as THREE.Mesh).isMesh) {
+      (child as THREE.Mesh).geometry.dispose()
+      const mat = (child as THREE.Mesh).material
+      if (Array.isArray(mat)) mat.forEach(m => m.dispose()); else mat.dispose()
+    }
+  }
+  while (replacement.children.length > 0) target.add(replacement.children[0])
+}
+
 // Scatter dark reference cubes well outside the flight path.
 // Called from the path useEffect with all wire positions,
 // so the exclusion zone covers every rotational variant of the offset.
@@ -200,17 +252,23 @@ function buildBackground(
 function buildOverlayGroup(): THREE.Group {
   const g = new THREE.Group()
 
-  // Player reference ship — indigo semi-transparent box, nose cone in orange
+  // Player reference ship — placeholder box + nose cone, swapped for the real
+  // PLAYER mesh once fetched (see the async load right after buildOverlayGroup()
+  // is called; named so that swap can find this nested group without touching
+  // the camera cube / frustum / scale planes below).
+  const playerShipGroup = new THREE.Group()
+  playerShipGroup.name = 'playerShipRef'
   const shipMat = new THREE.MeshBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.35 })
-  g.add(new THREE.Mesh(new THREE.BoxGeometry(SHIP_HX * 2, SHIP_HY * 2, SHIP_HZ * 2), shipMat))
-  g.add(new THREE.LineSegments(
+  playerShipGroup.add(new THREE.Mesh(new THREE.BoxGeometry(SHIP_HX * 2, SHIP_HY * 2, SHIP_HZ * 2), shipMat))
+  playerShipGroup.add(new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.BoxGeometry(SHIP_HX * 2, SHIP_HY * 2, SHIP_HZ * 2)),
     new THREE.LineBasicMaterial({ color: 0x818cf8 }),
   ))
   const noseGeo = new THREE.ConeGeometry(0.1, 0.45, 8)
   noseGeo.rotateZ(-Math.PI / 2)
   noseGeo.translate(SHIP_HX + 0.22, 0, 0)
-  g.add(new THREE.Mesh(noseGeo, new THREE.MeshBasicMaterial({ color: 0xf97316 })))
+  playerShipGroup.add(new THREE.Mesh(noseGeo, new THREE.MeshBasicMaterial({ color: 0xf97316 })))
+  g.add(playerShipGroup)
 
   // Camera cube — yellow, at in-game camera resting position
   const camCube = new THREE.Mesh(
@@ -320,9 +378,21 @@ export function PerspView() {
     const bgGroup = new THREE.Group()
     scene.add(bgGroup)
 
+    // Real-mesh loads below are dev-server only (no /api/models in production
+    // builds -- see modelsDataApiPlugin in vite.config.ts); guarded against
+    // firing after unmount by this flag, cleared in the effect's cleanup.
+    let shipModelCancelled = false
+
     // Gameplay context overlays (player ref ship, camera cube, frustum, scale planes)
     const overlayGroup = buildOverlayGroup()
     scene.add(overlayGroup)
+    fetchE3DModel('PLAYER').then((mesh) => {
+      if (shipModelCancelled || !mesh) return
+      const playerShipGroup = overlayGroup.getObjectByName('playerShipRef') as THREE.Group | undefined
+      if (!playerShipGroup) return
+      swapShipGeometry(playerShipGroup, buildRealShipGroup(mesh))
+      refsRef.current?.kick()
+    })
 
     // Player origin marker (small green dot at 0,0,0 — separate from the ship overlay)
     scene.add(Object.assign(
@@ -344,10 +414,15 @@ export function PerspView() {
     // Waypoint spheres
     const wpGroup = new THREE.Group(); scene.add(wpGroup)
 
-    // Ship
+    // Ship — starts as the generic placeholder, swapped for the real BOSS mesh once fetched.
     const shipGroup = buildShipGroup()
     shipGroup.visible = false
     scene.add(shipGroup)
+    fetchE3DModel('BOSS').then((mesh) => {
+      if (shipModelCancelled || !mesh) return
+      swapShipGeometry(shipGroup, buildRealShipGroup(mesh))
+      refsRef.current?.kick()
+    })
 
     // Gizmo (kept invisible — 3D drag disabled, use ortho views)
     const gizmo     = new THREE.Group()
@@ -469,6 +544,7 @@ export function PerspView() {
     kick() // initial render
 
     return () => {
+      shipModelCancelled = true
       cancelAnimationFrame(refs.raf)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       ro.disconnect()
@@ -539,7 +615,7 @@ export function PerspView() {
     // Ship is always shown while a valid path exists — paused or playing.
     // The scrubber sets animT when paused; this effect re-runs and repositions the ship.
 
-    const nSegs        = path.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+    const nSegs        = segCount(path.wps, path.closed)
     const animFrac     = nSegs > 0 ? Math.max(0, Math.min(1, (animT % (nSegs || 1)) / (nSegs || 1))) : 0
     const wire         = evalAt(path.wps, animT, path.closed)
     const tan          = tangentAt(path.wps, animT, path.closed)

@@ -6,6 +6,7 @@
 // All other entries are documentation-only (mouse gestures, context-sensitive keys).
 
 import { useStore } from './store'
+import { segCount } from './math/spline'
 
 export interface Shortcut {
   keys:         string           // human-readable display in help: "Ctrl+Z", "Alt+drag", "Scroll"
@@ -40,7 +41,7 @@ export const SHORTCUTS: Shortcut[] = [
     match: 'end',
     handler: () => {
       const { path, setAnimT } = useStore.getState()
-      const nSegs = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+      const nSegs = Math.max(segCount(path.wps, path.closed), 1)
       setAnimT(nSegs)
     } },
 

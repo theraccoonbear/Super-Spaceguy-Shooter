@@ -1,6 +1,13 @@
 # Super Spaceguy Shooter — mesh data
-# Format: o NAME, aabb hx hy hz, v x y z, f i1 i2 i3 r g b, q i1 i2 i3 i4 r g b, end
+# Format: o NAME, aabb hx hy hz, [axisfix sx sy sz], v x y z, f i1 i2 i3 r g b, q i1 i2 i3 i4 r g b, end
 # Coordinate system: X=forward, Y=up, Z=left. Camera behind (-X) and above (+Y).
+# axisfix (optional, defaults 1 1 1): per-axis sign correction applied to every
+# vertex at load time, for a model whose source .obj wasn't authored to this
+# convention (e.g. nose along a different local axis). Declared once here and
+# read by BOTH consumers (src/3d/mesh.bas's E3D_LoadMesh and TrailForge's
+# tools/TrailForge/src/math/e3d.ts) so the correction is a single asset fact,
+# not independently re-derived per language. Confirmed for BOSS via
+# tools/turn_viz.bas's VIZ_BuildBossObjMat and boss.bas's orientation math.
 
 o PLAYER
 aabb .8356 .2879 .7616
@@ -3190,6 +3197,7 @@ end
 
 o BOSS
 aabb 2.5536 .9261 4.7785
+axisfix -1 1 -1
 v -1.7502 -.4778 .3017
 v -2.0521 -.0409 .2438
 v -.0272 -.6806 .5781

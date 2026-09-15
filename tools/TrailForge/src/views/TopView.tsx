@@ -7,15 +7,12 @@ import { useStore, PathData } from '../store'
 import { CtxMenu } from '../ui/ContextMenu'
 import { pauseAfterCheckpoint, resumeTemporal } from './undoHelpers'
 import type { Waypoint, Vec3 } from '../math/vec3'
-import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, makeArcTable, type SplineSample } from '../math/spline'
+import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, makeArcTable, segCount, type SplineSample } from '../math/spline'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
 import { useOrthoCanvas } from './useOrthoCanvas'
 import { getCam, notifyAll, WorldPan, framePoints } from './orthoCamera'
-import {
-  drawBehaviorMarkers, hoveredEq, BehaviorHit,
-  nearestArcFracOnScreen, hitTestBehaviors, hitToHovered, drawRollIndicator,
-} from './behaviorMarkers'
+import { drawBehaviorMarkers, drawRollIndicator } from './behaviorMarkers'
 import { drawShipModel, rollFrame } from './shipModel2D'
 import { drawOverlaysXZ } from './overlays'
 import { rotateAroundY, translateWps } from '../math/pathOps'
@@ -69,7 +66,6 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, scale: nu
 export function TopView() {
   const { path, selected, multiSel, playing, animT, frameR, frameU, showOverlays, editGhost, setEditGhost,
           hoveredBehavior, mutedTracks, activeBehaviorTrack, behaviorsOpen } = useStore()
-  const behaviorHitsRef = useRef<BehaviorHit[]>([])
   const samplesRef = useRef<SplineSample[]>([])
 
   // craftRollSegments' t is arc-length fraction; animT/wp-index are parameter-space —
@@ -194,18 +190,18 @@ export function TopView() {
       ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fillStyle = '#a78bfa'; ctx.fill()
     }
 
-    // Segment-track spans + craftRoll spans + trigger diamonds (draggable; under waypoint dots)
+    // Segment-track spans + craftRoll spans + trigger diamonds -- view-only
+    // reference overlay; never hit-tested here (edited only on the behavior's
+    // own timeline in BehaviorsPanel), so drawBehaviorMarkers' return value
+    // (screen hit regions, meaningful only for interactive callers) is unused.
     if (behaviorsOpen) {
-      behaviorHitsRef.current = drawBehaviorMarkers(ctx, samples, path, projectFor(w, h, scale, pan),
-        hoveredBehavior, activeBehaviorTrack)
-    } else {
-      behaviorHitsRef.current = []
+      drawBehaviorMarkers(ctx, samples, path, projectFor(w, h, scale, pan), hoveredBehavior, activeBehaviorTrack)
     }
 
     // ── Roll arc indicators at each waypoint ──────────────────────────────
     const crSegsAll = path.craftRollSegments ?? []
     if (crSegsAll.length > 0) {
-      const nSegsWp = Math.max(path.wps.length - 1, 1)   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+      const nSegsWp = Math.max(segCount(path.wps, path.closed), 1)
       path.wps.forEach((wp, i) => {
         const pf  = nSegsWp > 0 ? i / nSegsWp : 0
         const deg = evalCraftRoll(crSegsAll, arcTable.paramToArc(pf), path.craftRollLoopSeam)
@@ -228,7 +224,7 @@ export function TopView() {
     })
 
     if (path.wps.length >= 2) {
-      const nSegs     = path.wps.length - 1   // closed paths store a duplicate closing waypoint -- see spline.ts's ghosts()
+      const nSegs     = segCount(path.wps, path.closed)
       const animFrac  = nSegs > 0 ? Math.max(0, Math.min(1, (animT % nSegs) / nSegs)) : 0
       const wire      = evalAt(path.wps, animT, path.closed)
       const tan       = tangentAt(path.wps, animT, path.closed)
@@ -310,7 +306,6 @@ export function TopView() {
     | { type: 'pan';       startSx: number; startSy: number; startPan: WorldPan; startScale: number }
     | { type: 'rotate';    startSx: number; snapshotWps: Waypoint[] }
     | { type: 'translate'; startSx: number; startSy: number; snapshotWps: Waypoint[] }
-    | { type: 'behavior';  hit: BehaviorHit; startArcFrac: number; startT: number; startDur: number }
   const drag      = useRef<DragState | null>(null)
   const hasMoved  = useRef(false)
   const drawRef   = useRef(redraw)
@@ -372,51 +367,13 @@ export function TopView() {
       return
     }
 
+    // Behavior markers (craftRoll/segment-track spans, trigger diamonds) are
+    // drawn in ortho views for reference ONLY -- never hit-tested or
+    // draggable here. They're editable exclusively on the behavior's own
+    // timeline in BehaviorsPanel; spatial waypoints are the only thing this
+    // view's mouse handling ever picks or moves. See TrailForge's own
+    // CLAUDE.md, "Behaviors Panel — Invariants" for the full contract.
     const idx = findNearWp(sx, sy, rect.width, rect.height)
-
-    // Distance to the nearest waypoint under the cursor, if any -- compared
-    // below against the nearest behavior marker so whichever is actually
-    // closer wins the click. Without this, a trigger/segment sitting at (or
-    // near) a waypoint -- the common case, since behaviors are naturally
-    // placed at meaningful path landmarks -- would be permanently shadowed
-    // by the waypoint and never clickable.
-    let wpDistSq = Infinity
-    if (idx >= 0) {
-      const wp = useStore.getState().path.wps[idx]
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const { sx: wx, sy: wy } = w2s(wp.x, wp.z, rect.width, rect.height, scale, pan)
-      wpDistSq = (sx - wx) ** 2 + (sy - wy) ** 2
-    }
-
-    let behaviorResult: { hit: BehaviorHit; distSq: number } | null = null
-    if (behaviorsOpen) {
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const project = projectFor(rect.width, rect.height, scale, pan)
-      behaviorResult = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
-    }
-
-    if (behaviorResult && behaviorResult.distSq <= wpDistSq) {
-      const { hit } = behaviorResult
-      pauseAfterCheckpoint()
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const project = projectFor(rect.width, rect.height, scale, pan)
-      const startArcFrac = nearestArcFracOnScreen(samplesRef.current, project, sx, sy)
-      const st = useStore.getState()
-      let startT = 0, startDur = 0
-      if (hit.kind === 'trigger') {
-        startT = st.path.triggers[hit.index]?.t ?? 0
-      } else if (hit.category === 'craftRoll') {
-        const seg = st.path.craftRollSegments.find(s => s.id === hit.id)
-        startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
-      } else {
-        const seg = (st.path.segmentTracks[hit.trackName] ?? []).find(s => s.id === hit.id)
-        startT = seg?.t ?? 0; startDur = seg?.duration ?? 0
-      }
-      drag.current = { type: 'behavior', hit, startArcFrac, startT, startDur }
-      useStore.getState().setHoveredBehavior(hitToHovered(hit))
-      if (cvRef.current) cvRef.current.style.cursor = 'grabbing'
-      return
-    }
 
     if (idx >= 0) {
       const { multiSel: ms } = useStore.getState()
@@ -454,19 +411,9 @@ export function TopView() {
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (rightCtxRef.current !== null) rightMovedRef.current = true
-    // Hover hit-test for behavior markers when not dragging
-    if (!drag.current) {
-      const rect = getRect()
-      const sx = e.clientX - rect.left, sy = e.clientY - rect.top
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const project = projectFor(rect.width, rect.height, scale, pan)
-      const result = hitTestBehaviors(behaviorHitsRef.current, samplesRef.current, useStore.getState().path, project, sx, sy)
-      const found = hitToHovered(result?.hit ?? null)
-      const cur = useStore.getState().hoveredBehavior
-      if (!hoveredEq(found, cur)) useStore.getState().setHoveredBehavior(found)
-      if (cvRef.current) cvRef.current.style.cursor = found ? 'grab' : 'crosshair'
-      return
-    }
+    // Behavior markers are view-only here (see onMouseDown) -- no hover
+    // hit-test, no cursor change, no interaction with them in this view.
+    if (!drag.current) return
     const rect = getRect()
     const sx = e.clientX - rect.left, sy = e.clientY - rect.top
     hasMoved.current = true
@@ -523,48 +470,6 @@ export function TopView() {
       return
     }
 
-    if (drag.current.type === 'behavior') {
-      const { hit, startArcFrac, startT, startDur } = drag.current
-      const { scale, worldPan: pan } = getCam(VIEW)
-      const project = projectFor(rect.width, rect.height, scale, pan)
-      const curArcFrac = nearestArcFracOnScreen(samplesRef.current, project, sx, sy)
-      const delta = curArcFrac - startArcFrac
-      const st = useStore.getState()
-
-      if (hit.kind === 'trigger') {
-        const tr = st.path.triggers[hit.index]
-        if (tr) st.updateTrigger(hit.index, { ...tr, t: Math.max(0, Math.min(1, startT + delta)) })
-      } else if (hit.category === 'craftRoll') {
-        const seg = st.path.craftRollSegments.find(s => s.id === hit.id)
-        if (seg) {
-          if (hit.zone === 'body') {
-            st.updateCraftRollSegment(hit.id, { t: Math.max(0, Math.min(1 - seg.duration, startT + delta)) })
-          } else if (hit.zone === 'right') {
-            st.updateCraftRollSegment(hit.id, { duration: Math.max(0.01, Math.min(1 - seg.t, startDur + delta)) })
-          } else {
-            const newT   = Math.max(0, Math.min(startT + startDur - 0.01, startT + delta))
-            const newDur = Math.max(0.01, startT + startDur - newT)
-            st.updateCraftRollSegment(hit.id, { t: newT, duration: newDur })
-          }
-        }
-      } else {
-        const seg = (st.path.segmentTracks[hit.trackName] ?? []).find(s => s.id === hit.id)
-        if (seg) {
-          if (hit.zone === 'body') {
-            st.updateSegment(hit.trackName, hit.id, { t: Math.max(0, Math.min(1 - seg.duration, startT + delta)) })
-          } else if (hit.zone === 'right') {
-            st.updateSegment(hit.trackName, hit.id, { duration: Math.max(0.01, Math.min(1 - seg.t, startDur + delta)) })
-          } else {
-            const newT   = Math.max(0, Math.min(startT + startDur - 0.01, startT + delta))
-            const newDur = Math.max(0.01, startT + startDur - newT)
-            st.updateSegment(hit.trackName, hit.id, { t: newT, duration: newDur })
-          }
-        }
-      }
-      drawRef.current()
-      return
-    }
-
     if (drag.current.type === 'wp') {
       const { startWx, startWz, startSx, startSy, wpIdx } = drag.current
       const { scale } = getCam(VIEW)
@@ -596,15 +501,7 @@ export function TopView() {
     const wasMwpDrag      = drag.current.type === 'mwp'
     const wasTransformDrag = drag.current.type === 'rotate' || drag.current.type === 'translate'
     const wasMarquee      = drag.current.type === 'marquee'
-    const wasBehaviorDrag = drag.current.type === 'behavior'
     if (ghostRef.current !== null) { ghostRef.current = null; drawRef.current() }
-
-    if (wasBehaviorDrag) {
-      drag.current = null
-      if (cvRef.current) cvRef.current.style.cursor = 'grab'
-      resumeTemporal()
-      return
-    }
 
     if (wasTransformDrag) {
       opHintRef.current = ''

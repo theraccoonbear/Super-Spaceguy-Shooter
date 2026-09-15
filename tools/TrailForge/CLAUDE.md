@@ -437,19 +437,34 @@ all of them, not one per track). Do NOT look for craftRoll in
 
 **All four views** (TopView, SideView, FrontView, PerspView) read craftRoll
 from `path.craftRollSegments` via `evalCraftRoll(segments, arcFrac,
-loopSeam)`; the three ortho views additionally draw+drag EVERY segment track
-(craftRoll and scalar) through the shared `drawBehaviorMarkers()` /
-`hitTestBehaviors()` in `behaviorMarkers.ts`. If you change where craftRoll
+loopSeam)`; the three ortho views additionally **draw** every segment track
+(craftRoll and scalar) and every trigger through the shared
+`drawBehaviorMarkers()` in `behaviorMarkers.ts`. If you change where craftRoll
 data lives, update ALL four views. Grep for `evalCraftRoll` to find all
 callsites.
+
+**Behavior markers are view-only in ortho/3D views — never interactive there.**
+Only spatial nodes (waypoints) are clickable/selectable/draggable in an ortho
+view. A behavior marker (segment span or trigger diamond) is edited
+exclusively on its own timeline in BehaviorsPanel.tsx, which does its own
+ruler-pixel hit-testing and does not go through `behaviorMarkers.ts` for that
+(it only imports `trackColor`/`triggerColor` from it, for consistent
+coloring). Ortho views call `drawBehaviorMarkers()` purely to render the
+reference overlay; they do not hit-test it, hover it, or drag it, and the
+function's signature reflects that (`void` return — no hit regions). Do not
+reintroduce screen-space hit-testing for behavior markers in TopView,
+SideView, FrontView, or PerspView, even to solve a "marker sits on top of a
+waypoint and blocks its click" problem — fix that by not hit-testing markers
+in ortho at all (spatial nodes always win), not by re-adding a tiebreak
+against a marker hit.
 
 ### Segment-track interaction contract (CraftRollTrack is the reference; ScalarSegmentTrack mirrors it exactly)
 | Action | How |
 |--------|-----|
 | Add segment | Right-click empty ruler → "Add segment here", OR press **N** when track is expanded (adds at playhead) |
 | Select segment | Click segment block body |
-| Move segment | Drag segment body — in the panel ruler, or directly on the wire in any ortho view |
-| Resize segment | Drag left/right edge handles — panel or ortho view |
+| Move segment | Drag segment body — **panel ruler only**, never in an ortho/3D view |
+| Resize segment | Drag left/right edge handles — **panel ruler only**, never in an ortho/3D view |
 | Delete segment | Right-click segment body → "Delete segment", OR select + Del button in expanded editor |
 | Remove ALL segments | Click **×** button in track right panel (with confirm dialog) |
 | Clear entire track | Same as "Remove ALL" — after last segment gone, row vanishes |
@@ -491,9 +506,10 @@ interface ScalarSegment {
 ### Discrete triggers (fireMode, weapon, shieldMode, invuln, phase, sound, custom)
 Instant, fire-once events at a single `t` — no duration, no interpolation. One
 shared component (`TriggerTypeRow`) handles every type identically; only the
-value-editor widget (`TriggerValueEditor`) varies per type. Canvas drag (in
-the three ortho views) moves `t` only, same nearest-point-on-curve mechanics
-segment tracks use for their body drag.
+value-editor widget (`TriggerValueEditor`) varies per type. Dragging a
+trigger to change its `t` happens on the panel ruler only — like every other
+behavior marker, it's drawn (as a diamond) but never hit-tested or draggable
+in an ortho/3D view.
 
 ### Roll arc visualization
 All views draw a roll clock indicator (ring + radial arm) at each waypoint when `path.craftRollSegments.length > 0`, via the shared `drawRollIndicator()` in `behaviorMarkers.ts` (one implementation, called from all 3 ortho views' waypoint loop + playhead overlay — do not re-duplicate this drawing code per view). Orange = CW (positive degrees), Blue = CCW (negative). The arm points in the direction of the accumulated roll angle using a clock-face convention (12 o'clock = 0°, clockwise positive).
@@ -527,3 +543,5 @@ PerspView adds a 3D ring (torus, perpendicular to ship forward axis) + white arm
 11. **Segment-track engine changes — check both consumers**: `math/segmentTrack.ts`'s `evalGenericSegments()` backs both craftRoll (`math/craftRoll.ts`) and every scalar track. A change to the shared walk/hold/ease/seam mechanics affects craftRoll too — verify craftRoll's behavior is unchanged after touching this file, not just the scalar tracks you meant to change.
 
 12. **CraftRollTrack / ScalarSegmentTrack must stay in lockstep**: They're two components by design (not one generic component) so craftRoll's interaction code is never at risk from a scalar-track change. But that means changing one's interaction contract (add/select/drag/delete/seam UX) without checking the other creates the exact "every timeline of the same type must behave identically" regression this split was built to prevent.
+
+13. **Behavior markers are draw-only in ortho/3D views**: Do not hit-test, hover, or drag them there — not even as a "whichever is closer, marker or waypoint" tiebreak. This was implemented once (a full drag contract in `TopView`/`SideView`/`FrontView`'s mouse handlers, with `hitTestBehaviors()`/`nearestArcFracOnScreen()`/`hitToHovered()` in `behaviorMarkers.ts`) and had to be removed — it made spatial waypoints intermittently unclickable when a marker sat near them, and violated the actual contract: spatial nodes are ortho-editable, behavior nodes are timeline-editable, and the two never overlap. If a future feature seems to need canvas-side behavior editing, that's a sign the ask itself needs to go back to the user before writing code, not an invitation to re-add this.

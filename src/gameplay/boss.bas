@@ -15,6 +15,12 @@ Const BOSS_DIM_FLOOR     = 0.35  ' minimum lighting factor for boss (keeps it vi
 Const BOSS_DEATH_PARTS   = 35    ' particle count on boss death
 Const BOSS_ATTITUDE_LERP = 0.07  ' attitude settle rate (< player 0.09 = heavier feel)
 
+' Render orientation for states 5/6 (transition/flyover) -- built directly from
+' a forward/up/right basis, not Euler angles (see BOSS_Update, E3D_BuildObjectMatBasis).
+Dim Shared bssRendFwdX As Single, bssRendFwdY As Single, bssRendFwdZ As Single
+Dim Shared bssRendUpX  As Single, bssRendUpY  As Single, bssRendUpZ  As Single
+Dim Shared bssRendRgtX As Single, bssRendRgtY As Single, bssRendRgtZ As Single
+
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssDMag As Single
     Dim bssEJ As Integer, bssJ As Integer, bssP As Integer, bssPK As Integer
@@ -106,49 +112,73 @@ Sub BOSS_Update
     bssTgtRx = CSng(bssVaRxD)
     bssTgtRy = CSng(bssVaRyD)
     bssTgtRz = CSng(bssVaRzD)
-    ' flyover + transition: derive yaw/pitch/roll from the spline/Hermite tangent
-    ' (the actual velocity vector) -- same treatment for both so orientation stays
-    ' continuous across the maneuver-entry handoff, not just position.
-    ' Euler extraction is ExprForge-generated (SpEfYawPitch/SpEfRollFromFrame) --
-    ' the game's object-transform pipeline needs degrees; TrailForge doesn't (it
-    ' renders straight from the tangent/R/U vectors), so this conversion is a
-    ' QB64-only consumer of formula.expr, generated for TS too but unused there.
+    ' flyover + transition: render orientation is built directly from a
+    ' forward/up/right basis (bssRendFwd/Up/Rgt, consumed by combat.bas's
+    ' E3D_BuildObjectMatBasis) instead of Euler angles. Rx*Ry*Rz composition
+    ' cannot represent banking at arbitrary yaw -- at high yaw, neither pitch
+    ' (Rx) nor roll (Rz) can tilt the model, so it pitches when it should bank.
+    ' tools/turn_viz.bas's VIZ_BuildBossObjMat (commit 46547c9) found and fixed
+    ' this for a debug tool; this ports the same fix to the real renderer.
+    ' boss.rx/ry/rz are left to SpEfVelocityAttitude's small-tilt approximation
+    ' (above) during states 5/6 -- unused for rendering then, but keeps a sane
+    ' value for state 0 to resume lerping from once the pass ends.
     If boss.state = 6 Or boss.state = 5 Then
-        Dim bssYawD As Double, bssPitchD As Double, bssHorizD As Double, bssRollD As Double
-        SpEfYawPitch CDbl(bsmFlTnX), CDbl(bsmFlTnY), CDbl(bsmFlTnZ), bssYawD, bssPitchD, bssHorizD
-        bssTgtRy = CSng(bssYawD)
-        If bssHorizD > 0.001 Then bssTgtRx = CSng(bssPitchD)
-        SpEfRollFromFrame CDbl(bsmFlFRY), CDbl(bsmFlFUY), bssRollD
-        bssTgtRz = CSng(bssRollD)
+        Dim bssFwdX As Single, bssFwdY As Single, bssFwdZ As Single
+        Dim bssBaseRX As Single, bssBaseRY As Single, bssBaseRZ As Single
+        Dim bssBaseUX As Single, bssBaseUY As Single, bssBaseUZ As Single
+
         If bsmOrientMode = 1 Then
-            Dim bssFlyFX As Single, bssFlyFY As Single, bssFlyFZ As Single
+            ' Fixed-target facing: forward is the direction to the target, and
+            ' roll comes from a frame built on THAT direction, not the path
+            ' tangent's transport frame (bsmFlFRX/Y/Z) -- that frame rotates
+            ' with the path tangent, which can point anywhere relative to a
+            ' fixed target, producing an unrelated, wildly varying roll.
             SpShipFacing boss.px, boss.py, boss.pz, _
                          bsmFlTnX, bsmFlTnY, bsmFlTnZ, _
                          bsmOrientMode, _
                          player.px + bsmTargetX, player.py + bsmTargetY, player.pz + bsmTargetZ, _
-                         bssFlyFX, bssFlyFY, bssFlyFZ
-            SpEfYawPitch CDbl(bssFlyFX), CDbl(bssFlyFY), CDbl(bssFlyFZ), bssYawD, bssPitchD, bssHorizD
-            bssTgtRy = CSng(bssYawD)
-            If bssHorizD > 0.001 Then bssTgtRx = CSng(bssPitchD)
-            ' Fix for the boss flipping when orient=target: roll must come from a
-            ' frame built on the FACING direction, not the stale tangent-based
-            ' transport frame (bsmFlFRY/bsmFlFUY above) -- that frame rotates
-            ' with the path tangent, which can point anywhere relative to a fixed
-            ' facing target, producing an unrelated (and wildly varying) roll.
-            Dim bssFrRxD As Double, bssFrRyD As Double, bssFrRzD As Double
-            Dim bssFrUxD As Double, bssFrUyD As Double, bssFrUzD As Double
-            SpEfMkFrame CDbl(bssFlyFX), CDbl(bssFlyFY), CDbl(bssFlyFZ), _
-                        bssFrRxD, bssFrRyD, bssFrRzD, bssFrUxD, bssFrUyD, bssFrUzD
-            SpEfRollFromFrame bssFrRyD, bssFrUyD, bssRollD
-            bssTgtRz = CSng(bssRollD)
+                         bssFwdX, bssFwdY, bssFwdZ
+            Dim bssMkRxD As Double, bssMkRyD As Double, bssMkRzD As Double
+            Dim bssMkUxD As Double, bssMkUyD As Double, bssMkUzD As Double
+            SpEfMkFrame CDbl(bssFwdX), CDbl(bssFwdY), CDbl(bssFwdZ), _
+                        bssMkRxD, bssMkRyD, bssMkRzD, bssMkUxD, bssMkUyD, bssMkUzD
+            bssBaseRX = CSng(bssMkRxD) : bssBaseRY = CSng(bssMkRyD) : bssBaseRZ = CSng(bssMkRzD)
+            bssBaseUX = CSng(bssMkUxD) : bssBaseUY = CSng(bssMkUyD) : bssBaseUZ = CSng(bssMkUzD)
+        Else
+            ' Path-follow: forward is the spline tangent, roll comes from the
+            ' persistent parallel-transport frame (BOSS_UpdateTransportFrame).
+            bssFwdX = bsmFlTnX : bssFwdY = bsmFlTnY : bssFwdZ = bsmFlTnZ
+            bssBaseRX = bsmFlFRX : bssBaseRY = bsmFlFRY : bssBaseRZ = bsmFlFRZ
+            bssBaseUX = bsmFlFUX : bssBaseUY = bsmFlFUY : bssBaseUZ = bsmFlFUZ
         End If
+
+        ' Authored craftRoll (state 6 only -- see behavior.bas's SpEvalRollAt):
+        ' rotate the (U,R) pair around the forward axis by the interpolated
+        ' craftRoll angle, exactly like TrailForge's rolledU/rolledR.
+        Dim bssCRDeg As Single : bssCRDeg = 0
+        If boss.state = 6 Then bssCRDeg = bsmFlCR
+        Dim bssRUxD As Double, bssRUyD As Double, bssRUzD As Double
+        Dim bssRRxD As Double, bssRRyD As Double, bssRRzD As Double
+        SpEfRollFrame CDbl(bssBaseUX), CDbl(bssBaseUY), CDbl(bssBaseUZ), _
+                      CDbl(bssBaseRX), CDbl(bssBaseRY), CDbl(bssBaseRZ), _
+                      CDbl(bssCRDeg), bssRUxD, bssRUyD, bssRUzD, bssRRxD, bssRRyD, bssRRzD
+
+        ' Canonical mapping (forward/up/right, no sign-flips here) -- the BOSS
+        ' mesh's actual local-axis mismatch (nose at local -X, confirmed via
+        ' tools/turn_viz.bas's VIZ_BuildBossObjMat, and verified numerically
+        ' against the mesh's own dark-belly-colored faces, an authored "this
+        ' is the bottom" marker) is corrected ONCE at load time instead, via
+        ' the "axisfix" line in assets/models.e3d (E3D_LoadMesh). See
+        ' E3D_BuildObjectMatBasis for the matrix this feeds.
+        bssRendFwdX = bssFwdX : bssRendFwdY = bssFwdY : bssRendFwdZ = bssFwdZ
+        bssRendUpX  = CSng(bssRUxD) : bssRendUpY = CSng(bssRUyD) : bssRendUpZ = CSng(bssRUzD)
+        bssRendRgtX = CSng(bssRRxD) : bssRendRgtY = CSng(bssRRyD) : bssRendRgtZ = CSng(bssRRzD)
     End If
     Dim bssAttLerp As Single : bssAttLerp = BOSS_ATTITUDE_LERP
     If boss.state = 6 Or boss.state = 5 Then bssAttLerp = 0.18  ' faster tracking during spline flight/transition
     boss.rx = boss.rx + (bssTgtRx - boss.rx) * bssAttLerp
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * bssAttLerp
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * bssAttLerp
-    If boss.state = 6 Then boss.rz = boss.rz + bsmFlCR
 
     ' fire patterns: suppressed during dive (6), dramatic turn (9), and fwd charge approach (8 before overtake)
     boss.fireTimer = boss.fireTimer - 0.025
