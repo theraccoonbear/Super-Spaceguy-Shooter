@@ -7,6 +7,7 @@ import { useStore, PathData } from '../store'
 import { CtxMenu } from '../ui/ContextMenu'
 import type { Waypoint, Vec3 } from '../math/vec3'
 import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, makeArcTable, segCount, type SplineSample } from '../math/spline'
+import { computeTransitionBlend, buildTransitionSpline } from '../math/transition'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
 import { useOrthoCanvas } from './useOrthoCanvas'
@@ -165,6 +166,30 @@ export function SideView() {
         const { sx, sy } = w2s(wire.x, wire.y, w, h, scale, pan)
         i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
       })
+      ctx.stroke()
+    }
+
+    // ── Transition preview -- see TopView.tsx's own comment for what this is
+    // and what's not done yet (dragging, playback).
+    if (path.transition && path.wps.length > 0) {
+      const blend = computeTransitionBlend(path.transition.from, path.transition.heading, path.wps, path.closed)
+      const trSamples = buildTransitionSpline(blend, 32)
+      ctx.save()
+      ctx.setLineDash([6, 4])
+      ctx.beginPath(); ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 1.5
+      trSamples.forEach(({ wire }, i) => {
+        const { sx, sy } = w2s(wire.x, wire.y, w, h, scale, pan)
+        i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
+      })
+      ctx.stroke()
+      ctx.restore()
+
+      const { sx: fx, sy: fy } = w2s(path.transition.from.x, path.transition.from.y, w, h, scale, pan)
+      ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(fx - 7, fy); ctx.lineTo(fx + 7, fy)
+      ctx.moveTo(fx, fy - 7); ctx.lineTo(fx, fy + 7)
       ctx.stroke()
     }
 

@@ -179,6 +179,7 @@ export function GenerateDialog({ onClose, newRoute }: Props) {
         craftRollLoopSeam: null,
         segmentTracks:     {},
         segmentLoopSeams:  {},
+        transition:        null,
       })
     } else {
       replaceWps(wps!)

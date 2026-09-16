@@ -8,6 +8,7 @@ import { CtxMenu } from '../ui/ContextMenu'
 import { pauseAfterCheckpoint, resumeTemporal } from './undoHelpers'
 import type { Waypoint, Vec3 } from '../math/vec3'
 import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, makeArcTable, segCount, type SplineSample } from '../math/spline'
+import { computeTransitionBlend, buildTransitionSpline } from '../math/transition'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
 import { useOrthoCanvas } from './useOrthoCanvas'
@@ -171,6 +172,34 @@ export function TopView() {
         const { sx, sy } = w2s(wire.x, wire.z, w, h, scale, pan)
         i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
       })
+      ctx.stroke()
+    }
+
+    // ── Transition preview (Hermite blend from an arbitrary incoming
+    // position/heading into the route's own entry, wps[0]) -- mirrors the
+    // game's state-5 transition (BOSS_TransitionInit/Case 5 in
+    // behavior.bas). Static preview only for now: the "from" point isn't
+    // draggable yet and playback doesn't animate through it -- see
+    // math/transition.ts's own header comment for what this closes.
+    if (path.transition && path.wps.length > 0) {
+      const blend = computeTransitionBlend(path.transition.from, path.transition.heading, path.wps, path.closed)
+      const trSamples = buildTransitionSpline(blend, 32)
+      ctx.save()
+      ctx.setLineDash([6, 4])
+      ctx.beginPath(); ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 1.5
+      trSamples.forEach(({ wire }, i) => {
+        const { sx, sy } = w2s(wire.x, wire.z, w, h, scale, pan)
+        i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy)
+      })
+      ctx.stroke()
+      ctx.restore()
+
+      const { sx: fx, sy: fy } = w2s(path.transition.from.x, path.transition.from.z, w, h, scale, pan)
+      ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(fx - 7, fy); ctx.lineTo(fx + 7, fy)
+      ctx.moveTo(fx, fy - 7); ctx.lineTo(fx, fy + 7)
       ctx.stroke()
     }
 

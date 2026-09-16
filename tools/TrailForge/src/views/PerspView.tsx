@@ -8,6 +8,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useStore } from '../store'
 import { camPrefs, saveCamPrefs } from '../prefs'
 import { buildSpline, evalAt, tangentAt, shipFacing, makeFrame, frustumAtX, makeArcTable, segCount } from '../math/spline'
+import { computeTransitionBlend, buildTransitionSpline } from '../math/transition'
 import { getFrameAt } from '../math/frameCache'
 import { evalCraftRoll } from '../math/craftRoll'
 import { fetchE3DModel, type E3DMesh } from '../math/e3d'
@@ -41,6 +42,8 @@ interface SceneRefs {
   raycaster:    THREE.Raycaster
   wireLine:     THREE.Line
   actualLine:   THREE.Line
+  transitionLine: THREE.Line
+  transitionFromMesh: THREE.Mesh
   wpGroup:      THREE.Group
   bgGroup:      THREE.Group   // background scatter — rebuilt on path change
   shipGroup:    THREE.Group
@@ -411,6 +414,18 @@ export function PerspView() {
     const wireLine   = makeLine(0x38bdf8); scene.add(wireLine)
     const actualLine = makeLine(0xf97316); actualLine.visible = false; scene.add(actualLine)
 
+    // Transition preview (Hermite blend into the route's entry) -- see
+    // TopView.tsx's own comment on math/transition.ts for what this is.
+    const transitionLine = makeLine(0xfb923c)
+    transitionLine.visible = false
+    scene.add(transitionLine)
+    const transitionFromMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xfb923c, wireframe: true }),
+    )
+    transitionFromMesh.visible = false
+    scene.add(transitionFromMesh)
+
     // Waypoint spheres
     const wpGroup = new THREE.Group(); scene.add(wpGroup)
 
@@ -436,7 +451,7 @@ export function PerspView() {
 
     const refs: SceneRefs = {
       renderer, scene, camera, controls, raycaster,
-      wireLine, actualLine, wpGroup, bgGroup, overlayGroup, shipGroup, targetMesh,
+      wireLine, actualLine, transitionLine, transitionFromMesh, wpGroup, bgGroup, overlayGroup, shipGroup, targetMesh,
       gizmo, gizmoHits, raf: 0,
       kick: () => {},         // replaced after render loop init
       cameraMode: camPrefs.cameraMode as CameraMode,
@@ -582,6 +597,24 @@ export function PerspView() {
     } else {
       refs.wireLine.visible   = false
       refs.actualLine.visible = false
+    }
+
+    // Transition preview
+    if (path.transition && path.wps.length > 0) {
+      const blend = computeTransitionBlend(path.transition.from, path.transition.heading, path.wps, path.closed)
+      const trSamples = buildTransitionSpline(blend, 32)
+      const trPos = new Float32Array(trSamples.length * 3)
+      trSamples.forEach(({ wire }, i) => {
+        trPos[i*3]=wire.x; trPos[i*3+1]=wire.y; trPos[i*3+2]=wire.z
+      })
+      refs.transitionLine.geometry.setAttribute('position', new THREE.BufferAttribute(trPos, 3))
+      refs.transitionLine.geometry.computeBoundingSphere()
+      refs.transitionLine.visible = true
+      refs.transitionFromMesh.position.set(path.transition.from.x, path.transition.from.y, path.transition.from.z)
+      refs.transitionFromMesh.visible = true
+    } else {
+      refs.transitionLine.visible     = false
+      refs.transitionFromMesh.visible = false
     }
 
     // Waypoint spheres

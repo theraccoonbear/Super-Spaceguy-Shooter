@@ -147,6 +147,7 @@ export function parseBlocks(text: string): Map<string, PathData> {
         craftRollLoopSeam: null,
         segmentTracks:     {},
         segmentLoopSeams:  {},
+        transition:        null,   // preview-only editor state; not part of the .mvr format
       }
       continue
     }

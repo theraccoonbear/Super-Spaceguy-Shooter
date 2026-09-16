@@ -32,6 +32,19 @@ export interface PathTrigger {
   event: TriggerEvent
 }
 
+/** Preview-only Hermite blend from an arbitrary incoming position/heading into
+ *  this path's own entry (wps[0], tangent at t=0) -- see math/transition.ts.
+ *  Mirrors the game's state-5 transition (BOSS_TransitionInit/Case 5 in
+ *  behavior.bas), which computes its own P0/heading live from wherever the
+ *  boss actually is at that moment -- there is nothing to persist on the
+ *  game side, so this is TrailForge-only editor state (not part of the .mvr
+ *  format; not read or written by format.ts). `heading` need not be a unit
+ *  vector -- SpEfHermiteTangentScale normalizes it internally. */
+export interface PathTransition {
+  from:    Vec3
+  heading: Vec3
+}
+
 export interface PathData {
   name:     string
   /** Omitted in file = 'craft'. Old paths default to 'craft'. */
@@ -54,6 +67,9 @@ export interface PathData {
   segmentTracks: Record<string, ScalarSegment[]>
   /** Per-track loop-point seam, same purpose as craftRollLoopSeam. Key = track name. */
   segmentLoopSeams: Record<string, SegmentLoopSeam | null>
+  /** null = no transition preview (route starts cold at wps[0], today's
+   *  default behavior). See PathTransition's own doc comment. */
+  transition: PathTransition | null
 }
 
 export type PaneName = 'top' | 'side' | 'front' | 'persp'
@@ -179,6 +195,7 @@ const DEFAULT_PATH: PathData = {
   craftRollLoopSeam: null,
   segmentTracks:     {},
   segmentLoopSeams:  {},
+  transition:        null,
 }
 
 function ensureWp(wp: Vec3): Waypoint {
@@ -199,6 +216,7 @@ function migratePath(p: Partial<PathData>): PathData {
       ? p.segmentTracks : {},
     segmentLoopSeams:  (p.segmentLoopSeams && typeof p.segmentLoopSeams === 'object' && !Array.isArray(p.segmentLoopSeams))
       ? p.segmentLoopSeams : {},
+    transition: (p.transition && typeof p.transition === 'object') ? p.transition : null,
   }
 }
 

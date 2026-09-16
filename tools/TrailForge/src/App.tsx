@@ -256,6 +256,34 @@ function Toolbar({ isLinked, onToggleLinked, onHelp }: { isLinked: boolean; onTo
       <div className="tb-sep" />
 
       <div className="tb-group">
+        <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}
+          title="Preview a Hermite blend from an arbitrary incoming position/heading into this route's entry — mirrors the game's state-5 transition (BOSS_TransitionInit in behavior.bas). Preview-only: not part of the .mvr format.">
+          <input type="checkbox" checked={path.transition !== null}
+            onChange={(e) => patchPath('transition', e.target.checked
+              ? { from: { x: (path.wps[0]?.x ?? 0) + 15, y: path.wps[0]?.y ?? 0, z: path.wps[0]?.z ?? 0 }, heading: { x: -1, y: 0, z: 0 } }
+              : null)} />
+          <span className="tb-label" style={{ color: 'var(--transition, #fb923c)' }}>Transition</span>
+        </label>
+        {path.transition && (
+          <>
+            <span className="tb-label">from</span>
+            {(['x','y','z'] as const).map((a) => (
+              <NumInput key={`tr-from-${a}`} className="narrow" title={`Incoming position ${a.toUpperCase()}`}
+                value={path.transition!.from[a]} step={1}
+                commit={(n) => patchPath('transition', { ...path.transition!, from: { ...path.transition!.from, [a]: n } })} />
+            ))}
+            <span className="tb-label">heading</span>
+            {(['x','y','z'] as const).map((a) => (
+              <NumInput key={`tr-heading-${a}`} className="narrow" title={`Incoming heading ${a.toUpperCase()} (need not be unit length)`}
+                value={path.transition!.heading[a]} step={0.1}
+                commit={(n) => patchPath('transition', { ...path.transition!, heading: { ...path.transition!.heading, [a]: n } })} />
+            ))}
+          </>
+        )}
+      </div>
+      <div className="tb-sep" />
+
+      <div className="tb-group">
         <button className={playing ? 'playing' : 'primary'}
           onClick={() => { if (!playing) setAnimT(0); setPlaying(!playing) }}>
           {playing ? '■ Stop' : '▶ Play'}
