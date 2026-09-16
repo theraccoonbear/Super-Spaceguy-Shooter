@@ -8,6 +8,13 @@
 # tools/TrailForge/src/math/e3d.ts) so the correction is a single asset fact,
 # not independently re-derived per language. Confirmed for BOSS via
 # tools/turn_viz.bas's VIZ_BuildBossObjMat and boss.bas's orientation math.
+#
+# PLAYER checked too (the only other model TrailForge currently loads, for
+# a future cutscene actor): no axisfix needed, confirmed from real vertex
+# geometry -- the +X end is a narrow nose tip, the -X end is the wide
+# wing/tail cluster, matching this file's X=forward convention already.
+# See tools/TrailForge/src/math/e3d.test.ts's "PLAYER mesh orientation"
+# tests, which pin this fact against the real block below.
 
 o PLAYER
 aabb .8356 .2879 .7616

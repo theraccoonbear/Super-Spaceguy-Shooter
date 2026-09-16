@@ -5,6 +5,8 @@
 // follow-up: this class of drift is exactly what caused the boss orientation
 // saga in the first place).
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { parseE3DBlock } from './e3d'
 
 const withAxisFix = `o TESTSHIP
@@ -59,5 +61,56 @@ describe('parseE3DBlock', () => {
 
   it('returns null for text that is not an object block', () => {
     expect(parseE3DBlock('not a block')).toBeNull()
+  })
+})
+
+// Ground-truth orientation checks against the REAL asset file, not synthetic
+// fixtures -- the point of "axisfix rollout beyond BOSS" (see the .e3d
+// header's axisfix comment) is verifying each candidate cutscene-actor
+// model's actual mesh geometry, the same way BOSS's belly-at-negative-Y
+// fact was confirmed from real vertex/face-color data rather than guessed.
+// PLAYER is the only other model TrailForge currently loads (PerspView's
+// playerShipRef); a future actor gets the same treatment before being
+// trusted to path-follow.
+function readRealBlock(name: string): string {
+  const path = resolve(__dirname, '../../../../assets/models.e3d')
+  const text = readFileSync(path, 'utf-8')
+  const start = text.indexOf(`o ${name}\n`)
+  if (start < 0) throw new Error(`readRealBlock: no "o ${name}" block in assets/models.e3d`)
+  const end = text.indexOf('\nend', start)
+  return text.slice(start, end + 4)
+}
+
+describe('PLAYER mesh orientation (ground truth from the real asset)', () => {
+  it('has no declared axisfix -- its source .obj already matches the X=forward convention', () => {
+    const mesh = parseE3DBlock(readRealBlock('PLAYER'))!
+    expect(mesh.axisFix).toEqual([1, 1, 1])
+  })
+
+  it('nose points toward +X: the +X end is a narrow tip, the -X end is the wide wing/tail cluster', () => {
+    // Confirmed by hand once (mesh.vertices count, spread near each X
+    // extreme) when this test was written -- pinned here so a future
+    // re-export of PLAYER's source .obj can't silently flip its facing
+    // without a test noticing, the same class of drift that hid in BOSS
+    // until someone actually looked at the mesh data.
+    const mesh = parseE3DBlock(readRealBlock('PLAYER'))!
+    const xs = mesh.vertices.map(v => v[0])
+    const minX = Math.min(...xs), maxX = Math.max(...xs)
+
+    const spreadNear = (targetX: number) => {
+      const near = mesh.vertices.filter(v => Math.abs(v[0] - targetX) < 0.1)
+      const ys = near.map(v => v[1]), zs = near.map(v => v[2])
+      return {
+        count: near.length,
+        ySpread: ys.length ? Math.max(...ys) - Math.min(...ys) : 0,
+        zSpread: zs.length ? Math.max(...zs) - Math.min(...zs) : 0,
+      }
+    }
+    const nose = spreadNear(maxX)   // +X end -- should be the pointed tip
+    const tail = spreadNear(minX)   // -X end -- should be the wide body/wings
+
+    expect(nose.count).toBeLessThan(tail.count)
+    expect(nose.ySpread).toBeLessThan(tail.ySpread)
+    expect(nose.zSpread).toBeLessThan(tail.zSpread)
   })
 })
