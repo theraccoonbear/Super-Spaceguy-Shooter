@@ -73,12 +73,19 @@ const OUT = {
 // in addition to living here, not instead of it.
 
 const results = { qb64: '', ts: '' };
-for (const name of FN_ORDER) {
+FN_ORDER.forEach((name, i) => {
     const ast = defs[name];
     if (!ast) throw new Error(`formula.expr is missing fn: ${name}`);
-    results.qb64 += session.emit(ast, 'qb64').source + '\n';
-    results.ts   += session.emit(ast, 'ts').source   + '\n';
-}
+    // includeHelpers: only the first emitted QB64 function carries the
+    // shared safe-math helper FUNCTIONs (ef_safe_sqr# etc., exprforge
+    // >=0.9.0) -- every function gets them unconditionally by default,
+    // which is correct in isolation but duplicate-defines them when N
+    // functions are concatenated into one .bi file, exactly what this
+    // loop does (reported and fixed upstream: theraccoonbear/exprforge#37).
+    // TS has no such preamble; the option is simply ignored there.
+    results.qb64 += session.emit(ast, 'qb64', { includeHelpers: i === 0 }).source + '\n';
+    results.ts   += session.emit(ast, 'ts').source + '\n';
+});
 
 // ── Function list for headers (auto-derived, never goes stale) ─────────────
 
