@@ -3,8 +3,14 @@
 # Single source of truth -- no QB64, no TypeScript here.
 #
 # QB64-PE SCOPE RULE: All Dim statements inside Subs share a module-wide
-# namespace. Every let binding uses a function-specific prefix to avoid
-# collisions across the 9 generated SUBs:
+# namespace, and this applies to PARAMETER names too, not just internal
+# `let` bindings -- confirmed the hard way: a generated fn(n, seg, closed)
+# failed to compile only once linked into the full game (sss.bas), not in
+# any smaller test binary, because "seg" collides with QB64's own legacy
+# SEG keyword (DEF SEG memory-segment addressing) -- a reserved identifier,
+# not a project variable, so it's invisible to a codebase grep. Every
+# let binding AND every parameter name uses a function-specific prefix to
+# avoid collisions across the generated SUBs:
 #   mf = SpEfMkFrame     ap = SpEfActualPos    rf = SpEfRollFrame
 #   cw = SpEfCrWeights   dw = SpEfCrDerivWeights
 #   fn = SpEfFacingNorm  aa = SpEfArcAdvance    tf = SpEfTransportFrame
@@ -12,6 +18,7 @@
 #   mh = SpEfMeasureHolonomy  yp = SpEfYawPitch  rl = SpEfRollFromFrame
 #   pa = SpEfPhaseApproachRate  va = SpEfVelocityAttitude  ha = SpEfHolonomyAngle
 #   hs = SpEfHermiteTangentScale  hp = SpEfHermitePos  ht = SpEfHermiteTangent
+#   gi = SpEfGhostIndices  cd = SpEfIsClosingDuplicate
 #
 # Macros available (registered by emit-spline.js before loadExpr):
 #   len3(x,y,z)                          -- sqrt(x^2+y^2+z^2)
@@ -383,4 +390,56 @@ fn SpEfHermiteTangent(p0x, p0y, p0z, m0x, m0y, m0z, p1x, p1y, p1z, m1x, m1y, m1z
     dx: htDh00 * p0x + htDh10 * m0x + htDh01 * p1x + htDh11 * m1x,
     dy: htDh00 * p0y + htDh10 * m0y + htDh01 * p1y + htDh11 * m1y,
     dz: htDh00 * p0z + htDh10 * m0z + htDh01 * p1z + htDh11 * m1z
+  };
+
+# -- SpEfGhostIndices -----------------------------------------------------------
+# Catmull-Rom ghost-point indices for segment `seg` (0-based) out of an
+# n-point array. Closed paths wrap cyclically at the seam; open paths clamp
+# at the array's ends. Replaces the wrap/clamp arithmetic formerly
+# hand-written twice -- once as SpCrGhosts (spline_path.bi), once as
+# ghosts() (spline.ts) -- which independently drifted apart and caused two
+# real bugs (issue #211's tangent flip, and a closed-loop teleport caused by
+# one side's caller passing an n the other's logic didn't expect). See
+# docs/proposals/exprforge-array-support.md for the fuller writeup.
+#
+# n is however many points the CALLER's array actually addresses right now
+# -- a closed path's stored duplicate closing waypoint may or may not still
+# be present (see SpEfIsClosingDuplicate below); this function doesn't care
+# which convention produced n, it only wraps/clamps against it. Returns
+# indices, not the points themselves -- callers still read their own
+# waypoint array by index exactly as SpEvalAt/evalAt already do (ExprForge
+# arrays are number[] only; a waypoint array of structs/objects has no
+# clean generated-array representation, and there's no need for one here).
+#
+# closed is a strict 0.0/1.0 flag, NOT a native language boolean -- callers
+# must normalize (QB64's True is -1, not 1; this deliberately doesn't rely
+# on that, or on "!=" -- see the comment above `closed > 0` below).
+#
+# Prefix: gi
+# Outputs: i0, i1, i2, i3
+
+fn SpEfGhostIndices(giN, giSeg, giCl):
+  let giM = giCl > 0 ? giN - 1 : giN;
+  return {
+    i0: giCl > 0 ? wrapIndex(giSeg - 1, giM) : clampIndex(giSeg - 1, 0, giN - 1),
+    i1: giSeg,
+    i2: giCl > 0 ? wrapIndex(giSeg + 1, giM) : clampIndex(giSeg + 1, 0, giN - 1),
+    i3: giCl > 0 ? wrapIndex(giSeg + 2, giM) : clampIndex(giSeg + 2, 0, giN - 1)
+  };
+
+# -- SpEfIsClosingDuplicate -----------------------------------------------------
+# Whether a closed path's last stored waypoint (xN,yN,zN) coincides with its
+# first (x0,y0,z0) within eps on all three axes -- the "duplicate closing
+# waypoint" convention (see format.ts's exportBlock). Shared so this
+# coincidence check itself can't drift the way the two call sites that used
+# to hard-code it separately (TrailForge's store.ts normalizePath() and
+# spline.ts's segCount()) happened to agree by luck rather than by sharing
+# any code.
+#
+# Prefix: cd
+# Outputs: isDup (1 when within eps on all three axes, 0 otherwise)
+
+fn SpEfIsClosingDuplicate(cdX0, cdY0, cdZ0, cdXn, cdYn, cdZn, cdEps):
+  return {
+    isDup: abs(cdX0 - cdXn) < cdEps ? (abs(cdY0 - cdYn) < cdEps ? (abs(cdZ0 - cdZn) < cdEps ? 1 : 0) : 0) : 0
   };

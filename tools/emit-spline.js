@@ -58,6 +58,8 @@ const FN_ORDER = [
     'SpEfHermiteTangentScale',
     'SpEfHermitePos',
     'SpEfHermiteTangent',
+    'SpEfGhostIndices',
+    'SpEfIsClosingDuplicate',
 ];
 
 const OUT = {

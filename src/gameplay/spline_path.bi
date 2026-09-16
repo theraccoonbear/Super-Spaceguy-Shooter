@@ -2,53 +2,41 @@
 '
 ' Generated functions (SpEf* prefix, in spline_path_gen.bi):
 '   SpEfMkFrame, SpEfActualPos, SpEfRollFrame, SpEfCrWeights,
-'   SpEfCrDerivWeights, SpEfFacingNorm, SpEfArcAdvance
+'   SpEfCrDerivWeights, SpEfFacingNorm, SpEfArcAdvance, SpEfGhostIndices
 '
-' Hand-written infrastructure (array dispatch, ghost indices, scalar CR roll):
-'   SpCrGhosts, SpEvalAt, SpTangentAt, SpEvalRollAt, SpShipFacing, SpSlewToward
+' Hand-written infrastructure (array dispatch, scalar CR roll):
+'   SpEvalAt, SpTangentAt, SpEvalRollAt, SpShipFacing, SpSlewToward
 '
 ' QB64-PE NOTE: All Dim and parameter names share a module-wide namespace.
-' Every sub below uses a sub-specific prefix (sg=SpCrGhosts, sea=SpEvalAt,
-' sta=SpTangentAt, sra=SpEvalRollAt, ssf=SpShipFacing, sst=SpSlewToward) to
-' avoid collisions.
-' Generated subs use their own prefixes (mf/ap/rf/cw/dw/fn/aa) — see math/spline-frame.js.
+' Every sub below uses a sub-specific prefix (sea=SpEvalAt, sta=SpTangentAt,
+' sra=SpEvalRollAt, ssf=SpShipFacing, sst=SpSlewToward) to avoid collisions.
+' Generated subs use their own prefixes (mf/ap/rf/cw/dw/fn/aa/gi/cd) — see
+' math/formula.expr.
 '
 ' Requires E3D_Coord (from src/3d/types.bi) before this file is included.
 
 '$INCLUDE:'spline_path_gen.bi'
 
-' ── Ghost indices (JS: ghosts()) ──────────────────────────────────────────
-' Closed paths store an explicit duplicate of waypoint 0 as their last waypoint
-' (the convention TrailForge's exporter uses -- see format.ts) rather than being
-' truly cyclic over sgNW distinct points. So segment count is sgNW-1 either way
-' (see the NS calcs below) and only the two boundary segments need wraparound
-' ghost points, taken from the *other* end of the array, to keep curvature
-' smooth across the seam without an extra zero-length closing segment (issue #211).
-Sub SpCrGhosts (sgSeg As Integer, sgNW As Integer, sgCl As Integer, _
-                sgG0 As Integer, sgG1 As Integer, sgG2 As Integer, sgG3 As Integer)
-    If sgCl Then
-        Dim sgLast As Integer : sgLast = sgNW - 2   ' index of the last unique point (sgNW-1 duplicates index 0)
-        If sgSeg = 0 Then sgG0 = sgLast Else sgG0 = sgSeg - 1
-        sgG1 = sgSeg
-        sgG2 = sgSeg + 1
-        If sgSeg = sgLast Then sgG3 = 1 Else sgG3 = sgSeg + 2
-    Else
-        sgG0 = sgSeg - 1 : If sgG0 < 0 Then sgG0 = 0
-        sgG1 = sgSeg
-        sgG2 = sgSeg + 1 : If sgG2 >= sgNW Then sgG2 = sgNW - 1
-        sgG3 = sgSeg + 2 : If sgG3 >= sgNW Then sgG3 = sgNW - 1
-    End If
-End Sub
-
 ' ── Evaluate position at atParam (JS: evalAt) ────────────────────────────
+' Ghost-point index math (wraparound at a closed loop's seam, clamping at an
+' open path's ends -- issue #211) now lives in SpEfGhostIndices, generated
+' from math/formula.expr instead of hand-written here -- see
+' docs/proposals/exprforge-array-support.md. seaCl is normalized to a strict
+' 0.0/1.0 double before the call: QB64's own boolean True is -1, and
+' SpEfGhostIndices deliberately checks "> 0", not "<> 0" or "!= 0" (ExprForge's
+' QB64 emitter passes "!=" through verbatim, which isn't valid QB64 -- see
+' that same doc).
 Sub SpEvalAt (seaWps() As E3D_Coord, seaNW As Integer, seaAt As Single, seaCl As Integer, _
               seaOX As Single, seaOY As Single, seaOZ As Single)
-    Dim seaNS As Integer : seaNS = seaNW - 1   ' closed paths store a duplicate closing waypoint -- see SpCrGhosts
+    Dim seaNS As Integer : seaNS = seaNW - 1   ' closed paths store a duplicate closing waypoint -- see SpEfGhostIndices
     Dim seaSg As Integer : seaSg = Int(seaAt)
     If seaSg >= seaNS Then seaSg = seaNS - 1
     Dim seaT As Double : seaT = CDbl(seaAt) - seaSg
+    Dim seaClF As Double : If seaCl <> 0 Then seaClF = 1 Else seaClF = 0
+    Dim seaI0D As Double, seaI1D As Double, seaI2D As Double, seaI3D As Double
+    SpEfGhostIndices CDbl(seaNW), CDbl(seaSg), seaClF, seaI0D, seaI1D, seaI2D, seaI3D
     Dim seaI0 As Integer, seaI1 As Integer, seaI2 As Integer, seaI3 As Integer
-    SpCrGhosts seaSg, seaNW, seaCl, seaI0, seaI1, seaI2, seaI3
+    seaI0 = CInt(seaI0D) : seaI1 = CInt(seaI1D) : seaI2 = CInt(seaI2D) : seaI3 = CInt(seaI3D)
     Dim seaW0 As Double, seaW1 As Double, seaW2 As Double, seaW3 As Double
     SpEfCrWeights seaT, seaW0, seaW1, seaW2, seaW3
     seaOX = CSng(seaW0*seaWps(seaI0).x + seaW1*seaWps(seaI1).x + seaW2*seaWps(seaI2).x + seaW3*seaWps(seaI3).x)
@@ -59,12 +47,15 @@ End Sub
 ' ── Evaluate normalized tangent at atParam (JS: tangentAt) ───────────────
 Sub SpTangentAt (staWps() As E3D_Coord, staNW As Integer, staAt As Single, staCl As Integer, _
                  staTX As Single, staTY As Single, staTZ As Single)
-    Dim staNS As Integer : staNS = staNW - 1   ' closed paths store a duplicate closing waypoint -- see SpCrGhosts
+    Dim staNS As Integer : staNS = staNW - 1   ' closed paths store a duplicate closing waypoint -- see SpEfGhostIndices
     Dim staSg As Integer : staSg = Int(staAt)
     If staSg >= staNS Then staSg = staNS - 1
     Dim staT As Double : staT = CDbl(staAt) - staSg
+    Dim staClF As Double : If staCl <> 0 Then staClF = 1 Else staClF = 0
+    Dim staI0D As Double, staI1D As Double, staI2D As Double, staI3D As Double
+    SpEfGhostIndices CDbl(staNW), CDbl(staSg), staClF, staI0D, staI1D, staI2D, staI3D
     Dim staI0 As Integer, staI1 As Integer, staI2 As Integer, staI3 As Integer
-    SpCrGhosts staSg, staNW, staCl, staI0, staI1, staI2, staI3
+    staI0 = CInt(staI0D) : staI1 = CInt(staI1D) : staI2 = CInt(staI2D) : staI3 = CInt(staI3D)
     Dim staDW0 As Double, staDW1 As Double, staDW2 As Double, staDW3 As Double
     SpEfCrDerivWeights staT, staDW0, staDW1, staDW2, staDW3
     Dim staDX As Double : staDX = staDW0*staWps(staI0).x + staDW1*staWps(staI1).x + staDW2*staWps(staI2).x + staDW3*staWps(staI3).x
@@ -78,12 +69,15 @@ End Sub
 ' ── CR scalar interpolation for roll arrays (JS: crEval1D / evalRollAt) ───
 Sub SpEvalRollAt (sraRolls() As Single, sraNW As Integer, sraAt As Single, sraCl As Integer, _
                   sraRes As Single)
-    Dim sraNS As Integer : sraNS = sraNW - 1   ' closed paths store a duplicate closing waypoint -- see SpCrGhosts
+    Dim sraNS As Integer : sraNS = sraNW - 1   ' closed paths store a duplicate closing waypoint -- see SpEfGhostIndices
     Dim sraSg As Integer : sraSg = Int(sraAt)
     If sraSg >= sraNS Then sraSg = sraNS - 1
     Dim sraT As Double : sraT = CDbl(sraAt) - sraSg
+    Dim sraClF As Double : If sraCl <> 0 Then sraClF = 1 Else sraClF = 0
+    Dim sraI0D As Double, sraI1D As Double, sraI2D As Double, sraI3D As Double
+    SpEfGhostIndices CDbl(sraNW), CDbl(sraSg), sraClF, sraI0D, sraI1D, sraI2D, sraI3D
     Dim sraI0 As Integer, sraI1 As Integer, sraI2 As Integer, sraI3 As Integer
-    SpCrGhosts sraSg, sraNW, sraCl, sraI0, sraI1, sraI2, sraI3
+    sraI0 = CInt(sraI0D) : sraI1 = CInt(sraI1D) : sraI2 = CInt(sraI2D) : sraI3 = CInt(sraI3D)
     Dim sraW0 As Double, sraW1 As Double, sraW2 As Double, sraW3 As Double
     SpEfCrWeights sraT, sraW0, sraW1, sraW2, sraW3
     sraRes = CSng(sraW0*sraRolls(sraI0) + sraW1*sraRolls(sraI1) + sraW2*sraRolls(sraI2) + sraW3*sraRolls(sraI3))

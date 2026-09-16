@@ -95,7 +95,9 @@ Sub BOSS_UpdateMovement()
     Dim bsmFt As Single, bsmFseg As Integer
     Dim bsmFu As Single
     Dim bsmFi0 As Integer, bsmFi1 As Integer, bsmFi2 As Integer, bsmFi3 As Integer
-    Dim bsmFlNS As Integer     ' number of segments (always nWps-1 -- see SpCrGhosts)
+    Dim bsmFi0D As Double, bsmFi1D As Double, bsmFi2D As Double, bsmFi3D As Double  ' SpEfGhostIndices output
+    Dim bsmClosedF As Double  ' bsmClosed normalized to strict 0.0/1.0 -- see SpEfGhostIndices's own comment
+    Dim bsmFlNS As Integer     ' number of segments (always nWps-1 -- see SpEfGhostIndices)
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
     Dim bsmFlAXD As Double, bsmFlAYD As Double, bsmFlAZD As Double  ' Double temps for SpEfActualPos
@@ -167,9 +169,9 @@ Sub BOSS_UpdateMovement()
     Case 6  ' flyover: Catmull-Rom spline — supports standoff, closed paths, pathRoll
         bsmFseg  = Int(boss.arcAngle)
         ' Closed maneuvers store an explicit duplicate of waypoint 0 as their last
-        ' waypoint (see SpCrGhosts) rather than being truly cyclic, so segment count
-        ' is bsmWpCount-1 either way -- issue #211's zero-length closing segment came
-        ' from double-counting this as an extra wraparound segment on top of it.
+        ' waypoint (see SpEfGhostIndices) rather than being truly cyclic, so segment
+        ' count is bsmWpCount-1 either way -- issue #211's zero-length closing segment
+        ' came from double-counting this as an extra wraparound segment on top of it.
         bsmFlNS  = bsmWpCount - 1
         If bsmFseg >= bsmFlNS Then
             ' path complete: land on final waypoint, flip arc dir, return to combat
@@ -214,10 +216,12 @@ Sub BOSS_UpdateMovement()
 
                 ' Raw (unnormalized) derivative -- needed only for the arc-length speed
                 ' correction below, since SpTangentAt returns just the normalized tangent.
-                ' SpCrGhosts/SpEfCrDerivWeights are the same generated/shared calls
+                ' SpEfGhostIndices/SpEfCrDerivWeights are the same generated/shared calls
                 ' SpTangentAt makes internally; recomputed here rather than changing its
                 ' signature to expose them.
-                SpCrGhosts bsmFseg, bsmWpCount, bsmClosed, bsmFi0, bsmFi1, bsmFi2, bsmFi3
+                If bsmClosed <> 0 Then bsmClosedF = 1 Else bsmClosedF = 0
+                SpEfGhostIndices CDbl(bsmWpCount), CDbl(bsmFseg), bsmClosedF, bsmFi0D, bsmFi1D, bsmFi2D, bsmFi3D
+                bsmFi0 = CInt(bsmFi0D) : bsmFi1 = CInt(bsmFi1D) : bsmFi2 = CInt(bsmFi2D) : bsmFi3 = CInt(bsmFi3D)
                 SpEfCrDerivWeights CDbl(bsmFu), bsmDw0D, bsmDw1D, bsmDw2D, bsmDw3D
                 bsmDXD = bsmDw0D*bsmWp(bsmFi0).x + bsmDw1D*bsmWp(bsmFi1).x + bsmDw2D*bsmWp(bsmFi2).x + bsmDw3D*bsmWp(bsmFi3).x
                 bsmDYD = bsmDw0D*bsmWp(bsmFi0).y + bsmDw1D*bsmWp(bsmFi1).y + bsmDw2D*bsmWp(bsmFi2).y + bsmDw3D*bsmWp(bsmFi3).y

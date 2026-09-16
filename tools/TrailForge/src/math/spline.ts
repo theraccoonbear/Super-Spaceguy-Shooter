@@ -10,6 +10,8 @@ import {
   SpEfApplyHolonomyCorrection,
   SpEfMeasureHolonomy,
   SpEfHolonomyAngle,
+  SpEfGhostIndices,
+  SpEfIsClosingDuplicate,
 } from './spline_gen'
 
 // ── Frustum math ────────────────────────────────────────────────────────
@@ -21,25 +23,29 @@ export function frustumAtX(worldX: number): { halfY: number; halfZ: number } {
 }
 
 // ── Ghost index wrapping ────────────────────────────────────────────────
-// Mirrors the game's spline_path.bi (SpCrGhosts).
+// The actual wrap/clamp index math now lives in SpEfGhostIndices, generated
+// from math/formula.expr into both this file's spline_gen.ts AND the game's
+// spline_path_gen.bi -- previously hand-written twice (SpCrGhosts here as
+// ghosts(), independently in QB64), which drifted apart and caused two real
+// bugs: issue #211's tangent flip, and a closed-loop teleport caused by
+// this file's normalizePath()-stripped waypoint shape not matching what the
+// index math assumed. See docs/proposals/exprforge-array-support.md.
+//
 // On disk, closed paths store an explicit duplicate of wps[0] as their last
 // waypoint (see format.ts's exportBlock) -- that's the convention the game
 // always sees, since it reads the file as-is. But TrailForge's own store
 // (store.ts's normalizePath) strips that duplicate from the live in-memory
 // path whenever first/last coincide, so the SAME PathData can arrive here
-// either with or without it (issue: "teleport from last node to 0" --
-// assuming the duplicate was always present undercounted nSegs by one and
-// skipped the true final segment entirely). hasDuplicateClosingPoint()
-// detects which convention the given array is actually in, so segCount()
-// and ghosts() are correct either way.
+// either with or without it. hasDuplicateClosingPoint() (also now
+// ExprForge-generated, as SpEfIsClosingDuplicate) detects which convention
+// the given array is actually in, so segCount() and ghosts() are correct
+// either way.
 const DUP_EPS = 0.001   // matches store.ts's normalizePath coincidence threshold
 
 function hasDuplicateClosingPoint(wps: Vec3[]): boolean {
   if (wps.length < 2) return false
   const first = wps[0], last = wps[wps.length - 1]
-  return Math.abs(first.x - last.x) < DUP_EPS &&
-         Math.abs(first.y - last.y) < DUP_EPS &&
-         Math.abs(first.z - last.z) < DUP_EPS
+  return SpEfIsClosingDuplicate(first.x, first.y, first.z, last.x, last.y, last.z, DUP_EPS).isDup > 0
 }
 
 // Number of Catmull-Rom segments for this waypoint array as given (whichever
@@ -55,20 +61,22 @@ export function segCount(wps: Vec3[], closed: boolean): number {
 // number of logically-distinct points (n-1 when a duplicate closing waypoint
 // is present, n when it's not), taken from the *other* end of the array at
 // the two boundary segments, to keep curvature smooth across the seam
-// without an extra zero-length closing segment (issue #211).
+// without an extra zero-length segment (issue #211).
+//
+// SpEfGhostIndices's own "n" parameter always subtracts exactly 1 when
+// closed (giM = n-1) -- correct for the game, which only ever calls it with
+// the raw on-disk waypoint count (a closed path there ALWAYS carries its
+// duplicate closing waypoint, since the QB64 loader has no normalization
+// step -- see maneuvers.bas). This file's wps can ALSO arrive already
+// deduped (store.ts's normalizePath), where that same "-1" would be wrong
+// by one. So for a closed path, n is deliberately NOT wps.length -- it's
+// segCount(wps, true) + 1, i.e. whatever value makes SpEfGhostIndices's own
+// internal "-1" land on the correct distinct-point cycle length either way.
+// For an open path there's no such adjustment; n is the real array bound.
 function ghosts<T extends Vec3>(wps: T[], seg: number, closed: boolean): [T, T, T, T] {
-  const n = wps.length
-  if (closed) {
-    const m = hasDuplicateClosingPoint(wps) ? n - 1 : n   // distinct-point cycle length
-    const at = (i: number) => wps[((i % m) + m) % m]
-    return [at(seg - 1), at(seg), at(seg + 1), at(seg + 2)]
-  }
-  return [
-    wps[Math.max(0, seg - 1)],
-    wps[seg],
-    wps[Math.min(n - 1, seg + 1)],
-    wps[Math.min(n - 1, seg + 2)],
-  ]
+  const n = closed ? segCount(wps, true) + 1 : wps.length
+  const { i0, i1, i2, i3 } = SpEfGhostIndices(n, seg, closed ? 1 : 0)
+  return [wps[i0], wps[i1], wps[i2], wps[i3]]
 }
 
 // ── Path-local frame ────────────────────────────────────────────────────
