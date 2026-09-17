@@ -271,6 +271,7 @@ DIM SHARED empireName      AS STRING
 DIM SHARED gameOverDelay   AS INTEGER
 DIM SHARED escWas          AS INTEGER
 DIM SHARED spaceWas        AS INTEGER
+DIM SHARED pWas            AS INTEGER  ' title screen's own "start game" key debounce -- see GS_TITLE_Update
 DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
 DIM SHARED escConfirm      AS INTEGER
