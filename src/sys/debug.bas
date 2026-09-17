@@ -103,6 +103,21 @@ Sub DBG_Overlay()
     _PrintString (2, 54), "VY   " + Left$(Str$(playerVY + 1000), 7)
     _PrintString (2, 64), "VZ   " + Left$(Str$(playerVZ + 1000), 7)
 
+    ' Boss pass-anchor diagnostic: how far the player has moved (Y/Z) since
+    ' the boss's current pass anchor was frozen (BOSS_FlyoverInit). If this
+    ' stays near zero no matter how hard you maneuver, the anchor isn't
+    ' actually decoupling the boss from your live position -- if it tracks
+    ' your movement, the mechanism IS engaging (whether that's enough to
+    ' feel like real separation from the boss is a separate question).
+    If boss.active Then
+        Line (0, 76)-(105, 116), _RGBA(0, 0, 0, 190), BF
+        Color _RGB(255, 180, 80)
+        _PrintString (2, 78), "BST  " + LTrim$(Str$(boss.state))
+        _PrintString (2, 88), "dANY " + Left$(Str$(player.py - bsmAnchorY + 1000), 7)
+        _PrintString (2, 98), "dANZ " + Left$(Str$(player.pz - bsmAnchorZ + 1000), 7)
+        _PrintString (2, 108), "dBSY " + Left$(Str$(boss.py - player.py + 1000), 7)
+    End If
+
     If gameState = GS_PLAYING Then
         dbgBclr = _RGB(0, 255, 120)
         For dbgBi = 1 To MAX_ENEMIES

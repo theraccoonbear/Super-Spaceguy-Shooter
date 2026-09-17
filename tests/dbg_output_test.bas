@@ -42,6 +42,7 @@ Type GameObj
     meshIdx As Integer
     px As Single : py As Single : pz As Single
     ry As Single : rz As Single
+    state   As Integer   ' boss-only field, harmless stub addition for DBG_Overlay's boss.state read
 End Type
 Type E3D_AABB
     hx As Single : hy As Single : hz As Single
@@ -60,6 +61,8 @@ Dim Shared E3D_scnCount As Long
 Dim Shared player As GameObj
 Dim Shared playerVY As Single, playerVZ As Single
 Dim Shared enemies(1 To MAX_ENEMIES) As GameObj
+Dim Shared boss As GameObj   ' DBG_Overlay's boss-anchor diagnostic (state, dANY/dANZ)
+Dim Shared bsmAnchorY As Single, bsmAnchorZ As Single
 Dim Shared boxLib(1 To MESH_COUNT) As E3D_AABB
 Dim Shared vpMat As E3D_Matrix4
 
