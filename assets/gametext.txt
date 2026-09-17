@@ -148,6 +148,12 @@ SUPER SPACE GUY SHOOTER
 [BLOCK:speech_boss_warning]
 WARNING BOSS INCOMING
 
+[BLOCK:speech_boss_phase2]
+SHIELDS FAILING. FULL AGGRESSION.
+
+[BLOCK:speech_boss_phase3]
+ALL SYSTEMS CRITICAL. WEAPONS FREE.
+
 [BLOCK:speech_game_over]
 GAME OVER
 

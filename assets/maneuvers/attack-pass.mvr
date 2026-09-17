@@ -1,0 +1,31 @@
+[attack-pass]
+speed=0.25
+orient=path
+closed=1
+
+ 53.4405    7.7616   -0.3503
+ 49.4578    3.2207   33.0769
+ 33.6243    9.2982   24.6690
+  8.7777   -0.7114    0.1266
+-12.4921   -2.5898    4.2717
+-19.0767   15.1416   12.1857
+-29.1371         3    4.0848
+-23.7362   -3.6647   -4.2481
+  0.3152    3.6258    0.5884
+ 33.1357   -1.6223   -2.9403
+ 42.0103   -1.6223  -21.8501
+ 54.0500    1.1726  -26.2122
+ 53.4405    7.7616   -0.3503
+
+trigger: 0.0000, fireMode, on
+trigger: 0.1760, fireMode, on
+trigger: 0.2767, fireMode, off
+trigger: 0.6302, fireMode, on
+trigger: 0.7296, fireMode, off
+
+craftroll: 0.0621, 0.0639, 30, cw, relative, in-out
+craftroll: 0.3108, 0.0636, 30, ccw, relative, in-out
+craftroll: 0.5091, 0.0804, 30, cw, relative, in-out
+craftroll: 0.8005, 0.0833, 30, cw, relative, in-out
+
+loopseam: 0.0500, 0.0500, 0, in-out

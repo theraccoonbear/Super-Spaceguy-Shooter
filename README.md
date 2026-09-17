@@ -135,6 +135,21 @@ The codebase is split across `$INCLUDE` modules organized by discipline under `s
 
 `sss.bas` (repo root) is the entry point: it sets up `$EMBED`s for all assets, `$INCLUDE`s `src/game.bi` and `src/engine3d.bi` (which in turn `$INCLUDE` every module above in dependency order), parses CLI args, and runs the main game loop and top-level state dispatch. `src/sys/dims.bas` declares the shared global state (game objects, constants, HUD state) that every module reads and writes. QB64-PE has no module-private state, so this file is effectively the game's shared memory layout.
 
+### Flight path math
+
+**All boss-flight spline math lives in [`math/formula.js`](math/formula.js)** — pure JavaScript using the [exprforge](https://www.npmjs.com/package/exprforge) DSL. This is the single source of truth for every flight-path calculation in the game.
+
+Do not hand-edit the generated files. Run `node tools/emit-spline.js` from the repo root to regenerate both downstream targets from the DSL:
+
+| Generated file | Language | Consumer |
+|---|---|---|
+| `src/gameplay/spline_path_gen.bi` | QB64-PE | Game runtime (`behavior.bas`) |
+| `tools/TrailForge/src/math/spline_gen.ts` | TypeScript | TrailForge preview |
+
+The CI pipeline regenerates both files on every build, so the generated code is always fresh. If you add or change a function in the DSL, run the emit script locally and commit the regenerated files.
+
+Implemented algorithms: Catmull-Rom position/tangent weights, Gram-Schmidt frame, standoff offset, arc-length reparameterization, and Rodrigues parallel transport for smooth ship-body orientation.
+
 ---
 
 ## Controls

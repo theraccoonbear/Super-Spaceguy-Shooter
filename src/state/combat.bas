@@ -28,8 +28,17 @@ Sub COMBAT_SceneDraw()
 
     If boss.active Then
         pPos.x = boss.px : pPos.y = boss.py : pPos.z = boss.pz
-        pRot.x = boss.rx : pRot.y = boss.ry : pRot.z = boss.rz
-        E3D_BuildObjectMat pPos, pRot, boss.scl, objMat
+        If boss.state = 5 Or boss.state = 6 Then
+            ' Forward/up/right basis (mode-aware, craftRoll applied) computed by
+            ' BOSS_Update -- see boss.bas for why Euler angles can't be used here.
+            E3D_BuildObjectMatBasis pPos, bssRendFwdX, bssRendFwdY, bssRendFwdZ, _
+                                    bssRendUpX, bssRendUpY, bssRendUpZ, _
+                                    bssRendRgtX, bssRendRgtY, bssRendRgtZ, _
+                                    boss.scl, objMat
+        Else
+            pRot.x = boss.rx : pRot.y = boss.ry : pRot.z = boss.rz
+            E3D_BuildObjectMat pPos, pRot, boss.scl, objMat
+        End If
         cbtDDist = boss.px - player.px
         If cbtDDist > DIM_FAR Then
             cbtDDimF = 0.35
