@@ -8,7 +8,9 @@
 '                   (assets/maneuvers/*.mvr)
 '
 ' Flyover path (state 6): boss.arcAngle is repurposed as the spline t parameter (0..bsmWpCount-1).
-' Waypoints are player-relative, set by MNV_Load at flyover entry (via BOSS_PickMode); Z column
+' Waypoints are relative to bsmAnchorX/Y/Z (the player's position captured once at the start of
+' the pass by BOSS_FlyoverInit -- NOT the player's live position every tick; see bsmAnchorX's own
+' comment for why), set by MNV_Load at flyover entry (via BOSS_PickMode); Z column
 ' is signed by bsmTurnDir so the arc alternates sides each pass. Attitude (yaw/pitch/roll) is
 ' derived from bsmFlTnX/Y/Z (the exposed facing) each frame, so banking follows the curve
 ' naturally -- same is true during state 5, off the Hermite tangent instead. bsmFlTnX/Y/Z is
@@ -50,9 +52,24 @@ Const BOSS_FLYOVER_MAX_FACE_TURN_COS = 0.9997621
 Dim Shared bsmFlySpd      As Single   ' t-advance per frame; set by MNV_Load
 Dim Shared bsmManeuverName As String   ' which [block] to load; set before BOSS_FlyoverInit
 
+' ── pass anchor -- captured once per pass by BOSS_FlyoverInit ─────────────
+' Every maneuver waypoint is authored relative to "wherever the player is,"
+' but states 5/6 used to resolve that against the player's LIVE position
+' every single tick -- boss.px/py/pz were literally player.px/py/pz + offset,
+' recomputed every frame, so the boss silently re-centered on the player
+' every time they moved and no amount of maneuvering could ever change your
+' position relative to it (unlike ENEMY_Update's independent enemies(),
+' only softly homing toward the player). Freezing the reference point once
+' per pass keeps the same "relative to the player" authoring convention
+' while letting the player actually reposition themselves during a pass --
+' re-anchoring at the next pass boundary keeps the boss from drifting
+' permanently out of reach, the same way enemies' homing lerp keeps them
+' roughly nearby without gluing them to you every tick.
+Dim Shared bsmAnchorX As Single, bsmAnchorY As Single, bsmAnchorZ As Single
+
 ' ── transition (state 5) -- Hermite blend into the next maneuver's entry ──
-Dim Shared bsmTrP0X As Single, bsmTrP0Y As Single, bsmTrP0Z As Single   ' start: boss's actual pos at transition entry (player-relative)
-Dim Shared bsmTrP1X As Single, bsmTrP1Y As Single, bsmTrP1Z As Single   ' end: target maneuver's real P0 (player-relative)
+Dim Shared bsmTrP0X As Single, bsmTrP0Y As Single, bsmTrP0Z As Single   ' start: boss's actual pos at transition entry (anchor-relative)
+Dim Shared bsmTrP1X As Single, bsmTrP1Y As Single, bsmTrP1Z As Single   ' end: target maneuver's real P0 (anchor-relative)
 Dim Shared bsmTrM0X As Single, bsmTrM0Y As Single, bsmTrM0Z As Single   ' scaled start tangent (SpEfHermiteTangentScale)
 Dim Shared bsmTrM1X As Single, bsmTrM1Y As Single, bsmTrM1Z As Single   ' scaled end tangent
 Dim Shared bsmTrT   As Single                                          ' Hermite parameter, 0..1
@@ -101,7 +118,7 @@ Sub BOSS_UpdateMovement()
     Dim bsmFlPR As Single      ' interpolated pathRoll (degrees)
     Dim bsmFlAX As Single, bsmFlAY As Single, bsmFlAZ As Single     ' actual pos after standoff
     Dim bsmFlAXD As Double, bsmFlAYD As Double, bsmFlAZD As Double  ' Double temps for SpEfActualPos
-    Dim bsmEvX As Single, bsmEvY As Single, bsmEvZ As Single        ' SpEvalAt output (player-relative)
+    Dim bsmEvX As Single, bsmEvY As Single, bsmEvZ As Single        ' SpEvalAt output (anchor-relative)
     Dim bsmDw0D As Double, bsmDw1D As Double, bsmDw2D As Double, bsmDw3D As Double  ' SpEfCrDerivWeights output
     Dim bsmDXD As Double, bsmDYD As Double, bsmDZD As Double        ' raw (unnormalized) derivative
     Dim bsmArcAdvD As Double                                        ' SpEfArcAdvance output
@@ -125,9 +142,9 @@ Sub BOSS_UpdateMovement()
                        CDbl(bsmTrP1X), CDbl(bsmTrP1Y), CDbl(bsmTrP1Z), _
                        CDbl(bsmTrM1X), CDbl(bsmTrM1Y), CDbl(bsmTrM1Z), _
                        CDbl(bsmTrT), bsmTrPosXD, bsmTrPosYD, bsmTrPosZD
-        boss.px = player.px + CSng(bsmTrPosXD)
-        boss.py = player.py + CSng(bsmTrPosYD)
-        boss.pz = player.pz + CSng(bsmTrPosZD)
+        boss.px = bsmAnchorX + CSng(bsmTrPosXD)
+        boss.py = bsmAnchorY + CSng(bsmTrPosYD)
+        boss.pz = bsmAnchorZ + CSng(bsmTrPosZD)
 
         SpEfHermiteTangent CDbl(bsmTrP0X), CDbl(bsmTrP0Y), CDbl(bsmTrP0Z), _
                             CDbl(bsmTrM0X), CDbl(bsmTrM0Y), CDbl(bsmTrM0Z), _
@@ -150,9 +167,9 @@ Sub BOSS_UpdateMovement()
             ' uses: this tick's Hermite sample is at bsmTrT *before* the increment above,
             ' i.e. fractionally short of t=1 -- left alone it's a small but real gap
             ' before flyover's SpEvalAt(t=0) lands on bsmTrP1 exactly next tick.
-            boss.px = player.px + bsmTrP1X
-            boss.py = player.py + bsmTrP1Y
-            boss.pz = player.pz + bsmTrP1Z
+            boss.px = bsmAnchorX + bsmTrP1X
+            boss.py = bsmAnchorY + bsmTrP1Y
+            boss.pz = bsmAnchorZ + bsmTrP1Z
             boss.arcAngle = 0       ' state 6 starts its own spline parameter fresh
             ' Re-seed the transport frame instead of carrying over whatever the
             ' transition accumulated: parallel transport is path-dependent, and
@@ -175,9 +192,9 @@ Sub BOSS_UpdateMovement()
         bsmFlNS  = bsmWpCount - 1
         If bsmFseg >= bsmFlNS Then
             ' path complete: land on final waypoint, flip arc dir, return to combat
-            boss.px = player.px + bsmWp(bsmWpCount - 1).x
-            boss.py = player.py + bsmWp(bsmWpCount - 1).y
-            boss.pz = player.pz + bsmWp(bsmWpCount - 1).z
+            boss.px = bsmAnchorX + bsmWp(bsmWpCount - 1).x
+            boss.py = bsmAnchorY + bsmWp(bsmWpCount - 1).y
+            boss.pz = bsmAnchorZ + bsmWp(bsmWpCount - 1).z
             bsmTurnDir = bsmTurnDir * -1
             If bsmTurnDir = 0 Then bsmTurnDir = 1
             Select Case boss.phase
@@ -207,9 +224,9 @@ Sub BOSS_UpdateMovement()
                 ' Position and true tangent: both fully delegated to the shared,
                 ' ExprForge-backed evaluators (spline_path.bi) -- no hand-copied CR math.
                 SpEvalAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmEvX, bsmEvY, bsmEvZ
-                boss.px = player.px + bsmEvX
-                boss.py = player.py + bsmEvY
-                boss.pz = player.pz + bsmEvZ
+                boss.px = bsmAnchorX + bsmEvX
+                boss.py = bsmAnchorY + bsmEvY
+                boss.pz = bsmAnchorZ + bsmEvZ
                 SpTangentAt bsmWp(), bsmWpCount, bsmFt, bsmClosed, bsmRawTnX, bsmRawTnY, bsmRawTnZ
                 SpSlewToward bsmFlTnX, bsmFlTnY, bsmFlTnZ, bsmRawTnX, bsmRawTnY, bsmRawTnZ, _
                              BOSS_FLYOVER_MAX_FACE_TURN_COS, bsmFlTnX, bsmFlTnY, bsmFlTnZ
@@ -299,6 +316,16 @@ End Sub
 ' to this maneuver's real P0, continuously, regardless of open/closed.
 Sub BOSS_FlyoverInit
     Dim bfiI As Integer
+
+    ' Freeze this pass's reference point at the player's CURRENT position -- see
+    ' bsmAnchorX's own comment for why states 5/6 read this instead of live
+    ' player.px/py/pz from here on. Re-anchoring here (once per pass, not per
+    ' tick) is what keeps the boss from drifting permanently out of reach while
+    ' still letting the player actually maneuver relative to it during the pass.
+    bsmAnchorX = player.px
+    bsmAnchorY = player.py
+    bsmAnchorZ = player.pz
+
     ' pick maneuver for current phase; wrap to last entry if phase exceeds list length
     Dim bfiPIdx As Integer : bfiPIdx = boss.phase - 1
     If bossManeuverCnt > 0 Then
@@ -331,9 +358,14 @@ Sub BOSS_TransitionInit(btiHadPrevPass As Integer)
     Dim btiM0XD As Double, btiM0YD As Double, btiM0ZD As Double
     Dim btiM1XD As Double, btiM1YD As Double, btiM1ZD As Double
 
-    bsmTrP0X = boss.px - player.px
-    bsmTrP0Y = boss.py - player.py
-    bsmTrP0Z = boss.pz - player.pz
+    ' Anchor was just re-frozen by BOSS_FlyoverInit (called immediately before
+    ' this, per BOSS_PickMode) -- expressed against bsmAnchorX/Y/Z, not live
+    ' player.px/py/pz, so this stays correct even if that calling order ever
+    ' changes (right now the two happen to be numerically identical, since no
+    ' tick passes between them, but nothing here should depend on that).
+    bsmTrP0X = boss.px - bsmAnchorX
+    bsmTrP0Y = boss.py - bsmAnchorY
+    bsmTrP0Z = boss.pz - bsmAnchorZ
 
     If btiHadPrevPass Then
         btiInVX = CDbl(bsmFlTnX) : btiInVY = CDbl(bsmFlTnY) : btiInVZ = CDbl(bsmFlTnZ)
