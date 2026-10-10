@@ -99,7 +99,12 @@ Sub PLAYER_Fire
             bullets(plfI).px = player.px + plfNx * (BULLET_TRAIL_LEN + 1.0)
             bullets(plfI).py = player.py + plfNy * (BULLET_TRAIL_LEN + 1.0)
             bullets(plfI).pz = player.pz + plfNz * (BULLET_TRAIL_LEN + 1.0)
-            ' aim assist: nudge toward nearest enemy within ~20 deg forward cone
+            ' aim assist: nudge toward nearest enemy OR the boss within ~20 deg forward cone.
+            ' The boss is a separate BossObj, not a member of enemies() -- checked here the
+            ' same way so it isn't silently exempt from the only mechanism that makes shots
+            ' land reliably (bullet direction otherwise comes from player.rx/ry/rz, a small,
+            ' velocity-derived cosmetic tilt that decays to zero the moment you stop
+            ' accelerating, not a real aim direction).
             plfAaBest = 1e9
             For plfAaI = 1 To MAX_ENEMIES
                 If enemies(plfAaI).active Then
@@ -118,6 +123,21 @@ Sub PLAYER_Fire
                     End If
                 End If
             Next plfAaI
+            If boss.active Then
+                plfAaDX = boss.px - player.px
+                plfAaDY = boss.py - player.py
+                plfAaDZ = boss.pz - player.pz
+                plfAaDist = SQR(plfAaDX*plfAaDX + plfAaDY*plfAaDY + plfAaDZ*plfAaDZ)
+                If plfAaDist > 0.1 And plfAaDX > 0 Then
+                    If (plfAaDX / plfAaDist) > 0.94 Then  ' cos(20°) ≈ 0.94
+                        If plfAaDist < plfAaBest Then
+                            plfAaBest = plfAaDist
+                            plfAaNY = plfAaDY / plfAaDist
+                            plfAaNZ = plfAaDZ / plfAaDist
+                        End If
+                    End If
+                End If
+            End If
             If plfAaBest < 1e9 Then
                 plfNy = plfNy + (plfAaNY - plfNy) * AIM_ASSIST
                 plfNz = plfNz + (plfAaNZ - plfNz) * AIM_ASSIST

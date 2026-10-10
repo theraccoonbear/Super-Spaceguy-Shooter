@@ -9,6 +9,9 @@ base=$(basename "$1" .bas)
 old_exe="./builds/$base"
 
 if [ "$1" == "sss.bas" ]; then
+    echo ">>> Generating spline math from DSL..."
+    (cd math && npm install --prefer-offline --silent) && node tools/emit-spline.js || exit 1
+    echo ">>> ...done!"
     echo ">>> Baking in-game spoken text..."
     "$(dirname "$0")/bake_speech_dict" || exit 1
     echo ">>> ...done!"

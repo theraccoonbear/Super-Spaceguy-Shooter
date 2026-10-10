@@ -25,9 +25,19 @@
 - No comments unless the WHY is non-obvious.
 - No new files unless the task requires them.
 
+## No outside languages for verification
+- NEVER write Python (or any language outside this project's own stack) to "verify a hypothesis," even as disposable scratch work you don't intend to commit. This includes re-deriving/re-transcribing formulas from `formula.expr`, `.bas`, or `.ts` into a throwaway script to sanity-check them numerically.
+- Hand-retyping shared math into yet another language to "just check" is the exact silent-transcription-divergence failure mode this codebase's ExprForge discipline exists to prevent. Doing it as a side-channel scratch tool is not exempt from that risk — it's the same mistake with extra steps.
+- Verify TypeScript with TypeScript: write a real Vitest test importing the actual exported functions from the real module (e.g. `tools/TrailForge/src/math/spline.ts`) against real project data. Verify QB64 with QB64: a scratch `.bas` harness or an addition to `tests/`, built and run the normal way.
+- If a case ever seems to genuinely require an outside language, do not just do it. Stop, explain specifically and concretely why the project's own stack can't answer the question, and get the user's explicit go-ahead for that specific instance before writing a single line.
+
 ## Pull requests
 - Every PR body must include `Closes #N` (or `Fixes #N`) for each GitHub issue the PR resolves. Without it the issue will not auto-close on merge.
 - After every commit on a PR branch, push immediately. The user tests from a separate working copy and cannot see local commits.
+
+## Commit hygiene
+- No AI attribution trailers in commit messages or PR bodies -- no `Co-Authored-By: Claude ...`, no `Claude-Session:`, nothing similar. `.claude/settings.json`'s `attribution` block disables these at the source; `tools/git-hooks/commit-msg` is a backstop that rejects a commit containing one.
+- One-time per clone: `git config core.hooksPath tools/git-hooks` (git does not auto-discover a tracked hooks directory).
 
 ## Pre-commit checklist — run ALL of these locally before every commit/push
 1. **Build**: `./tools/buildqb sss.bas` — must complete with no errors
@@ -40,6 +50,9 @@
    ./tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
    ./tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
    ./tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
+   ./tools/buildqb tests/mnv_load_test.bas          && builds/mnv_load_test
+   ./tools/buildqb tests/mnv_transition_test.bas    && builds/mnv_transition_test
+   ./tools/buildqb tests/mnv_conformance_test.bas   && builds/mnv_conformance_test
    tools/http_queue_test   # builds + runs http_queue_test.bas against a local mock server
    ```
    All tests must pass (exit 0) before committing. No exceptions.

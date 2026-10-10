@@ -218,10 +218,12 @@ Sub E3D_LoadMesh (mdat As String, meshName As String, mesh As E3D_Mesh, box As E
     Dim thx As Single, thy As Single, thz As Single
     Dim i1 As Integer, i2 As Integer, i3 As Integer, i4 As Integer
     Dim cr As Integer, cg As Integer, cb As Integer
+    Dim elmSx As Single, elmSy As Single, elmSz As Single
 
     E3D_MakeMesh mesh
     box.hx = 0 : box.hy = 0 : box.hz = 0
     found = 0
+    elmSx = 1 : elmSy = 1 : elmSz = 1   ' axisfix default: no correction needed
 
     Do While Len(mdat) > 0
         E3D_NextLine mdat, ln
@@ -247,9 +249,14 @@ Sub E3D_LoadMesh (mdat As String, meshName As String, mesh As E3D_Mesh, box As E
                     Case "aabb"
                         E3D_TokF rest, thx : E3D_TokF rest, thy : E3D_TokF rest, thz
                         box.hx = thx : box.hy = thy : box.hz = thz
+                    Case "axisfix"
+                        ' Per-axis sign correction for a model whose source .obj axes don't
+                        ' match this engine's convention -- see the .e3d file header comment.
+                        ' Must appear before any "v" line in the block (it does, by convention).
+                        E3D_TokF rest, elmSx : E3D_TokF rest, elmSy : E3D_TokF rest, elmSz
                     Case "v"
                         E3D_TokF rest, vx : E3D_TokF rest, vy : E3D_TokF rest, vz
-                        E3D_AddMeshVert mesh, vx, vy, vz
+                        E3D_AddMeshVert mesh, vx * elmSx, vy * elmSy, vz * elmSz
                     Case "f"
                         E3D_TokI rest, i1 : E3D_TokI rest, i2 : E3D_TokI rest, i3
                         E3D_TokI rest, cr : E3D_TokI rest, cg : E3D_TokI rest, cb

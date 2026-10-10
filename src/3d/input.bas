@@ -11,6 +11,7 @@ Const E3D_KEY_D      = 100
 Const E3D_KEY_ESCAPE = 27
 Const E3D_KEY_TAB    = 9
 Const E3D_KEY_R      = 114
+Const E3D_KEY_P      = 112
 
 ' Controller mapping constants — adjust if your gamepad layout differs
 Const E3D_AXIS_DEADZONE    = 0.25  ' ignore stick deflection below this threshold
@@ -56,6 +57,7 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_ESCAPE) = Abs(_KeyDown(27))
     held(E3D_KEY_TAB)    = Abs(_KeyDown(9))
     held(E3D_KEY_R)      = Abs(_KeyDown(82)) OR Abs(_KeyDown(114))
+    held(E3D_KEY_P)      = Abs(_KeyDown(80)) OR Abs(_KeyDown(112))
 
     If ctrlDev = 0 Then Exit Sub
 

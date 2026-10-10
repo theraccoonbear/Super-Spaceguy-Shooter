@@ -5,7 +5,7 @@ Sub GS_TITLE_Update ()
     _PUTIMAGE (0, 0)-(scrW - 1, scrH - 1), titleImg, backBuffer
     LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
     gstThrobBright = INT(170 + 85 * SIN(tt * 5))
-    FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO START", 200, scrW, gstThrobBright
+    FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS P TO PLAY", 200, scrW, gstThrobBright
     FONT_PrintAlpha fontPalette(8), backBuffer, "ESC  OPTIONS", 2, scrH - FONT_CHAR_H, 255
     FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
     IF titleEscConfirm THEN
@@ -45,6 +45,9 @@ Sub GS_TITLE_Update ()
         EXIT SUB
     END IF
     MUS_Fill 0
-    IF held(E3D_KEY_SPACE) AND spaceWas = 0 THEN GAME_NewGame
-    spaceWas = held(E3D_KEY_SPACE)
+    ' Deliberately NOT space here -- space is held/mashed constantly elsewhere
+    ' (firing, skipping crawls/cinematics) and made it too easy to accidentally
+    ' start a new game from the title screen. P is not bound to anything else.
+    IF held(E3D_KEY_P) AND pWas = 0 THEN GAME_NewGame
+    pWas = held(E3D_KEY_P)
 End Sub
