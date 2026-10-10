@@ -13,6 +13,7 @@ End Sub
 '$INCLUDE:'tool_shell.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
+'$INCLUDE:'../src/gameplay/spline_path.bi'
 '$INCLUDE:'../src/gameplay/behavior.bas'
 '$INCLUDE:'../src/gameplay/maneuvers.bas'
 
