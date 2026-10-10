@@ -28,17 +28,15 @@ Sub COMBAT_SceneDraw()
 
     If boss.active Then
         pPos.x = boss.px : pPos.y = boss.py : pPos.z = boss.pz
-        If boss.state = 5 Or boss.state = 6 Then
-            ' Forward/up/right basis (mode-aware, craftRoll applied) computed by
-            ' BOSS_Update -- see boss.bas for why Euler angles can't be used here.
-            E3D_BuildObjectMatBasis pPos, bssRendFwdX, bssRendFwdY, bssRendFwdZ, _
-                                    bssRendUpX, bssRendUpY, bssRendUpZ, _
-                                    bssRendRgtX, bssRendRgtY, bssRendRgtZ, _
-                                    boss.scl, objMat
-        Else
-            pRot.x = boss.rx : pRot.y = boss.ry : pRot.z = boss.rz
-            E3D_BuildObjectMat pPos, pRot, boss.scl, objMat
-        End If
+        pRot.x = boss.rx : pRot.y = boss.ry : pRot.z = boss.rz
+        E3D_BuildObjectMat pPos, pRot, boss.scl, objMat
+        ' models.e3d's BOSS "axisfix -1 1 -1" re-orients the mesh for TrailForge's
+        ' basis renderer; the Euler attitude above was tuned on the unflipped mesh,
+        ' so undo the flip here (diag(-1,1,-1) is its own inverse).
+        Dim cbtBossAxFix As E3D_Matrix4
+        E3D_MatIdentity cbtBossAxFix
+        cbtBossAxFix.m(0, 0) = -1 : cbtBossAxFix.m(2, 2) = -1
+        E3D_MatMul objMat, cbtBossAxFix, objMat
         cbtDDist = boss.px - player.px
         If cbtDDist > DIM_FAR Then
             cbtDDimF = 0.35

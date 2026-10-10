@@ -1,5 +1,11 @@
 ' Boss movement modes (boss.state):
-'   0 idle       -- closing initial spawn distance to BOSS_COMBAT_DIST on X; no other motion
+'   0 hunt       -- converge on player Y/Z (boss.bas also closes X to BOSS_COMBAT_DIST)
+'   1 evade      -- dart to BOSS_SetEvasion's target until moveTimer expires
+'
+' The in-game boss uses only states 0/1 (BOSS_SetEvasion after each volley).
+' States 5/6 below are the TrailForge maneuver engine, kept working for
+' tools/turn_viz.bas and tests/mnv_* but not yet wired into the game.
+'
 '   5 transition -- short Hermite blend from wherever the boss actually is/is heading into
 '                   the next maneuver's real entry point (P0 + its own entry tangent).
 '                   Continuous position AND heading -- no snap, regardless of open/closed.
@@ -132,8 +138,37 @@ Sub BOSS_UpdateMovement()
 
     boss.chargeTimer = boss.chargeTimer - 1
     If boss.chargeTimer < 0 Then boss.chargeTimer = 0
+    boss.moveTimer = boss.moveTimer - 1
+    If boss.moveTimer < 0 Then boss.moveTimer = 0
 
     Select Case boss.state
+    Case 0  ' hunting: actively converge on player Y/Z
+        Select Case boss.phase
+            Case 1
+                boss.py = boss.py + (player.py - boss.py) * 0.045
+                boss.pz = boss.pz + (player.pz - boss.pz) * 0.045
+            Case 2
+                boss.py = boss.py + (player.py - boss.py) * 0.070
+                boss.pz = boss.pz + (player.pz - boss.pz) * 0.070
+            Case 3
+                boss.py = boss.py + (player.py - boss.py) * 0.100
+                boss.pz = boss.pz + (player.pz - boss.pz) * 0.100
+        End Select
+
+    Case 1  ' evading: dart to arena-wide random position
+        Select Case boss.phase
+            Case 1
+                boss.py = boss.py + (boss.targetY - boss.py) * 0.065
+                boss.pz = boss.pz + (boss.targetZ - boss.pz) * 0.065
+            Case 2
+                boss.py = boss.py + (boss.targetY - boss.py) * 0.095
+                boss.pz = boss.pz + (boss.targetZ - boss.pz) * 0.095
+            Case 3
+                boss.py = boss.py + (boss.targetY - boss.py) * 0.130
+                boss.pz = boss.pz + (boss.targetZ - boss.pz) * 0.130
+        End Select
+        If boss.moveTimer <= 0 Then boss.state = 0
+
     Case 5  ' transition: short Hermite blend from current heading into the next maneuver's entry.
             ' All curve math is ExprForge-generated (SpEfHermitePos/SpEfHermiteTangent) -- this
             ' is plumbing only, mirroring how Case 6 drives SpEvalAt/SpTangentAt.
@@ -280,6 +315,26 @@ Sub BOSS_UpdateMovement()
         End If
 
     End Select
+End Sub
+
+Sub BOSS_SetEvasion(phase As Integer)
+    ' dart relative to player — keeps boss inside firing cone (15deg pitch / 7deg yaw at BOSS_COMBAT_DIST=45)
+    If boss.py >= player.py Then
+        boss.targetY = player.py - (3 + Rnd * 5)
+    Else
+        boss.targetY = player.py + (3 + Rnd * 5)
+    End If
+    If boss.pz >= player.pz Then
+        boss.targetZ = player.pz - (2 + Rnd * 3)
+    Else
+        boss.targetZ = player.pz + (2 + Rnd * 3)
+    End If
+    Select Case phase
+        Case 1 : boss.moveTimer = 70
+        Case 2 : boss.moveTimer = 50
+        Case 3 : boss.moveTimer = 20
+    End Select
+    boss.state = 1
 End Sub
 
 ' Parallel transport: maintain frame (R,U) across ticks using Rodrigues rotation.
