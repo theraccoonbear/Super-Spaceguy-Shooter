@@ -172,6 +172,7 @@ Sub BOSS_Update
             boss.fireTimer = BOSS_FIRE3
             BOSS_SetEvasion boss.phase
         End Select
+        BOSS_SporeVolley
     End If
 
     ' player vs boss body collision
@@ -198,6 +199,7 @@ Sub BOSS_Update
                     TELEM_BossDefeated
                     boss.active  = 0
                     planetTransitionTimer = 75
+                    SPORE_Clear  ' no lingering clouds once the boss is dead
                     score = score + 2000
                     scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
                     bssPK = 0
@@ -220,4 +222,16 @@ Sub BOSS_Update
             End If
         End If
     Next bssJ
+End Sub
+
+' Attack A, spore bloom (#26): in an "A" phase each volley also launches spore clouds at
+' where the player is now; how many comes from SPORE_VolleySize% (spores.bas).
+Sub BOSS_SporeVolley
+    Dim bsvN As Integer, bsvSide As Single
+    bsvN = SPORE_VolleySize%(bossAttackList$(), bossAttackCnt, boss.phase)
+    If bsvN = 0 Then Exit Sub
+    If Rnd < 0.5 Then bsvSide = -1 Else bsvSide = 1
+    SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py, player.pz
+    If bsvN >= 2 Then SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py + 3.2 * bsvSide, player.pz
+    If bsvN >= 3 Then SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py, player.pz + 3.2 * bsvSide
 End Sub

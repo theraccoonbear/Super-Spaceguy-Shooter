@@ -26,6 +26,7 @@
 '$INCLUDE:'state/leaderboard.bas'
 '$INCLUDE:'gameplay/player.bas'
 '$INCLUDE:'gameplay/enemy.bas'
+'$INCLUDE:'gameplay/spores.bas'
 '$INCLUDE:'gameplay/boss.bas'
 '$INCLUDE:'sys/json.bas'
 '$INCLUDE:'sys/http.bas'

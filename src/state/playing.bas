@@ -10,6 +10,7 @@ Sub GS_PLAYING_Update ()
     Dim hit As Integer
     Dim i As Integer, j As Integer
     Dim gspAstNear As Integer, gspAstI As Integer
+    Dim spDmg As Integer
 
     ' ESC during planet/cinematic: skip straight to title (no confirm needed)
     IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
@@ -223,6 +224,8 @@ Sub GS_PLAYING_Update ()
 
             BOSS_Update
             EBULLET_Update
+            spDmg = SPORE_Update%(player.px, player.py, player.pz)
+            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "spore" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
             FX_Update
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
             IF bltActive THEN BELT_Update scrW, scrH

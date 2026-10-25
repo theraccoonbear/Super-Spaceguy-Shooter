@@ -29,6 +29,7 @@ Sub GAME_ResetState
     For grI = 1 To MAX_ASTEROIDS : asteroids(grI).active = 0 : Next grI
     For grI = 1 To MAX_POWERUPS  : powerups(grI).active = 0  : Next grI
     For grI = 1 To MAX_EBULLETS  : ebullets(grI).active = 0  : Next grI
+    SPORE_Clear
     FX_Clear
     fxVCRActive = 0
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0

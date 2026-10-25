@@ -21,6 +21,7 @@
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
 '  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
 '  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
+'  19.  PLAY boss attack=: bossAttackList$ per boss (stacked attacks)
 '  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
 '
 ' Build: from repo root:
@@ -82,6 +83,8 @@ Dim Shared bossSpeechList$(0 To 7)
 Dim Shared bossSpeechCnt     As Integer
 Dim Shared bossManeuverList$(0 To 7)
 Dim Shared bossManeuverCnt   As Integer
+Dim Shared bossAttackList$(0 To 7)
+Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim introTimer As Integer
@@ -119,6 +122,7 @@ Sub ST_Reset()
     bossMusCnt      = 0
     bossSpeechCnt   = 0
     bossManeuverCnt = 0
+    bossAttackCnt   = 0
     bossSeekStr     = 0
     tt           = 0
     SEQ_Load _EMBEDDED$("SEQTXT")
@@ -557,6 +561,25 @@ ST_Assert bossManeuverCnt = 3,                     "18.06  level6 maneuver= -> c
 ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.07  level6 phase1=boss-x-flight"
 ST_Assert bossManeuverList$(1) = "boss-v-flight",  "18.08  level6 phase2=boss-v-flight"
 ST_Assert bossManeuverList$(2) = "attack-pass",    "18.09  level6 phase3=attack-pass"
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 19. boss attack= parsed into bossAttackList$ (stacked attacks, #26) ---"
+ST_Reset
+ST_GoTo "boss3"
+SEQ_Advance
+ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "A" And bossAttackList$(1) = "A" And bossAttackList$(2) = "A", "19.01  level3 boss attack=A,A,A"
+ST_Reset
+levelNum = 4
+ST_GoTo "boss5"
+SEQ_Advance
+ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "A" And bossAttackList$(1) = "B" And bossAttackList$(2) = "B", "19.02  level5 boss attack=A,B,B"
+ST_Reset
+levelNum = 5
+ST_GoTo "boss6"
+SEQ_Advance
+ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "A" And bossAttackList$(1) = "B" And bossAttackList$(2) = "C", "19.03  level6 boss attack=A,B,C"
+ST_Assert bossMusCnt = 3 And bossMusList$(2) = "boss3", "19.04  shared CSV parser still fills mus= (boss3 last)"
+ST_Assert bossSpeechCnt = 3 And bossSpeechList$(0) = "" And bossSpeechList$(1) = "speech_boss_phase2", "19.05  shared CSV parser keeps the empty first speech= entry"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="

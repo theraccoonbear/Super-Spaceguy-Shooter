@@ -33,6 +33,8 @@ level:3
 
 `trigger` means different things per `PLAY` type: for `combat`, score units of 100 points before the phase ends (halved... actually scaled by `NERF_FACTOR` in `--nerf` mode); for `asteroid`, distance in parsecs; `boss` ignores it (a boss fight ends when the boss dies, not on a score threshold).
 
+Boss `PLAY` lines also take per-phase lists, one comma-separated entry per HP phase: `mus=` (music cues), `speech=` (gametext keys; an empty entry means no line), `maneuver=` (flight patterns, currently unused in play), and `attack=` (signature attacks, #26: `A` spore bloom, with `B` the cut and `C` devour still to come). `seek=` is a single number, the bullet homing strength. Bosses stack attacks: level 3 is `attack=A,A,A`, level 5 `attack=A,B,B`, level 6 `attack=A,B,C`. In an `A` phase, each volley also launches spore clouds, as many as the number of `A` phases so far (see `src/gameplay/spores.bas`).
+
 ## Runtime API
 
 ```basic

@@ -59,6 +59,7 @@ End Sub
 
 Sub COMBAT_OverlayDraw()
     Dim cbtOJ As Integer
+    Dim cbtSpR As Single, cbtSpRing As Integer, cbtSpA As Integer
     Dim cbtOEBClr As Long
     Dim cbtOPjX As Single, cbtOPjY As Single, cbtOPjW As Single
     Dim cbtOPjX2 As Single, cbtOPjY2 As Single, cbtOPjW2 As Single
@@ -155,6 +156,29 @@ Sub COMBAT_OverlayDraw()
                     Line (cbtOPjX - 4, cbtOPjY)-(cbtOPjX + 4, cbtOPjY), cbtOEBClr
                     Line (cbtOPjX, cbtOPjY - 2)-(cbtOPjX, cbtOPjY + 2), cbtOEBClr
                     PSet (cbtOPjX, cbtOPjY), _RGB(255, 255, 255)
+                End If
+            End If
+        End If
+    Next cbtOJ
+
+    ' spore clouds (boss attack A, spores.bas): hazy green rings, radius projected to pixels
+    For cbtOJ = 1 To SPORE_MAX
+        If sporeActive(cbtOJ) Then
+            cbtOPjX = sporeX(cbtOJ) * vpMat.m(0,0) + sporeY(cbtOJ) * vpMat.m(0,1) + sporeZ(cbtOJ) * vpMat.m(0,2) + vpMat.m(0,3)
+            cbtOPjY = sporeX(cbtOJ) * vpMat.m(1,0) + sporeY(cbtOJ) * vpMat.m(1,1) + sporeZ(cbtOJ) * vpMat.m(1,2) + vpMat.m(1,3)
+            cbtOPjW = sporeX(cbtOJ) * vpMat.m(3,0) + sporeY(cbtOJ) * vpMat.m(3,1) + sporeZ(cbtOJ) * vpMat.m(3,2) + vpMat.m(3,3)
+            cbtOPjY2 = sporeX(cbtOJ) * vpMat.m(1,0) + (sporeY(cbtOJ) + sporeR(cbtOJ)) * vpMat.m(1,1) + sporeZ(cbtOJ) * vpMat.m(1,2) + vpMat.m(1,3)
+            cbtOPjW2 = sporeX(cbtOJ) * vpMat.m(3,0) + (sporeY(cbtOJ) + sporeR(cbtOJ)) * vpMat.m(3,1) + sporeZ(cbtOJ) * vpMat.m(3,2) + vpMat.m(3,3)
+            If cbtOPjW > 0.0001 And cbtOPjW2 > 0.0001 Then
+                cbtOPjX = (cbtOPjX / cbtOPjW + 1.0) * scrW * 0.5
+                cbtOPjY = (1.0 - cbtOPjY / cbtOPjW) * scrH * 0.5
+                cbtSpR = Abs(cbtOPjY - (1.0 - cbtOPjY2 / cbtOPjW2) * scrH * 0.5)
+                If cbtSpR > 160 Then cbtSpR = 160
+                If cbtSpR >= 1 Then
+                    If SPORE_Hurts%(cbtOJ) Then cbtSpA = 70 Else cbtSpA = 35
+                    For cbtSpRing = 0 To 2
+                        Circle (cbtOPjX, cbtOPjY), cbtSpR * (1 - cbtSpRing * 0.3), _RGBA(110, 230, 80, cbtSpA + cbtSpRing * 35)
+                    Next cbtSpRing
                 End If
             End If
         End If
