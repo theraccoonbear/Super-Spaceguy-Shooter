@@ -40,7 +40,7 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6The aid run worked. The refugees lived. And ~4{{emperor}}~6 was furious.
 
-~6He has unleashed the ~4{{enforcers_full}}~6. The refugees answer with rebellion. The smuggler's new cargo is not grain, but rifles.
+~6He has unleashed the ~4{{enforcers_full}}~6. The refugees answer with rebellion, and call themselves ~5{{resistance}}~6. The smuggler's new cargo is not grain, but rifles.
 
 ~6A resistance cell on ~2{{planet2}}~6 offers clean paperwork and easy terms. Too easy. The buyers are ~4{{enforcers}}~6, and they are waiting.
 
@@ -49,7 +49,7 @@ This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage3]
 ~4-~E=~7[ ~3CHAPTER 3 ~7]~E=~4-
 
-~5{{resistance}}~6 has kindled, and ~4{{the_empire}}~6 answers with total war. ~4{{enforcers}}~6 burn cargo ships for flying too close. Supply lines dry up. Famine and disease run rampant.
+~5{{resistance}}~6 has caught fire, and ~4{{the_empire}}~6 answers with total war. ~4{{enforcers}}~6 burn cargo ships for flying too close. Supply lines dry up. Famine and disease run rampant.
 
 ~6Then comes the contagion. Fever dreams. Grotesque swelling. Entire worlds fall sick.
 
