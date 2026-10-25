@@ -44,6 +44,23 @@ builds/sss --version
 
 Pre-built binaries for Linux, macOS, and Windows are produced by CI on every merge to `master` and attached to tagged releases.
 
+### Building in a container
+
+If you'd rather not install QB64-PE natively, `tools/dev` runs everything inside a headless Ubuntu 24.04 container that mirrors CI's Linux job: the same apt packages, QB64-PE `v4.7.0-GLFW` (CI resolves "latest" at run time, so the image pins the release that was current when it was written; bump `QB64PE_VERSION`/`QB64PE_ASSET` in `tools/container/Containerfile` to follow it), and Node 22 for ExprForge. You only need Podman or Docker. The script uses Podman if it finds it, otherwise Docker; set `SSS_ENGINE=docker` to override.
+
+```bash
+tools/dev image   # build the image (done automatically on first use)
+tools/dev build   # tools/buildqb sss.bas + the --version smoke test
+tools/dev test    # full test suite (.github/scripts/qb64test.sh, same as CI)
+tools/dev bake    # tools/bake_speech_dict
+tools/dev emit    # regenerate spline math (npm install in math/ + node tools/emit-spline.js)
+tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` runs one command
+```
+
+The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
+
+The container is headless: it builds and tests but can't run the game, since there's no display or audio passthrough. Run `builds/sss` on the host (it needs the host's GL/X11/ALSA runtime libraries). Display and audio passthrough could be added later.
+
 ### CLI options
 
 ```
