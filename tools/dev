@@ -8,9 +8,11 @@
 #   bake           tools/bake_speech_dict
 #   emit           npm install in math/, then node tools/emit-spline.js
 #   shell [cmd]    interactive shell in the container, or run one command
+#   run [args]     play the game: builds/sss (built first if missing) on your
+#                  display and audio (X11/XWayland, PulseAudio/PipeWire, /dev/dri)
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
-# file land on the host owned by you. Headless only: no display or audio.
+# file land on the host owned by you. Only `run` touches your display/audio.
 #
 # Env overrides:
 #   SSS_ENGINE=podman|docker   force an engine (default: podman if found, else docker)
@@ -22,7 +24,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 pick_engine() {
@@ -53,6 +55,9 @@ ensure_image() {
     fi
 }
 
+# Extra engine args for the next run_in (set by gui_args).
+RUN_EXTRA=()
+
 # Runs "$@" inside the container with the repo as the working directory.
 run_in() {
     local args=(run --rm -i --init)
@@ -82,7 +87,31 @@ run_in() {
         esac
     fi
 
-    "$ENGINE" "${args[@]}" "$IMAGE" "$@"
+    "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
+}
+
+# Pass the host display, audio and GPU through for `run`. The sockets are
+# shared rather than relabeled, so SELinux labeling is off for this container.
+# --ipc=host lets X11 MIT-SHM work.
+gui_args() {
+    if [ -z "${DISPLAY:-}" ]; then
+        echo "Error: DISPLAY is not set; run needs an X11 or XWayland session" >&2
+        exit 1
+    fi
+    RUN_EXTRA+=(--security-opt label=disable --ipc=host
+                -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix)
+    if [ -n "${XAUTHORITY:-}" ] && [ -f "$XAUTHORITY" ]; then
+        RUN_EXTRA+=(-v "$XAUTHORITY:/tmp/.Xauthority:ro" -e XAUTHORITY=/tmp/.Xauthority)
+    fi
+    local pulse="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pulse/native"
+    if [ -S "$pulse" ]; then
+        RUN_EXTRA+=(-v "$pulse:/tmp/pulse-native" -e PULSE_SERVER=unix:/tmp/pulse-native)
+    else
+        echo "Warning: no PulseAudio/PipeWire socket at $pulse; the game will be silent" >&2
+    fi
+    if [ -e /dev/dri ]; then
+        RUN_EXTRA+=(--device /dev/dri)
+    fi
 }
 
 SMOKE='
@@ -128,6 +157,14 @@ case "$cmd" in
         else
             run_in bash
         fi
+        ;;
+    run)
+        pick_engine; ensure_image
+        if [ ! -x "$REPO/builds/sss" ]; then
+            run_in bash -c "./tools/buildqb sss.bas"
+        fi
+        gui_args
+        run_in builds/sss "$@"
         ;;
     -h|--help|help|"")
         usage
