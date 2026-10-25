@@ -59,7 +59,18 @@ DIM SHARED spkWaveStep  AS SINGLE  ' samples advanced per audio sample
 ' F3 formant, previous-phoneme tracking, fricative HP filter
 DIM SHARED spkF3(0 TO 39) AS SINGLE
 DIM SHARED spkDiEnd(0 TO 39) AS INTEGER  ' diphthong glide target (-1 = monophthong)
-DIM SHARED spkRateScale AS SINGLE        ' speech rate multiplier (1.0 = natural; set by SPK_SyncToScroll)
+' Speech speed: per-class duration multipliers set by SPK_SetSpeed. Speeding up
+' compresses pauses most and consonants least -- consonants carry most of the
+' intelligibility in this formant synth, so they must stay long enough to hear.
+DIM SHARED spkScaleSil  AS SINGLE
+DIM SHARED spkScaleVow  AS SINGLE
+DIM SHARED spkScaleCons AS SINGLE
+DIM SHARED spkSamplesDone AS LONG        ' speech clock: samples emitted while an utterance plays
+
+' Narration speed presets (settingNarrSpeed 1..3); k = speed factor vs. the natural table
+CONST SPK_SPEED_SLOW   = 1.49
+CONST SPK_SPEED_NORMAL = 1.76
+CONST SPK_SPEED_FAST   = 2.09
 DIM SHARED spkPrevPhoneID AS INTEGER
 DIM SHARED spkHpCoeff AS SINGLE
 DIM SHARED spkHpX1    AS SINGLE
@@ -199,7 +210,7 @@ SUB SPK_Init()
         spkDiEnd(SPK_AW) = SPK_UH   ' /aʊ/ out, down, power → AA onset → UH
         spkDiEnd(SPK_OY) = SPK_IY   ' /ɔɪ/ boy, point, void → AO onset → IY
 
-        spkRateScale = 1.0
+        SPK_SetSpeed 1.0
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
         spkWavePhase = 0.0 : spkWaveStep = 0.0
         spkPrevPhoneID = SPK_SIL
@@ -448,6 +459,45 @@ SUB SPK_Init()
         SPK_IsPlaying% = (spkPhoneIdx < spkPhoneCount)
     END FUNCTION
 
+    ' Speed factor k: 1.0 = natural spkDur table, >1 faster. Pauses scale ~k^1.6,
+    ' vowels ~k^1.15, consonants ~k^0.35.
+    SUB SPK_SetSpeed(sssK AS SINGLE)
+        IF sssK <= 0 THEN sssK = 1.0
+        spkScaleSil  = 1.0 / (sssK ^ 1.6)
+        spkScaleVow  = 1.0 / (sssK ^ 1.15)
+        spkScaleCons = 1.0 / (sssK ^ 0.35)
+    END SUB
+
+    ' Applies a narration preset: 1 SLOW, 2 NORMAL, 3 FAST (anything else = NORMAL).
+    SUB SPK_SetPreset(sspLevel AS INTEGER)
+        SELECT CASE sspLevel
+            CASE 1 : SPK_SetSpeed SPK_SPEED_SLOW
+            CASE 3 : SPK_SetSpeed SPK_SPEED_FAST
+            CASE ELSE : SPK_SetSpeed SPK_SPEED_NORMAL
+        END SELECT
+    END SUB
+
+    ' Scaled duration in samples of one phoneme at the current speed.
+    FUNCTION SPK_PhoneDur&(spdPh AS INTEGER, spdSt AS INTEGER)
+        DIM spdD AS LONG
+        SELECT CASE spdPh
+            CASE SPK_SIL : spdD = INT(spkDur(spdPh, spdSt) * spkScaleSil)
+            CASE SPK_AA TO SPK_UW : spdD = INT(spkDur(spdPh, spdSt) * spkScaleVow)
+            CASE ELSE : spdD = INT(spkDur(spdPh, spdSt) * spkScaleCons)
+        END SELECT
+        IF spdD < 2 THEN spdD = 2
+        SPK_PhoneDur& = spdD
+    END FUNCTION
+
+    ' Total samples the queued utterance takes at the current speed (no synthesis).
+    FUNCTION SPK_QueueSamples&()
+        DIM sqsI AS INTEGER, sqsT AS LONG
+        FOR sqsI = 0 TO spkPhoneCount - 1
+            sqsT = sqsT + SPK_PhoneDur&(spkPhones(sqsI), spkStress(sqsI))
+        NEXT sqsI
+        SPK_QueueSamples& = sqsT
+    END FUNCTION
+
     ' Returns the word currently being spoken (for HUD indicator), or "" between words.
     FUNCTION SPK_CurWord$()
         DIM cwI AS INTEGER
@@ -485,7 +535,6 @@ SUB SPK_Init()
         DIM spkWOccI AS INTEGER, spkWOccN AS INTEGER
         DIM spkStem AS STRING, spkStemIdx AS INTEGER, spkStemFound AS INTEGER, spkLastPh AS INTEGER
 
-        spkRateScale = 1.0  ' reset; SPK_SyncToScroll may override after this returns
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
         spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
         spkWordCount = 0
@@ -647,34 +696,6 @@ SUB SPK_Init()
     END SUB
 
     ' ============================================================
-    ' Adjust speech rate so the queued utterance ends when the last crawl
-    ' line exits the top of the screen.  Call immediately after SPK_Say.
-    '   scrollPx   : pixels remaining until last line reaches y=0
-    '   pxPerFrame : scroll speed (CRAWL_SPEED)
-    ' Rate is clamped 0.6x-1.8x to avoid distorting phoneme quality.
-    ' ============================================================
-    SUB SPK_SyncToScroll(scrollPx AS SINGLE, pxPerFrame AS SINGLE)
-        DIM syncI AS INTEGER
-        DIM syncTotal AS LONG, syncScrollSamples AS LONG
-
-        IF spkPhoneCount = 0 OR pxPerFrame <= 0 THEN EXIT SUB
-
-        syncTotal = 0
-        FOR syncI = 0 TO spkPhoneCount - 1
-            syncTotal = syncTotal + spkDur(spkPhones(syncI), spkStress(syncI))
-        NEXT syncI
-
-        ' scrollPx / pxPerFrame = frames; × SAMPLE_RATE/60 = samples at 60fps
-        syncScrollSamples = CLNG(scrollPx / pxPerFrame * SAMPLE_RATE / 60.0)
-
-        IF syncTotal > 0 AND syncScrollSamples > 0 THEN
-            spkRateScale = syncScrollSamples / syncTotal
-            IF spkRateScale < 0.60 THEN spkRateScale = 0.60
-            IF spkRateScale > 1.20 THEN spkRateScale = 1.20
-        END IF
-    END SUB
-
-    ' ============================================================
     ' Returns 1 if speech is still playing, 0 if silent.
     ' ============================================================
     ' Compute next speech sample into spkSampleOut.  Call once per audio sample.
@@ -695,8 +716,7 @@ SUB SPK_Init()
 
         phoneID = spkPhones(spkPhoneIdx)
         stress  = spkStress(spkPhoneIdx)
-        dur     = INT(spkDur(phoneID, stress) * spkRateScale)
-        IF dur < 2 THEN dur = 2
+        dur     = SPK_PhoneDur&(phoneID, stress)
 
         IF spkSamplePos = 0 THEN SPK_BuildWave phoneID, stress
 
@@ -787,6 +807,7 @@ SUB SPK_Init()
 
         spkSampleOut = s * env * 0.45
 
+        spkSamplesDone = spkSamplesDone + 1
         spkSamplePos = spkSamplePos + 1
         IF spkSamplePos >= dur THEN
             spkSamplePos = 0

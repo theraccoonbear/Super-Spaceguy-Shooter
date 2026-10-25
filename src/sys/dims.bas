@@ -187,6 +187,7 @@ DIM SHARED volMusic  AS SINGLE : volMusic  = 0.3
 DIM SHARED volSfx    AS SINGLE : volSfx    = 0.9
 DIM SHARED volSpeech AS SINGLE : volSpeech = 0.4
 DIM SHARED settingNarration  AS INTEGER : settingNarration  = 1
+DIM SHARED settingNarrSpeed  AS INTEGER : settingNarrSpeed  = 2   ' 1 SLOW, 2 NORMAL, 3 FAST (SPK_SetPreset)
 DIM SHARED settingFullscreen AS INTEGER : settingFullscreen = 1
 DIM SHARED settingNerf AS INTEGER
 DIM SHARED godMode    AS INTEGER

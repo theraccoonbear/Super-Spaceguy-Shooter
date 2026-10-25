@@ -24,9 +24,18 @@ DIM SHARED crawlParaCount AS INTEGER
 DIM SHARED crawlParaLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaLastLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaText$(0 TO CRAWL_MAX_PARAS - 1)
+DIM SHARED crawlParaWords(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaIdx AS INTEGER
-DIM SHARED crawlPrevRate AS SINGLE
-DIM SHARED crawlRateScale AS SINGLE  ' uniform rate for whole crawl; computed in CRAWL_Prep
+
+' Scroll is paced per paragraph: when paragraph N starts (spoken, or read with
+' narration off), the speed is set so paragraph N+1 reaches the trigger line as
+' N finishes. While speech plays the scroll advances on the speech clock
+' (spkSamplesDone), so a frame-rate dip can't pull text and voice apart.
+CONST CRAWL_VEL_MIN  = 6       ' px/s floor (very dense paragraph)
+CONST CRAWL_VEL_MAX  = 30      ' px/s ceiling (very sparse paragraph / header)
+CONST CRAWL_READ_WPM = 200     ' narration-off reading pace
+DIM SHARED crawlVel AS SINGLE        ' current scroll speed, px/s
+DIM SHARED crawlSpkClk AS LONG       ' spkSamplesDone at the previous frame
 
 DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
 DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
@@ -157,7 +166,7 @@ End Sub
 SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
     DIM cpBlock AS STRING, cpPos AS LONG, cpNxt AS LONG, cpLn AS STRING
     DIM cpCI AS INTEGER, cpCJ AS INTEGER, cpCA AS INTEGER, cpLast AS STRING
-    DIM cpAllText AS STRING, cpAllI AS INTEGER, cpNatural AS LONG, cpNatJ AS INTEGER, cpSyncPx AS SINGLE
+    DIM cpWI AS INTEGER, cpWIn AS INTEGER
     crawlLineCount = 0
     crawlTimer = 0
     cpBlock = GTEXT_Get$(cpKey)
@@ -204,7 +213,7 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
     ' Build per-paragraph speech arrays; each paragraph fires separately when
     ' its first line scrolls onto screen, giving natural inter-paragraph silence.
     Dim cpSI As Integer, cpSLine As String, cpParaOpen As Integer
-    crawlParaCount = 0 : crawlParaIdx = 0 : crawlPrevRate = 1.0 : cpParaOpen = 0
+    crawlParaCount = 0 : crawlParaIdx = 0 : cpParaOpen = 0
     For cpSI = 0 To crawlLineCount - 1
         cpSLine = LTrim$(RTrim$(CRAWL_StripColor$(crawlLines$(cpSI))))
         If Len(cpSLine) > 0 Then
@@ -224,32 +233,31 @@ SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
             cpParaOpen = 0
         End If
     Next cpSI
-    ' Compute a single uniform speech rate for the whole crawl: speech fills the window
-    ' from the first paragraph's trigger point to the last line exiting the top fade band.
-    ' All paragraphs then speak at this same rate, avoiding per-paragraph pace variation.
-    crawlRateScale = 1.0
-    If settingNarration And crawlParaCount > 0 Then
-        cpAllText = ""
-        For cpAllI = 0 To crawlParaCount - 1
-            cpAllText = cpAllText + crawlParaText$(cpAllI)
-        Next cpAllI
-        SPK_Say cpAllText  ' dry-run: fills phoneme queue for counting only
-        cpNatural = 0
-        For cpNatJ = 0 To spkPhoneCount - 1
-            cpNatural = cpNatural + spkDur(spkPhones(cpNatJ), spkStress(cpNatJ))
-        Next cpNatJ
-        If cpNatural > 0 Then
-            cpSyncPx = (cpStartY - CRAWL_LINE_H - CRAWL_TOP_FADE) _
-                     + (crawlParaLastLine(crawlParaCount - 1) - crawlParaLine(0)) * CRAWL_LINE_H
-            crawlRateScale = (cpSyncPx / CRAWL_SPEED * SAMPLE_RATE / 60.0) / cpNatural
-            If crawlRateScale < 0.60 Then crawlRateScale = 0.60
-            If crawlRateScale > 1.20 Then crawlRateScale = 1.20
-        End If
-        spkPhoneCount = 0 : spkPhoneIdx = 0  ' reset dry-run queue; no audio plays yet
-    End If
+    ' word counts drive the narration-off reading pace
+    For cpWI = 0 To crawlParaCount - 1
+        crawlParaWords(cpWI) = 0 : cpWIn = 0
+        For cpCJ = 1 To Len(crawlParaText$(cpWI))
+            If Mid$(crawlParaText$(cpWI), cpCJ, 1) = " " Then
+                cpWIn = 0
+            ElseIf cpWIn = 0 Then
+                cpWIn = -1 : crawlParaWords(cpWI) = crawlParaWords(cpWI) + 1
+            End If
+        Next cpCJ
+    Next cpWI
+    crawlVel = CRAWL_SPEED * 60
+    crawlSpkClk = spkSamplesDone
     crawlBtWas = 0
     crawlFFActive = 0
 END SUB
+
+' Scroll speed (px/s) that covers cpvDist pixels in cpvSec seconds, clamped to a readable range.
+Function CRAWL_PlanVel!(cpvDist As Single, cpvSec As Single)
+    Dim cpvV As Single
+    If cpvSec <= 0 Then cpvV = CRAWL_VEL_MAX Else cpvV = cpvDist / cpvSec
+    If cpvV < CRAWL_VEL_MIN Then cpvV = CRAWL_VEL_MIN
+    If cpvV > CRAWL_VEL_MAX Then cpvV = CRAWL_VEL_MAX
+    CRAWL_PlanVel! = cpvV
+End Function
 
 ' Called at both crawl exit points. Advances to crawlNextState if set, else SEQ_Advance.
 Sub CRAWL_Finish()
