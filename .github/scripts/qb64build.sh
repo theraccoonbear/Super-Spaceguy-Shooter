@@ -23,7 +23,7 @@ case "$(uname -s)" in
 esac
 
 # If QB64_BIN_DIR is set, use that existing QB64-PE installation.
-# Otherwise download and compile QB64-PE from the latest release.
+# Otherwise download and compile the pinned QB64-PE release (QB64PE_VERSION, default matches build.yml).
 if [ -n "${QB64_BIN_DIR:-}" ]; then
   QB64_DIR="$(realpath "$QB64_BIN_DIR")"
   echo "==> Using QB64-PE at $QB64_DIR"
@@ -33,7 +33,7 @@ else
   QB64_DIR="$WORKDIR/qb64pe"
 
   echo "==> Resolving QB64-PE release asset..."
-  RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/QB64-Phoenix-Edition/QB64pe/releases/latest)
+  RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/QB64-Phoenix-Edition/QB64pe/releases/tags/${QB64PE_VERSION:-v4.5.0})
   ASSET_URL=$(echo "$RELEASE_JSON" \
     | python3 -c "import sys,json; f='${QB64_ASSET_FILTER}'; assets=json.load(sys.stdin)['assets']; print(next(a['browser_download_url'] for a in assets if f in a['name'].lower()))")
   QB64_VERSION=$(echo "$RELEASE_JSON" \
