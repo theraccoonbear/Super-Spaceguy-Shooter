@@ -14,6 +14,7 @@ CONST GS_LEADIN    = 9
 CONST GS_CONSENT     = 10
 CONST GS_USERNAME    = 11
 CONST GS_LEADERBOARD = 12
+CONST GS_CONTROLS    = 13
 CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
@@ -274,6 +275,7 @@ DIM SHARED spaceWas        AS INTEGER
 DIM SHARED pWas            AS INTEGER  ' title screen's own "start game" key debounce -- see GS_TITLE_Update
 DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
+DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER
 DIM SHARED escNWas         AS INTEGER

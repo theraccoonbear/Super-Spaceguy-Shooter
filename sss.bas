@@ -169,7 +169,7 @@ DO
     fsKeyWas = _KEYDOWN(34048)
 
     ' Detect state transitions for speech triggers
-    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS THEN
+    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS AND prevGameState <> GS_CONTROLS THEN
         SPK_Say sSpkTitle
         If lbrdPollDone = 0 Then LBRD_Poll
     END IF
@@ -200,6 +200,11 @@ DO
     CASE GS_ABOUT
         ABOUT_Update
         MUS_Fill 0
+
+    CASE GS_CONTROLS
+        CONTROLS_Update
+        ' opened from the in-game pause dialog: keep music starved (silent) like the dialog does
+        IF ctlReturnState <> GS_PLAYING THEN MUS_Fill 0
 
     CASE GS_LEADIN
         LEADIN_Update
