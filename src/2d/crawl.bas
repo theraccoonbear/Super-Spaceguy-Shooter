@@ -1,263 +1,39 @@
 ' crawl.bas — stage narrative text crawl (upward scroll)
 '
 ' Usage:
-'   CRAWL_Prep "stage1", scrH   ' word-wrap block, reset scroll
+'   CRAWL_Prep "stage1", scrH   ' lay out block, plan scroll speed, reset scroll
 '   gameState = GS_CRAWL        ' hand control to sssCrawl: in sss.bas
+'
+' Layout and speed planning live in crawllayout.bas.
 '
 ' NOTE: QB64-PE hoists Dim to module scope — all local variable names
 ' must be unique across every Sub/Function in the compilation unit.
-' Prefix convention: cw* WrapPara, cp* Prep.
+' Prefix convention: cp* Prep.
 
-CONST CRAWL_MAX_LINES = 64
-CONST CRAWL_CHARS     = 34     ' max chars per line (8px font, ~20px side margins)
-CONST CRAWL_LINE_H    = 22     ' line height in pixels (FONT_CHAR_H + 6)
-CONST CRAWL_SPEED     = 0.25   ' pixels per frame upward
-CONST CRAWL_TOP_FADE  = 48     ' height of top fade band in pixels
+CONST CRAWL_SPEED     = 0.25   ' pixels per frame upward (fast-forward = 5x this)
 
-DIM SHARED crawlLines$(0 TO 63)
-DIM SHARED crawlLineCount AS INTEGER
 DIM SHARED crawlScroll AS SINGLE
 DIM SHARED crawlTimer AS INTEGER
-
-CONST CRAWL_MAX_PARAS = 16
-DIM SHARED crawlParaCount AS INTEGER
-DIM SHARED crawlParaLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
-DIM SHARED crawlParaLastLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
-DIM SHARED crawlParaText$(0 TO CRAWL_MAX_PARAS - 1)
-DIM SHARED crawlParaWords(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaIdx AS INTEGER
-
-' Scroll is paced per paragraph: when paragraph N starts (spoken, or read with
-' narration off), the speed is set so paragraph N+1 reaches the trigger line as
-' N finishes. While speech plays the scroll advances on the speech clock
-' (spkSamplesDone), so a frame-rate dip can't pull text and voice apart.
-CONST CRAWL_VEL_MIN  = 6       ' px/s floor (very dense paragraph)
-CONST CRAWL_VEL_MAX  = 30      ' px/s ceiling (very sparse paragraph / header)
-CONST CRAWL_READ_WPM = 200     ' narration-off reading pace
-DIM SHARED crawlVel AS SINGLE        ' current scroll speed, px/s
-DIM SHARED crawlSpkClk AS LONG       ' spkSamplesDone at the previous frame
+DIM SHARED crawlVel AS SINGLE          ' px/s, constant for the whole crawl (CRAWL_PlanSpeed!)
 
 DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
 DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
 DIM SHARED crawlFFActive AS INTEGER    ' -1 while FF is active; tracks vol save/restore independent of spaceWas
 DIM SHARED crawlNextState AS INTEGER   ' 0 = SEQ_Advance on exit; nonzero = jump to that gameState
 
-' Strip ~X color codes; expand single digits to English words for speech.
-Function CRAWL_StripColor$(scS As String)
-    Dim scR As String, scI As Integer, scC As Integer, scH As Integer
-    scR = "" : scI = 1
-    Do While scI <= Len(scS)
-        scC = Asc(Mid$(scS, scI, 1))
-        If scC = 126 And scI < Len(scS) Then  ' ~ : check for color code
-            scH = Asc(UCase$(Mid$(scS, scI + 1, 1)))
-            If (scH >= 48 And scH <= 57) Or (scH >= 65 And scH <= 70) Then
-                scI = scI + 2  ' skip ~X
-            Else
-                scR = scR + Chr$(scC) : scI = scI + 1
-            End If
-        ElseIf scC >= 48 And scC <= 57 Then  ' 0-9 -> word
-            Select Case scC - 48
-                Case 0 : scR = scR + " ZERO "
-                Case 1 : scR = scR + " ONE "
-                Case 2 : scR = scR + " TWO "
-                Case 3 : scR = scR + " THREE "
-                Case 4 : scR = scR + " FOUR "
-                Case 5 : scR = scR + " FIVE "
-                Case 6 : scR = scR + " SIX "
-                Case 7 : scR = scR + " SEVEN "
-                Case 8 : scR = scR + " EIGHT "
-                Case 9 : scR = scR + " NINE "
-            End Select
-            scI = scI + 1
-        Else
-            scR = scR + Chr$(scC) : scI = scI + 1
-        End If
-    Loop
-    CRAWL_StripColor$ = scR
-End Function
-
-' Returns visible text of s with ~X color codes stripped but otherwise unmodified
-' (no digit expansion, no case change). Use for pixel-position math and word lookup.
-Function CRAWL_VisText$(cvtS As String)
-    Dim cvtR As String, cvtI As Integer, cvtC As Integer, cvtH As Integer
-    cvtR = "" : cvtI = 1
-    Do While cvtI <= Len(cvtS)
-        cvtC = Asc(Mid$(cvtS, cvtI, 1))
-        If cvtC = 126 And cvtI < Len(cvtS) Then
-            cvtH = Asc(UCase$(Mid$(cvtS, cvtI + 1, 1)))
-            If (cvtH >= 48 And cvtH <= 57) Or (cvtH >= 65 And cvtH <= 70) Then
-                cvtI = cvtI + 2
-            Else
-                cvtR = cvtR + Chr$(cvtC) : cvtI = cvtI + 1
-            End If
-        Else
-            cvtR = cvtR + Chr$(cvtC) : cvtI = cvtI + 1
-        End If
-    Loop
-    CRAWL_VisText$ = cvtR
-End Function
-
-' Returns visible character count of s, excluding ~X color codes.
-Function CRAWL_VisLen%(cwlS As String)
-    Dim cwlI As Integer, cwlN As Integer, cwlC As Integer, cwlH As Integer
-    cwlN = 0 : cwlI = 1
-    Do While cwlI <= Len(cwlS)
-        cwlC = Asc(Mid$(cwlS, cwlI, 1))
-        If cwlC = 126 And cwlI < Len(cwlS) Then
-            cwlH = Asc(UCase$(Mid$(cwlS, cwlI + 1, 1)))
-            If (cwlH >= 48 And cwlH <= 57) Or (cwlH >= 65 And cwlH <= 70) Then
-                cwlI = cwlI + 2
-            Else
-                cwlN = cwlN + 1 : cwlI = cwlI + 1
-            End If
-        Else
-            cwlN = cwlN + 1 : cwlI = cwlI + 1
-        End If
-    Loop
-    CRAWL_VisLen% = cwlN
-End Function
-
-' Returns the string index of the cwcN-th visible character, skipping ~X codes.
-Function CRAWL_VisCut%(cwcS As String, cwcN As Integer)
-    Dim cwcI As Integer, cwcVis As Integer, cwcC As Integer, cwcH As Integer
-    cwcI = 1 : cwcVis = 0
-    Do While cwcI <= Len(cwcS)
-        cwcC = Asc(Mid$(cwcS, cwcI, 1))
-        If cwcC = 126 And cwcI < Len(cwcS) Then
-            cwcH = Asc(UCase$(Mid$(cwcS, cwcI + 1, 1)))
-            If (cwcH >= 48 And cwcH <= 57) Or (cwcH >= 65 And cwcH <= 70) Then
-                cwcI = cwcI + 2
-            Else
-                cwcVis = cwcVis + 1
-                If cwcVis >= cwcN Then CRAWL_VisCut% = cwcI : Exit Function
-                cwcI = cwcI + 1
-            End If
-        Else
-            cwcVis = cwcVis + 1
-            If cwcVis >= cwcN Then CRAWL_VisCut% = cwcI : Exit Function
-            cwcI = cwcI + 1
-        End If
-    Loop
-    CRAWL_VisCut% = Len(cwcS) + 1
-End Function
-
-Sub CRAWL_WrapPara(cwPara As String)
-    Dim cwRem As String, cwCut As Integer, cwVCut As Integer
-    cwRem = LTrim$(RTrim$(cwPara))
-    Do While Len(cwRem) > 0
-        If crawlLineCount >= CRAWL_MAX_LINES Then Exit Do
-        If CRAWL_VisLen%(cwRem) <= CRAWL_CHARS Then
-            crawlLines$(crawlLineCount) = cwRem
-            crawlLineCount = crawlLineCount + 1
-            Exit Do
-        End If
-        cwVCut = CRAWL_VisCut%(cwRem, CRAWL_CHARS)
-        cwCut = cwVCut
-        Do While cwCut > 0 And Mid$(cwRem, cwCut, 1) <> " "
-            cwCut = cwCut - 1
-        Loop
-        If cwCut = 0 Then cwCut = cwVCut
-        crawlLines$(crawlLineCount) = Left$(cwRem, cwCut)
-        crawlLineCount = crawlLineCount + 1
-        cwRem = LTrim$(Mid$(cwRem, cwCut + 1))
-    Loop
-End Sub
-
+' One scroll speed for the whole crawl: each paragraph's length is known up front
+' (spoken at the narration preset, or read at CRAWL_READ_WPM with narration off), and
+' CRAWL_PlanSpeed! picks the fastest speed at which every paragraph finishes on screen.
 SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
-    DIM cpBlock AS STRING, cpPos AS LONG, cpNxt AS LONG, cpLn AS STRING
-    DIM cpCI AS INTEGER, cpCJ AS INTEGER, cpCA AS INTEGER, cpLast AS STRING
-    DIM cpWI AS INTEGER, cpWIn AS INTEGER
-    crawlLineCount = 0
-    crawlTimer = 0
-    cpBlock = GTEXT_Get$(cpKey)
-    IF LEN(cpBlock) = 0 THEN EXIT SUB
-    cpPos = 1
-    DO WHILE cpPos <= LEN(cpBlock)
-        cpNxt = INSTR(cpPos, cpBlock, CHR$(10))
-        IF cpNxt = 0 THEN cpNxt = LEN(cpBlock) + 1
-        cpLn = MID$(cpBlock, cpPos, cpNxt - cpPos)
-        cpPos = cpNxt + 1
-        IF LEN(LTRIM$(RTRIM$(cpLn))) = 0 THEN
-            IF crawlLineCount < CRAWL_MAX_LINES THEN
-                crawlLines$(crawlLineCount) = ""
-                crawlLineCount = crawlLineCount + 1
-            END IF
-        ELSE
-            CRAWL_WrapPara cpLn
-        END IF
-    LOOP
-    ' Forward pass: inject last-seen ~X at the start of any line that has none,
-    ' so color carries across line boundaries and wrapped continuations.
-    cpLast = "~7"
-    FOR cpCI = 0 TO crawlLineCount - 1
-        IF LEN(crawlLines$(cpCI)) > 0 THEN
-            cpCA = 0
-            IF LEN(crawlLines$(cpCI)) >= 2 AND LEFT$(crawlLines$(cpCI), 1) = "~" THEN
-                cpCA = ASC(UCASE$(MID$(crawlLines$(cpCI), 2, 1)))
-                IF NOT ((cpCA >= 48 AND cpCA <= 57) OR (cpCA >= 65 AND cpCA <= 70)) THEN cpCA = 0
-            END IF
-            IF cpCA = 0 THEN crawlLines$(cpCI) = cpLast + crawlLines$(cpCI)
-            ' scan line for last ~X to carry forward
-            FOR cpCJ = 1 TO LEN(crawlLines$(cpCI)) - 1
-                IF MID$(crawlLines$(cpCI), cpCJ, 1) = "~" THEN
-                    cpCA = ASC(UCASE$(MID$(crawlLines$(cpCI), cpCJ + 1, 1)))
-                    IF (cpCA >= 48 AND cpCA <= 57) OR (cpCA >= 65 AND cpCA <= 70) THEN
-                        cpLast = MID$(crawlLines$(cpCI), cpCJ, 2)
-                    END IF
-                END IF
-            NEXT cpCJ
-        END IF
-    NEXT cpCI
+    crawlTimer = 0 : crawlParaIdx = 0
+    CRAWL_Layout GTEXT_Get$(cpKey)
     crawlScroll = cpStartY  ' start text at screen bottom — visible immediately with bottom fade
-
-    ' Build per-paragraph speech arrays; each paragraph fires separately when
-    ' its first line scrolls onto screen, giving natural inter-paragraph silence.
-    Dim cpSI As Integer, cpSLine As String, cpParaOpen As Integer
-    crawlParaCount = 0 : crawlParaIdx = 0 : cpParaOpen = 0
-    For cpSI = 0 To crawlLineCount - 1
-        cpSLine = LTrim$(RTrim$(CRAWL_StripColor$(crawlLines$(cpSI))))
-        If Len(cpSLine) > 0 Then
-            If Not cpParaOpen Then
-                If crawlParaCount < CRAWL_MAX_PARAS Then
-                    crawlParaLine(crawlParaCount) = cpSI
-                    crawlParaText$(crawlParaCount) = ""
-                    crawlParaCount = crawlParaCount + 1
-                End If
-                cpParaOpen = -1
-            End If
-            If crawlParaCount > 0 Then
-                crawlParaText$(crawlParaCount - 1) = crawlParaText$(crawlParaCount - 1) + cpSLine + " "
-                crawlParaLastLine(crawlParaCount - 1) = cpSI
-            End If
-        Else
-            cpParaOpen = 0
-        End If
-    Next cpSI
-    ' word counts drive the narration-off reading pace
-    For cpWI = 0 To crawlParaCount - 1
-        crawlParaWords(cpWI) = 0 : cpWIn = 0
-        For cpCJ = 1 To Len(crawlParaText$(cpWI))
-            If Mid$(crawlParaText$(cpWI), cpCJ, 1) = " " Then
-                cpWIn = 0
-            ElseIf cpWIn = 0 Then
-                cpWIn = -1 : crawlParaWords(cpWI) = crawlParaWords(cpWI) + 1
-            End If
-        Next cpCJ
-    Next cpWI
-    crawlVel = CRAWL_SPEED * 60
-    crawlSpkClk = spkSamplesDone
+    CRAWL_PlanDurations settingNarration * settingNarrSpeed
+    crawlVel = CRAWL_PlanSpeed!(cpStartY, scrH - CRAWL_LINE_H, CRAWL_TOP_FADE)
     crawlBtWas = 0
     crawlFFActive = 0
 END SUB
-
-' Scroll speed (px/s) that covers cpvDist pixels in cpvSec seconds, clamped to a readable range.
-Function CRAWL_PlanVel!(cpvDist As Single, cpvSec As Single)
-    Dim cpvV As Single
-    If cpvSec <= 0 Then cpvV = CRAWL_VEL_MAX Else cpvV = cpvDist / cpvSec
-    If cpvV < CRAWL_VEL_MIN Then cpvV = CRAWL_VEL_MIN
-    If cpvV > CRAWL_VEL_MAX Then cpvV = CRAWL_VEL_MAX
-    CRAWL_PlanVel! = cpvV
-End Function
 
 ' Called at both crawl exit points. Advances to crawlNextState if set, else SEQ_Advance.
 Sub CRAWL_Finish()

@@ -10,8 +10,6 @@ Sub GS_CRAWL_Update ()
     Dim crawlFFHint As String
     Dim crawlFFHX As Integer
     Dim crawlResP As Integer
-    Dim crawlDt As Single, crawlTrigY As Single, crawlHoldY As Single
-    Dim crawlDist As Single, crawlDurS As Single
 
     ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
     IF crawlTimer = 0 THEN
@@ -20,48 +18,20 @@ Sub GS_CRAWL_Update ()
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
-    crawlTrigY = scrH - CRAWL_LINE_H
-    ' while speech plays, time comes from the speech clock; otherwise one 60fps frame
-    IF settingNarration AND SPK_IsPlaying% AND spkSamplesDone > crawlSpkClk THEN
-        crawlDt = (spkSamplesDone - crawlSpkClk) / SAMPLE_RATE
-    ELSE
-        crawlDt = 1 / 60
-    END IF
-    crawlSpkClk = spkSamplesDone
     IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
         crawlScroll = crawlScroll - CRAWL_SPEED * 5
     ELSE
-        crawlScroll = crawlScroll - crawlVel * crawlDt
-        ' speech running long: hold the next paragraph at the trigger line until it finishes
-        IF settingNarration AND crawlParaIdx > 0 AND crawlParaIdx < crawlParaCount AND SPK_IsPlaying% THEN
-            crawlHoldY = crawlTrigY - crawlParaLine(crawlParaIdx) * CRAWL_LINE_H
-            IF crawlScroll < crawlHoldY THEN crawlScroll = crawlHoldY
-        END IF
+        crawlScroll = crawlScroll - crawlVel / 60   ' constant for the whole crawl (CRAWL_Prep)
     END IF
-    ' Start each paragraph when its first line reaches the trigger line, and pace the
-    ' scroll so the next paragraph arrives there as this one finishes.
-    IF (held(E3D_KEY_SPACE) AND crawlTimer > 60) = 0 THEN
+    ' Speak each paragraph when its first line reaches the trigger line (after the previous one ends).
+    IF settingNarration AND (held(E3D_KEY_SPACE) AND crawlTimer > 60) = 0 THEN
         DO WHILE crawlParaIdx < crawlParaCount
-            IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > crawlTrigY THEN EXIT DO
-            IF settingNarration AND crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
-            IF settingNarration THEN
-                SPK_Say crawlParaText$(crawlParaIdx)
-                crawlDurS = SPK_QueueSamples& / SAMPLE_RATE
-            ELSE
-                crawlDurS = crawlParaWords(crawlParaIdx) / CRAWL_READ_WPM * 60
-            END IF
-            IF crawlParaIdx + 1 < crawlParaCount THEN
-                crawlDist = crawlScroll + crawlParaLine(crawlParaIdx + 1) * CRAWL_LINE_H - crawlTrigY
-            ELSE
-                crawlDist = crawlScroll + crawlParaLastLine(crawlParaIdx) * CRAWL_LINE_H - CRAWL_TOP_FADE
-            END IF
-            crawlVel = CRAWL_PlanVel!(crawlDist, crawlDurS)
+            IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN EXIT DO
+            IF crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
+            SPK_Say crawlParaText$(crawlParaIdx)
+            SPK_SetPreset settingNarrSpeed
             crawlParaIdx = crawlParaIdx + 1
         LOOP
-    END IF
-    ' after the last paragraph, don't let a slow final plan drag out the exit
-    IF crawlParaIdx >= crawlParaCount AND (settingNarration = 0 OR SPK_IsPlaying% = 0) THEN
-        IF crawlVel < CRAWL_SPEED * 60 THEN crawlVel = CRAWL_SPEED * 60
     END IF
 
     cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
@@ -169,7 +139,6 @@ Sub GS_CRAWL_Update ()
                         crawlParaIdx = crawlResP : EXIT FOR
                     END IF
                 NEXT crawlResP
-                crawlVel = CRAWL_SPEED * 60
             END IF
             fxVCRActive = 0
         END IF

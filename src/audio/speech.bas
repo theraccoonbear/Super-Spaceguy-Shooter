@@ -65,7 +65,6 @@ DIM SHARED spkDiEnd(0 TO 39) AS INTEGER  ' diphthong glide target (-1 = monophth
 DIM SHARED spkScaleSil  AS SINGLE
 DIM SHARED spkScaleVow  AS SINGLE
 DIM SHARED spkScaleCons AS SINGLE
-DIM SHARED spkSamplesDone AS LONG        ' speech clock: samples emitted while an utterance plays
 
 ' Narration speed presets (settingNarrSpeed 1..3); k = speed factor vs. the natural table
 CONST SPK_SPEED_SLOW   = 1.49
@@ -498,6 +497,38 @@ SUB SPK_Init()
         SPK_QueueSamples& = sqsT
     END FUNCTION
 
+    ' Samples stTxt would take at narration preset stLevel, without disturbing the
+    ' utterance currently queued/playing (its queue and speed are saved and restored).
+    FUNCTION SPK_TextSamples&(stTxt AS STRING, stLevel AS INTEGER)
+        DIM stsPh(0 TO SPK_PHONE_MAX - 1) AS INTEGER, stsSt(0 TO SPK_PHONE_MAX - 1) AS INTEGER
+        DIM stsWS(0 TO SPK_MAX_WORDS - 1) AS INTEGER, stsWE(0 TO SPK_MAX_WORDS - 1) AS INTEGER
+        DIM stsWT(0 TO SPK_MAX_WORDS - 1) AS STRING, stsWO(0 TO SPK_MAX_WORDS - 1) AS INTEGER
+        DIM stsN AS INTEGER, stsIdx AS INTEGER, stsPos AS INTEGER, stsWN AS INTEGER, stsI AS INTEGER
+        DIM stsPhase AS SINGLE, stsPrev AS INTEGER, stsSil AS SINGLE, stsVow AS SINGLE, stsCons AS SINGLE
+
+        stsN = spkPhoneCount : stsIdx = spkPhoneIdx : stsPos = spkSamplePos : stsWN = spkWordCount
+        stsPhase = spkWavePhase : stsPrev = spkPrevPhoneID
+        stsSil = spkScaleSil : stsVow = spkScaleVow : stsCons = spkScaleCons
+        FOR stsI = 0 TO stsN - 1 : stsPh(stsI) = spkPhones(stsI) : stsSt(stsI) = spkStress(stsI) : NEXT stsI
+        FOR stsI = 0 TO stsWN - 1
+            stsWS(stsI) = spkWordStart(stsI) : stsWE(stsI) = spkWordEnd(stsI)
+            stsWT(stsI) = spkWordText$(stsI) : stsWO(stsI) = spkWordOcc(stsI)
+        NEXT stsI
+
+        SPK_Say stTxt
+        SPK_SetPreset stLevel
+        SPK_TextSamples& = SPK_QueueSamples&
+
+        spkPhoneCount = stsN : spkPhoneIdx = stsIdx : spkSamplePos = stsPos : spkWordCount = stsWN
+        spkWavePhase = stsPhase : spkPrevPhoneID = stsPrev
+        spkScaleSil = stsSil : spkScaleVow = stsVow : spkScaleCons = stsCons
+        FOR stsI = 0 TO stsN - 1 : spkPhones(stsI) = stsPh(stsI) : spkStress(stsI) = stsSt(stsI) : NEXT stsI
+        FOR stsI = 0 TO stsWN - 1
+            spkWordStart(stsI) = stsWS(stsI) : spkWordEnd(stsI) = stsWE(stsI)
+            spkWordText$(stsI) = stsWT(stsI) : spkWordOcc(stsI) = stsWO(stsI)
+        NEXT stsI
+    END FUNCTION
+
     ' Returns the word currently being spoken (for HUD indicator), or "" between words.
     FUNCTION SPK_CurWord$()
         DIM cwI AS INTEGER
@@ -535,6 +566,7 @@ SUB SPK_Init()
         DIM spkWOccI AS INTEGER, spkWOccN AS INTEGER
         DIM spkStem AS STRING, spkStemIdx AS INTEGER, spkStemFound AS INTEGER, spkLastPh AS INTEGER
 
+        SPK_SetSpeed 1.0  ' every utterance starts at natural speed; the crawl applies the narration preset after this
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
         spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
         spkWordCount = 0
@@ -807,7 +839,6 @@ SUB SPK_Init()
 
         spkSampleOut = s * env * 0.45
 
-        spkSamplesDone = spkSamplesDone + 1
         spkSamplePos = spkSamplePos + 1
         IF spkSamplePos >= dur THEN
             spkSamplePos = 0

@@ -147,6 +147,7 @@ run_test mnv_load_test
 run_test mnv_transition_test
 run_test mnv_conformance_test
 run_test spk_timing_test
+run_test crawl_plan_test
 run_http_test http_queue_test
 
 echo "==> All tests passed"

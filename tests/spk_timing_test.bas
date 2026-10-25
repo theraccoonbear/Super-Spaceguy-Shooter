@@ -51,7 +51,7 @@ Function ST_Plain$(stpS As String)
     ST_Plain$ = stpR
 End Function
 
-Dim Shared stTotWords As Long, stTotSamples As Double
+Dim Shared stTotWords As Long, stTotSamples As Double, stTallyLevel As Integer
 
 ' Speaks every blank-line-separated paragraph of a block (queue only) and tallies words/samples.
 Sub ST_TallyBlock(sttKey As String)
@@ -67,6 +67,7 @@ Sub ST_TallyBlock(sttKey As String)
             sttPara = sttPara + sttLn + " "
         ElseIf Len(sttPara) > 0 Then
             SPK_Say sttPara
+            If stTallyLevel > 0 Then SPK_SetPreset stTallyLevel
             stTotWords = stTotWords + spkWordCount
             stTotSamples = stTotSamples + SPK_QueueSamples&
             sttPara = ""
@@ -76,7 +77,7 @@ End Sub
 
 Function ST_PresetWPM! (stwLevel As Integer)
     Dim stwKeys As String, stwK As String, stwP As Integer
-    SPK_SetPreset stwLevel
+    stTallyLevel = stwLevel
     stTotWords = 0 : stTotSamples = 0
     stwKeys = "intro stage1 stage2 stage3 stage4 stage5 stage6 outro death_final "
     Do While Len(stwKeys) > 0
@@ -96,24 +97,22 @@ GTEXT_Load _EMBEDDED$("GAMETEXT")
 ST_Assert Len(GTEXT_Get$("stage1")) > 0, "gametext loaded (stage1 present)"
 
 Print "--- SPK_QueueSamples& matches synthesized length ---"
-Dim stLvl As Integer, stQ As Long, stN As Long, stClk0 As Long
+Dim stLvl As Integer, stQ As Long, stN As Long
 For stLvl = 1 To 3
-    SPK_SetPreset stLvl
     SPK_Say ST_Plain$(GTEXT_Get$("death_final"))
+    SPK_SetPreset stLvl
     stQ = SPK_QueueSamples&
-    stClk0 = spkSamplesDone
     stN = 0
     Do While SPK_IsPlaying%
         SPK_Advance
         stN = stN + 1
     Loop
     ST_Assert stQ = stN, "preset" + Str$(stLvl) + ": queue estimate" + Str$(stQ) + " = synthesized" + Str$(stN)
-    ST_Assert spkSamplesDone - stClk0 = stN, "preset" + Str$(stLvl) + ": spkSamplesDone advanced by every emitted sample"
 Next stLvl
 
 Print "--- preset words/min over all crawl text ---"
 Dim stSlow As Single, stNorm As Single, stFast As Single, stNat As Single
-SPK_SetSpeed 1.0
+stTallyLevel = -1 ' natural: SPK_Say leaves speed at 1.0
 stTotWords = 0 : stTotSamples = 0
 ST_TallyBlock "intro" : ST_TallyBlock "stage1" : ST_TallyBlock "stage2" : ST_TallyBlock "stage3"
 ST_TallyBlock "stage4" : ST_TallyBlock "stage5" : ST_TallyBlock "stage6" : ST_TallyBlock "outro" : ST_TallyBlock "death_final"
@@ -127,6 +126,11 @@ ST_Assert stSlow < stNorm And stNorm < stFast, "presets ordered SLOW < NORMAL < 
 ST_Assert stSlow >= 110 And stSlow <= 130, "SLOW in 110-130 wpm"
 ST_Assert stNorm >= 130 And stNorm <= 150, "NORMAL in 130-150 wpm"
 ST_Assert stFast >= 152 And stFast <= 175, "FAST in 152-175 wpm"
+
+Print "--- non-narration speech stays at natural speed ---"
+SPK_SetPreset 3
+SPK_Say GTEXT_Get$("speech_title")
+ST_Assert SPK_PhoneDur&(SPK_AA, 1) = spkDur(SPK_AA, 1), "SPK_Say resets to natural speed (title / callouts unaffected by preset)"
 
 Print "--- articulation floor ---"
 SPK_SetPreset 3

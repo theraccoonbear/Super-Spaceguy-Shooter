@@ -8,6 +8,7 @@
 '$INCLUDE:'gameplay/maneuvers.bas'
 '$INCLUDE:'2d/font.bas'
 '$INCLUDE:'sys/gametext.bas'
+'$INCLUDE:'2d/crawllayout.bas'
 '$INCLUDE:'2d/crawl.bas'
 '$INCLUDE:'2d/about.bas'
 '$INCLUDE:'2d/controls.bas'

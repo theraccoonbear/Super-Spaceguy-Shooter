@@ -64,7 +64,8 @@ Called once per output sample from the audio fill loop (wired in via `snd.bas`),
 - Diphthongs (`AY`, `EY`, `OW`, `AW`, `OY`) glide from an onset wavetable to a target vowel's wavetable over the phoneme's duration, rather than using a single fixed formant.
 - **Coarticulation**: during a phoneme's 10 ms fade-in, if both it and the previous phoneme are voiced, the waveform crossfades from the previous phoneme's wavetable to the new one. This is what keeps voiced runs from sounding like disconnected clicks.
 - **Speed** comes from `SPK_SetSpeed k` (k = 1.0 is the natural `spkDur` table, about 82 wpm on the crawl text). It compresses unevenly: pauses by k^1.6, vowels by k^1.15, consonants only by k^0.35, because the consonants carry most of the intelligibility in this synth. `SPK_SetPreset 1|2|3` applies the Settings NARRATION presets SLOW / NORMAL / FAST (about 120 / 139 / 161 wpm, checked by `tests/spk_timing_test.bas`).
-- `spkSamplesDone` counts every sample emitted while an utterance plays. The crawl uses it as its clock, so the scroll and the voice can't drift apart when the frame rate dips.
+- **Every `SPK_Say` starts at natural speed** (title, boss callouts, game over). Only the crawl, and the Settings preview, apply the NARRATION preset, by calling `SPK_SetPreset` right after `SPK_Say`.
+- The crawl measures each paragraph up front with `SPK_TextSamples&(text, level)`, which saves and restores whatever is playing, and plans one constant scroll speed from that (`src/2d/crawllayout.bas`).
 
 ## Public API
 
@@ -74,6 +75,7 @@ SPK_Say text$                     ' queue text for speech (text$ must come from 
 SPK_SetPreset level               ' narration speed preset: 1 SLOW, 2 NORMAL, 3 FAST
 SPK_SetSpeed k                    ' raw speed factor (1.0 = natural table)
 SPK_QueueSamples&()               ' samples the queued utterance will take at the current speed
+SPK_TextSamples&(text$, level)   ' samples text$ would take at a preset, without disturbing current speech
 SPK_PhoneDur&(phone, stress)      ' scaled duration of one phoneme
 SPK_Advance                       ' once per audio sample; result lands in spkSampleOut
 SPK_IsPlaying%()                  ' -1 while an utterance is still playing, 0 when done

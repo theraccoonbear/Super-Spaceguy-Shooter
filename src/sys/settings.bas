@@ -83,7 +83,6 @@ Sub SETTINGS_Load ()
             End If
         End If
     End If
-    SPK_SetPreset settingNarrSpeed
     If Len(telemPlayerID) < 32 Then
         RANDOMIZE TIMER
         telemPlayerID = TELEM_NewUUID$
@@ -136,7 +135,7 @@ Sub OPTS_Update ()
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
-            If optSel = 3 And Not optLfWas Then SPK_SetPreset settingNarrSpeed : If settingNarration Then SPK_Say sSpkTitle
+            If optSel = 3 And Not optLfWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
         End If
         optLfRpt = optLfRpt + 1
@@ -161,7 +160,7 @@ Sub OPTS_Update ()
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
-            If optSel = 3 And Not optRtWas Then SPK_SetPreset settingNarrSpeed : If settingNarration Then SPK_Say sSpkTitle
+            If optSel = 3 And Not optRtWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
         End If
         optRtRpt = optRtRpt + 1
