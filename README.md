@@ -137,13 +137,15 @@ The codebase is split across `$INCLUDE` modules organized by discipline under `s
 
 ### Flight path math
 
-**All boss-flight spline math lives in [`math/formula.js`](math/formula.js)** — pure JavaScript using the [exprforge](https://www.npmjs.com/package/exprforge) DSL. This is the single source of truth for every flight-path calculation in the game.
+**All spline flight-path math lives in [`math/formula.expr`](math/formula.expr)**, written in the [exprforge](https://www.npmjs.com/package/exprforge) DSL. It is the single source of truth for every flight-path calculation.
+
+Gameplay doesn't use it today. The boss uses hand-coded hunt/evade movement, and spline routes are kept for possible cinematics. See [ADR-0001](docs/adr/0001-rail-shooter-scope.md).
 
 Do not hand-edit the generated files. Run `node tools/emit-spline.js` from the repo root to regenerate both downstream targets from the DSL:
 
 | Generated file | Language | Consumer |
 |---|---|---|
-| `src/gameplay/spline_path_gen.bi` | QB64-PE | Game runtime (`behavior.bas`) |
+| `src/gameplay/spline_path_gen.bi` | QB64-PE | Game runtime (`behavior.bas` flyover states; not used by gameplay) |
 | `tools/TrailForge/src/math/spline_gen.ts` | TypeScript | TrailForge preview |
 
 The CI pipeline regenerates both files on every build, so the generated code is always fresh. If you add or change a function in the DSL, run the emit script locally and commit the regenerated files.

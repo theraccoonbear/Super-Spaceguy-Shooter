@@ -57,7 +57,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `BEH_` | `src/gameplay/behavior.bas` | Enemy AI update functions |
 | `STAGE_` | `src/gameplay/stage.bas` | Level layout and enemy-wave scheduling |
 | `BOSS_` | `src/gameplay/boss.bas` | Boss fight logic and phase management |
-| `MAN_` | `src/gameplay/maneuvers.bas` | Boss/enemy movement patterns (drift, weave, arc-spline paths) |
+| `MNV_` | `src/gameplay/maneuvers.bas` | `.mvr` spline-route loader. Not used by gameplay; kept for possible cinematics (see ADR-0001) |
 | `GS_*` | `src/state/*.bas` | Per-screen game states (title, crawl, combat, asteroid, game over, consent, username, leaderboard, lead-in) |
 | `HUD_` | `src/2d/hud.bas` | In-game heads-up display |
 | `FONT_` | `src/2d/font.bas` | Bitmap font renderer with color palettes |
@@ -188,7 +188,7 @@ tools/buildqb viewer.bas && builds/viewer
 |---|---|
 | Where does game flow live? | `src/sys/sequence.bas` — `SEQ_Load` parses `sequence.txt`, `SEQ_Advance` steps forward |
 | Where does combat live? | `src/gameplay/stage.bas` (wave scheduling) + `src/gameplay/behavior.bas` (per-enemy AI) |
-| Where do boss fights live? | `src/gameplay/boss.bas` + `src/gameplay/maneuvers.bas` (movement patterns via arc-spline paths) |
+| Where do boss fights live? | `src/gameplay/boss.bas` (phases) + `BOSS_UpdateMovement` in `src/gameplay/behavior.bas` (hunt/evade movement). The spline flyover states are unused; see `docs/adr/0001-rail-shooter-scope.md` |
 | Where does audio happen? | `src/audio/snd.bas` (SFX triggers) + `src/audio/music.bas` (music engine) |
 | Where does speech happen? | `src/audio/speech.bas` — call `SPK_Say text$` (text$ must come from `gametext.txt`) |
 | Where do shared globals live? | `src/sys/dims.bas` — the game's shared memory layout |
