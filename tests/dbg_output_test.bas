@@ -34,6 +34,7 @@ Const GS_CONSENT     = 10
 Const GS_USERNAME    = 11
 Const GS_LEADERBOARD = 12
 Const GS_CONTROLS    = 13
+Const GS_CRAWLS      = 14
 Const MAX_ENEMIES = 1
 Const MESH_COUNT  = 1
 

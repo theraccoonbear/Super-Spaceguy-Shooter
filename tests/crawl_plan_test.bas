@@ -1,7 +1,7 @@
 ' crawl_plan_test.bas — constant crawl scroll speed planning (src/2d/crawllayout.bas)
 '
 '   - CRAWL_PlanSpeed! on hand-computed cases (one and two paragraphs, clamps)
-'   - every crawl block in gametext.txt, at narration OFF / SLOW / NORMAL / FAST:
+'   - every named crawl (SEQ_ListCrawls: sequence.txt + code-started), at OFF / SLOW / NORMAL / FAST:
 '     the planned speed fits (every paragraph finishes before its last line reaches
 '     the top fade), is in range, and is the fastest that fits
 '   - SPK_TextSamples& measures text without disturbing the utterance in progress
@@ -16,12 +16,80 @@ Const SAMPLE_RATE = 44100
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'assets/sequence.txt':'SEQTXT'
 
 Sub DBG_Print(cptDbgMsg As String) : End Sub
+
+' sequence.bas dependencies (same stubs as scene_jump_planet_test)
+' ── game-state constants (must match dims.bas) ──────────────────────────────
+Const GS_TITLE           = 0
+Const GS_PLAYING         = 1
+Const GS_PLANET          = 3
+Const GS_INTRO           = 5
+Const GS_CRAWL           = 6
+Const LEVEL_COMBAT       = 0
+Const LEVEL_ASTEROID     = 1
+Const PLANET_COUNT       = 6
+Const NERF_FACTOR        = 0.1
+Const BOSS_WARN_FRAMES   = 120
+Const DIFF_RAMP_DURATION = 600.0
+Const DIFF_STAGE_COUNT   = 6.0
+Const ASTFIELD_DURATION      = 120.0
+Const ASTFIELD_FUEL_DRAIN_PT = 0.74
+Const ASTFIELD_FUEL_FRAC     = 0.563
+Const CAM_OFFSET_X = 6.5
+Const CAM_OFFSET_Y = 2.0
+
+' ── boss state stub ─────────────────────────────────────────────────────────
+Type BossState
+    warnTimer As Integer
+End Type
+
+' ── shared vars referenced by sequence.bas ──────────────────────────────────
+Dim Shared gameState    As Integer
+Dim Shared score        As Long
+Dim Shared highScore    As Long
+Dim Shared stageScore   As Long
+Dim Shared levelNum     As Integer
+Dim Shared levelType    As Integer
+Dim Shared bltActive    As Integer
+Dim Shared settingNerf  As Integer
+Dim Shared diffTime     As Single
+Dim Shared diffScale    As Single
+Dim Shared astFieldStart As Single
+Dim Shared astDestName  As String
+Dim Shared fuelLevel    As Single
+Dim Shared planetCurrent As Integer
+Dim Shared planetNameIdx As Integer
+Dim Shared planetTimer  As Integer
+Dim Shared scrH         As Single
+Dim Shared boss         As BossState
+Dim Shared tt           As Single
+Dim Shared planetNames(1 To PLANET_COUNT) As String
+Dim Shared telemExitReason As String
+Dim Shared bossMusList$(0 To 7)
+Dim Shared bossMusCnt        As Integer
+Dim Shared bossSpeechList$(0 To 7)
+Dim Shared bossSpeechCnt     As Integer
+Dim Shared bossManeuverList$(0 To 7)
+Dim Shared bossManeuverCnt   As Integer
+Dim Shared bossSeekStr     As Single
+Dim Shared bsmManeuverName As String
+Dim introTimer As Integer
+
+' ── stubs ────────────────────────────────────────────────────────────────────
+Sub MUS_SetCue(c As String)         : End Sub
+Sub StarfieldReset(x As Single, y As Single, z As Single) : End Sub
+Sub CRAWL_Prep(k As String, h As Single) : End Sub
+Sub SETTINGS_Save()                 : End Sub
+Sub BELT_Init(w As Single, h As Single) : End Sub
+Sub TELEM_SessionEnd()              : End Sub
+
 
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 '$INCLUDE:'../src/2d/crawllayout.bas'
+'$INCLUDE:'../src/sys/sequence.bas'
 
 ' Same geometry CRAWL_Prep uses: 320x240 screen, text starts at the bottom edge.
 Const CPT_START_Y = 240
@@ -73,14 +141,16 @@ crawlParaLine(0) = 0 : crawlParaLastLine(0) = 0 : crawlParaDur(0) = 5
 crawlParaLine(1) = 2 : crawlParaLastLine(1) = 3 : crawlParaDur(1) = 5
 ST_Assert CPT_Near%(CPT_Plan!, 23.6), "two paragraphs, second waits for first: v = 23.6 px/s"
 
-Print "--- every crawl block, every narration setting ---"
-Dim cptKeys As String, cptK As String, cptP As Integer, cptLvl As Integer, cptV As Single, cptRow As String
+Print "--- every named crawl (SEQ_ListCrawls), every narration setting ---"
+Dim cptC As Integer, cptK As String, cptLvl As Integer, cptV As Single, cptRow As String
 Dim cptName(0 To 3) As String
 cptName(0) = "OFF" : cptName(1) = "SLOW" : cptName(2) = "NORMAL" : cptName(3) = "FAST"
-cptKeys = "intro stage1 stage2 stage3 stage4 stage5 stage6 outro death_final "
-Do While Len(cptKeys) > 0
-    cptP = InStr(cptKeys, " ")
-    cptK = Left$(cptKeys, cptP - 1) : cptKeys = Mid$(cptKeys, cptP + 1)
+SEQ_Load _EMBEDDED$("SEQTXT")
+SEQ_ListCrawls
+ST_Assert seqCrawlCount >= 9, "named crawl list built from sequence.txt (" + LTrim$(Str$(seqCrawlCount)) + ")"
+For cptC = 0 To seqCrawlCount - 1
+    cptK = seqCrawlKey$(cptC)
+    ST_Assert Len(GTEXT_Get$(cptK)) > 0, cptK + ": has a gametext block"
     CRAWL_Layout GTEXT_Get$(cptK)
     ST_Assert crawlParaCount > 0, cptK + ": laid out into paragraphs"
     cptRow = "      " + cptK + " px/s:"
@@ -93,7 +163,7 @@ Do While Len(cptKeys) > 0
         ST_Assert cptV >= CRAWL_VEL_MAX Or CRAWL_PlanFits%(cptV * 1.01, CPT_START_Y, CPT_TRIG_Y, CPT_TOP_Y) = 0, cptK + " " + cptName(cptLvl) + ": fastest speed that fits"
     Next cptLvl
     Print cptRow
-Loop
+Next cptC
 
 Print "--- SPK_TextSamples& leaves current speech alone ---"
 Dim cptI As Long, cptIdx As Integer, cptCnt As Integer, cptPos As Integer, cptDur As Long, cptT As Long

@@ -31,3 +31,4 @@
 '$INCLUDE:'sys/http.bas'
 '$INCLUDE:'sys/telemetry.bas'
 '$INCLUDE:'sys/lbrd.bas'
+'$INCLUDE:'2d/crawlbrowse.bas'

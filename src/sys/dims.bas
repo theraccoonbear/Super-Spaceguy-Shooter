@@ -15,6 +15,7 @@ CONST GS_CONSENT     = 10
 CONST GS_USERNAME    = 11
 CONST GS_LEADERBOARD = 12
 CONST GS_CONTROLS    = 13
+CONST GS_CRAWLS      = 14   ' --crawls dev browser (src/2d/crawlbrowse.bas)
 CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
@@ -286,6 +287,7 @@ DIM SHARED camUpWas        AS INTEGER
 DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
+DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)

@@ -106,6 +106,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  -v, --version          Print version and exit"
     CLI_Emit guFH, "  -h, --help             Show this help and exit"
     CLI_Emit guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
+    CLI_Emit guFH, "  --crawls               Crawl browser: list, play and time every named crawl"
     CLI_Emit guFH, "  --god                  God mode: shields, health, and laser never deplete"
     CLI_Emit guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30), asteroid field 10% length"
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"

@@ -130,9 +130,16 @@ E3D_CtrlInit
 SETTINGS_Load
 TELEM_Init
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
-IF cliScene <> "" THEN
+IF cliCrawls THEN
+    CRAWLBROWSE_Init
+    gameState = GS_CRAWLS
+ELSEIF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
-    IF cliSceneType = "playing" THEN
+    IF seqJumpCrawl$ <> "" THEN
+        ' code-started crawl (e.g. death_final): play it; the sequence then continues at the title
+        CRAWL_Prep seqJumpCrawl$, scrH
+        gameState = GS_CRAWL
+    ELSEIF cliSceneType = "playing" THEN
         GAME_ResetState
         levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1)) - 1  ' SEQ_Advance PLAY +1s to N
         IF levelNum < 0 THEN levelNum = 0
@@ -141,7 +148,7 @@ IF cliScene <> "" THEN
         levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1))  ' boss PLAY doesn't +1 levelNum
         IF levelNum < 1 THEN levelNum = 1
     END IF
-    SEQ_Advance
+    IF seqJumpCrawl$ = "" THEN SEQ_Advance
 ELSE
     If telemOn <> 0 And telemConsent = 0 Then
         gameState = GS_CONSENT
@@ -199,6 +206,10 @@ DO
 
     CASE GS_ABOUT
         ABOUT_Update
+        MUS_Fill 0
+
+    CASE GS_CRAWLS
+        CRAWLBROWSE_Update
         MUS_Fill 0
 
     CASE GS_CONTROLS

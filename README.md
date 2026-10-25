@@ -70,11 +70,14 @@ sss [options]
   -v, --version          Print version and exit
   -h, --help             Show this help and exit
   --scene <name>         Jump to a named scene, skipping normal startup (see src/sys/README-sequence.md)
+  --crawls               Crawl browser: list every named crawl with its scroll speed, play any of them
   --god                  God mode: shields, health, and laser never deplete
   --nerf                 Nerf mode: shorter stages, weaker bosses (for testing/streaming)
   --debug                Enable the debug HUD overlay and diagnostic console output
   --no-telem             Disable gameplay telemetry for this session (on by default; see below)
 ```
+
+**Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
 
 ## Testing
 
@@ -89,6 +92,8 @@ tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
 tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
 tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
+tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
+tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
 
