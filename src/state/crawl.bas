@@ -17,7 +17,7 @@ Sub GS_CRAWL_Update ()
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
-    ' scroll + narration (crawllayout.bas); fast-forward start/stop only needs the music here
+    ' scroll + narration (crawllayout.bas); fast-forward runs both 5x, so only music needs handling here
     SELECT CASE CRAWL_Step%(held(E3D_KEY_SPACE) AND crawlTimer > 60, settingNarration * settingNarrSpeed)
         CASE 1 : crawlFFVolSave = volMusic : volMusic = 0
         CASE 2 : volMusic = crawlFFVolSave
@@ -113,7 +113,6 @@ Sub GS_CRAWL_Update ()
                 CRAWL_Finish : EXIT SUB
             END IF
             fxVCRActive = -1
-            IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
             fxVCRActive = 0
         END IF

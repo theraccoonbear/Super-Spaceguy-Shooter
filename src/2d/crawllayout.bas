@@ -5,11 +5,11 @@
 '   CRAWL_PlanDurations level   each paragraph's spoken (preset) or read (0 = off) seconds
 '   v = CRAWL_PlanSpeed!(startY, trigY, topY)   one scroll speed for the crawl
 '   CRAWL_Start block$, level, startY, trigY   all of the above, ready to run
-'   evt = CRAWL_Step%(ffHeld, level)            one frame: scroll + speak paragraphs
+'   evt = CRAWL_Step%(ffHeld, level)            one frame (CRAWL_FF_X ticks while fast-forwarding)
 '
 ' NOTE: QB64-PE hoists Dim to module scope -- all local variable names
 ' must be unique across every Sub/Function in the compilation unit.
-' Prefix convention: cw* WrapPara, cp* Layout, cpf* PlanFits, cps* PlanSpeed, cpd* PlanDurations, cst* Start, cs* Step.
+' Prefix convention: cw* WrapPara, cp* Layout, cpf* PlanFits, cps* PlanSpeed, cpd* PlanDurations, cst* Start, ct* Tick, cs* Step, ctl* Timeline.
 
 CONST CRAWL_MAX_LINES = 64
 CONST CRAWL_CHARS     = 34     ' max chars per line (8px font, ~20px side margins)
@@ -28,9 +28,11 @@ DIM SHARED crawlParaLastLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaText$(0 TO CRAWL_MAX_PARAS - 1)
 DIM SHARED crawlParaWords(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaDur(0 TO CRAWL_MAX_PARAS - 1) AS SINGLE   ' seconds; filled by the caller
+DIM SHARED crawlParaStart(0 TO CRAWL_MAX_PARAS - 1) AS SINGLE ' narration timeline, seconds (CRAWL_Timeline)
+DIM SHARED crawlParaEnd(0 TO CRAWL_MAX_PARAS - 1) AS SINGLE
 
 ' Running crawl (CRAWL_Start, then CRAWL_Step% once per 60 fps frame)
-CONST CRAWL_SPEED = 0.25          ' px/frame; fast-forward scrolls at 5x this
+CONST CRAWL_FF_X = 5               ' fast-forward runs the crawl (scroll + narration) this many times faster
 DIM SHARED crawlScroll AS SINGLE    ' y of line 0
 DIM SHARED crawlVel AS SINGLE       ' px/s, constant for the whole crawl (CRAWL_PlanSpeed!)
 DIM SHARED crawlParaIdx AS INTEGER  ' next paragraph to speak
@@ -245,15 +247,26 @@ END SUB
 ' True if, scrolling at cpfV px/s from cpfStartY, every paragraph finishes before its
 ' last line reaches cpfTopY. Paragraph i starts when its first line reaches cpfTrigY,
 ' or when paragraph i-1 finishes, whichever is later.
+' The narration timeline at scroll speed ctlV: crawlParaStart/End (seconds since the
+' crawl began). Paragraph i starts when its first line reaches ctlTrigY, or when i-1
+' ends, whichever is later -- exactly what CRAWL_Step% does during normal play.
+Sub CRAWL_Timeline(ctlV As Single, ctlStartY As Single, ctlTrigY As Single)
+    Dim ctlI As Integer, ctlEnd As Single, ctlStart As Single
+    ctlEnd = 0
+    For ctlI = 0 To crawlParaCount - 1
+        ctlStart = (ctlStartY + crawlParaLine(ctlI) * CRAWL_LINE_H - ctlTrigY) / ctlV
+        If ctlStart < ctlEnd Then ctlStart = ctlEnd
+        ctlEnd = ctlStart + crawlParaDur(ctlI)
+        crawlParaStart(ctlI) = ctlStart : crawlParaEnd(ctlI) = ctlEnd
+    Next ctlI
+End Sub
+
 Function CRAWL_PlanFits%(cpfV As Single, cpfStartY As Single, cpfTrigY As Single, cpfTopY As Single)
-    Dim cpfI As Integer, cpfEnd As Single, cpfStart As Single, cpfDue As Single
-    cpfEnd = 0
+    Dim cpfI As Integer, cpfDue As Single
+    CRAWL_Timeline cpfV, cpfStartY, cpfTrigY
     For cpfI = 0 To crawlParaCount - 1
-        cpfStart = (cpfStartY + crawlParaLine(cpfI) * CRAWL_LINE_H - cpfTrigY) / cpfV
-        If cpfStart < cpfEnd Then cpfStart = cpfEnd
-        cpfEnd = cpfStart + crawlParaDur(cpfI)
         cpfDue = (cpfStartY + crawlParaLastLine(cpfI) * CRAWL_LINE_H - cpfTopY) / cpfV
-        If cpfEnd > cpfDue Then CRAWL_PlanFits% = 0 : Exit Function
+        If crawlParaEnd(cpfI) > cpfDue Then CRAWL_PlanFits% = 0 : Exit Function
     Next cpfI
     CRAWL_PlanFits% = -1
 End Function
@@ -294,38 +307,40 @@ Sub CRAWL_Start(cstBlock As String, cstLevel As Integer, cstStartY As Single, cs
     crawlScroll = cstStartY
     crawlTrigY = cstTrigY
     crawlParaIdx = 0 : crawlFFActive = 0
+    spkTimeScale = 1
     crawlSaidIdx = -1 : crawlSaidCount = 0
 End Sub
 
-' One 60 fps frame of the crawl. csFF = fast-forward held. Returns 1 on the frame
-' fast-forward starts, 2 on the frame it's released, else 0 (the caller handles music).
-' On release, narration resumes at the first paragraph that hasn't reached the trigger
-' line; this is resolved before triggering so a paragraph scrolled past is never spoken.
-Function CRAWL_Step%(csFF As Integer, csLevel As Integer)
-    Dim csEvt As Integer, csP As Integer
-    If csFF Then
-        If crawlFFActive = 0 Then crawlFFActive = -1 : SPK_Say "" : csEvt = 1
-        crawlScroll = crawlScroll - CRAWL_SPEED * 5
-        CRAWL_Step% = csEvt
-        Exit Function
-    End If
-    If crawlFFActive Then
-        crawlFFActive = 0 : csEvt = 2
-        crawlParaIdx = crawlParaCount
-        For csP = 0 To crawlParaCount - 1
-            If crawlScroll + crawlParaLine(csP) * CRAWL_LINE_H > crawlTrigY Then crawlParaIdx = csP : Exit For
-        Next csP
-    End If
+' One tick of normal crawl time (1/60 s): scroll at the planned speed, and start each
+' paragraph when its first line reaches the trigger line and the previous one has ended.
+Sub CRAWL_Tick(ctLevel As Integer)
     crawlScroll = crawlScroll - crawlVel / 60
-    If csLevel > 0 Then
-        Do While crawlParaIdx < crawlParaCount
-            If crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > crawlTrigY Then Exit Do
-            If crawlParaIdx > 0 And SPK_IsPlaying% Then Exit Do
-            SPK_Say crawlParaText$(crawlParaIdx)
-            SPK_SetPreset csLevel
-            crawlSaidIdx = crawlParaIdx : crawlSaidCount = crawlSaidCount + 1
-            crawlParaIdx = crawlParaIdx + 1
-        Loop
+    If ctLevel = 0 Then Exit Sub
+    Do While crawlParaIdx < crawlParaCount
+        If crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > crawlTrigY Then Exit Do
+        If crawlParaIdx > 0 And SPK_IsPlaying% Then Exit Do
+        SPK_Say crawlParaText$(crawlParaIdx)
+        SPK_SetPreset ctLevel
+        crawlSaidIdx = crawlParaIdx : crawlSaidCount = crawlSaidCount + 1
+        crawlParaIdx = crawlParaIdx + 1
+    Loop
+End Sub
+
+' One 60 fps frame. csFF = fast-forward held: the crawl runs CRAWL_FF_X times faster --
+' scroll and narration alike (spkTimeScale) -- through the same ticks, so narration never
+' stops and can't fall out of sync. Returns 1 when fast-forward starts, 2 when it ends.
+Function CRAWL_Step%(csFF As Integer, csLevel As Integer)
+    Dim csEvt As Integer, csN As Integer, csI As Integer
+    If csFF Then
+        If crawlFFActive = 0 Then crawlFFActive = -1 : csEvt = 1
+        csN = CRAWL_FF_X
+    Else
+        If crawlFFActive Then crawlFFActive = 0 : csEvt = 2
+        csN = 1
     End If
+    spkTimeScale = csN
+    For csI = 1 To csN
+        CRAWL_Tick csLevel
+    Next csI
     CRAWL_Step% = csEvt
 End Function

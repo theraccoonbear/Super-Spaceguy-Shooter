@@ -65,6 +65,7 @@ DIM SHARED spkDiEnd(0 TO 39) AS INTEGER  ' diphthong glide target (-1 = monophth
 DIM SHARED spkScaleSil  AS SINGLE
 DIM SHARED spkScaleVow  AS SINGLE
 DIM SHARED spkScaleCons AS SINGLE
+DIM SHARED spkTimeScale AS INTEGER     ' synth samples per output sample: 1 normal, 5 = crawl fast-forward
 
 ' Narration speed presets (settingNarrSpeed 1..3); k = speed factor vs. the natural table
 CONST SPK_SPEED_SLOW   = 1.49
@@ -209,6 +210,7 @@ SUB SPK_Init()
         spkDiEnd(SPK_AW) = SPK_UH   ' /aʊ/ out, down, power → AA onset → UH
         spkDiEnd(SPK_OY) = SPK_IY   ' /ɔɪ/ boy, point, void → AO onset → IY
 
+        spkTimeScale = 1
         SPK_SetSpeed 1.0
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
         spkWavePhase = 0.0 : spkWaveStep = 0.0
@@ -734,6 +736,14 @@ SUB SPK_Init()
     ' snd.bas reads spkSampleOut directly after calling SPK_Advance.
     ' ============================================================
     SUB SPK_Advance()
+        DIM spaI AS INTEGER
+        FOR spaI = 1 TO spkTimeScale
+            SPK_AdvanceOne
+        NEXT spaI
+    END SUB
+
+    ' One synthesizer sample (SPK_Advance runs spkTimeScale of these per output sample).
+    SUB SPK_AdvanceOne()
         DIM phoneID AS INTEGER, stress AS INTEGER, dur AS INTEGER
         DIM env AS SINGLE, s AS SINGLE, t AS SINGLE
         DIM wIdx AS INTEGER, wNext AS INTEGER, wFrac AS SINGLE

@@ -26,6 +26,7 @@ END SUB
 ' Called at both crawl exit points. Advances to crawlNextState if set, else SEQ_Advance.
 Sub CRAWL_Finish()
     Dim cfNext As Integer
+    spkTimeScale = 1  ' leaving mid fast-forward must not leave speech at 5x
     cfNext = crawlNextState
     crawlNextState = 0
     If cfNext > 0 Then

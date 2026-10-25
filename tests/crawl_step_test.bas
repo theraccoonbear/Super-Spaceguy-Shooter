@@ -1,11 +1,12 @@
 ' crawl_step_test.bas — frame-by-frame crawl playback (CRAWL_Step%, src/2d/crawllayout.bas)
 '
 ' Drives CRAWL_Start / CRAWL_Step% for every named crawl with the real speech queue
-' advanced 735 samples per 60 fps frame, as the audio fill does in game:
+' advanced 735 output samples per 60 fps frame, as the audio fill does in game.
 '   - normal play speaks every paragraph once, in order, and finishes before the crawl exits
-'   - fast-forward then release mid-crawl resumes at the first paragraph not yet at the
-'     trigger line, speaks every paragraph after it, and never speaks one scrolled past
-'   - fast-forward past the last paragraph: nothing is spoken after release
+'   - fast-forward runs scroll and narration CRAWL_FF_X times faster: from several start
+'     points and lengths, every frame (during and after fast-forward) is speaking the same
+'     paragraph and word as an uninterrupted run at the same point in crawl time, and every
+'     paragraph is still spoken once, in order
 '
 ' Build: ./tools/buildqb tests/crawl_step_test.bas
 ' Run:   ./tests/crawl_step_test    (exit 0 = pass, exit 1 = any failure)
@@ -94,12 +95,15 @@ Sub TELEM_SessionEnd()              : End Sub
 
 Const CST_START_Y = 240 ' scrH, as CRAWL_Prep passes
 Const CST_TRIG_Y = 218 ' scrH - CRAWL_LINE_H
-Const CST_SPF = 735 ' audio samples per 60 fps frame (44100 / 60)
+Const CST_SPF = 735 ' audio output samples per 60 fps frame (44100 / 60)
 Const CST_LEVEL = 2 ' NORMAL
-Const CST_MAX_FRAMES = 60 * 600
+Const CST_MAX_TICKS = 20000
+Const CST_TOL = 6 ' ticks of slack when matching the reference (a paragraph can start up to one fast-forward frame late)
 
 Dim Shared stPassed As Integer, stFailed As Integer
 Dim Shared cstSaid(0 To 127) As Integer, cstSaidN As Integer, cstSeen As Integer
+Dim Shared cstRefPara(0 To CST_MAX_TICKS) As Integer, cstRefWord(0 To CST_MAX_TICKS) As Integer, cstRefN As Long
+Dim Shared cstTick As Long ' crawl time in ticks (fast-forward frames count CRAWL_FF_X)
 
 Sub ST_Assert(condition As Integer, testName As String)
     If condition Then
@@ -114,13 +118,27 @@ End Sub
 Sub CST_Begin(cbKey As String)
     SPK_Say ""
     CRAWL_Start GTEXT_Get$(cbKey), CST_LEVEL, CST_START_Y, CST_TRIG_Y
-    cstSaidN = 0 : cstSeen = 0
+    cstSaidN = 0 : cstSeen = 0 : cstTick = 0
 End Sub
 
-' One frame: step the crawl, note any paragraph it started speaking, run a frame of audio.
+' Paragraph being spoken (-1 = silent) and the word within it (-1 = between words).
+Function CST_NowPara%
+    If SPK_IsPlaying% Then CST_NowPara% = crawlSaidIdx Else CST_NowPara% = -1
+End Function
+Function CST_NowWord%
+    Dim cnwW As Integer
+    CST_NowWord% = -1
+    If SPK_IsPlaying% = 0 Then Exit Function
+    For cnwW = 0 To spkWordCount - 1
+        If spkPhoneIdx >= spkWordStart(cnwW) And spkPhoneIdx <= spkWordEnd(cnwW) Then CST_NowWord% = cnwW : Exit Function
+    Next cnwW
+End Function
+
+' One frame: step the crawl, note any paragraph it started, then a frame of audio.
 Sub CST_Frame(cfFF As Integer)
     Dim cfEvt As Integer, cfS As Integer
     cfEvt = CRAWL_Step%(cfFF, CST_LEVEL)
+    If cfFF Then cstTick = cstTick + CRAWL_FF_X Else cstTick = cstTick + 1
     If crawlSaidCount <> cstSeen Then
         cstSaid(cstSaidN) = crawlSaidIdx : cstSaidN = cstSaidN + 1 : cstSeen = crawlSaidCount
     End If
@@ -132,31 +150,26 @@ Function CST_Done%
     CST_Done% = (crawlScroll + crawlLineCount * CRAWL_LINE_H < -20)
 End Function
 
-Sub CST_RunToEnd
-    Dim crF As Long
-    Do Until CST_Done% Or crF > CST_MAX_FRAMES
-        CST_Frame 0
-        crF = crF + 1
-    Loop
-End Sub
-
-' First paragraph whose first line is still below the trigger line.
-Function CST_NextUntriggered%
-    Dim cnP As Integer
-    For cnP = 0 To crawlParaCount - 1
-        If crawlScroll + crawlParaLine(cnP) * CRAWL_LINE_H > CST_TRIG_Y Then CST_NextUntriggered% = cnP : Exit Function
-    Next cnP
-    CST_NextUntriggered% = crawlParaCount
+' Is (para, word) what the reference run was saying within CST_TOL ticks of crawl time t?
+Function CST_InSync%(cisT As Long)
+    Dim cisJ As Long, cisP As Integer, cisW As Integer
+    cisP = CST_NowPara% : cisW = CST_NowWord%
+    For cisJ = cisT - CST_TOL To cisT + CST_TOL
+        If cisJ >= 0 And cisJ < cstRefN Then
+            If cstRefPara(cisJ) = cisP And cstRefWord(cisJ) = cisW Then CST_InSync% = -1 : Exit Function
+        End If
+    Next cisJ
+    CST_InSync% = 0
 End Function
 
-' True if cstSaid(cfrFrom..) is exactly cfrFirst, cfrFirst+1, .. crawlParaCount-1.
-Function CST_SaidRun%(cfrFrom As Integer, cfrFirst As Integer)
+' True if cstSaid() is exactly 0, 1, .. crawlParaCount-1.
+Function CST_AllSaidInOrder%
     Dim cfrI As Integer
-    If cstSaidN - cfrFrom <> crawlParaCount - cfrFirst Then CST_SaidRun% = 0 : Exit Function
-    For cfrI = cfrFrom To cstSaidN - 1
-        If cstSaid(cfrI) <> cfrFirst + (cfrI - cfrFrom) Then CST_SaidRun% = 0 : Exit Function
+    If cstSaidN <> crawlParaCount Then CST_AllSaidInOrder% = 0 : Exit Function
+    For cfrI = 0 To cstSaidN - 1
+        If cstSaid(cfrI) <> cfrI Then CST_AllSaidInOrder% = 0 : Exit Function
     Next cfrI
-    CST_SaidRun% = -1
+    CST_AllSaidInOrder% = -1
 End Function
 
 Print "=== crawl_step_test ==="
@@ -168,44 +181,46 @@ GTEXT_Load _EMBEDDED$("GAMETEXT")
 SEQ_Load _EMBEDDED$("SEQTXT")
 SEQ_ListCrawls
 
-Dim cstC As Integer, cstK As String, cstF As Long, cstMark As Integer, cstR As Integer, cstPend As Integer
+Dim cstC As Integer, cstK As String, cstA As Integer, cstB As Integer, cstF As Long
+Dim cstFFAt As Long, cstFFLen As Long, cstBad As Long, cstFirstBad As Long, cstName As String
 For cstC = 0 To seqCrawlCount - 1
     cstK = seqCrawlKey$(cstC)
     Print "--- " + cstK + " ---"
 
-    ' normal play
+    ' reference: uninterrupted play, recording what is being said each tick
     CST_Begin cstK
-    CST_RunToEnd
+    cstRefN = 0
+    Do Until CST_Done% Or cstRefN >= CST_MAX_TICKS
+        CST_Frame 0
+        cstRefPara(cstRefN) = CST_NowPara% : cstRefWord(cstRefN) = CST_NowWord%
+        cstRefN = cstRefN + 1
+    Loop
     ST_Assert CST_Done%, cstK + ": crawl reaches its exit"
-    ST_Assert CST_SaidRun%(0, 0), cstK + ": every paragraph spoken once, in order (" + LTrim$(Str$(cstSaidN)) + " of" + Str$(crawlParaCount) + ")"
+    ST_Assert CST_AllSaidInOrder%, cstK + ": every paragraph spoken once, in order"
     ST_Assert SPK_IsPlaying% = 0, cstK + ": last paragraph finished before the crawl exits"
 
-    ' fast-forward, then release with paragraphs still to come
-    If crawlParaCount >= 3 Then
-        CST_Begin cstK
-        cstF = 0
-        Do Until crawlSaidCount >= 2 Or cstF > CST_MAX_FRAMES : CST_Frame 0 : cstF = cstF + 1 : Loop
-        For cstF = 1 To 30 : CST_Frame 0 : Next cstF
-        ' hold fast-forward until the paragraph that was due next has scrolled past the trigger line
-        cstPend = crawlParaIdx : cstF = 0
-        Do Until CST_NextUntriggered% > cstPend Or cstF > CST_MAX_FRAMES : CST_Frame -1 : cstF = cstF + 1 : Loop
-        cstR = CST_NextUntriggered%
-        cstMark = cstSaidN
-        CST_RunToEnd
-        If cstR < crawlParaCount Then
-            ST_Assert cstSaidN > cstMark And cstSaid(cstMark) = cstR, cstK + ": after release, narration resumes at paragraph" + Str$(cstR)
-        End If
-        ST_Assert CST_SaidRun%(cstMark, cstR), cstK + ": after release, every later paragraph spoken in order, none scrolled past"
-    End If
-
-    ' fast-forward until every paragraph has passed the trigger line, then release
-    CST_Begin cstK
-    For cstF = 1 To 61 : CST_Frame 0 : Next cstF
-    cstF = 0
-    Do Until CST_NextUntriggered% >= crawlParaCount Or cstF > CST_MAX_FRAMES : CST_Frame -1 : cstF = cstF + 1 : Loop
-    cstMark = cstSaidN
-    CST_RunToEnd
-    ST_Assert cstSaidN = cstMark, cstK + ": released past the last paragraph, nothing re-spoken"
+    ' fast-forward from several points, for several lengths
+    For cstA = 1 To 3
+        For cstB = 1 To 3
+            cstFFAt = cstRefN * cstA \ 5 : cstFFLen = 15 * cstB * cstB
+            CST_Begin cstK
+            cstBad = 0 : cstFirstBad = -1 : cstF = 0
+            Do Until CST_Done% Or cstF > CST_MAX_TICKS
+                CST_Frame (cstTick >= cstFFAt And cstTick < cstFFAt + cstFFLen * CRAWL_FF_X)
+                If cstTick < cstRefN Then
+                    If CST_InSync%(cstTick - 1) = 0 Then
+                        cstBad = cstBad + 1
+                        If cstFirstBad < 0 Then cstFirstBad = cstTick
+                    End If
+                End If
+                cstF = cstF + 1
+            Loop
+            cstName = cstK + ": FF at tick" + Str$(cstFFAt) + " for" + Str$(cstFFLen) + " frames"
+            ST_Assert cstBad = 0, cstName + ": in sync with normal play every frame" + Mid$(" (first miss at tick" + Str$(cstFirstBad) + ")", 1, 40 * -(cstBad > 0))
+            ST_Assert CST_AllSaidInOrder%, cstName + ": every paragraph spoken once, in order"
+            If crawlFFActive = 0 Then ST_Assert spkTimeScale = 1, cstName + ": speech back to normal speed after release"
+        Next cstB
+    Next cstA
     Print ""
 Next cstC
 
