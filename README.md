@@ -94,6 +94,7 @@ tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
 tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
 tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
+tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
 

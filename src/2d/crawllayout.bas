@@ -4,10 +4,12 @@
 '   CRAWL_Layout block$      wrap into crawlLines$, split into paragraphs
 '   CRAWL_PlanDurations level   each paragraph's spoken (preset) or read (0 = off) seconds
 '   v = CRAWL_PlanSpeed!(startY, trigY, topY)   one scroll speed for the crawl
+'   CRAWL_Start block$, level, startY, trigY   all of the above, ready to run
+'   evt = CRAWL_Step%(ffHeld, level)            one frame: scroll + speak paragraphs
 '
 ' NOTE: QB64-PE hoists Dim to module scope -- all local variable names
 ' must be unique across every Sub/Function in the compilation unit.
-' Prefix convention: cw* WrapPara, cp* Layout, cpf* PlanFits, cps* PlanSpeed, cpd* PlanDurations.
+' Prefix convention: cw* WrapPara, cp* Layout, cpf* PlanFits, cps* PlanSpeed, cpd* PlanDurations, cst* Start, cs* Step.
 
 CONST CRAWL_MAX_LINES = 64
 CONST CRAWL_CHARS     = 34     ' max chars per line (8px font, ~20px side margins)
@@ -26,6 +28,16 @@ DIM SHARED crawlParaLastLine(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaText$(0 TO CRAWL_MAX_PARAS - 1)
 DIM SHARED crawlParaWords(0 TO CRAWL_MAX_PARAS - 1) AS INTEGER
 DIM SHARED crawlParaDur(0 TO CRAWL_MAX_PARAS - 1) AS SINGLE   ' seconds; filled by the caller
+
+' Running crawl (CRAWL_Start, then CRAWL_Step% once per 60 fps frame)
+CONST CRAWL_SPEED = 0.25          ' px/frame; fast-forward scrolls at 5x this
+DIM SHARED crawlScroll AS SINGLE    ' y of line 0
+DIM SHARED crawlVel AS SINGLE       ' px/s, constant for the whole crawl (CRAWL_PlanSpeed!)
+DIM SHARED crawlParaIdx AS INTEGER  ' next paragraph to speak
+DIM SHARED crawlFFActive AS INTEGER ' -1 while fast-forward is held
+DIM SHARED crawlTrigY AS SINGLE     ' a paragraph starts when its first line reaches this y
+DIM SHARED crawlSaidIdx AS INTEGER  ' last paragraph handed to SPK_Say (-1 = none yet)
+DIM SHARED crawlSaidCount AS INTEGER
 
 ' Strip ~X color codes; expand single digits to English words for speech.
 Function CRAWL_StripColor$(scS As String)
@@ -273,3 +285,47 @@ Sub CRAWL_PlanDurations(cpdLevel As Integer)
         End If
     Next cpdI
 End Sub
+
+' Lays out a block and plans its constant speed for narration level cstLevel (0 = off).
+Sub CRAWL_Start(cstBlock As String, cstLevel As Integer, cstStartY As Single, cstTrigY As Single)
+    CRAWL_Layout cstBlock
+    CRAWL_PlanDurations cstLevel
+    crawlVel = CRAWL_PlanSpeed!(cstStartY, cstTrigY, CRAWL_TOP_FADE)
+    crawlScroll = cstStartY
+    crawlTrigY = cstTrigY
+    crawlParaIdx = 0 : crawlFFActive = 0
+    crawlSaidIdx = -1 : crawlSaidCount = 0
+End Sub
+
+' One 60 fps frame of the crawl. csFF = fast-forward held. Returns 1 on the frame
+' fast-forward starts, 2 on the frame it's released, else 0 (the caller handles music).
+' On release, narration resumes at the first paragraph that hasn't reached the trigger
+' line; this is resolved before triggering so a paragraph scrolled past is never spoken.
+Function CRAWL_Step%(csFF As Integer, csLevel As Integer)
+    Dim csEvt As Integer, csP As Integer
+    If csFF Then
+        If crawlFFActive = 0 Then crawlFFActive = -1 : SPK_Say "" : csEvt = 1
+        crawlScroll = crawlScroll - CRAWL_SPEED * 5
+        CRAWL_Step% = csEvt
+        Exit Function
+    End If
+    If crawlFFActive Then
+        crawlFFActive = 0 : csEvt = 2
+        crawlParaIdx = crawlParaCount
+        For csP = 0 To crawlParaCount - 1
+            If crawlScroll + crawlParaLine(csP) * CRAWL_LINE_H > crawlTrigY Then crawlParaIdx = csP : Exit For
+        Next csP
+    End If
+    crawlScroll = crawlScroll - crawlVel / 60
+    If csLevel > 0 Then
+        Do While crawlParaIdx < crawlParaCount
+            If crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > crawlTrigY Then Exit Do
+            If crawlParaIdx > 0 And SPK_IsPlaying% Then Exit Do
+            SPK_Say crawlParaText$(crawlParaIdx)
+            SPK_SetPreset csLevel
+            crawlSaidIdx = crawlParaIdx : crawlSaidCount = crawlSaidCount + 1
+            crawlParaIdx = crawlParaIdx + 1
+        Loop
+    End If
+    CRAWL_Step% = csEvt
+End Function

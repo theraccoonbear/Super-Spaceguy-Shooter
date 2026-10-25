@@ -9,7 +9,6 @@ Sub GS_CRAWL_Update ()
     Dim crawlPriorOcc As Integer, crawlLineOcc As Integer, crawlHiLB As Integer, crawlHiRB As Integer
     Dim crawlFFHint As String
     Dim crawlFFHX As Integer
-    Dim crawlResP As Integer
 
     ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
     IF crawlTimer = 0 THEN
@@ -18,21 +17,11 @@ Sub GS_CRAWL_Update ()
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
-    IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
-        crawlScroll = crawlScroll - CRAWL_SPEED * 5
-    ELSE
-        crawlScroll = crawlScroll - crawlVel / 60   ' constant for the whole crawl (CRAWL_Prep)
-    END IF
-    ' Speak each paragraph when its first line reaches the trigger line (after the previous one ends).
-    IF settingNarration AND (held(E3D_KEY_SPACE) AND crawlTimer > 60) = 0 THEN
-        DO WHILE crawlParaIdx < crawlParaCount
-            IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN EXIT DO
-            IF crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
-            SPK_Say crawlParaText$(crawlParaIdx)
-            SPK_SetPreset settingNarrSpeed
-            crawlParaIdx = crawlParaIdx + 1
-        LOOP
-    END IF
+    ' scroll + narration (crawllayout.bas); fast-forward start/stop only needs the music here
+    SELECT CASE CRAWL_Step%(held(E3D_KEY_SPACE) AND crawlTimer > 60, settingNarration * settingNarrSpeed)
+        CASE 1 : crawlFFVolSave = volMusic : volMusic = 0
+        CASE 2 : volMusic = crawlFFVolSave
+    END SELECT
 
     cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
     cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
@@ -118,9 +107,6 @@ Sub GS_CRAWL_Update ()
     END IF
     IF crawlTimer > 60 THEN
         IF held(E3D_KEY_SPACE) THEN
-            IF crawlFFActive = 0 THEN
-                crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
-            END IF
             IF held(E3D_KEY_ESCAPE) THEN
                 fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
                 escWas = -1
@@ -129,17 +115,6 @@ Sub GS_CRAWL_Update ()
             fxVCRActive = -1
             IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
-            IF crawlFFActive THEN
-                volMusic = crawlFFVolSave : crawlFFActive = 0
-                ' resume at the first paragraph that hasn't reached the trigger line yet;
-                ' anything fast-forwarded past is skipped rather than re-spoken out of sync
-                crawlParaIdx = crawlParaCount
-                FOR crawlResP = 0 TO crawlParaCount - 1
-                    IF crawlScroll + crawlParaLine(crawlResP) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN
-                        crawlParaIdx = crawlResP : EXIT FOR
-                    END IF
-                NEXT crawlResP
-            END IF
             fxVCRActive = 0
         END IF
     END IF
