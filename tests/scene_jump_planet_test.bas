@@ -135,6 +135,31 @@ For scN = 1 To PLANET_COUNT
     Print ""
 Next scN
 
+' ── --scene crawl:<key> and the named-crawl list ─────────────────────────────
+Print "--- named crawls ---"
+Dim scCI As Integer, scAt As Integer, scSeqCrawls As Integer
+SEQ_Load _EMBEDDED$("SEQTXT")
+SEQ_ListCrawls
+For scCI = 0 To seqCount - 1
+    If seqKind(scCI) = SEQ_CRAWL Then scSeqCrawls = scSeqCrawls + 1
+Next scCI
+ST_Assert seqCrawlCount = scSeqCrawls + 1, "list = every sequence CRAWL task + death_final (" + LTrim$(Str$(seqCrawlCount)) + ")"
+ST_Assert seqCrawlKey$(0) = "intro" And seqCrawlKey$(seqCrawlCount - 2) = "outro", "sequence crawls listed in play order (intro .. outro)"
+ST_Assert seqCrawlKey$(seqCrawlCount - 1) = SEQ_CRAWL_DEATH And seqCrawlAt(seqCrawlCount - 1) = -1, "death_final listed as code-started"
+
+scAt = SEQ_JumpToScene("crawl:stage3")
+ST_Assert scAt >= 0 And seqKind(scAt) = SEQ_CRAWL And SEQ_GetKV$(seqSval$(scAt), "txt") = "stage3", "crawl:stage3 lands on the stage3 CRAWL task"
+ST_Assert seqIdx = scAt - 1 And seqJumpCrawl$ = "", "crawl:stage3 resumes the sequence (seqIdx before it)"
+ST_Assert SEQ_JumpToScene("crawl3") = scAt, "crawl3 alias reaches the same task"
+scAt = SEQ_JumpToScene("crawl:outro")
+ST_Assert scAt >= 0 And seqLabel$(scAt) = "outro", "crawl:outro lands on the outro crawl"
+scAt = SEQ_JumpToScene("crawl:death_final")
+ST_Assert seqJumpCrawl$ = SEQ_CRAWL_DEATH, "crawl:death_final is played directly"
+ST_Assert scAt >= 0 And seqKind(scAt) = SEQ_TITLE And seqIdx = scAt - 1, "crawl:death_final then continues at the title"
+ST_Assert SEQ_JumpToScene("crawl:nope") < 0 And InStr(seqLastError, "nope") > 0, "unknown crawl: clear error"
+ST_Assert SEQ_JumpToScene("crawl:Stage3") >= 0, "crawl:<key> is case-insensitive"
+Print ""
+
 ' ─────────────────────────────────────────────────────────────────────────────
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
 If stFailed > 0 Then System 1 Else System 0

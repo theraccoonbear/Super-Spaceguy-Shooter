@@ -24,6 +24,7 @@ Sub CLI_Parse()
     settingNerf = (InStr(cliLine, "--nerf")  > 0)
     debugMode   = (InStr(cliLine, "--debug") > 0)
     telemOn     = (InStr(cliLine, "--no-telem") = 0)
+    cliCrawls   = (InStr(cliLine, "--crawls") > 0)
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then
@@ -33,7 +34,9 @@ Sub CLI_Parse()
         cliScene = LTrim$(RTrim$(cliScene))
     End If
 
-    If cliScene <> "" Then
+    If LCase$(Left$(cliScene, 6)) = "crawl:" Then
+        cliSceneType = "crawl:"
+    ElseIf cliScene <> "" Then
         cliI = Len(cliScene)
         Do While cliI > 0
             If Mid$(cliScene, cliI, 1) >= "0" And Mid$(cliScene, cliI, 1) <= "9" Then cliI = cliI - 1 Else Exit Do

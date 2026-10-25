@@ -9,13 +9,6 @@ Sub GS_CRAWL_Update ()
     Dim crawlPriorOcc As Integer, crawlLineOcc As Integer, crawlHiLB As Integer, crawlHiRB As Integer
     Dim crawlFFHint As String
     Dim crawlFFHX As Integer
-    Dim crawlResI As Integer
-    Dim crawlResP As Integer
-    Dim crawlSyncS As Single
-    Dim crawlSyncEla As Long
-    Dim crawlSyncJ As Integer
-    Dim crawlSyncDur As Long
-    Dim crawlSyncPD As Long
 
     ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
     IF crawlTimer = 0 THEN
@@ -24,25 +17,11 @@ Sub GS_CRAWL_Update ()
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
-    IF held(E3D_KEY_SPACE) AND crawlTimer > 60 THEN
-        crawlScroll = crawlScroll - CRAWL_SPEED * 5
-    ELSE
-        crawlScroll = crawlScroll - CRAWL_SPEED
-    END IF
-    ' Fire each paragraph's speech when its first line scrolls near the bottom.
-    ' All paragraphs use the same crawlRateScale (computed in CRAWL_Prep) so the
-    ' entire narration fills the crawl window at a consistent pace.
-    IF settingNarration AND (held(E3D_KEY_SPACE) AND crawlTimer > 60) = 0 THEN
-        DO WHILE crawlParaIdx < crawlParaCount
-            IF crawlScroll + crawlParaLine(crawlParaIdx) * CRAWL_LINE_H > scrH - CRAWL_LINE_H THEN EXIT DO
-            IF crawlParaIdx > 0 AND SPK_IsPlaying% THEN EXIT DO
-            SPK_Say crawlParaText$(crawlParaIdx)
-            spkRateScale = crawlRateScale
-            crawlParaIdx = crawlParaIdx + 1
-        LOOP
-    ELSE
-        crawlParaIdx = crawlParaCount  ' narration off: mark all paragraphs done
-    END IF
+    ' scroll + narration (crawllayout.bas); fast-forward runs both 5x, so only music needs handling here
+    SELECT CASE CRAWL_Step%(held(E3D_KEY_SPACE) AND crawlTimer > 60, settingNarration * settingNarrSpeed)
+        CASE 1 : crawlFFVolSave = volMusic : volMusic = 0
+        CASE 2 : volMusic = crawlFFVolSave
+    END SELECT
 
     cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
     cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0
@@ -128,51 +107,13 @@ Sub GS_CRAWL_Update ()
     END IF
     IF crawlTimer > 60 THEN
         IF held(E3D_KEY_SPACE) THEN
-            IF crawlFFActive = 0 THEN
-                crawlFFVolSave = volMusic : volMusic = 0 : SPK_Say "" : crawlFFActive = -1
-            END IF
             IF held(E3D_KEY_ESCAPE) THEN
                 fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
                 escWas = -1
                 CRAWL_Finish : EXIT SUB
             END IF
             fxVCRActive = -1
-            IF settingNarration AND (crawlTimer MOD 4) = 0 THEN SND_Blip 400 + INT(RND * 1200)
         ELSE
-            IF crawlFFActive THEN
-                volMusic = crawlFFVolSave : crawlFFActive = 0
-                IF settingNarration THEN
-                    crawlResI = -1
-                    FOR crawlResP = crawlParaCount - 1 TO 0 STEP -1
-                        IF crawlScroll + crawlParaLine(crawlResP) * CRAWL_LINE_H <= scrH - CRAWL_LINE_H THEN
-                            crawlResI = crawlResP : EXIT FOR
-                        END IF
-                    NEXT crawlResP
-                    IF crawlResI < 0 THEN
-                        crawlParaIdx = 0
-                    ELSE
-                        SPK_Say crawlParaText$(crawlResI)
-                        spkRateScale = crawlRateScale
-                        crawlSyncS = (scrH - CRAWL_LINE_H) - crawlParaLine(crawlResI) * CRAWL_LINE_H
-                        crawlSyncEla = CLNG((crawlSyncS - crawlScroll) / CRAWL_SPEED / 60.0 * SAMPLE_RATE)
-                        crawlSyncJ = 0 : crawlSyncDur = 0
-                        DO WHILE crawlSyncJ < spkPhoneCount
-                            crawlSyncPD = CLNG(spkDur(spkPhones(crawlSyncJ), spkStress(crawlSyncJ)) * crawlRateScale)
-                            IF crawlSyncDur + crawlSyncPD > crawlSyncEla THEN EXIT DO
-                            crawlSyncDur = crawlSyncDur + crawlSyncPD
-                            crawlSyncJ = crawlSyncJ + 1
-                        LOOP
-                        IF crawlSyncJ >= spkPhoneCount THEN
-                            spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
-                        ELSE
-                            spkPhoneIdx = crawlSyncJ : spkSamplePos = 0
-                        END IF
-                        crawlParaIdx = crawlResI + 1
-                    END IF
-                ELSE
-                    crawlParaIdx = crawlParaCount
-                END IF
-            END IF
             fxVCRActive = 0
         END IF
     END IF

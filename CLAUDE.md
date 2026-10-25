@@ -55,6 +55,9 @@
    ./tools/buildqb tests/mnv_load_test.bas          && builds/mnv_load_test
    ./tools/buildqb tests/mnv_transition_test.bas    && builds/mnv_transition_test
    ./tools/buildqb tests/mnv_conformance_test.bas   && builds/mnv_conformance_test
+   ./tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
+   ./tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
+   ./tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
    tools/http_queue_test   # builds + runs http_queue_test.bas against a local mock server
    ```
    All tests must pass (exit 0) before committing. No exceptions.

@@ -22,67 +22,73 @@
 ~4-~E=~7[ ~3PROLOGUE ~7]~E=~4-
 
 ~6A long time ago, in a galaxy far, far away...
-The systems of the Outer Strand once governed themselves: a thousand worlds, a thousand flags, no single hand on the scale.
+The systems of the {{region_name}} once governed themselves: a thousand worlds, a thousand flags, no single hand on the scale.
 That ended with ~4{{emperor}}~6.
 What followed was not war. It was appetite. One world at a time, ~4{{the_empire}}~6 rose, and the stars grew quiet beneath it.
 This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage1]
 ~4-~E=~7[ ~3CHAPTER 1 ~7]~E=~4-
 
-~6A century of silence ended the day ~4{{emperor}}~6 rose from the lower hive-courts of ~2{{emperor_homeworld}}~6, a slug-lord no one took seriously until the granaries began to vanish into his vaults.
+~4{{emperor}}~6, the grotesque slug-lord of ~2{{emperor_homeworld}}~6, did not take the {{region_name}} by war. He took it by famine, servitude, and the purchase of dying parliaments.
 
-~6By famine, by debt, by the quiet purchase of dying parliaments, he swallowed world after world, until his banner, ~4{{the_empire}}~6, flew over a hundred systems.
+~6Now refugees flee toward ~2{{planet1}}~6, starving, the imperial collection fleets close behind. Their only hope is one smuggler, one ship, and a hold full of medicine and grain.
 
-~6Now refugees flee toward ~2{{planet1}}~6 ahead of his collection fleets. A convoy broker has hired an independent pilot to slip past the blockade with medicine and grain. The Empire's patrols are already listening for ships that fly too quiet, too low, too desperate.
+~6Slip the blockade. Do not get caught.
 
 [BLOCK:stage2]
 ~4-~E=~7[ ~3CHAPTER 2 ~7]~E=~4-
- 
-~6The aid run worked, barely. But someone on ~2{{planet1}}'s~6 docks knew a face, and ~4{{the_empire}}~6 intelligence does not forget.
 
-~6The same broker who arranged the aid now speaks in lower tones, introducing a new cargo bound for ~2{{planet2}}~6: rifles, not rations, meant for a resistance cell calling itself ~5{{resistance}}~6.
+~6The aid run worked. The refugees lived. And ~4{{emperor}}~6 was furious.
 
-~6The pilot is no longer anonymous. Patrol chatter now carries a name, a ship designation, a bounty class. What began as charity has become rebellion, whether the pilot chose it or not.
+~6He has unleashed the ~4{{enforcers_full}}~6. The refugees answer with rebellion, and call themselves ~5{{resistance}}~6. The smuggler's new cargo is not grain, but rifles.
+
+~6A resistance cell on ~2{{planet2}}~6 offers clean paperwork and easy terms. Too easy. The buyers are ~4{{enforcers}}~6, and they are waiting.
+
+~6There is no slipping away quietly this time.
 
 [BLOCK:stage3]
 ~4-~E=~7[ ~3CHAPTER 3 ~7]~E=~4-
 
-~6A new client on ~2{{planet3}}~6. Clean paperwork, easy terms, too easy.
+~5{{resistance}}~6 has caught fire, and ~4{{the_empire}}~6 answers with total war. ~4{{enforcers}}~6 burn cargo ships for flying too close. Supply lines dry up. Famine and disease run rampant.
 
-~6Too late, the pilot learns the cargo manifest was bait. The "buyer" is ~4{{the_empire}}~6 Internal Security, and the meet is an ambush built to end ~5{{resistance}}'s~6 newest courier in one stroke.
+~6Then comes the contagion. Fever dreams. Grotesque swelling. Entire worlds fall sick.
 
-~6There is no slipping away quietly this time. The only road out is through.
+~6One rogue scientist believes she can cure it. She is held on ~2{{planet3}}~6 by ~4{{boss1_name}}~6, the empire's {{boss1_title}}, who has no interest in a cure. Pull her out alive.
 
 [BLOCK:stage4]
 ~4-~E=~7[ ~3CHAPTER 4 ~7]~E=~4-
 
-~6The data core is aboard. ~4{{the_empire}}~6 knows it exists. They do not know where it is - yet.
+~6The scientist is safe, for now. To make the vaccine, she needs a lab. The last one standing is on ~2{{planet4}}~6, a survivor of ~4{{emperor}}'s~6 purge of the universities.
 
-~6Every other courier turned the run down. The safe routes around the ~4{{asteroid_belt_name}}~6 add fourteen hundred parsecs - beyond fuel range for any ship with a cargo hold. The direct path cuts three hundred and forty parsecs straight through: crushed moon debris, no nav beacons, and a field dense enough to swallow a frigate.
+~6It survived because it is cut off by ~4{{asteroid_belt_name}}~6. Three hundred and forty parsecs of shattered moons.
 
-~4{{the_empire}}'s~6 mass-driver tests shattered those moons a decade ago. Their blockade ends at the belt's edge. Nothing they send in survives cleanly, so they don't bother.
+~6To cross it, you'd have to be a fool. Or just that desperate.
 
-~6Neither do most pilots. But the data core reaches ~2{{planet4}}~6 or it reaches no one.
-
-~6The approach lane is unpatrolled. The Empire stopped sending ships this way after the third one vanished. It is also unserviced. No depots, no platforms, nothing between the last outpost and the belt edge. The run burns half the tanks before the first rock appears.
-
-~6Fly light. Every thruster burn is fuel that does not come back.
+~6Get the vaccine. Then get out. The underboss ~4{{boss2_name}}~6 is waiting on the far side.
 
 [BLOCK:stage5]
 ~4-~E=~7[ ~3CHAPTER 5 ~7]~E=~4-
 
-~6Deep inside ~4{{the_empire}}'s~6 research directorate, a scientist has chosen to vanish rather than finish what ~4{{emperor}}~6 ordered her to build. She is bound for ~2{{planet5}}~6, if she survives the trip.
+~6The contagion is no natural disease. It is a mind virus, engineered to make the people obey. The further it spreads, the more followers ~4{{emperor}}~6 commands.
 
-~5{{resistance}}~6 has one shot at extraction, and so does ~4{{emperor}}'s~6 fleet, racing to silence her before she reaches free space. Whoever finds her first decides whether her knowledge survives, or disappears with her.
+~6The smuggler runs dark, thrusters dampened, every scrap of power keeping the vaccine cold. Destination: home. ~2{{planet5}}~6.
+
+~6Too little. Too late. The homeworld burns. Mobs storm the palaces and banks. Temples looted. Parliaments ablaze. From the shadows, ~4{{emperor}}~6 whispers. Burn it all down.
+
+~6And above the flames, ~4{{boss2_name}}~6 has followed the smuggler home.
+
+~6Save who you can.
 
 [BLOCK:stage6]
 ~4-~E=~7[ ~3CHAPTER 6 ~7]~E=~4-
 
-~6The cargo bay is empty. There is nothing left to smuggle, nothing left to deliver.
+~6Behind the smuggler, ~2{{planet5}}~6 is ash and radiation. In the cockpit, the last few allies not yet brainwashed. The cargo bay is empty. There is nothing left to deliver.
 
-~6Ahead lies ~2{{emperor_homeworld}}~6, throne-world of the empire that swallowed a hundred systems one starving planet at a time. ~4{{emperor}}~6 waits behind a wall of warships built from the wealth of everyone this pilot has flown for.
+~6Ahead lies ~2{{emperor_homeworld}}~6, throne-world of the empire that swallowed a hundred systems. ~4{{emperor}}~6 waits behind a wall of warships, bought with the plunder of starving planets.
 
-~6This is no longer a courier's run. This is the reckoning.
+~6This is no longer a courier's run.
+
+~6This is a reckoning.
 
 [BLOCK:outro]
 ~4-~E=~7[ ~3EPILOGUE ~7]~E=~4-

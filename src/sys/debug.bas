@@ -34,6 +34,7 @@ Sub DBG_LogStateChange()
         Case GS_USERNAME    : dbgStateName = "GS_USERNAME"
         Case GS_LEADERBOARD : dbgStateName = "GS_LEADERBOARD"
         Case GS_CONTROLS    : dbgStateName = "GS_CONTROLS"
+        Case GS_CRAWLS      : dbgStateName = "GS_CRAWLS"
         Case Else           : dbgStateName = "GS_?" + LTrim$(Str$(gameState))
     End Select
     DBG_Print "[state] " + dbgStateName

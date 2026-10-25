@@ -63,14 +63,21 @@ Called once per output sample from the audio fill loop (wired in via `snd.bas`),
 - Vowels and sonorants read the wavetable directly. Fricatives and stops add or substitute high-pass-filtered noise (cutoff varies by place of articulation, e.g. alveolar `T` is hissier than bilabial `P`); stops have a silent closure phase before a burst.
 - Diphthongs (`AY`, `EY`, `OW`, `AW`, `OY`) glide from an onset wavetable to a target vowel's wavetable over the phoneme's duration, rather than using a single fixed formant.
 - **Coarticulation**: during a phoneme's 10 ms fade-in, if both it and the previous phoneme are voiced, the waveform crossfades from the previous phoneme's wavetable to the new one. This is what keeps voiced runs from sounding like disconnected clicks.
-- `SPK_SyncToScroll(scrollPx, pxPerFrame)` adjusts `spkRateScale` so a queued utterance finishes roughly when the crawl text scrolls off-screen, clamped to 0.6x-1.2x to avoid audibly distorting phoneme quality.
+- **`spkTimeScale`** (1 normally) makes `SPK_Advance` step the synthesizer that many samples per output sample. The crawl sets it to 5 while fast-forwarding, so narration plays 5x faster (it chirps) and stays in sync with the 5x scroll instead of stopping.
+- **Speed** comes from `SPK_SetSpeed k` (k = 1.0 is the natural `spkDur` table, about 82 wpm on the crawl text). It compresses unevenly: pauses by k^1.6, vowels by k^1.15, consonants only by k^0.35, because the consonants carry most of the intelligibility in this synth. `SPK_SetPreset 1|2|3` applies the Settings NARRATION presets SLOW / NORMAL / FAST (about 120 / 139 / 161 wpm, checked by `tests/spk_timing_test.bas`).
+- **Every `SPK_Say` starts at natural speed** (title, boss callouts, game over). Only the crawl, and the Settings preview, apply the NARRATION preset, by calling `SPK_SetPreset` right after `SPK_Say`.
+- The crawl measures each paragraph up front with `SPK_TextSamples&(text, level)`, which saves and restores whatever is playing, and plans one constant scroll speed from that (`src/2d/crawllayout.bas`).
 
 ## Public API
 
 ```basic
 SPK_Init                          ' once at startup: builds wavetables, loads the dictionary
 SPK_Say text$                     ' queue text for speech (text$ must come from gametext.txt)
-SPK_SyncToScroll scrollPx, pxPerFrame   ' optional: match speech rate to crawl scroll speed
+SPK_SetPreset level               ' narration speed preset: 1 SLOW, 2 NORMAL, 3 FAST
+SPK_SetSpeed k                    ' raw speed factor (1.0 = natural table)
+SPK_QueueSamples&()               ' samples the queued utterance will take at the current speed
+SPK_TextSamples&(text$, level)   ' samples text$ would take at a preset, without disturbing current speech
+SPK_PhoneDur&(phone, stress)      ' scaled duration of one phoneme
 SPK_Advance                       ' once per audio sample; result lands in spkSampleOut
 SPK_IsPlaying%()                  ' -1 while an utterance is still playing, 0 when done
 SPK_CurWord$()                    ' word currently being spoken, "" between words (for UI highlight)

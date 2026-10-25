@@ -48,6 +48,39 @@ Dim Shared seqCount     As Integer
 Dim Shared seqIdx       As Integer
 Dim Shared seqLastError As String
 
+' Named crawls: every CRAWL task in sequence.txt, plus crawls the code starts
+' directly. SEQ_ListCrawls builds the list; --scene crawl:<key>, the --help scene
+' list and the --crawls browser all read it, so it is the one complete list.
+Const SEQ_CRAWL_DEATH = "death_final"   ' started by playing.bas on game over
+
+Dim Shared seqCrawlCount As Integer
+Dim Shared seqCrawlKey$(0 To SEQ_MAX - 1)
+Dim Shared seqCrawlUse$(0 To SEQ_MAX - 1)   ' sequence label, or what triggers it in code
+Dim Shared seqCrawlAt(0 To SEQ_MAX - 1) As Integer   ' sequence index; -1 = started by code
+Dim Shared seqJumpCrawl$   ' set by SEQ_JumpToScene when --scene names a code-started crawl
+
+Sub SEQ_AddCrawl(seqacKey As String, seqacUse As String, seqacAt As Integer)
+    Dim seqacI As Integer
+    If Len(seqacKey) = 0 Or seqCrawlCount >= SEQ_MAX Then Exit Sub
+    For seqacI = 0 To seqCrawlCount - 1
+        If seqCrawlKey$(seqacI) = seqacKey Then Exit Sub
+    Next seqacI
+    seqCrawlKey$(seqCrawlCount) = seqacKey
+    seqCrawlUse$(seqCrawlCount) = seqacUse
+    seqCrawlAt(seqCrawlCount) = seqacAt
+    seqCrawlCount = seqCrawlCount + 1
+End Sub
+
+' Sequence crawls in play order, then code-started ones. Call after SEQ_Load.
+Sub SEQ_ListCrawls()
+    Dim seqlcI As Integer
+    seqCrawlCount = 0
+    For seqlcI = 0 To seqCount - 1
+        If seqKind(seqlcI) = SEQ_CRAWL Then SEQ_AddCrawl SEQ_GetKV$(seqSval$(seqlcI), "txt"), seqLabel$(seqlcI), seqlcI
+    Next seqlcI
+    SEQ_AddCrawl SEQ_CRAWL_DEATH, "game over", -1
+End Sub
+
 Sub SEQ_Add(seqaKind As Integer, seqaSval As String, seqaLabel As String)
     If seqCount >= SEQ_MAX Then Exit Sub
     seqKind(seqCount)   = seqaKind
@@ -136,6 +169,38 @@ Function SEQ_JumpToScene%(seqjSpec As String)
     Dim seqjType As String, seqjNum As Integer, seqjHasNum As Integer
     Dim seqjTargetLabel As String, seqjTaskKind As Integer
     Dim seqjPlaySub As String, seqjLabelFound As Integer
+    Dim seqjCKey As String, seqjAt As Integer
+
+    ' crawl:<key> -- any named crawl. A sequence crawl resumes the sequence from there;
+    ' a code-started one (seqJumpCrawl$) plays and then continues to the title.
+    seqJumpCrawl$ = ""
+    If LCase$(Left$(seqjSpec, 6)) = "crawl:" Then
+        seqjCKey = LCase$(Mid$(seqjSpec, 7))
+        SEQ_ListCrawls
+        For seqjI = 0 To seqCrawlCount - 1
+            If LCase$(seqCrawlKey$(seqjI)) = seqjCKey Then
+                If seqCrawlAt(seqjI) >= 0 Then
+                    seqIdx = seqCrawlAt(seqjI) - 1
+                    SEQ_JumpToScene% = seqCrawlAt(seqjI)
+                Else
+                    seqjAt = -1
+                    For seqjLast = 0 To seqCount - 1
+                        If seqKind(seqjLast) = SEQ_TITLE Then seqjAt = seqjLast : Exit For
+                    Next seqjLast
+                    If seqjAt >= 0 Then
+                        seqIdx = seqjAt - 1
+                        seqJumpCrawl$ = seqCrawlKey$(seqjI)
+                    Else
+                        seqLastError = "--scene '" + seqjSpec + "': sequence.txt has no TITLE to return to"
+                    End If
+                    SEQ_JumpToScene% = seqjAt
+                End If
+                Exit Function
+            End If
+        Next seqjI
+        seqLastError = "--scene '" + seqjSpec + "': no crawl named '" + seqjCKey + "' (see --help for the list)"
+        SEQ_JumpToScene% = -1 : Exit Function
+    End If
 
     ' split trailing digits from type name
     seqjLast = Len(seqjSpec)
@@ -290,6 +355,12 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
     End If
     If seqpHasTitle Then CLI_Emit seqpFH, "  title"
     If seqpHasEmp Then CLI_Emit seqpFH, "  emperor"
+    SEQ_ListCrawls
+    For seqpJ = 0 To seqCrawlCount - 1
+        seqpOut = "  crawl:" + seqCrawlKey$(seqpJ)
+        If Len(seqpOut) < 24 Then seqpOut = seqpOut + Space$(24 - Len(seqpOut))
+        CLI_Emit seqpFH, seqpOut + "(" + seqCrawlUse$(seqpJ) + ")"
+    Next seqpJ
 End Sub
 
 ' Advance to the next sequence step and execute it.

@@ -8,6 +8,7 @@ Sub SETTINGS_Save ()
     Print #sfH, "sfx="        + LTrim$(Str$(volSfx))
     Print #sfH, "speech="     + LTrim$(Str$(volSpeech))
     Print #sfH, "narration="  + LTrim$(Str$(settingNarration))
+    Print #sfH, "narration_speed=" + LTrim$(Str$(settingNarrSpeed))
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "highscore="  + LTrim$(Str$(highScore))
     If Len(telemPlayerID) > 0 Then Print #sfH, "player_id=" + telemPlayerID
@@ -57,6 +58,9 @@ Sub SETTINGS_Load ()
                         camF.orbitR = sfVal
                     Case "highscore"
                         If sfVal >= 0 Then highScore = CLng(sfVal)
+                    Case "narration_speed"
+                        settingNarrSpeed = Int(sfVal + 0.5)
+                        If settingNarrSpeed < 1 Or settingNarrSpeed > 3 Then settingNarrSpeed = 2
                     Case Else
                         If sfVal < 0 Then sfVal = 0
                         If sfVal > 1 Then sfVal = 1
@@ -96,7 +100,7 @@ Sub OPTS_Update ()
     Dim oVols(0 To 4) As Single
     Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
 
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration : oVols(4) = settingFullscreen
+    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration * settingNarrSpeed / 3 : oVols(4) = settingFullscreen
 
     ' ---- input ----
     oUp  = _KEYDOWN(18432)   ' up arrow
@@ -122,12 +126,16 @@ Sub OPTS_Update ()
                 Case 0 : volMusic         = volMusic  - 0.1 : If volMusic  < 0 Then volMusic  = 0
                 Case 1 : volSfx           = volSfx    - 0.1 : If volSfx    < 0 Then volSfx    = 0
                 Case 2 : volSpeech        = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
-                Case 3 : settingNarration = 0
+                Case 3 ' FAST > NORMAL > SLOW > OFF
+                    If settingNarration Then
+                        If settingNarrSpeed > 1 Then settingNarrSpeed = settingNarrSpeed - 1 Else settingNarration = 0
+                    End If
                 Case 4 : settingFullscreen = 0 : _FULLSCREEN OFF
                 Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
+            If optSel = 3 And Not optLfWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
         End If
         optLfRpt = optLfRpt + 1
@@ -141,12 +149,18 @@ Sub OPTS_Update ()
                 Case 0 : volMusic         = volMusic  + 0.1 : If volMusic  > 1 Then volMusic  = 1
                 Case 1 : volSfx           = volSfx    + 0.1 : If volSfx    > 1 Then volSfx    = 1
                 Case 2 : volSpeech        = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
-                Case 3 : settingNarration = 1
+                Case 3 ' OFF > SLOW > NORMAL > FAST
+                    If settingNarration = 0 Then
+                        settingNarration = 1 : settingNarrSpeed = 1
+                    ElseIf settingNarrSpeed < 3 Then
+                        settingNarrSpeed = settingNarrSpeed + 1
+                    End If
                 Case 4 : settingFullscreen = 1 : _FULLSCREEN _SQUAREPIXELS
                 Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
             If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
+            If optSel = 3 And Not optRtWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
         End If
         optRtRpt = optRtRpt + 1
@@ -180,7 +194,7 @@ Sub OPTS_Update ()
     optUpWas = oUp : optDnWas = oDn : optLfWas = oLf : optRtWas = oRt : optEscWas = oEsc
 
     ' refresh local vol copy after adjustments
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration : oVols(4) = settingFullscreen
+    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration * settingNarrSpeed / 3 : oVols(4) = settingFullscreen
 
     ' ---- render ----
     _DEST backBuffer
@@ -235,7 +249,15 @@ Sub OPTS_Update ()
             ' percentage / state label
             Dim oPct As String
             If oI = 3 Then
-                If settingNarration Then oPct = "ON" Else oPct = "OFF"
+                If settingNarration = 0 Then
+                    oPct = "OFF"
+                Else
+                    Select Case settingNarrSpeed
+                        Case 1 : oPct = "SLOW"
+                        Case 3 : oPct = "FAST"
+                        Case Else : oPct = "NORMAL"
+                    End Select
+                End If
             ElseIf oI = 4 Then
                 If settingFullscreen Then oPct = "ON" Else oPct = "OFF"
             Else

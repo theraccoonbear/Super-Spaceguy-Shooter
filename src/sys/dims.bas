@@ -15,6 +15,7 @@ CONST GS_CONSENT     = 10
 CONST GS_USERNAME    = 11
 CONST GS_LEADERBOARD = 12
 CONST GS_CONTROLS    = 13
+CONST GS_CRAWLS      = 14   ' --crawls dev browser (src/2d/crawlbrowse.bas)
 CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
@@ -187,6 +188,7 @@ DIM SHARED volMusic  AS SINGLE : volMusic  = 0.3
 DIM SHARED volSfx    AS SINGLE : volSfx    = 0.9
 DIM SHARED volSpeech AS SINGLE : volSpeech = 0.4
 DIM SHARED settingNarration  AS INTEGER : settingNarration  = 1
+DIM SHARED settingNarrSpeed  AS INTEGER : settingNarrSpeed  = 2   ' 1 SLOW, 2 NORMAL, 3 FAST (SPK_SetPreset)
 DIM SHARED settingFullscreen AS INTEGER : settingFullscreen = 1
 DIM SHARED settingNerf AS INTEGER
 DIM SHARED godMode    AS INTEGER
@@ -285,6 +287,7 @@ DIM SHARED camUpWas        AS INTEGER
 DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
+DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)

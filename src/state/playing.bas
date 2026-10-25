@@ -126,7 +126,7 @@ Sub GS_PLAYING_Update ()
                 IF gameOver THEN
                     IF score > highScore THEN highScore = score : SETTINGS_Save
                     crawlNextState = GS_GAMEOVER
-                    CRAWL_Prep "death_final", scrH
+                    CRAWL_Prep SEQ_CRAWL_DEATH, scrH
                     gameState = GS_CRAWL
                     gameOver = 0
                 ELSE
