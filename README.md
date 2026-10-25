@@ -46,7 +46,7 @@ Pre-built binaries for Linux, macOS, and Windows are produced by CI on every mer
 
 ### Building in a container
 
-If you'd rather not install QB64-PE natively, `tools/dev` runs everything inside a headless Ubuntu 24.04 container that mirrors CI's Linux job: the same apt packages, QB64-PE `v4.7.0-GLFW` (CI resolves "latest" at run time, so the image pins the release that was current when it was written; bump `QB64PE_VERSION`/`QB64PE_ASSET` in `tools/container/Containerfile` to follow it), and Node 22 for ExprForge. You only need Podman or Docker. The script uses Podman if it finds it, otherwise Docker; set `SSS_ENGINE=docker` to override.
+If you'd rather not install QB64-PE natively, `tools/dev` runs everything inside a headless Ubuntu 24.04 container that mirrors CI's Linux job: the same apt packages, QB64-PE `v4.5.0` (pinned to match `QB64PE_VERSION` in `.github/workflows/build.yml`; bump `QB64PE_VERSION`/`QB64PE_ASSET` in `tools/container/Containerfile` together with it), and Node 22 for ExprForge. You only need Podman or Docker. The script uses Podman if it finds it, otherwise Docker; set `SSS_ENGINE=docker` to override.
 
 ```bash
 tools/dev image   # build the image (done automatically on first use)

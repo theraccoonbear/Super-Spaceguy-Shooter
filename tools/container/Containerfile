@@ -3,10 +3,10 @@
 # tools/dev; the repo is bind-mounted at run time, never copied in.
 FROM docker.io/library/ubuntu:24.04
 
-# CI resolves "latest" at run time; this pins the release that was latest
-# when the image was written. Bump both together.
-ARG QB64PE_VERSION=v4.7.0-GLFW
-ARG QB64PE_ASSET=qb64pe_lnx-x64-4.7.0-GLFW.tar.gz
+# Must match QB64PE_VERSION in .github/workflows/build.yml and the local dev
+# install (CLAUDE.md). Bump all three together.
+ARG QB64PE_VERSION=v4.5.0
+ARG QB64PE_ASSET=qb64pe_lnx-4.5.0.tar.gz
 ARG NODE_VERSION=22.20.0
 
 ENV DEBIAN_FRONTEND=noninteractive
