@@ -8,6 +8,10 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+env:
+  # Pinned to match local dev (CLAUDE.md) and tools/container. Bump deliberately, all three together.
+  QB64PE_VERSION: v4.5.0
+
 jobs:
   dict-check:
     runs-on: ubuntu-latest
@@ -64,7 +68,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_JSON=$(gh api repos/QB64-Phoenix-Edition/QB64pe/releases/latest)
+          RELEASE_JSON=$(gh api repos/QB64-Phoenix-Edition/QB64pe/releases/tags/${QB64PE_VERSION})
           case "$(uname -s)" in
             Darwin*)              FILTER="osx" ;;
             MINGW*|MSYS*|CYGWIN*) FILTER="win-x64" ;;
@@ -88,7 +92,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev
+          # On a QB64-PE cache hit setup_lnx.sh is skipped, so everything QB64-PE links against must be listed here.
+          # The Xrandr/Xcursor/Xinerama/Xi set is needed by the GLFW backend (v4.7+).
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
 
       - name: Install QB64-PE (Linux/macOS)
         if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os != 'Windows'
