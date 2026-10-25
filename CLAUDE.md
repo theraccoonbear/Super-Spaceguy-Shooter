@@ -11,6 +11,7 @@
 - Always do a test build after any code change. Fix all errors before reporting back.
 - Build command: from the repo root, run `./tools/buildqb sss.bas`  (script auto-creates `qb64pe-dir/assets → repo/assets` symlink so `$EMBED:'assets/...'` resolves correctly from QB64-PE's binary dir)
 - After building, always smoke-test: run `builds/sss --version` and confirm it prints the version and exits cleanly. This catches launch crashes without needing a display.
+- No native QB64-PE? `tools/dev build` / `tools/dev test` run the same build, smoke test, and full suite in a Podman/Docker container (see README "Building in a container").
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas

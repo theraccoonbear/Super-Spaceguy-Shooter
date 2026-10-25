@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+# tools/dev -- build, test, and regenerate SSS inside a container (Podman or Docker).
+#
+# Usage: tools/dev <command> [args]
+#   image          build (or rebuild) the dev image from tools/container/Containerfile
+#   build          tools/buildqb sss.bas, then the builds/sss --version smoke test
+#   test           the full test suite (.github/scripts/qb64test.sh, same as CI)
+#   bake           tools/bake_speech_dict
+#   emit           npm install in math/, then node tools/emit-spline.js
+#   shell [cmd]    interactive shell in the container, or run one command
+#   run [args]     play the game: builds/sss (built first if missing) on your
+#                  display and audio (X11/XWayland, PulseAudio/PipeWire, /dev/dri)
+#
+# The repo is bind-mounted at its host path, so builds/ and every generated
+# file land on the host owned by you. Only `run` touches your display/audio.
+#
+# Env overrides:
+#   SSS_ENGINE=podman|docker   force an engine (default: podman if found, else docker)
+#   SSS_IMAGE=<name>           image tag (default: localhost/sss-dev:latest)
+set -euo pipefail
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
+CONTAINER_DIR="$REPO/tools/container"
+
+usage() {
+    sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+pick_engine() {
+    if [ -n "${SSS_ENGINE:-}" ]; then
+        ENGINE="$SSS_ENGINE"
+    elif command -v podman > /dev/null 2>&1; then
+        ENGINE=podman
+    elif command -v docker > /dev/null 2>&1; then
+        ENGINE=docker
+    else
+        echo "Error: neither podman nor docker found in PATH" >&2
+        exit 1
+    fi
+    if ! command -v "$ENGINE" > /dev/null 2>&1; then
+        echo "Error: SSS_ENGINE=$ENGINE but '$ENGINE' is not in PATH" >&2
+        exit 1
+    fi
+}
+
+build_image() {
+    echo ">>> Building $IMAGE with $ENGINE..."
+    "$ENGINE" build -t "$IMAGE" -f "$CONTAINER_DIR/Containerfile" "$CONTAINER_DIR"
+}
+
+ensure_image() {
+    if ! "$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
+        build_image
+    fi
+}
+
+# Extra engine args for the next run_in (set by gui_args).
+RUN_EXTRA=()
+
+# Runs "$@" inside the container with the repo as the working directory.
+run_in() {
+    local args=(run --rm -i --init)
+    [ -t 0 ] && [ -t 1 ] && args+=(-t)
+
+    # Make files the container writes belong to the host user.
+    if [ "$ENGINE" = podman ]; then
+        args+=(--userns=keep-id)
+    elif "$ENGINE" info --format '{{.SecurityOptions}}' 2> /dev/null | grep -q rootless; then
+        : # rootless Docker: container root already maps to the host user
+    else
+        args+=(--user "$(id -u):$(id -g)")
+    fi
+
+    # Same path inside and out, so worktree .git pointers and absolute paths
+    # in build output stay valid. :Z relabels for SELinux (no-op elsewhere).
+    args+=(-v "$REPO:$REPO:Z" -w "$REPO")
+
+    # A git worktree's .git is a file pointing at the main checkout's git dir;
+    # mount that too so make-version.sh and buildqb's git checks work.
+    local common
+    common="$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir 2> /dev/null || true)"
+    if [ -n "$common" ] && [ -d "$common" ]; then
+        case "$common/" in
+            "$REPO"/*) ;;
+            *) args+=(-v "$common:$common:z") ;;
+        esac
+    fi
+
+    "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
+}
+
+# Pass the host display, audio and GPU through for `run`. The sockets are
+# shared rather than relabeled, so SELinux labeling is off for this container.
+# --ipc=host lets X11 MIT-SHM work.
+gui_args() {
+    if [ -z "${DISPLAY:-}" ]; then
+        echo "Error: DISPLAY is not set; run needs an X11 or XWayland session" >&2
+        exit 1
+    fi
+    RUN_EXTRA+=(--security-opt label=disable --ipc=host
+                -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix)
+    if [ -n "${XAUTHORITY:-}" ] && [ -f "$XAUTHORITY" ]; then
+        RUN_EXTRA+=(-v "$XAUTHORITY:/tmp/.Xauthority:ro" -e XAUTHORITY=/tmp/.Xauthority)
+    fi
+    local pulse="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pulse/native"
+    if [ -S "$pulse" ]; then
+        RUN_EXTRA+=(-v "$pulse:/tmp/pulse-native" -e PULSE_SERVER=unix:/tmp/pulse-native)
+    else
+        echo "Warning: no PulseAudio/PipeWire socket at $pulse; the game will be silent" >&2
+    fi
+    if [ -e /dev/dri ]; then
+        RUN_EXTRA+=(--device /dev/dri)
+    fi
+}
+
+SMOKE='
+set -euo pipefail
+out=$(xvfb-run -a builds/sss --version | tr -d "\r")
+echo "$out"
+base=$(tr -d "[:space:]" < VERSION)
+echo "$out" | grep -qE "Super Spaceguy Shooter ${base}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
+    echo "Error: --version smoke test failed: expected a version starting with ${base}" >&2
+    exit 1
+}
+echo ">>> smoke test passed"
+'
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+
+case "$cmd" in
+    image)
+        pick_engine
+        build_image
+        ;;
+    build)
+        pick_engine; ensure_image
+        run_in bash -c "./tools/buildqb sss.bas && $SMOKE"
+        ;;
+    test)
+        pick_engine; ensure_image
+        run_in bash .github/scripts/qb64test.sh
+        ;;
+    bake)
+        pick_engine; ensure_image
+        run_in bash tools/bake_speech_dict
+        ;;
+    emit)
+        pick_engine; ensure_image
+        run_in bash -c '(cd math && npm install) && node tools/emit-spline.js'
+        ;;
+    shell)
+        pick_engine; ensure_image
+        if [ $# -gt 0 ]; then
+            run_in "$@"
+        else
+            run_in bash
+        fi
+        ;;
+    run)
+        pick_engine; ensure_image
+        if [ ! -x "$REPO/builds/sss" ]; then
+            run_in bash -c "./tools/buildqb sss.bas"
+        fi
+        gui_args
+        run_in builds/sss "$@"
+        ;;
+    -h|--help|help|"")
+        usage
+        ;;
+    *)
+        echo "Error: unknown command '$cmd'" >&2
+        usage >&2
+        exit 1
+        ;;
+esac
