@@ -203,7 +203,8 @@ DO
 
     CASE GS_CONTROLS
         CONTROLS_Update
-        MUS_Fill 0
+        ' opened from the in-game pause dialog: keep music starved (silent) like the dialog does
+        IF ctlReturnState <> GS_PLAYING THEN MUS_Fill 0
 
     CASE GS_LEADIN
         LEADIN_Update
