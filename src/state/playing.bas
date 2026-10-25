@@ -33,6 +33,7 @@ Sub GS_PLAYING_Update ()
             IF escConfirm THEN
                 escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
                 escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
+                escCWas = _KEYDOWN(67) OR _KEYDOWN(99)
             END IF
         END IF
         escWas = held(E3D_KEY_ESCAPE)
@@ -48,10 +49,15 @@ Sub GS_PLAYING_Update ()
             escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
             IF (_KEYDOWN(78) OR _KEYDOWN(110)) AND escNWas = 0 THEN escConfirm = 0
             escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
+            IF (_KEYDOWN(67) OR _KEYDOWN(99)) AND escCWas = 0 THEN
+                CONTROLS_Prep GS_PLAYING : gameState = GS_CONTROLS
+            END IF
+            escCWas = _KEYDOWN(67) OR _KEYDOWN(99)
             _DEST backBuffer
-            UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 42, "ABORT MISSION"
-            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 2, scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL",          scrH\2 + 18, scrW, 255
+            UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 52, "ABORT MISSION"
+            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 4,  scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "C   CONTROLS       ", scrH\2 + 14, scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL         ", scrH\2 + 32, scrW, 255
             _DEST 0
             _PUTIMAGE , backBuffer, 0
             EXIT SUB

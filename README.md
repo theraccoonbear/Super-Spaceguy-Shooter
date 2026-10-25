@@ -156,13 +156,46 @@ Implemented algorithms: Catmull-Rom position/tangent weights, Gram-Schmidt frame
 
 ## Controls
 
+To see the controls in game, open the pause dialog (ESC) and press **C**, or press **C** in the title screen's command console.
+
+### In flight
+
+| Key | Gamepad | Action |
+|---|---|---|
+| Arrow keys / WASD | Left stick | Move ship |
+| Space (hold) | A | Fire |
+| ESC | Start | Pause / abort-mission dialog (Y confirms the abort, C shows controls, ESC cancels) |
+| TAB | Back / Select | Camera mode on/off. The game freezes while you adjust; pressing it again locks the angle and saves it |
+| ↑ / ↓ (camera mode) | Stick up/down | Tilt the camera |
+| R (camera mode) | — | Reset to the default chase camera |
+| ESC (planet arrival / cutscene) | Start | Return to the title |
+
+### Title and menus
+
+| Key | Gamepad | Action |
+|---|---|---|
+| P | Start | Start a new game |
+| ESC | — | Open/close the command console |
+| A / C / S / L / Q | — | Console: About / Controls / Settings / Leaderboard / Quit |
+| ↑ ↓ ← → | — | Navigate and adjust Settings; scroll About; page through Controls |
+| F11 | — | Toggle fullscreen (any screen) |
+
+### Story screens
+
+| Key | Gamepad | Action |
+|---|---|---|
+| Space (hold) | A (hold) | Fast-forward the narrative crawl |
+| Space + ESC | A + Start | Skip the crawl |
+| Space | A | Continue (intro card, game over) |
+| Any key | — | Skip the logo cards |
+
+Menus other than the title and Controls screens are keyboard-only.
+
+### Debug
+
 | Key | Action |
 |---|---|
-| Arrow keys / WASD | Move ship |
-| Space | Fire |
-| ESC | Pause / options menu |
-| `` ` `` | Toggle debug HUD overlay (with `--debug`) |
-| Space (crawl) | Fast-forward narrative |
+| `` ` `` | Toggle the debug HUD overlay. It starts on with `--debug`, but the key works in any build |
 
 ---
 

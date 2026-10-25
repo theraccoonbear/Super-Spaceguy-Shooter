@@ -12,6 +12,7 @@ Const E3D_KEY_ESCAPE = 27
 Const E3D_KEY_TAB    = 9
 Const E3D_KEY_R      = 114
 Const E3D_KEY_P      = 112
+Const E3D_KEY_PAD_START = 1    ' virtual slot: gamepad Start only (Start also sets ESCAPE); lets the title tell it apart from keyboard ESC
 
 ' Controller mapping constants — adjust if your gamepad layout differs
 Const E3D_AXIS_DEADZONE    = 0.25  ' ignore stick deflection below this threshold
@@ -58,6 +59,7 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_TAB)    = Abs(_KeyDown(9))
     held(E3D_KEY_R)      = Abs(_KeyDown(82)) OR Abs(_KeyDown(114))
     held(E3D_KEY_P)      = Abs(_KeyDown(80)) OR Abs(_KeyDown(112))
+    held(E3D_KEY_PAD_START) = 0
 
     If ctrlDev = 0 Then Exit Sub
 
@@ -84,6 +86,6 @@ Sub E3D_InputUpdate (held() As Integer)
     If ctrlAxY < -E3D_AXIS_DEADZONE Then held(E3D_KEY_UP)    = 1
     If ctrlAxY >  E3D_AXIS_DEADZONE Then held(E3D_KEY_DOWN)  = 1
     If ctrlFire  <> 0 Then held(E3D_KEY_SPACE)  = 1
-    If ctrlStart <> 0 Then held(E3D_KEY_ESCAPE) = 1
+    If ctrlStart <> 0 Then held(E3D_KEY_ESCAPE) = 1 : held(E3D_KEY_PAD_START) = 1
     If ctrlSel   <> 0 Then held(E3D_KEY_TAB)    = 1
 End Sub
