@@ -2,7 +2,7 @@
 ' player's depth, so the overlay can mark it and players can triage what to dodge.
 ' No rendering or game state here, so tests can drive it:
 '
-'   IMP_SeekStep sy,sz, vy,vz, targetY,targetZ, seek   one frame of homing (EBULLET_Update)
+'   IMP_SeekStep sy,sz, vy,vz, targetY,targetZ, seek, framesLeft   one frame of homing
 '   IMP_Predict sx,sy,sz, vx,vy,vz, playerX,playerY,playerZ, seek, frames, crossY, crossZ
 '       frames = frames until the shot reaches playerX (-1 if it never will)
 '   IMP_Threat%(crossY, crossZ, playerY, playerZ)   crosses close enough to need a ring
@@ -17,9 +17,9 @@ Const IMP_RING_MAX_N  = 3     ' at most this many rings at once: the soonest imp
 Const IMP_THREAT_R    = 2.5   ' world units: crossings farther from the player get no ring
 Const IMP_RING_R_MIN  = 0.3   ' ring radius (world units) at impact
 Const IMP_RING_R_MAX  = 0.9   ' ring radius when it first appears
-Const IMP_SEEK_V      = 0.15  ' lateral speed homing steers toward (player max is 0.12)
+Const IMP_SEEK_V      = 0.2   ' cap on the lateral speed homing steers toward (player max is 0.12)
 Const IMP_MAX_FRAMES  = 600   ' prediction horizon
-Const IMP_LEAD        = 0.8   ' boss aim/homing leads a moving player by this fraction
+Const IMP_LEAD        = 1.0   ' boss aim/homing leads a moving player by this fraction
 
 ' Point a boss shot should head for: the player's position plus IMP_LEAD of the way
 ' they'll move in impLF frames at their current velocity. Holding a direction gets you
@@ -47,15 +47,26 @@ Function IMP_FramesLeft!(impFX As Single, impFVX As Single, impFPX As Single)
     If impFVX < 0 And impFX > impFPX Then IMP_FramesLeft! = (impFPX - impFX) / impFVX
 End Function
 
-Sub IMP_SeekStep(impKY As Single, impKZ As Single, impKVY As Single, impKVZ As Single, impKTY As Single, impKTZ As Single, impKS As Single)
-    Dim impKDY As Single, impKDZ As Single, impKM As Single
+' Intercept homing: steer the lateral velocity toward the one that reaches the target
+' exactly in impKF frames (when the shot gets to the player's depth), capped at
+' IMP_SEEK_V, so a shot already on course stays on course. impKF <= 0: no time left to
+' plan, steer straight at the target at IMP_SEEK_V.
+Sub IMP_SeekStep(impKY As Single, impKZ As Single, impKVY As Single, impKVZ As Single, impKTY As Single, impKTZ As Single, impKS As Single, impKF As Single)
+    Dim impKDY As Single, impKDZ As Single, impKM As Single, impKWY As Single, impKWZ As Single
     If impKS <= 0 Then Exit Sub
     impKDY = impKTY - impKY : impKDZ = impKTZ - impKZ
     impKM = Sqr(impKDY * impKDY + impKDZ * impKDZ)
-    If impKM > 0.1 Then
-        impKVY = impKVY + ((impKDY / impKM) * IMP_SEEK_V - impKVY) * impKS
-        impKVZ = impKVZ + ((impKDZ / impKM) * IMP_SEEK_V - impKVZ) * impKS
+    If impKF >= 1 Then
+        impKWY = impKDY / impKF : impKWZ = impKDZ / impKF
+        impKM = Sqr(impKWY * impKWY + impKWZ * impKWZ)
+        If impKM > IMP_SEEK_V Then impKWY = impKWY / impKM * IMP_SEEK_V : impKWZ = impKWZ / impKM * IMP_SEEK_V
+    ElseIf impKM > 0.1 Then
+        impKWY = impKDY / impKM * IMP_SEEK_V : impKWZ = impKDZ / impKM * IMP_SEEK_V
+    Else
+        Exit Sub
     End If
+    impKVY = impKVY + (impKWY - impKVY) * impKS
+    impKVZ = impKVZ + (impKWZ - impKVZ) * impKS
 End Sub
 
 Sub IMP_Predict(impSX As Single, impSY As Single, impSZ As Single, impVX As Single, impVY As Single, impVZ As Single, impPX As Single, impPY As Single, impPZ As Single, impSeek As Single, impFrames As Single, impCY As Single, impCZ As Single)
@@ -64,7 +75,7 @@ Sub IMP_Predict(impSX As Single, impSY As Single, impSZ As Single, impVX As Sing
     If impVX >= 0 Or impSX < impPX Then Exit Sub
     impX = impSX : impY = impSY : impZ = impSZ : impVY2 = impVY : impVZ2 = impVZ
     Do While impX > impPX And impN < IMP_MAX_FRAMES
-        IMP_SeekStep impY, impZ, impVY2, impVZ2, impPY, impPZ, impSeek
+        IMP_SeekStep impY, impZ, impVY2, impVZ2, impPY, impPZ, impSeek, IMP_FramesLeft!(impX, impVX, impPX)
         impX = impX + impVX : impY = impY + impVY2 : impZ = impZ + impVZ2
         impN = impN + 1
     Loop

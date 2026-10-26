@@ -37,14 +37,15 @@ Function AT_Near%(anA As Single, anB As Single)
 End Function
 
 ' Flies one boss laser with the real IMP_AimLead / IMP_LeadPoint / IMP_SeekStep from 20
-' units out at a player strafing at full speed (0.12) in Z; when lmRev > 0 the player
+' units out, trailing lmOff units sideways the way the boss does in a fight, at a player
+' strafing at full speed (0.12) in Z; when lmRev > 0 the player
 ' reverses after lmRev frames. True if it hits: the player+EBULLET AABB half-sums from
 ' models.e3d (Y .2879+.08, Z .7616+.08), as EBULLET_Update's E3D_AABBOverlap tests.
-Function AT_LeadHit%(lmSpd As Single, lmSeek As Single, lmRev As Integer)
+Function AT_LeadHit%(lmSpd As Single, lmSeek As Single, lmRev As Integer, lmOff As Single)
     Dim lmX As Single, lmY As Single, lmZ As Single, lmVX As Single, lmVY As Single, lmVZ As Single
     Dim lmPY As Single, lmPZ As Single, lmPVZ As Single, lmTY As Single, lmTZ As Single
     Dim lmDX As Single, lmDY As Single, lmDZ As Single, lmN As Integer
-    lmX = 20 : lmPVZ = -0.12
+    lmX = 20 : lmZ = lmOff : lmPVZ = -0.12
     IMP_AimLead lmX, lmY, lmZ, 0, lmPY, lmPZ, 0, lmPVZ, lmSpd, lmDX, lmDY, lmDZ
     lmVX = lmDX * lmSpd : lmVY = lmDY * lmSpd : lmVZ = lmDZ * lmSpd
     Do While lmX > 0 And lmN < 600
@@ -52,7 +53,7 @@ Function AT_LeadHit%(lmSpd As Single, lmSeek As Single, lmRev As Integer)
         If lmRev > 0 And lmN = lmRev Then lmPVZ = -lmPVZ
         lmPZ = lmPZ + lmPVZ
         IMP_LeadPoint lmPY, lmPZ, 0, lmPVZ, IMP_FramesLeft!(lmX, lmVX, 0), lmTY, lmTZ
-        IMP_SeekStep lmY, lmZ, lmVY, lmVZ, lmTY, lmTZ, lmSeek
+        IMP_SeekStep lmY, lmZ, lmVY, lmVZ, lmTY, lmTZ, lmSeek, IMP_FramesLeft!(lmX, lmVX, 0)
         lmX = lmX + lmVX : lmY = lmY + lmVY : lmZ = lmZ + lmVZ
     Loop
     AT_LeadHit% = (Abs(lmY - lmPY) <= 0.2879 + 0.08 And Abs(lmZ - lmPZ) <= 0.7616 + 0.08)
@@ -87,7 +88,7 @@ Dim atFr0 As Single, atCY0 As Single, atCZ0 As Single, atDrift As Single, atK As
 atSX = 20 : atSY = 3 : atSZ = -2 : atVY = 0.06 : atVZ = 0.04
 IMP_Predict atSX, atSY, atSZ, -0.26, atVY, atVZ, 0, 0.5, 1, 0.035, atFr0, atCY0, atCZ0
 For atK = 1 To 40
-    IMP_SeekStep atSY, atSZ, atVY, atVZ, 0.5, 1, 0.035
+    IMP_SeekStep atSY, atSZ, atVY, atVZ, 0.5, 1, 0.035, IMP_FramesLeft!(atSX, -0.26, 0)
     atSX = atSX - 0.26 : atSY = atSY + atVY : atSZ = atSZ + atVZ
     IMP_Predict atSX, atSY, atSZ, -0.26, atVY, atVZ, 0, 0.5, 1, 0.035, atFr, atCY, atCZ
     If Abs(atCY - atCY0) > atDrift Then atDrift = Abs(atCY - atCY0)
@@ -96,18 +97,20 @@ Next atK
 AT_Assert atDrift < 0.01, "homing shot, player still: predicted crossing doesn't drift"
 AT_Assert AT_Near%(atFr, atFr0 - 40), "homing shot: frames-to-impact counts down one per frame"
 atVY = 0 : atVZ = 0
-IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 0
+IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 0, 0
 AT_Assert atVY = 0 And atVZ = 0, "seek 0: no steering (regular enemy shots fly straight)"
-IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 1
-AT_Assert AT_Near%(atVZ, IMP_SEEK_V) And AT_Near%(atVY, 0), "full seek: steers straight at the target at IMP_SEEK_V"
+IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 1, 0
+AT_Assert AT_Near%(atVZ, IMP_SEEK_V) And AT_Near%(atVY, 0), "full seek, no time left: steers straight at the target at IMP_SEEK_V"
 
 Print "--- impact.bas: boss lead aim vs a player holding one direction ---"
-Dim atSpd(1 To 3) As Single, atSeek(1 To 3) As Single
+Dim atSpd(1 To 3) As Single, atSeek(1 To 3) As Single, atOff As Single
 atSpd(1) = 0.26 : atSpd(2) = 0.30 : atSpd(3) = 0.35
 atSeek(1) = 0.015 : atSeek(2) = 0.035 : atSeek(3) = 0.055
 For atK = 1 To 3
-    AT_Assert AT_LeadHit%(atSpd(atK), atSeek(atK), 0), "phase" + Str$(atK) + ": holding one direction at full speed gets hit"
-    AT_Assert AT_LeadHit%(atSpd(atK), atSeek(atK), 15) = 0, "phase" + Str$(atK) + ": reversing 15 frames after the shot dodges it"
+    For atOff = 0 To 3 Step 1.5
+        AT_Assert AT_LeadHit%(atSpd(atK), atSeek(atK), 0, atOff), "phase" + Str$(atK) + ", boss" + Str$(atOff) + " to the side: holding one direction gets hit"
+        AT_Assert AT_LeadHit%(atSpd(atK), atSeek(atK), 15, atOff) = 0, "phase" + Str$(atK) + ", boss" + Str$(atOff) + " to the side: reversing after 15 frames dodges"
+    Next atOff
 Next atK
 AT_Assert IMP_Threat%(0.5, 0.5, 0, 0), "crossing near the player is a threat"
 AT_Assert IMP_Threat%(IMP_THREAT_R + 0.1, 0, 0, 0) = 0, "crossing outside IMP_THREAT_R is not"
