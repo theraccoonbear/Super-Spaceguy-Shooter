@@ -147,9 +147,14 @@ jobs:
           7z x qb64pe.7z
           Rename-Item qb64pe qb64pe-bin
 
+      # One worker per vCPU: CI runners' vCPUs aren't desktop hyperthreads, so the
+      # script's half-the-CPUs default would leave them idle.
       - name: Build and run all tests
         shell: bash
-        run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
+        run: |
+          CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+          echo "vCPUs: $CPUS"
+          QB64_TEST_JOBS="$CPUS" QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
 
       - name: Build sss.bas
         shell: bash
