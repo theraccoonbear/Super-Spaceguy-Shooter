@@ -95,7 +95,7 @@ Sub GAME_Usage(guErr As String)
         _Console On
         _Dest _Console
     Else
-        Open "/dev/stdout" For Output As #guFH
+        Open "/dev/stdout" For Append As #guFH
     End If
     If guErr <> "" Then
         CLI_Emit guFH, "Error: " + guErr
