@@ -44,27 +44,9 @@
 ## Pre-commit checklist — run ALL of these locally before every commit/push
 1. **Build**: `./tools/buildqb sss.bas` — must complete with no errors
 2. **Smoke test**: `builds/sss --version` — must print the version and exit 0
-3. **All automated tests**: build and run every test binary in `tests/` (mirrors `.github/scripts/qb64test.sh`, which runs this same suite in CI on Linux, macOS, and Windows):
-   ```
-   ./tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
-   ./tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test
-   ./tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
-   ./tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
-   ./tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
-   ./tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
-   ./tools/buildqb tests/mnv_load_test.bas          && builds/mnv_load_test
-   ./tools/buildqb tests/mnv_transition_test.bas    && builds/mnv_transition_test
-   ./tools/buildqb tests/mnv_conformance_test.bas   && builds/mnv_conformance_test
-   ./tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
-   ./tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
-   ./tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
-   ./tools/buildqb tests/spore_test.bas             && builds/spore_test
-   ./tools/buildqb tests/attack_test.bas            && builds/attack_test
-   ./tools/buildqb tests/inputscript_test.bas       && builds/inputscript_test
-   ./tools/buildqb tests/rng_test.bas               && builds/rng_test
-   tools/http_queue_test   # builds + runs http_queue_test.bas against a local mock server
-   ```
-   All tests must pass (exit 0) before committing. No exceptions.
+3. **All automated tests**: `tools/test` (or `tools/dev test` in the container). It builds and runs every test in `tests/` in parallel, exactly as CI does on Linux, macOS and Windows (`.github/scripts/qb64test.sh`), then prints each test's output and a pass/fail summary. All tests must pass (exit 0) before committing. No exceptions.
+   - **Adding a test:** add its name to `TESTS` in `.github/scripts/qb64test.sh` and make it print `=== <name> ===` first. The runner rejects a binary that doesn't print its own banner, which is how it catches parallel-build mix-ups.
+   - **Never run two native QB64-PE builds at once on one install** (e.g. two agents, or `tools/buildqb` in two terminals). On Linux and macOS qb64pe claims its temp folder without a lock, so concurrent compiles can silently produce each other's binaries (#239). `qb64test.sh` gives each worker its own QB64-PE copy; parallel agents should build through `tools/dev`, which runs each build in its own container.
 4. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
 
 > Adding a new `$INCLUDE` to sequence.bas, dims.bas, or any file that test stubs replicate

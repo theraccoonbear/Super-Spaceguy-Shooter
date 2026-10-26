@@ -56,13 +56,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache spline toolchain (math/node_modules)
+        id: cache_node_modules
+        uses: actions/cache@v4
+        with:
+          path: math/node_modules
+          key: math-node-modules-${{ runner.os }}-${{ hashFiles('math/package-lock.json') }}
+
       - name: Regenerate spline math from DSL
         shell: bash
         run: |
-          (cd math && npm install)
+          if [ "${{ steps.cache_node_modules.outputs.cache-hit }}" != "true" ]; then
+            (cd math && npm install)
+          fi
           node tools/emit-spline.js
 
+      # Keyed on the pinned version (the release tag), so a cache hit needs no API lookup.
+      - name: Cache QB64-PE
+        id: cache_qb64pe
+        uses: actions/cache@v4
+        with:
+          path: qb64pe-bin
+          key: qb64pe-${{ env.QB64PE_VERSION }}-${{ runner.os }}
+
       - name: Resolve QB64-PE release version
+        if: steps.cache_qb64pe.outputs.cache-hit != 'true'
         id: qb64pe_release
         shell: bash
         env:
@@ -81,20 +99,15 @@ jobs:
           echo "asset_url=$ASSET_URL" >> $GITHUB_OUTPUT
           echo "version=$VERSION"     >> $GITHUB_OUTPUT
 
-      - name: Cache QB64-PE
-        id: cache_qb64pe
-        uses: actions/cache@v4
-        with:
-          path: qb64pe-bin
-          key: qb64pe-${{ steps.qb64pe_release.outputs.version }}-${{ runner.os }}
-
+      # On a QB64-PE cache hit setup_lnx.sh is skipped, so everything QB64-PE links against must be listed here.
+      # The Xrandr/Xcursor/Xinerama/Xi set is needed by the GLFW backend (v4.7+).
+      # Cached .debs instead of apt-get update + install every run (that step took 12-123 s).
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          # On a QB64-PE cache hit setup_lnx.sh is skipped, so everything QB64-PE links against must be listed here.
-          # The Xrandr/Xcursor/Xinerama/Xi set is needed by the GLFW backend (v4.7+).
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
+          version: 1
 
       - name: Install QB64-PE (Linux/macOS)
         if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os != 'Windows'

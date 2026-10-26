@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# tools/test -- run the full test suite natively, in parallel, exactly as CI does
+# (.github/scripts/qb64test.sh), using the qb64pe on your PATH (as tools/buildqb does).
+# In the container: tools/dev test.   Workers: QB64_TEST_JOBS=N tools/test
+set -euo pipefail
+
+QB64_BIN=$(command -v qb64pe || true)
+if [ -z "$QB64_BIN" ]; then
+    echo "Error: qb64pe not found in PATH (or use tools/dev test)" >&2
+    exit 1
+fi
+cd "$(dirname "$0")/.."
+QB64_BIN_DIR="$(dirname "$(realpath "$QB64_BIN")")" exec bash .github/scripts/qb64test.sh

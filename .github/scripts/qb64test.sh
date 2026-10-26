@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
-# Build and run the QB64-PE headless test suite.
+# Build and run the QB64-PE headless test suite, several tests at once.
 # Expects QB64_BIN_DIR to point at an already-installed QB64-PE tree
 # (same convention as qb64build.sh). Runs on Linux, macOS, and Windows
 # (via Git Bash, as GitHub Actions' windows-latest runner provides).
+#
+#   QB64_TEST_JOBS=N   parallel workers (default: half the logical CPUs, at least 2 --
+#                      compiles are CPU-bound and hyperthreads mostly just contend)
+#
+# Each test is built and run by one worker; its output is printed in suite order once
+# everything has finished, followed by a pass/fail summary with timings.
+#
+# Why per-worker QB64-PE copies: on Linux and macOS, qb64pe picks its temp folder
+# (internal/temp, tempN) without a lock, so two compiles on one install can silently
+# swap or clobber each other's output -- a test binary that is really another test
+# and still passes (#239). Each worker gets its own copy instead. Windows locks its
+# temp folder properly, and its install (with the bundled compiler) is too big to
+# copy, so Windows workers share it. Either way every test must print its own
+# "=== <name> ===" banner, so a mixed-up binary fails loudly instead.
 set -euo pipefail
 
 REPODIR="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -14,8 +28,8 @@ fi
 QB64_DIR="$(realpath "$QB64_BIN_DIR")"
 
 case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*) QB64="$QB64_DIR/qb64pe.exe" ;;
-  *)                    QB64="$QB64_DIR/qb64pe" ;;
+  MINGW*|MSYS*|CYGWIN*) IS_WIN=1; QB64="$QB64_DIR/qb64pe.exe" ;;
+  *)                    IS_WIN=0; QB64="$QB64_DIR/qb64pe" ;;
 esac
 
 if [ ! -x "$QB64" ]; then
@@ -23,80 +37,155 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
+# Longest-running first, so it isn't the last thing left. http_queue_test runs on its
+# own at the end (it needs the mock server on a fixed port).
+TESTS=(
+  crawl_step_test
+  mnv_transition_test
+  mnv_conformance_test
+  crawl_plan_test
+  seq_dispatch_test
+  seq_trace_test
+  scene_jump_planet_test
+  spk_timing_test
+  snd_init_test
+  telem_creds_test
+  dbg_output_test
+  mnv_load_test
+  spore_test
+  attack_test
+  inputscript_test
+  rng_test
+)
+
+CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+JOBS="${QB64_TEST_JOBS:-$((CPUS / 2))}"
+[ "$JOBS" -lt 2 ] && JOBS=2
+[ "$JOBS" -gt "${#TESTS[@]}" ] && JOBS="${#TESTS[@]}"
+
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
 # QB64-PE resolves $EMBED paths relative to its binary directory.
 # Mirror the link that buildqb creates so $EMBED:'assets/...' resolves.
-case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*)
-    WIN_LINK=$(cygpath -w "$QB64_DIR/assets")
-    WIN_TARGET=$(cygpath -w "$REPODIR/assets")
-    WIN_LINK="$WIN_LINK" WIN_TARGET="$WIN_TARGET" \
+link_assets() {
+  local qbdir="$1"
+  if [ "$IS_WIN" = 1 ]; then
+    local win_link win_target
+    win_link=$(cygpath -w "$qbdir/assets")
+    win_target=$(cygpath -w "$REPODIR/assets")
+    WIN_LINK="$win_link" WIN_TARGET="$win_target" \
       powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET' > /dev/null
-    ;;
-  *)
-    ln -sfn "$REPODIR/assets" "$QB64_DIR/assets"
-    ;;
-esac
+  else
+    ln -sfn "$REPODIR/assets" "$qbdir/assets"
+  fi
+}
+link_assets "$QB64_DIR"
 
-# Compile a test .bas into an executable. $1 = source path, $2 = output path
-# (no extension). Sets RUN_BIN to the actual runnable path once done.
+# Worker N compiles with $WORK/qb<N>/qb64pe: a private copy of the parts of the
+# install a compile touches (Linux/macOS), or the shared install (Windows).
+for ((w = 1; w <= JOBS; w++)); do
+  if [ "$IS_WIN" = 1 ]; then
+    echo "$QB64_DIR" > "$WORK/qbdir$w"
+  else
+    mkdir -p "$WORK/qb$w/internal"
+    cp -a "$QB64" "$QB64_DIR/Makefile" "$WORK/qb$w/"
+    # settings/ only exists once qb64pe has run; a fresh install (container, CI cache
+    # miss) has none, and qb64pe creates its own
+    [ -d "$QB64_DIR/settings" ] && cp -a "$QB64_DIR/settings" "$WORK/qb$w/"
+    cp -a "$QB64_DIR/internal/c" "$QB64_DIR/internal/source" "$QB64_DIR/internal/support" "$WORK/qb$w/internal/"
+    link_assets "$WORK/qb$w"
+    echo "$WORK/qb$w" > "$WORK/qbdir$w"
+  fi
+done
+
+# Compile a test .bas into an executable. $1 = qb64pe dir, $2 = source, $3 = output
+# path (no extension). Prints the runnable path on success.
 #
 # Windows: QB64-PE's exit code can't be trusted after a successful -x compile
 # on this platform (same issue qb64build.sh works around), so run it via
 # PowerShell and verify the output file directly instead of checking $?.
 build_test() {
-  local src="$1" out="$2"
-  case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*)
-      local qb64_win src_win out_win
-      qb64_win=$(cygpath -w "$QB64")
-      src_win=$(cygpath -w "$src")
-      out_win=$(cygpath -w "${out}.exe")
-      QB64_WIN="$qb64_win" SRC_WIN="$src_win" OUT_WIN="$out_win" \
-        powershell -Command '& $env:QB64_WIN -x $env:SRC_WIN -o $env:OUT_WIN; exit 0'
-      if [ ! -f "${out}.exe" ]; then
-        echo "ERROR: ${out}.exe not produced by QB64-PE"
-        exit 1
-      fi
-      RUN_BIN="${out}.exe"
-      ;;
-    *)
-      if command -v xvfb-run &>/dev/null; then
-        xvfb-run "$QB64" -x "$src" -o "$out"
-      else
-        "$QB64" -x "$src" -o "$out"
-      fi
-      RUN_BIN="$out"
-      ;;
-  esac
-}
-
-run_test() {
-  local name="$1"
-  local src="$REPODIR/tests/${name}.bas"
-  local bin="$REPODIR/tests/${name}"
-
-  echo "==> Building tests/${name}.bas..."
-  build_test "$src" "$bin"
-
-  echo "==> Running ${name}..."
-  if "$RUN_BIN"; then
-    echo "==> ${name} passed"
+  local qbdir="$1" src="$2" out="$3" qb
+  rm -f "$out" "${out}.exe"
+  if [ "$IS_WIN" = 1 ]; then
+    QB64_WIN="$(cygpath -w "$qbdir/qb64pe.exe")" SRC_WIN="$(cygpath -w "$src")" OUT_WIN="$(cygpath -w "${out}.exe")" \
+      powershell -Command '& $env:QB64_WIN -x $env:SRC_WIN -o $env:OUT_WIN; exit 0' >&2
+    [ -f "${out}.exe" ] || { echo "ERROR: ${out}.exe not produced by QB64-PE" >&2; return 1; }
+    echo "${out}.exe"
   else
-    echo "==> TESTS FAILED — ${name} — see output above"
-    exit 1
+    qb="$qbdir/qb64pe"
+    if command -v xvfb-run &>/dev/null; then
+      xvfb-run -a "$qb" -x "$src" -o "$out" >&2 || return 1
+    else
+      "$qb" -x "$src" -o "$out" >&2 || return 1
+    fi
+    [ -x "$out" ] || { echo "ERROR: $out not produced by QB64-PE" >&2; return 1; }
+    echo "$out"
   fi
 }
 
+# Build and run one test on the first free worker slot (xargs never runs more than
+# JOBS of these at once). Writes $WORK/<name>.log, .result ("PASS"/"FAIL <why>"),
+# .time ("<build>s build, <run>s run").
+test_job() {
+  local name="$1" slot qbdir bin t0 t1 t2 log="$WORK/$1.log"
+  for ((slot = 1; slot <= JOBS; slot++)); do
+    mkdir "$WORK/lock$slot" 2> /dev/null && break
+  done
+  qbdir="$(cat "$WORK/qbdir$slot")"
+  t0=$SECONDS
+  if ! bin="$(build_test "$qbdir" "$REPODIR/tests/${name}.bas" "$REPODIR/tests/${name}" 2>> "$log")"; then
+    if [ "$IS_WIN" = 0 ]; then
+      cat "$qbdir"/internal/temp*/compilelog.txt >> "$log" 2> /dev/null || true
+    fi
+    rmdir "$WORK/lock$slot"
+    echo "FAIL build" > "$WORK/$name.result"
+    echo "$((SECONDS - t0))s build" > "$WORK/$name.time"
+    return 0
+  fi
+  rmdir "$WORK/lock$slot"
+  t1=$SECONDS
+  if "$bin" >> "$log" 2>&1; then
+    if grep -q "=== ${name} ===" "$log"; then
+      echo "PASS" > "$WORK/$name.result"
+    else
+      echo "FAIL ran a different test's binary (parallel build mix-up?)" > "$WORK/$name.result"
+    fi
+  else
+    echo "FAIL exit $?" > "$WORK/$name.result"
+  fi
+  t2=$SECONDS
+  echo "$((t1 - t0))s build, $((t2 - t1))s run" > "$WORK/$name.time"
+}
+
+export REPODIR QB64_DIR IS_WIN WORK JOBS
+export -f build_test test_job
+
+echo "==> Building and running ${#TESTS[@]} tests, $JOBS at a time..."
+SUITE_T0=$SECONDS
+printf '%s\n' "${TESTS[@]}" | xargs -P "$JOBS" -I{} bash -c 'test_job "$1"' _ {}
+
+FAILED=()
+for name in "${TESTS[@]}"; do
+  echo ""
+  echo "==> ${name}"
+  cat "$WORK/$name.log" 2> /dev/null || true
+  result="$(cat "$WORK/$name.result" 2> /dev/null || echo "FAIL no result")"
+  [ "$result" = "PASS" ] || FAILED+=("$name")
+done
+
 run_http_test() {
-  local name="$1"
-  local src="$REPODIR/tests/${name}.bas"
-  local bin="$REPODIR/tests/${name}"
+  local name="$1" bin
+  echo ""
+  echo "==> ${name}"
+  local t0=$SECONDS
+  if ! bin="$(build_test "$(cat "$WORK/qbdir1")" "$REPODIR/tests/${name}.bas" "$REPODIR/tests/${name}")"; then
+    echo "FAIL build" > "$WORK/$name.result"
+    return 0
+  fi
 
-  echo "==> Building tests/${name}.bas..."
-  build_test "$src" "$bin"
-  local run_bin="$RUN_BIN"
-
-  echo "==> Starting HTTP mock server..."
+  echo "    Starting HTTP mock server..."
   # Use a fixed port and poll for reachability via curl instead of reading a
   # printed port back from redirected stdout -- that read was silently never
   # satisfied on macOS CI (untested there before this branch; no diagnosis
@@ -121,38 +210,34 @@ run_http_test() {
     cat "$errfile" 2>/dev/null || true
     rm -f "$errfile"
     kill "$mock_pid" 2>/dev/null || true
-    exit 1
+    echo "FAIL mock server" > "$WORK/$name.result"
+    return 0
   fi
   rm -f "$errfile"
   echo "    Mock listening on http://127.0.0.1:${mock_port}"
 
-  local rc=0
-  if "$run_bin" "http://127.0.0.1:$mock_port"; then
-    echo "==> ${name} passed"
+  if "$bin" "http://127.0.0.1:$mock_port"; then
+    echo "PASS" > "$WORK/$name.result"
   else
-    rc=$?
-    echo "==> TESTS FAILED — ${name} — see output above"
+    echo "FAIL exit $?" > "$WORK/$name.result"
   fi
   kill "$mock_pid" 2>/dev/null || true
-  if [ $rc -ne 0 ]; then exit 1; fi
+  echo "$((SECONDS - t0))s build+run" > "$WORK/$name.time"
 }
-
-run_test seq_trace_test
-run_test seq_dispatch_test
-run_test scene_jump_planet_test
-run_test snd_init_test
-run_test telem_creds_test
-run_test dbg_output_test
-run_test mnv_load_test
-run_test mnv_transition_test
-run_test mnv_conformance_test
-run_test spk_timing_test
-run_test crawl_plan_test
-run_test crawl_step_test
-run_test spore_test
-run_test attack_test
-run_test inputscript_test
-run_test rng_test
 run_http_test http_queue_test
+[ "$(cat "$WORK/http_queue_test.result")" = "PASS" ] || FAILED+=(http_queue_test)
 
+echo ""
+echo "==> Summary ($((SECONDS - SUITE_T0))s, $JOBS workers)"
+for name in "${TESTS[@]}" http_queue_test; do
+  printf '    %-24s %-6s %s\n' "$name" "$(cut -d' ' -f1 < "$WORK/$name.result")" "$(cat "$WORK/$name.time" 2> /dev/null || true)"
+done
+
+if [ "${#FAILED[@]}" -gt 0 ]; then
+  echo ""
+  for name in "${FAILED[@]}"; do
+    echo "==> TESTS FAILED — ${name}: $(cat "$WORK/$name.result") — see its output above"
+  done
+  exit 1
+fi
 echo "==> All tests passed"

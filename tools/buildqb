@@ -52,7 +52,10 @@ case "$(uname -s)" in
             powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET' > /dev/null
         ;;
     *)
-        ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
+        # only when wrong: re-pointing it on every build races with concurrent builds
+        if [ "$(readlink "$QB64_DIR/assets")" != "$(realpath .)/assets" ]; then
+            ln -sfn "$(realpath .)/assets" "$QB64_DIR/assets"
+        fi
         ;;
 esac
 
@@ -60,7 +63,9 @@ esac
 # Remove stale executable so a failed build can't be mistaken for success
 rm -f "$old_exe"
 echo ">>> Building $1..."
-build_output=$(qb64pe -s:ExeDefaultDir=./builds -w -x "$1" 2>&1)
+# -o, not -s:ExeDefaultDir: -s saves into QB64-PE's config.ini on every build
+mkdir -p ./builds
+build_output=$(qb64pe -w -x "$1" -o "$(realpath .)/builds/$base" 2>&1)
 
 build_status=$?
 echo "$build_output"
