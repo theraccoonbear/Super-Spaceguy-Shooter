@@ -106,6 +106,9 @@ Sub COMBAT_OverlayDraw()
     Dim cbtCuOk As Integer, cbtCuOk2 As Integer, cbtCuOk3 As Integer, cbtCuOk4 As Integer
     Dim cbtCuOX As Integer, cbtCuOY As Integer, cbtCuHalf As Integer, cbtCuK As Integer
     Dim cbtCuF As Single, cbtCuClr As Long
+    Dim cbtDvBX As Single, cbtDvBY As Single, cbtDvPX As Single, cbtDvPY As Single, cbtDvEX As Single, cbtDvEY As Single
+    Dim cbtDvOk As Integer, cbtDvOk2 As Integer, cbtDvK As Integer, cbtDvA As Integer
+    Dim cbtDvSpd As Single, cbtDvAng As Single, cbtDvPh As Single, cbtDvR1 As Single, cbtDvR2 As Single
     Dim cbtOPjX As Single, cbtOPjY As Single, cbtOPjW As Single
     Dim cbtOPjX2 As Single, cbtOPjY2 As Single, cbtOPjW2 As Single
     Dim cbtOPjBX As Single, cbtOPjBY As Single, cbtOPjBZ As Single
@@ -315,6 +318,35 @@ Sub COMBAT_OverlayDraw()
                     If Abs(cbtCuK) <= 2 Then cbtCuClr = _RGB(255, 245, 235) Else cbtCuClr = _RGBA(255, 70, 50, 120)
                     Line (cbtCuAX + cbtCuOX * cbtCuK, cbtCuAY + cbtCuOY * cbtCuK)-(cbtCuBX + cbtCuOX * cbtCuK, cbtCuBY + cbtCuOY * cbtCuK), cbtCuClr
                 Next cbtCuK
+            End If
+        End If
+    End If
+
+    ' devour (boss attack C, devour.bas): suction streaks converging on the boss, faint and
+    ' slow during the warning, bright and fast while pulling, plus a drag line on the ship
+    If devStage <> DEV_ST_IDLE And boss.active Then
+        COMBAT_Project boss.px, boss.py, boss.pz, cbtDvBX, cbtDvBY, cbtDvOk
+        If cbtDvOk Then
+            If devStage = DEV_ST_WARN Then
+                cbtDvSpd = 0.012 : cbtDvA = Int(50 + 110 * (1 - DEV_WarnFrac!))
+            Else
+                cbtDvSpd = 0.035 : cbtDvA = 200
+            End If
+            For cbtDvK = 0 To 15
+                cbtDvAng = cbtDvK * 6.2832 / 16
+                cbtDvPh = devT * cbtDvSpd + cbtDvK * 0.37
+                cbtDvPh = cbtDvPh - Int(cbtDvPh)
+                cbtDvR1 = scrH * 0.55 * (1 - cbtDvPh)
+                cbtDvR2 = cbtDvR1 * 0.7
+                Line (cbtDvBX + Cos(cbtDvAng) * cbtDvR1, cbtDvBY + Sin(cbtDvAng) * cbtDvR1)-(cbtDvBX + Cos(cbtDvAng) * cbtDvR2, cbtDvBY + Sin(cbtDvAng) * cbtDvR2), _RGBA(190, 90, 255, cbtDvA)
+            Next cbtDvK
+        End If
+        If devStage = DEV_ST_PULL Then
+            COMBAT_Project player.px, player.py, player.pz, cbtDvPX, cbtDvPY, cbtDvOk
+            COMBAT_Project player.px, player.py + devPullY * 25, player.pz + devPullZ * 25, cbtDvEX, cbtDvEY, cbtDvOk2
+            If cbtDvOk And cbtDvOk2 Then
+                Line (cbtDvPX, cbtDvPY)-(cbtDvEX, cbtDvEY), _RGBA(190, 90, 255, 220)
+                Circle (cbtDvEX, cbtDvEY), 3, _RGBA(190, 90, 255, 220)
             End If
         End If
     End If

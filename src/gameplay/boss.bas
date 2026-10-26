@@ -120,13 +120,15 @@ Sub BOSS_Update
         Case 2 : bssSpd = BOSS_SHOT2
         Case Else : bssSpd = BOSS_SHOT3
         End Select
-        IMP_AimLead boss.px, boss.py, boss.pz, player.px, player.py, player.pz, playerVY, playerVZ, bssSpd, bssDX, bssDY, bssDZ
+        IMP_AimLead boss.px, boss.py, boss.pz, player.px, player.py, player.pz, playerVY + devPullY, playerVZ + devPullZ, bssSpd, bssDX, bssDY, bssDZ
 
         bssAtk = ATK_Pick%(bossAttackList$(), bossAttackCnt, Rnd)
+        If DEV_Busy% Then bssAtk = ATK_LASER  ' devour keeps firing lasers, nothing else
         ATK_Fired bssAtk
         If bssAtk <> ATK_LASER Then
             If bssAtk = ATK_SPORE Then BOSS_SporeVolley
             If bssAtk = ATK_CUT Then CUT_Start boss.phase, (Rnd < 0.5), player.px, player.py, player.pz, playerVY, playerVZ
+            If bssAtk = ATK_DEVOUR Then DEV_Start boss.phase
             Select Case boss.phase
             Case 1 : boss.fireTimer = BOSS_FIRE1
             Case 2 : boss.fireTimer = BOSS_FIRE2
@@ -220,6 +222,7 @@ Sub BOSS_Update
                     planetTransitionTimer = 75
                     SPORE_Clear  ' no lingering clouds or cuts once the boss is dead
                     CUT_Clear
+                    DEV_Clear
                     score = score + 2000
                     scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
                     bssPK = 0

@@ -300,7 +300,7 @@ DIM SHARED bossSpeechList$(0 To 7)
 DIM SHARED bossSpeechCnt     AS INTEGER
 DIM SHARED bossManeuverList$(0 To 7)
 DIM SHARED bossManeuverCnt   AS INTEGER
-DIM SHARED bossAttackList$(0 To 7)       ' attack= pool (#26): laser / spore / cut / devour (devour not built yet); see attacks.bas
+DIM SHARED bossAttackList$(0 To 7)       ' attack= pool (#26): laser / spore / cut / devour; see attacks.bas
 DIM SHARED bossAttackCnt     AS INTEGER
 DIM SHARED bossSeekStr       AS SINGLE   ' bullet homing strength per frame (0=straight, >0=curves)
 DIM SHARED bsmTurnDir      AS INTEGER  ' flyover dramatic turn direction: +1=right arc, -1=left arc; alternates each flyover

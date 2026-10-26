@@ -14,7 +14,7 @@
 Const ATK_LASER  = 1
 Const ATK_SPORE  = 2
 Const ATK_CUT    = 3
-Const ATK_DEVOUR = 4   ' attack C: parsed, not built yet, so never picked
+Const ATK_DEVOUR = 4
 Const ATK_COUNT  = 4
 Const ATK_COOL_FRAMES = 240   ' 4 s before the same special can fire again
 
@@ -32,7 +32,7 @@ Function ATK_Code%(atkName As String)
 End Function
 
 Function ATK_Built%(atkB As Integer)
-    ATK_Built% = (atkB = ATK_LASER Or atkB = ATK_SPORE Or atkB = ATK_CUT)
+    ATK_Built% = (atkB >= ATK_LASER And atkB <= ATK_COUNT)
 End Function
 
 Function ATK_Pick%(atkPool() As String, atkPoolCnt As Integer, atkR As Single)

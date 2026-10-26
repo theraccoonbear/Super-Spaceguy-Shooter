@@ -175,7 +175,7 @@ Sub EBULLET_Update
             ' boss bullets: steer vy/vz toward the player's lead point using lerp so speed
             ' stays bounded (impact.bas; the impact-ring prediction runs the same step)
             If ebullets(ebI).meshIdx = MESH_BOSS Then
-                IMP_LeadPoint player.py, player.pz, playerVY, playerVZ, IMP_FramesLeft!(ebullets(ebI).px, ebullets(ebI).vx, player.px), ebSeekTY, ebSeekTZ
+                IMP_LeadPoint player.py, player.pz, playerVY + devPullY, playerVZ + devPullZ, IMP_FramesLeft!(ebullets(ebI).px, ebullets(ebI).vx, player.px), ebSeekTY, ebSeekTZ
                 IMP_SeekStep ebullets(ebI).py, ebullets(ebI).pz, ebullets(ebI).vy, ebullets(ebI).vz, ebSeekTY, ebSeekTZ, bossSeekStr
             End If
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx

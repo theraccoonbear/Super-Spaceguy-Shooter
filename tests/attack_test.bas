@@ -1,12 +1,14 @@
-' attack_test.bas — boss attack overhaul (#26): depth cues, one attack per volley, the cut
+' attack_test.bas — boss attack overhaul (#26): depth cues, one attack per volley, cut, devour
 '
 ' Drives the real modules:
 '   - impact.bas : frames until a shot reaches the player's depth, where it crosses,
 '                  which crossings count as threats, the closing-ring fraction
-'   - attacks.bas: pick is always from the pool, unbuilt attacks (devour) never picked,
+'   - attacks.bas: pick is always from the pool, unknown names never picked,
 '                  a cooling special falls back to laser, cooldown expiry, empty pool
 '   - cuts.bas   : warning does no damage, live beam hurts once inside the band only,
 '                  at the right depth, chains alternate orientation and re-aim, idle after
+'   - devour.bas : no pull while warning, pull toward the boss's line capped at its
+'                  strength and never past the line, escape still gains, ends on time
 '
 ' Build: ./tools/buildqb tests/attack_test.bas
 ' Run:   ./tests/attack_test    (exit 0 = pass, exit 1 = any failure)
@@ -16,6 +18,7 @@ $CONSOLE:ONLY
 '$INCLUDE:'../src/gameplay/impact.bas'
 '$INCLUDE:'../src/gameplay/attacks.bas'
 '$INCLUDE:'../src/gameplay/cuts.bas'
+'$INCLUDE:'../src/gameplay/devour.bas'
 
 Dim Shared atPassed As Integer, atFailed As Integer
 
@@ -114,7 +117,7 @@ AT_Assert AT_Near%(IMP_RingFrac!(0, IMP_RING_FRAMES), 0), "ring closed at impact
 
 Print "--- attacks.bas: one attack per volley from the pool ---"
 Dim atPool(0 To 7) As String, atI As Integer, atC As Integer, atOk As Integer
-Dim atSawLaser As Integer, atSawSpore As Integer, atSawCut As Integer
+Dim atSawLaser As Integer, atSawSpore As Integer, atSawCut As Integer, atSawDev As Integer
 atPool(0) = "LASER" : atPool(1) = "SPORE" : atPool(2) = "CUT" : atPool(3) = "DEVOUR"
 ATK_Clear
 atOk = -1
@@ -123,16 +126,20 @@ For atI = 0 To 99
     If atC = ATK_LASER Then atSawLaser = -1
     If atC = ATK_SPORE Then atSawSpore = -1
     If atC = ATK_CUT Then atSawCut = -1
-    If atC = ATK_DEVOUR Or atC = 0 Then atOk = 0
+    If atC = ATK_DEVOUR Then atSawDev = -1
+    If atC < ATK_LASER Or atC > ATK_COUNT Then atOk = 0
 Next atI
-AT_Assert atOk, "devour (not built) is never picked"
-AT_Assert atSawLaser And atSawSpore And atSawCut, "laser, spore and cut all come up"
-AT_Assert ATK_Pick%(atPool(), 4, 0) = ATK_LASER And ATK_Pick%(atPool(), 4, 0.5) = ATK_SPORE And ATK_Pick%(atPool(), 4, 0.99) = ATK_CUT, "r splits evenly across the built entries"
-AT_Assert ATK_Pick%(atPool(), 4, 1) = ATK_CUT, "r = 1 clamps to the last entry"
+AT_Assert atOk, "every pick is a real attack"
+AT_Assert atSawLaser And atSawSpore And atSawCut And atSawDev, "laser, spore, cut and devour all come up"
+AT_Assert ATK_Pick%(atPool(), 4, 0) = ATK_LASER And ATK_Pick%(atPool(), 4, 0.3) = ATK_SPORE And ATK_Pick%(atPool(), 4, 0.6) = ATK_CUT And ATK_Pick%(atPool(), 4, 0.99) = ATK_DEVOUR, "r splits evenly across the pool"
+AT_Assert ATK_Pick%(atPool(), 4, 1) = ATK_DEVOUR, "r = 1 clamps to the last entry"
 AT_Assert ATK_Pick%(atPool(), 2, 0.99) = ATK_SPORE, "boss 1 pool (laser,spore): spore at the top of r"
 AT_Assert ATK_Pick%(atPool(), 0, 0.5) = ATK_LASER, "empty pool: lasers"
 atPool(4) = "lAsEr " : atPool(5) = "bogus"
 AT_Assert ATK_Code%(atPool(4)) = ATK_LASER And ATK_Code%(atPool(5)) = 0, "names are case/space tolerant; unknown names ignored"
+Dim atPool2(0 To 1) As String
+atPool2(0) = "LASER" : atPool2(1) = "bogus"
+AT_Assert ATK_Pick%(atPool2(), 2, 0.99) = ATK_LASER, "unknown pool names are skipped, not picked"
 
 ATK_Clear
 ATK_Fired ATK_SPORE
@@ -190,6 +197,51 @@ CUT_Start 0, -1, 0, 2, 3, 0, 0
 AT_Assert CUT_Busy% = 0, "a chain of 0 cuts does nothing"
 CUT_Start 2, -1, 0, 2, 3, 0, 0 : CUT_Clear
 AT_Assert CUT_Busy% = 0 And AT_RunCut%(CUT_WARN + CUT_LIVE, 0, 2, 3) = 0, "CUT_Clear stops a running chain"
+
+Print "--- devour.bas: suction warning, pull toward the boss's line ---"
+Dim atPY As Single, atPZ As Single
+DEV_Clear
+DEV_Pull 0, 0, 5, 0
+AT_Assert DEV_Busy% = 0 And devPullY = 0 And devPullZ = 0, "idle: no pull"
+DEV_Start 1
+For atK = 1 To DEV_WARN - 1
+    DEV_Update
+Next atK
+DEV_Pull 0, 0, 5, 0
+AT_Assert DEV_Busy% And devStage = DEV_ST_WARN And devPullY = 0 And devPullZ = 0, "warning: busy but no pull yet"
+DEV_Update
+DEV_Pull 0, 0, 3, 4
+AT_Assert devStage = DEV_ST_PULL, "pull starts after DEV_WARN frames"
+AT_Assert AT_Near%(devPullY, DEV_STRENGTH * 0.6) And AT_Near%(devPullZ, DEV_STRENGTH * 0.8), "pull points at the boss's line at DEV_STRENGTH"
+DEV_Pull 0, 0, 0.01, 0
+AT_Assert AT_Near%(devPullY, 0.01) And AT_Near%(devPullZ, 0), "never pulls past the line"
+
+' a still player is dragged onto the boss's line
+atPY = 0 : atPZ = 3
+For atK = 1 To 60
+    DEV_Update
+    DEV_Pull atPY, atPZ, 0, 0
+    atPY = atPY + devPullY : atPZ = atPZ + devPullZ
+Next atK
+AT_Assert Abs(atPZ) < 0.001 And Abs(atPY) < 0.001, "still player: dragged onto the line (3 units in 50 frames)"
+
+' flying straight away at full speed (0.12) still gains ground, even in phase 3
+DEV_Start 3
+For atK = 1 To DEV_WARN : DEV_Update : Next atK
+atPY = 0 : atPZ = 1
+For atK = 1 To 60
+    DEV_Update
+    DEV_Pull atPY, atPZ, 0, 0
+    atPZ = atPZ + 0.12 + devPullZ
+Next atK
+AT_Assert atPZ > 1 + 60 * 0.03, "phase 3: full-speed escape still gains ground"
+AT_Assert DEV_STRENGTH + 2 * DEV_PHASE_STEP < 0.12, "strongest pull stays under the player's top speed"
+
+For atK = 1 To DEV_PULL_FRAMES : DEV_Update : Next atK
+DEV_Pull 0, 0, 5, 0
+AT_Assert DEV_Busy% = 0 And devPullY = 0 And devPullZ = 0, "pull ends after DEV_PULL_FRAMES frames"
+DEV_Start 2 : DEV_Clear
+AT_Assert DEV_Busy% = 0, "DEV_Clear stops it"
 
 Print ""
 Print "=== " + LTrim$(Str$(atPassed + atFailed)) + " tests: " + LTrim$(Str$(atPassed)) + " passed, " + LTrim$(Str$(atFailed)) + " failed ==="

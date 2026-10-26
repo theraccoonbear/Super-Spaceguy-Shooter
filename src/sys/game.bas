@@ -31,6 +31,7 @@ Sub GAME_ResetState
     For grI = 1 To MAX_EBULLETS  : ebullets(grI).active = 0  : Next grI
     SPORE_Clear
     CUT_Clear
+    DEV_Clear
     ATK_Clear
     FX_Clear
     fxVCRActive = 0

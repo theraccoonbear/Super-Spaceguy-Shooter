@@ -100,6 +100,7 @@ Sub STAGE_Update
             For stI = 1 To MAX_EBULLETS  : ebullets(stI).active = 0  : Next stI
             SPORE_Clear
             CUT_Clear
+            DEV_Clear
             ATK_Clear
             FX_Clear
             spawnTimer = 0
