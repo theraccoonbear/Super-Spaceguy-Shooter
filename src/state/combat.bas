@@ -97,7 +97,10 @@ Sub COMBAT_OverlayDraw()
     Dim cbtEbOk As Integer, cbtEbOk2 As Integer, cbtEbOk3 As Integer
     Dim cbtEbRX As Single, cbtEbRY As Single, cbtEbGX As Single, cbtEbGY As Single
     Dim cbtEbK As Integer, cbtEbR As Integer
-    Dim cbtEbFr As Single, cbtEbCY As Single, cbtEbCZ As Single, cbtEbRF As Single
+    Dim cbtEbFr As Single, cbtEbCY As Single, cbtEbCZ As Single, cbtEbRF As Single, cbtEbSeek As Single
+    Dim cbtRgFr(1 To MAX_EBULLETS) As Single, cbtRgY(1 To MAX_EBULLETS) As Single, cbtRgZ(1 To MAX_EBULLETS) As Single
+    Dim cbtRgN As Integer, cbtRgBest As Integer
+    Dim cbtSpPulse As Single
     Dim cbtCuCX As Single, cbtCuCY As Single, cbtCuAX As Single, cbtCuAY As Single
     Dim cbtCuBX As Single, cbtCuBY As Single, cbtCuHX As Single, cbtCuHY As Single
     Dim cbtCuOk As Integer, cbtCuOk2 As Integer, cbtCuOk3 As Integer, cbtCuOk4 As Integer
@@ -211,16 +214,38 @@ Sub COMBAT_OverlayDraw()
                 End If
             End If
 
+            If ebullets(cbtOJ).meshIdx = MESH_BOSS Then cbtEbSeek = bossSeekStr Else cbtEbSeek = 0
             IMP_Predict ebullets(cbtOJ).px, ebullets(cbtOJ).py, ebullets(cbtOJ).pz, _
-                        ebullets(cbtOJ).vx, ebullets(cbtOJ).vy, ebullets(cbtOJ).vz, player.px, cbtEbFr, cbtEbCY, cbtEbCZ
+                        ebullets(cbtOJ).vx, ebullets(cbtOJ).vy, ebullets(cbtOJ).vz, _
+                        player.px, player.py, player.pz, cbtEbSeek, cbtEbFr, cbtEbCY, cbtEbCZ
+            cbtRgFr(cbtOJ) = -1
             If cbtEbFr >= 0 And cbtEbFr <= IMP_RING_FRAMES Then
                 If IMP_Threat%(cbtEbCY, cbtEbCZ, player.py, player.pz) Then
-                    cbtEbRF = IMP_RingFrac!(cbtEbFr, IMP_RING_FRAMES)
-                    COMBAT_ImpactRing player.px, cbtEbCY, cbtEbCZ, IMP_RING_R_MIN + (IMP_RING_R_MAX - IMP_RING_R_MIN) * cbtEbRF, cbtEbRF, 255, 120, 30
+                    cbtRgFr(cbtOJ) = cbtEbFr : cbtRgY(cbtOJ) = cbtEbCY : cbtRgZ(cbtOJ) = cbtEbCZ
                 End If
             End If
+        Else
+            cbtRgFr(cbtOJ) = -1
         End If
     Next cbtOJ
+
+    ' rings for the IMP_RING_MAX_N soonest impacts only
+    For cbtRgN = 1 To IMP_RING_MAX_N
+        cbtRgBest = 0
+        For cbtOJ = 1 To MAX_EBULLETS
+            If cbtRgFr(cbtOJ) >= 0 Then
+                If cbtRgBest = 0 Then
+                    cbtRgBest = cbtOJ
+                ElseIf cbtRgFr(cbtOJ) < cbtRgFr(cbtRgBest) Then
+                    cbtRgBest = cbtOJ
+                End If
+            End If
+        Next cbtOJ
+        If cbtRgBest = 0 Then Exit For
+        cbtEbRF = IMP_RingFrac!(cbtRgFr(cbtRgBest), IMP_RING_FRAMES)
+        COMBAT_ImpactRing player.px, cbtRgY(cbtRgBest), cbtRgZ(cbtRgBest), IMP_RING_R_MIN + (IMP_RING_R_MAX - IMP_RING_R_MIN) * cbtEbRF, cbtEbRF, 255, 120, 30
+        cbtRgFr(cbtRgBest) = -1
+    Next cbtRgN
 
     ' spore clouds (boss attack A, spores.bas): hazy green rings, radius projected to pixels
     For cbtOJ = 1 To SPORE_MAX
@@ -241,7 +266,14 @@ Sub COMBAT_OverlayDraw()
                 cbtSpR = Abs(cbtOPjY - (1.0 - cbtOPjY2 / cbtOPjW2) * scrH * 0.5)
                 If cbtSpR > 160 Then cbtSpR = 160
                 If cbtSpR >= 1 Then
-                    If SPORE_Hurts%(cbtOJ) Then cbtSpA = 70 Else cbtSpA = 35
+                    ' active (hurting) clouds pulse in size and brightness until their fade
+                    If SPORE_Hurts%(cbtOJ) Then
+                        cbtSpPulse = Sin(sporeAge(cbtOJ) * 0.2)
+                        cbtSpA = 70 + Int(40 * cbtSpPulse)
+                        cbtSpR = cbtSpR * (1 + 0.07 * cbtSpPulse)
+                    Else
+                        cbtSpA = 35
+                    End If
                     For cbtSpRing = 0 To 2
                         Circle (cbtOPjX, cbtOPjY), cbtSpR * (1 - cbtSpRing * 0.3), _RGBA(110, 230, 80, cbtSpA + cbtSpRing * 35)
                     Next cbtSpRing

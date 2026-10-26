@@ -47,13 +47,34 @@ Print ""
 
 Print "--- impact.bas: when and where a shot reaches the player's depth ---"
 Dim atFr As Single, atCY As Single, atCZ As Single
-IMP_Predict 10, 1, 2, -0.25, 0.05, -0.025, 0, atFr, atCY, atCZ
+IMP_Predict 10, 1, 2, -0.25, 0.05, -0.025, 0, 0, 0, 0, atFr, atCY, atCZ
 AT_Assert AT_Near%(atFr, 40), "shot 10 units out at 0.25/frame arrives in 40 frames"
-AT_Assert AT_Near%(atCY, 3) And AT_Near%(atCZ, 1), "crossing point follows its sideways drift"
-IMP_Predict 10, 0, 0, 0.25, 0, 0, 0, atFr, atCY, atCZ
+AT_Assert Abs(atCY - 3) < 0.01 And Abs(atCZ - 1) < 0.01, "crossing point follows its sideways drift"
+IMP_Predict 10, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, atFr, atCY, atCZ
 AT_Assert atFr = -1, "shot moving away never arrives"
-IMP_Predict -1, 0, 0, -0.25, 0, 0, 0, atFr, atCY, atCZ
+IMP_Predict -1, 0, 0, -0.25, 0, 0, 0, 0, 0, 0, atFr, atCY, atCZ
 AT_Assert atFr = -1, "shot already past the player never arrives"
+
+' homing: the prediction must match the real flight (same IMP_SeekStep), so with the
+' player holding still the predicted crossing stays put frame after frame
+Dim atSX As Single, atSY As Single, atSZ As Single, atVY As Single, atVZ As Single
+Dim atFr0 As Single, atCY0 As Single, atCZ0 As Single, atDrift As Single, atK As Integer
+atSX = 20 : atSY = 3 : atSZ = -2 : atVY = 0.06 : atVZ = 0.04
+IMP_Predict atSX, atSY, atSZ, -0.26, atVY, atVZ, 0, 0.5, 1, 0.035, atFr0, atCY0, atCZ0
+For atK = 1 To 40
+    IMP_SeekStep atSY, atSZ, atVY, atVZ, 0.5, 1, 0.035
+    atSX = atSX - 0.26 : atSY = atSY + atVY : atSZ = atSZ + atVZ
+    IMP_Predict atSX, atSY, atSZ, -0.26, atVY, atVZ, 0, 0.5, 1, 0.035, atFr, atCY, atCZ
+    If Abs(atCY - atCY0) > atDrift Then atDrift = Abs(atCY - atCY0)
+    If Abs(atCZ - atCZ0) > atDrift Then atDrift = Abs(atCZ - atCZ0)
+Next atK
+AT_Assert atDrift < 0.01, "homing shot, player still: predicted crossing doesn't drift"
+AT_Assert AT_Near%(atFr, atFr0 - 40), "homing shot: frames-to-impact counts down one per frame"
+atVY = 0 : atVZ = 0
+IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 0
+AT_Assert atVY = 0 And atVZ = 0, "seek 0: no steering (regular enemy shots fly straight)"
+IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 1
+AT_Assert AT_Near%(atVZ, IMP_SEEK_V) And AT_Near%(atVY, 0), "full seek: steers straight at the target at IMP_SEEK_V"
 AT_Assert IMP_Threat%(0.5, 0.5, 0, 0), "crossing near the player is a threat"
 AT_Assert IMP_Threat%(IMP_THREAT_R + 0.1, 0, 0, 0) = 0, "crossing outside IMP_THREAT_R is not"
 AT_Assert AT_Near%(IMP_RingFrac!(IMP_RING_FRAMES * 2, IMP_RING_FRAMES), 1), "ring wide open while far off"

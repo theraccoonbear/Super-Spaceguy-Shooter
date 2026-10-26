@@ -168,19 +168,13 @@ Sub EBULLET_Update
     Dim ebI As Integer
     Dim ebHit As Integer
     Dim ebDY As Single, ebDZ As Single
-    Dim ebSeekDY As Single, ebSeekDZ As Single, ebSeekMag As Single
 
     For ebI = 1 To MAX_EBULLETS
         If ebullets(ebI).active Then
             ' boss bullets: steer vy/vz toward player using lerp so speed stays bounded
-            If ebullets(ebI).meshIdx = MESH_BOSS And bossSeekStr > 0 Then
-                ebSeekDY = player.py - ebullets(ebI).py
-                ebSeekDZ = player.pz - ebullets(ebI).pz
-                ebSeekMag = SQR(ebSeekDY * ebSeekDY + ebSeekDZ * ebSeekDZ)
-                If ebSeekMag > 0.1 Then
-                    ebullets(ebI).vy = ebullets(ebI).vy + ((ebSeekDY / ebSeekMag) * 0.12 - ebullets(ebI).vy) * bossSeekStr
-                    ebullets(ebI).vz = ebullets(ebI).vz + ((ebSeekDZ / ebSeekMag) * 0.12 - ebullets(ebI).vz) * bossSeekStr
-                End If
+            ' (impact.bas; the impact-ring prediction runs the same step)
+            If ebullets(ebI).meshIdx = MESH_BOSS Then
+                IMP_SeekStep ebullets(ebI).py, ebullets(ebI).pz, ebullets(ebI).vy, ebullets(ebI).vz, player.py, player.pz, bossSeekStr
             End If
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
             ebullets(ebI).py = ebullets(ebI).py + ebullets(ebI).vy
