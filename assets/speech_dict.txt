@@ -283,6 +283,7 @@ POOP  P UW1 P
 POOP  P UW1 P
 POWER  P AW1 ER0
 PRESENTATION  P R EH2 Z AH0 N T EY1 SH AH0 N
+PRODUCED  P R AH0 D UW1 S T
 PROLOGUE  P R OW1 L AA0 G
 PRONOUNCING  P R AH0 N AW1 N S IH0 NG
 PROPAGANDA  P R AA2 P AH0 G AE1 N D AH0
@@ -429,4 +430,4 @@ YOU  Y UW1
 YOUD  Y UW1 D
 ZERO  Z IY1 R OW0
 
-# 394 / 420 words found in CMU dict (plus 32 custom entries)
+# 395 / 421 words found in CMU dict (plus 32 custom entries)
