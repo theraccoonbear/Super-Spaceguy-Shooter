@@ -3,8 +3,9 @@
 ' Drives CRAWL_Start / CRAWL_Step% for every named crawl with the real speech queue
 ' advanced 735 output samples per 60 fps frame, as the audio fill does in game.
 '   - normal play speaks every paragraph once, in order, and finishes before the crawl exits
-'   - fast-forward runs scroll and narration CRAWL_FF_X times faster: from several start
-'     points and lengths, every frame (during and after fast-forward) is speaking the same
+'   - fast-forward runs scroll and narration CRAWL_FF_X times faster: early, mid and late in
+'     each crawl, with the length rotating across crawls (all 9 start x length pairs covered),
+'     every frame (during and after fast-forward) is speaking the same
 '     paragraph and word as an uninterrupted run at the same point in crawl time, and every
 '     paragraph is still spoken once, in order
 '
@@ -183,6 +184,7 @@ GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
 GTEXT_Load _EMBEDDED$("GAMETEXT")
 SEQ_Load _EMBEDDED$("SEQTXT")
 SEQ_ListCrawls
+ST_Assert seqCrawlCount >= 3, "at least 3 crawls, so the rotating fast-forward lengths cover every start x length pair"
 
 Dim cstC As Integer, cstK As String, cstA As Integer, cstB As Integer, cstF As Long
 Dim cstFFAt As Long, cstFFLen As Long, cstBad As Long, cstFirstBad As Long, cstName As String
@@ -202,27 +204,28 @@ For cstC = 0 To seqCrawlCount - 1
     ST_Assert CST_AllSaidInOrder%, cstK + ": every paragraph spoken once, in order"
     ST_Assert SPK_IsPlaying% = 0, cstK + ": last paragraph finished before the crawl exits"
 
-    ' fast-forward from several points, for several lengths
+    ' fast-forward early, mid and late in the crawl. The length (15/60/135 frames) rotates
+    ' crawl to crawl, so every start x length pair is covered across any 3 consecutive
+    ' crawls at a third of the cost of all 9 per crawl (this test dominated suite time, #239)
     For cstA = 1 To 3
-        For cstB = 1 To 3
-            cstFFAt = cstRefN * cstA \ 5 : cstFFLen = 15 * cstB * cstB
-            CST_Begin cstK
-            cstBad = 0 : cstFirstBad = -1 : cstF = 0
-            Do Until CST_Done% Or cstF > CST_MAX_TICKS
-                CST_Frame (cstTick >= cstFFAt And cstTick < cstFFAt + cstFFLen * CRAWL_FF_X)
-                If cstTick < cstRefN Then
-                    If CST_InSync%(cstTick - 1) = 0 Then
-                        cstBad = cstBad + 1
-                        If cstFirstBad < 0 Then cstFirstBad = cstTick
-                    End If
+        cstB = ((cstA + cstC) Mod 3) + 1
+        cstFFAt = cstRefN * cstA \ 5 : cstFFLen = 15 * cstB * cstB
+        CST_Begin cstK
+        cstBad = 0 : cstFirstBad = -1 : cstF = 0
+        Do Until CST_Done% Or cstF > CST_MAX_TICKS
+            CST_Frame (cstTick >= cstFFAt And cstTick < cstFFAt + cstFFLen * CRAWL_FF_X)
+            If cstTick < cstRefN Then
+                If CST_InSync%(cstTick - 1) = 0 Then
+                    cstBad = cstBad + 1
+                    If cstFirstBad < 0 Then cstFirstBad = cstTick
                 End If
-                cstF = cstF + 1
-            Loop
-            cstName = cstK + ": FF at tick" + Str$(cstFFAt) + " for" + Str$(cstFFLen) + " frames"
-            ST_Assert cstBad = 0, cstName + ": in sync with normal play every frame" + Mid$(" (first miss at tick" + Str$(cstFirstBad) + ")", 1, 40 * -(cstBad > 0))
-            ST_Assert CST_AllSaidInOrder%, cstName + ": every paragraph spoken once, in order"
-            If crawlFFActive = 0 Then ST_Assert spkTimeScale = 1, cstName + ": speech back to normal speed after release"
-        Next cstB
+            End If
+            cstF = cstF + 1
+        Loop
+        cstName = cstK + ": FF at tick" + Str$(cstFFAt) + " for" + Str$(cstFFLen) + " frames"
+        ST_Assert cstBad = 0, cstName + ": in sync with normal play every frame" + Mid$(" (first miss at tick" + Str$(cstFirstBad) + ")", 1, 40 * -(cstBad > 0))
+        ST_Assert CST_AllSaidInOrder%, cstName + ": every paragraph spoken once, in order"
+        If crawlFFActive = 0 Then ST_Assert spkTimeScale = 1, cstName + ": speech back to normal speed after release"
     Next cstA
     Print ""
 Next cstC

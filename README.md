@@ -105,30 +105,18 @@ Add `--screenshot-at 200,700,1250` to save those frames as `shot-<frame>.png` (g
 ## Testing
 
 ```bash
-# full suite -- same one CI runs on Linux, macOS, and Windows
-tools/dev test                                           # in the container
-QB64_BIN_DIR=/path/to/qb64pe .github/scripts/qb64test.sh # native
+# full suite, in parallel -- the same script CI runs on Linux, macOS, and Windows
+tools/test                  # native (uses the qb64pe on your PATH)
+tools/dev test              # in the container
+QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical CPUs, at least 2)
 
-# or individually (native; in the container wrap one line, e.g.
+# one test on its own (native; in the container wrap it, e.g.
 #   tools/dev shell bash -c "tools/buildqb tests/spore_test.bas && builds/spore_test")
-tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
-tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test
-tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
-tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
-tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
-tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
-tools/buildqb tests/mnv_load_test.bas          && builds/mnv_load_test
-tools/buildqb tests/mnv_transition_test.bas    && builds/mnv_transition_test
-tools/buildqb tests/mnv_conformance_test.bas   && builds/mnv_conformance_test
-tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
-tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
-tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
-tools/buildqb tests/spore_test.bas             && builds/spore_test
-tools/buildqb tests/attack_test.bas            && builds/attack_test
-tools/buildqb tests/inputscript_test.bas       && builds/inputscript_test
-tools/buildqb tests/rng_test.bas               && builds/rng_test
+tools/buildqb tests/spore_test.bas && builds/spore_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
+
+The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name in `TESTS` in `.github/scripts/qb64test.sh`.
 
 Each subsystem doc below has its own "test in isolation" section with more detail.
 

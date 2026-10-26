@@ -64,3 +64,4 @@ src/gameplay/spline_path_gen.bi
 # Claude Code session memory
 memory/
 .aider*
+.claude/worktrees/

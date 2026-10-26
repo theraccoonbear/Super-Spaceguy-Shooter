@@ -27,6 +27,8 @@
 
 $CONSOLE:ONLY
 
+Print "=== mnv_conformance_test ==="
+
 Sub DBG_Print(dbgMsg As String)
 End Sub
 

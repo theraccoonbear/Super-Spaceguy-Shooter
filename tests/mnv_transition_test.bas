@@ -15,6 +15,8 @@
 ' Run:   builds/mnv_transition_test   (exit 0 = pass, exit 1 = fail)
 
 $CONSOLE:ONLY
+
+Print "=== mnv_transition_test ==="
 $EMBED:'assets/sequence.txt':'SEQTXT'
 $EMBED:'assets/maneuvers/attack-pass.mvr':'MNVATTACKPASS'
 $EMBED:'assets/maneuvers/boss-v-flight.mvr':'MNVBOSSVFLIGHT'
