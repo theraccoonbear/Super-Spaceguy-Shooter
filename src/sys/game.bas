@@ -118,9 +118,22 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
+    CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"
     SEQ_PrintScenes guFH
     If InStr(_OS$, "WIN") = 0 Then Close #guFH
     If guErr <> "" Then System 1 Else System 0
+End Sub
+
+' --screenshot-at: save this frame as shot-<gameFrame>.png in the launch folder when
+' it's one of the requested frames.
+Sub GAME_MaybeScreenshot
+    Dim gmsI As Integer
+    For gmsI = 1 To cliShotN
+        If cliShotAt(gmsI) = gameFrame Then
+            _SaveImage _StartDir$ + "/shot-" + LTrim$(Str$(gameFrame)) + ".png", _Display
+            Exit Sub
+        End If
+    Next gmsI
 End Sub

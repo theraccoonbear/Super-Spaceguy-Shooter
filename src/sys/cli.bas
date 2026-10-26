@@ -52,6 +52,17 @@ Sub CLI_Parse()
         cliSeed = Val(cliVal) : cliSeedSet = -1
     End If
 
+    cliVal = CLI_Value$(cliLine, "--screenshot-at ")
+    Do While cliVal <> ""
+        cliPos = InStr(cliVal, ",")
+        If cliPos = 0 Then cliPos = Len(cliVal) + 1
+        If ISC_IsNum%(Left$(cliVal, cliPos - 1)) = 0 Then GAME_Usage("--screenshot-at needs frame numbers like 300,900, got '" + Left$(cliVal, cliPos - 1) + "'")
+        If cliShotN >= UBound(cliShotAt) Then GAME_Usage("--screenshot-at takes at most" + Str$(UBound(cliShotAt)) + " frames")
+        cliShotN = cliShotN + 1
+        cliShotAt(cliShotN) = Val(Left$(cliVal, cliPos - 1))
+        cliVal = Mid$(cliVal, cliPos + 1)
+    Loop
+
     If LCase$(Left$(cliScene, 6)) = "crawl:" Then
         cliSceneType = "crawl:"
     ElseIf cliScene <> "" Then

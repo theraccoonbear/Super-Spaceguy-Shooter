@@ -61,9 +61,14 @@ ensure_image() {
 
 # Rebuild when the binary is missing or any game source is newer than it (e.g.
 # after a git pull), so `run`/`headless` never play a stale build.
+# Also rebuild a binary built natively on the host: it can need a newer glibc
+# than the container has ("GLIBC_2.xx not found").
 rebuild_if_stale() {
     if [ ! -x "$REPO/builds/sss" ] || [ -n "$(cd "$REPO" && find sss.bas src assets VERSION -newer builds/sss -print -quit)" ]; then
         echo ">>> sources changed since the last build; rebuilding builds/sss..."
+        run_in bash -c "./tools/buildqb sss.bas"
+    elif ! run_in bash -c '! ldd builds/sss 2>&1 | grep -q "not found"'; then
+        echo ">>> builds/sss was built outside the container; rebuilding it here..."
         run_in bash -c "./tools/buildqb sss.bas"
     fi
 }
