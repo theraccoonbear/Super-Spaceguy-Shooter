@@ -1,11 +1,13 @@
 ' cuts.bas -- boss attack B, "the cut" (#26): a chain of telegraphed beams. Each cut
 ' flashes a warning line through where the player is, then fires a band across the
 ' whole play plane at the player's depth; changing lanes out of the band dodges it.
+' Each cut aims CUT_LEAD_FRAMES ahead of a moving player, so holding one direction
+' runs into it.
 ' Cuts alternate horizontal / vertical. No rendering or game state here, so tests can
 ' drive it:
 '
-'   CUT_Start count, horizFirst, playerX, playerY, playerZ   begin a chain
-'   dmg = CUT_Update%(playerX, playerY, playerZ)               once per frame
+'   CUT_Start count, horizFirst, pX, pY, pZ, pVY, pVZ   begin a chain
+'   dmg = CUT_Update%(pX, pY, pZ, pVY, pVZ)               once per frame
 '   CUT_Busy%    a chain is running (the boss holds other attacks meanwhile)
 '   CUT_Clear    stop everything
 '
@@ -19,6 +21,7 @@ Const CUT_HALF  = 0.9   ' world-unit half-width of the band (player moves 0.12/f
 Const CUT_DEPTH = 1.5   ' hurts within this many units of its depth (X)
 Const CUT_DMG   = 8     ' shield damage, once per cut
 Const CUT_SPAN  = 14    ' world-unit half-length, for drawing
+Const CUT_LEAD_FRAMES = 30   ' aim where a moving player will be in this many frames
 
 Const CUT_ST_IDLE = 0
 Const CUT_ST_WARN = 1
@@ -29,11 +32,11 @@ Dim Shared cutStage As Integer, cutT As Integer, cutLeft As Integer
 Dim Shared cutHoriz As Integer, cutHit As Integer
 Dim Shared cutX As Single, cutY As Single, cutZ As Single
 
-Sub CUT_Start(cutN As Integer, cutH As Integer, cutSX As Single, cutSY As Single, cutSZ As Single)
+Sub CUT_Start(cutN As Integer, cutH As Integer, cutSX As Single, cutSY As Single, cutSZ As Single, cutSVY As Single, cutSVZ As Single)
     If cutN < 1 Then Exit Sub
     cutLeft = cutN
     cutHoriz = cutH
-    CUT_Aim cutSX, cutSY, cutSZ
+    CUT_Aim cutSX, cutSY + cutSVY * CUT_LEAD_FRAMES, cutSZ + cutSVZ * CUT_LEAD_FRAMES
 End Sub
 
 Sub CUT_Aim(cutAX As Single, cutAY As Single, cutAZ As Single)
@@ -54,7 +57,7 @@ Function CUT_WarnFrac!
     CUT_WarnFrac! = 1 - cutT / CUT_WARN
 End Function
 
-Function CUT_Update%(cutPX As Single, cutPY As Single, cutPZ As Single)
+Function CUT_Update%(cutPX As Single, cutPY As Single, cutPZ As Single, cutPVY As Single, cutPVZ As Single)
     Dim cutIn As Integer
     CUT_Update% = 0
     If cutStage = CUT_ST_IDLE Then Exit Function
@@ -75,7 +78,7 @@ Function CUT_Update%(cutPX As Single, cutPY As Single, cutPZ As Single)
     Case CUT_ST_GAP
         If cutT >= CUT_GAP Then
             cutHoriz = (cutHoriz = 0)
-            CUT_Aim cutPX, cutPY, cutPZ
+            CUT_Aim cutPX, cutPY + cutPVY * CUT_LEAD_FRAMES, cutPZ + cutPVZ * CUT_LEAD_FRAMES
         End If
     End Select
 End Function

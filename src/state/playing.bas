@@ -226,7 +226,7 @@ Sub GS_PLAYING_Update ()
             EBULLET_Update
             spDmg = SPORE_Update%(player.px, player.py, player.pz)
             IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "spore" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
-            spDmg = CUT_Update%(player.px, player.py, player.pz)
+            spDmg = CUT_Update%(player.px, player.py, player.pz, playerVY, playerVZ)
             IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "cut" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
             FX_Update
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z

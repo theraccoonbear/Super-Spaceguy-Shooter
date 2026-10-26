@@ -11,12 +11,15 @@ Const BOSS_FIRE_INIT     = 2.5   ' fire interval at boss spawn (before phase loc
 Const BOSS_FIRE1         = 2.2   ' phase 1 fire interval
 Const BOSS_FIRE2         = 1.5   ' phase 2 fire interval
 Const BOSS_FIRE3         = 0.9   ' phase 3 fire interval
+Const BOSS_SHOT1         = 0.26  ' phase 1 laser speed
+Const BOSS_SHOT2         = 0.30  ' phase 2 laser speed
+Const BOSS_SHOT3         = 0.35  ' phase 3 laser speed
 Const BOSS_DIM_FLOOR     = 0.35  ' minimum lighting factor for boss (keeps it visible at range)
 Const BOSS_DEATH_PARTS   = 35    ' particle count on boss death
 Const BOSS_ATTITUDE_LERP = 0.07  ' attitude settle rate (< player 0.09 = heavier feel)
 
 Sub BOSS_Update
-    Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssDMag As Single
+    Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssSpd As Single
     Dim bssEJ As Integer, bssJ As Integer, bssP As Integer, bssPK As Integer
     Dim bssShots As Integer
     Dim bssHit As Integer
@@ -112,17 +115,18 @@ Sub BOSS_Update
     ATK_Tick
     If CUT_Busy% = 0 Then boss.fireTimer = boss.fireTimer - 0.025
     If boss.fireTimer <= 0 Then
-        bssDX = player.px - boss.px
-        bssDY = player.py - boss.py
-        bssDZ = player.pz - boss.pz
-        bssDMag = SQR(bssDX * bssDX + bssDY * bssDY + bssDZ * bssDZ)
-        If bssDMag > 0.1 Then bssDX = bssDX/bssDMag : bssDY = bssDY/bssDMag : bssDZ = bssDZ/bssDMag
+        Select Case boss.phase
+        Case 1 : bssSpd = BOSS_SHOT1
+        Case 2 : bssSpd = BOSS_SHOT2
+        Case Else : bssSpd = BOSS_SHOT3
+        End Select
+        IMP_AimLead boss.px, boss.py, boss.pz, player.px, player.py, player.pz, playerVY, playerVZ, bssSpd, bssDX, bssDY, bssDZ
 
         bssAtk = ATK_Pick%(bossAttackList$(), bossAttackCnt, Rnd)
         ATK_Fired bssAtk
         If bssAtk <> ATK_LASER Then
             If bssAtk = ATK_SPORE Then BOSS_SporeVolley
-            If bssAtk = ATK_CUT Then CUT_Start boss.phase, (Rnd < 0.5), player.px, player.py, player.pz
+            If bssAtk = ATK_CUT Then CUT_Start boss.phase, (Rnd < 0.5), player.px, player.py, player.pz, playerVY, playerVZ
             Select Case boss.phase
             Case 1 : boss.fireTimer = BOSS_FIRE1
             Case 2 : boss.fireTimer = BOSS_FIRE2
@@ -138,9 +142,9 @@ Sub BOSS_Update
                         ebullets(bssEJ).active  = -1
                         ebullets(bssEJ).meshIdx = MESH_BOSS
                         ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
-                        ebullets(bssEJ).vx = bssDX * 0.26
-                        ebullets(bssEJ).vy = bssDY * 0.26 + (bssShots - 1) * 0.07
-                        ebullets(bssEJ).vz = bssDZ * 0.26
+                        ebullets(bssEJ).vx = bssDX * BOSS_SHOT1
+                        ebullets(bssEJ).vy = bssDY * BOSS_SHOT1 + (bssShots - 1) * 0.07
+                        ebullets(bssEJ).vz = bssDZ * BOSS_SHOT1
                         ebullets(bssEJ).scl = 1.0
                         bssShots = bssShots + 1
                     End If
@@ -155,13 +159,13 @@ Sub BOSS_Update
                         ebullets(bssEJ).active  = -1
                         ebullets(bssEJ).meshIdx = MESH_BOSS
                         ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
-                        ebullets(bssEJ).vx = bssDX * 0.30
+                        ebullets(bssEJ).vx = bssDX * BOSS_SHOT2
                         Select Case bssShots
-                        Case 0 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30
-                        Case 1 : ebullets(bssEJ).vy = bssDY * 0.30 - 0.11 : ebullets(bssEJ).vz = bssDZ * 0.30
-                        Case 2 : ebullets(bssEJ).vy = bssDY * 0.30 + 0.11 : ebullets(bssEJ).vz = bssDZ * 0.30
-                        Case 3 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30 - 0.11
-                        Case 4 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30 + 0.11
+                        Case 0 : ebullets(bssEJ).vy = bssDY * BOSS_SHOT2        : ebullets(bssEJ).vz = bssDZ * BOSS_SHOT2
+                        Case 1 : ebullets(bssEJ).vy = bssDY * BOSS_SHOT2 - 0.11 : ebullets(bssEJ).vz = bssDZ * BOSS_SHOT2
+                        Case 2 : ebullets(bssEJ).vy = bssDY * BOSS_SHOT2 + 0.11 : ebullets(bssEJ).vz = bssDZ * BOSS_SHOT2
+                        Case 3 : ebullets(bssEJ).vy = bssDY * BOSS_SHOT2        : ebullets(bssEJ).vz = bssDZ * BOSS_SHOT2 - 0.11
+                        Case 4 : ebullets(bssEJ).vy = bssDY * BOSS_SHOT2        : ebullets(bssEJ).vz = bssDZ * BOSS_SHOT2 + 0.11
                         End Select
                         ebullets(bssEJ).scl = 1.0
                         bssShots = bssShots + 1
@@ -177,9 +181,9 @@ Sub BOSS_Update
                         ebullets(bssEJ).active  = -1
                         ebullets(bssEJ).meshIdx = MESH_BOSS
                         ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
-                        ebullets(bssEJ).vx = bssDX * 0.35
-                        ebullets(bssEJ).vy = bssDY * 0.35 + (bssShots - 3) * 0.07
-                        ebullets(bssEJ).vz = bssDZ * 0.35 + (bssShots - 3) * 0.07
+                        ebullets(bssEJ).vx = bssDX * BOSS_SHOT3
+                        ebullets(bssEJ).vy = bssDY * BOSS_SHOT3 + (bssShots - 3) * 0.07
+                        ebullets(bssEJ).vz = bssDZ * BOSS_SHOT3 + (bssShots - 3) * 0.07
                         ebullets(bssEJ).scl = 1.0
                         bssShots = bssShots + 1
                     End If

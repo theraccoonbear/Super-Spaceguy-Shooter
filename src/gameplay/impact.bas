@@ -17,8 +17,35 @@ Const IMP_RING_MAX_N  = 3     ' at most this many rings at once: the soonest imp
 Const IMP_THREAT_R    = 2.5   ' world units: crossings farther from the player get no ring
 Const IMP_RING_R_MIN  = 0.3   ' ring radius (world units) at impact
 Const IMP_RING_R_MAX  = 0.9   ' ring radius when it first appears
-Const IMP_SEEK_V      = 0.12  ' lateral speed homing steers toward
+Const IMP_SEEK_V      = 0.15  ' lateral speed homing steers toward (player max is 0.12)
 Const IMP_MAX_FRAMES  = 600   ' prediction horizon
+Const IMP_LEAD        = 0.8   ' boss aim/homing leads a moving player by this fraction
+
+' Point a boss shot should head for: the player's position plus IMP_LEAD of the way
+' they'll move in impLF frames at their current velocity. Holding a direction gets you
+' hit; changing direction beats the lead.
+Sub IMP_LeadPoint(impLPY As Single, impLPZ As Single, impLVY As Single, impLVZ As Single, impLF As Single, impLOY As Single, impLOZ As Single)
+    impLOY = impLPY + impLVY * impLF * IMP_LEAD
+    impLOZ = impLPZ + impLVZ * impLF * IMP_LEAD
+End Sub
+
+' Unit direction from the boss (impAX..) to a lead point on a player at (impAPX..) moving
+' at (impAVY, impAVZ), for a shot of speed impASpd.
+Sub IMP_AimLead(impAX As Single, impAY As Single, impAZ As Single, impAPX As Single, impAPY As Single, impAPZ As Single, impAVY As Single, impAVZ As Single, impASpd As Single, impADX As Single, impADY As Single, impADZ As Single)
+    Dim impATY As Single, impATZ As Single, impAM As Single
+    impAM = Sqr((impAPX - impAX) ^ 2 + (impAPY - impAY) ^ 2 + (impAPZ - impAZ) ^ 2)
+    IMP_LeadPoint impAPY, impAPZ, impAVY, impAVZ, impAM / impASpd, impATY, impATZ
+    impADX = impAPX - impAX : impADY = impATY - impAY : impADZ = impATZ - impAZ
+    impAM = Sqr(impADX * impADX + impADY * impADY + impADZ * impADZ)
+    If impAM > 0.1 Then impADX = impADX / impAM : impADY = impADY / impAM : impADZ = impADZ / impAM
+End Sub
+
+' Frames until a shot at x impFX moving impFVX reaches the player's depth impFPX (0 if
+' it's moving away or already past).
+Function IMP_FramesLeft!(impFX As Single, impFVX As Single, impFPX As Single)
+    IMP_FramesLeft! = 0
+    If impFVX < 0 And impFX > impFPX Then IMP_FramesLeft! = (impFPX - impFX) / impFVX
+End Function
 
 Sub IMP_SeekStep(impKY As Single, impKZ As Single, impKVY As Single, impKVZ As Single, impKTY As Single, impKTZ As Single, impKS As Single)
     Dim impKDY As Single, impKDZ As Single, impKM As Single

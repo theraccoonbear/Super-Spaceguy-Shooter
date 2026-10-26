@@ -33,11 +33,33 @@ Function AT_Near%(anA As Single, anB As Single)
     AT_Near% = (Abs(anA - anB) < 0.001)
 End Function
 
+' Flies one boss laser with the real IMP_AimLead / IMP_LeadPoint / IMP_SeekStep from 20
+' units out at a player strafing at full speed (0.12) in Z; when lmRev > 0 the player
+' reverses after lmRev frames. True if it hits: the player+EBULLET AABB half-sums from
+' models.e3d (Y .2879+.08, Z .7616+.08), as EBULLET_Update's E3D_AABBOverlap tests.
+Function AT_LeadHit%(lmSpd As Single, lmSeek As Single, lmRev As Integer)
+    Dim lmX As Single, lmY As Single, lmZ As Single, lmVX As Single, lmVY As Single, lmVZ As Single
+    Dim lmPY As Single, lmPZ As Single, lmPVZ As Single, lmTY As Single, lmTZ As Single
+    Dim lmDX As Single, lmDY As Single, lmDZ As Single, lmN As Integer
+    lmX = 20 : lmPVZ = -0.12
+    IMP_AimLead lmX, lmY, lmZ, 0, lmPY, lmPZ, 0, lmPVZ, lmSpd, lmDX, lmDY, lmDZ
+    lmVX = lmDX * lmSpd : lmVY = lmDY * lmSpd : lmVZ = lmDZ * lmSpd
+    Do While lmX > 0 And lmN < 600
+        lmN = lmN + 1
+        If lmRev > 0 And lmN = lmRev Then lmPVZ = -lmPVZ
+        lmPZ = lmPZ + lmPVZ
+        IMP_LeadPoint lmPY, lmPZ, 0, lmPVZ, IMP_FramesLeft!(lmX, lmVX, 0), lmTY, lmTZ
+        IMP_SeekStep lmY, lmZ, lmVY, lmVZ, lmTY, lmTZ, lmSeek
+        lmX = lmX + lmVX : lmY = lmY + lmVY : lmZ = lmZ + lmVZ
+    Loop
+    AT_LeadHit% = (Abs(lmY - lmPY) <= 0.2879 + 0.08 And Abs(lmZ - lmPZ) <= 0.7616 + 0.08)
+End Function
+
 ' Runs rcN frames of the cut with the player at (rcX, rcY, rcZ); returns total damage.
 Function AT_RunCut%(rcN As Integer, rcX As Single, rcY As Single, rcZ As Single)
     Dim atrI As Integer, atrD As Integer
     For atrI = 1 To rcN
-        atrD = atrD + CUT_Update%(rcX, rcY, rcZ)
+        atrD = atrD + CUT_Update%(rcX, rcY, rcZ, 0, 0)
     Next atrI
     AT_RunCut% = atrD
 End Function
@@ -75,6 +97,15 @@ IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 0
 AT_Assert atVY = 0 And atVZ = 0, "seek 0: no steering (regular enemy shots fly straight)"
 IMP_SeekStep 0, 0, atVY, atVZ, 0, 5, 1
 AT_Assert AT_Near%(atVZ, IMP_SEEK_V) And AT_Near%(atVY, 0), "full seek: steers straight at the target at IMP_SEEK_V"
+
+Print "--- impact.bas: boss lead aim vs a player holding one direction ---"
+Dim atSpd(1 To 3) As Single, atSeek(1 To 3) As Single
+atSpd(1) = 0.26 : atSpd(2) = 0.30 : atSpd(3) = 0.35
+atSeek(1) = 0.015 : atSeek(2) = 0.035 : atSeek(3) = 0.055
+For atK = 1 To 3
+    AT_Assert AT_LeadHit%(atSpd(atK), atSeek(atK), 0), "phase" + Str$(atK) + ": holding one direction at full speed gets hit"
+    AT_Assert AT_LeadHit%(atSpd(atK), atSeek(atK), 15) = 0, "phase" + Str$(atK) + ": reversing 15 frames after the shot dodges it"
+Next atK
 AT_Assert IMP_Threat%(0.5, 0.5, 0, 0), "crossing near the player is a threat"
 AT_Assert IMP_Threat%(IMP_THREAT_R + 0.1, 0, 0, 0) = 0, "crossing outside IMP_THREAT_R is not"
 AT_Assert AT_Near%(IMP_RingFrac!(IMP_RING_FRAMES * 2, IMP_RING_FRAMES), 1), "ring wide open while far off"
@@ -118,8 +149,12 @@ AT_Assert ATK_Pick%(atPool(), 3, 0.99) = ATK_CUT, "ATK_Clear ends every cooldown
 Print "--- cuts.bas: warning, live beam, chains ---"
 CUT_Clear
 AT_Assert CUT_Busy% = 0, "idle after clear"
-CUT_Start 1, -1, 0, 2, 3
+CUT_Start 1, -1, 0, 2, 3, 0, 0
 AT_Assert CUT_Busy% And cutStage = CUT_ST_WARN And AT_Near%(cutY, 2), "start: warning aimed through the player"
+CUT_Start 1, 0, 0, 2, 3, 0.06, -0.12
+AT_Assert AT_Near%(cutY, 2 + 0.06 * CUT_LEAD_FRAMES) And AT_Near%(cutZ, 3 - 0.12 * CUT_LEAD_FRAMES), "moving player: cut aims CUT_LEAD_FRAMES ahead"
+CUT_Clear
+CUT_Start 1, -1, 0, 2, 3, 0, 0
 AT_Assert AT_Near%(CUT_WarnFrac!, 1), "warning fraction starts at 1"
 AT_Assert AT_RunCut%(CUT_WARN - 1, 0, 2, 3) = 0, "no damage during the warning"
 atC = AT_RunCut%(1, 0, 2, 3)
@@ -127,23 +162,23 @@ AT_Assert atC = 0 And cutStage = CUT_ST_LIVE, "beam goes live after CUT_WARN fra
 AT_Assert AT_RunCut%(CUT_LIVE, 0, 2, 3) = CUT_DMG, "inside the band: hurt exactly once per cut"
 AT_Assert CUT_Busy% = 0, "single cut: idle afterwards"
 
-CUT_Start 1, -1, 0, 2, 3
+CUT_Start 1, -1, 0, 2, 3, 0, 0
 atC = AT_RunCut%(CUT_WARN, 0, 2 + CUT_HALF + 0.2, 3)
 AT_Assert AT_RunCut%(CUT_LIVE, 0, 2 + CUT_HALF + 0.2, 3) = 0, "horizontal cut: moving up out of the band dodges it"
-CUT_Start 1, -1, 0, 2, 3
+CUT_Start 1, -1, 0, 2, 3, 0, 0
 atC = AT_RunCut%(CUT_WARN, 0, 2, 50)
 AT_Assert AT_RunCut%(CUT_LIVE, 0, 2, 50) = CUT_DMG, "horizontal cut spans the plane: sideways doesn't dodge"
-CUT_Start 1, 0, 0, 2, 3
+CUT_Start 1, 0, 0, 2, 3, 0, 0
 atC = AT_RunCut%(CUT_WARN, 0, 50, 3)
 AT_Assert AT_RunCut%(CUT_LIVE, 0, 50, 3) = CUT_DMG, "vertical cut spans the plane: up/down doesn't dodge"
-CUT_Start 1, 0, 0, 2, 3
+CUT_Start 1, 0, 0, 2, 3, 0, 0
 atC = AT_RunCut%(CUT_WARN, 0, 2, 3 + CUT_HALF + 0.2)
 AT_Assert AT_RunCut%(CUT_LIVE, 0, 2, 3 + CUT_HALF + 0.2) = 0, "vertical cut: moving sideways dodges it"
-CUT_Start 1, -1, 0, 2, 3
+CUT_Start 1, -1, 0, 2, 3, 0, 0
 atC = AT_RunCut%(CUT_WARN, CUT_DEPTH + 1, 2, 3)
 AT_Assert AT_RunCut%(CUT_LIVE, CUT_DEPTH + 1, 2, 3) = 0, "no damage away from the cut's depth"
 
-CUT_Start 3, -1, 0, 2, 3
+CUT_Start 3, -1, 0, 2, 3, 0, 0
 atC = AT_RunCut%(CUT_WARN + CUT_LIVE + CUT_GAP, 0, 5, 7)
 AT_Assert atC = 0 And cutStage = CUT_ST_WARN And cutHoriz = 0, "chain: second cut is vertical"
 AT_Assert AT_Near%(cutY, 5) And AT_Near%(cutZ, 7), "chain: second cut re-aims at the player"
@@ -151,9 +186,9 @@ atC = AT_RunCut%(CUT_WARN + CUT_LIVE, 0, 5, 7)
 AT_Assert atC = CUT_DMG, "chain: second cut hurts on its own"
 atC = AT_RunCut%(CUT_GAP + CUT_WARN + CUT_LIVE, 0, 5, 7)
 AT_Assert atC = CUT_DMG And CUT_Busy% = 0, "chain of 3: third cut, then idle"
-CUT_Start 0, -1, 0, 2, 3
+CUT_Start 0, -1, 0, 2, 3, 0, 0
 AT_Assert CUT_Busy% = 0, "a chain of 0 cuts does nothing"
-CUT_Start 2, -1, 0, 2, 3 : CUT_Clear
+CUT_Start 2, -1, 0, 2, 3, 0, 0 : CUT_Clear
 AT_Assert CUT_Busy% = 0 And AT_RunCut%(CUT_WARN + CUT_LIVE, 0, 2, 3) = 0, "CUT_Clear stops a running chain"
 
 Print ""
