@@ -229,6 +229,6 @@ Sub EB_TuneLog(ebTMsg As String)
     Dim ebTF As Integer
     ebTF = FreeFile
     Open _STARTDIR$ + "/boss-shots.log" For Append As #ebTF
-    Print #ebTF, Time$ + " " + ebTMsg
+    Print #ebTF, "f" + LTrim$(Str$(gameFrame)) + " " + ebTMsg
     Close #ebTF
 End Sub

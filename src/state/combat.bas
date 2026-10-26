@@ -3,6 +3,9 @@ Const EB_BOLT_R      = 0.14   ' world-unit glow radius (projected, so it grows a
 Const EB_HOT_DIST    = 3      ' at or nearer than this (X from player): full heat
 Const EB_COLD_DIST   = 30     ' at or beyond this: coolest, dimmest
 Const EB_COLD_BRIGHT = 0.35   ' brightness at EB_COLD_DIST, so far shots never outshine ships
+Const DEV_CHEV_NEAR  = 20     ' devour drag chevrons: pixels from the ship where they start (clear of its hull)
+Const DEV_CHEV_FAR   = 52     ' ... and where they fade out
+Const DEV_CHEV_SIZE  = 7      ' chevron half-width / depth in pixels
 
 ' World point -> backBuffer pixel; cpOk = 0 when it's behind the camera.
 Sub COMBAT_Project(cpX As Single, cpY As Single, cpZ As Single, cpSX As Single, cpSY As Single, cpOk As Integer)
@@ -29,6 +32,16 @@ Sub COMBAT_ImpactRing(irX As Single, irY As Single, irZ As Single, irR As Single
     irB = Int(irCB * irFrac + 30 * (1 - irFrac))
     Circle (irSX, irSY), irPx, _RGBA(irCR, irG, irB, irA)
     Circle (irSX, irSY), irPx + 1, _RGBA(irCR, irG, irB, irA \ 2)
+End Sub
+
+' One ">" chevron pointing along screen direction (chUX, chUY) from (chX, chY), its back
+' chD pixels out; DEV_CHEV_SIZE deep and half-wide.
+Sub COMBAT_Chevron(chX As Single, chY As Single, chUX As Single, chUY As Single, chD As Single, chClr As Long)
+    Dim chTX As Single, chTY As Single, chBX As Single, chBY As Single
+    chTX = chX + chUX * (chD + DEV_CHEV_SIZE) : chTY = chY + chUY * (chD + DEV_CHEV_SIZE)
+    chBX = chX + chUX * chD : chBY = chY + chUY * chD
+    Line (chBX - chUY * DEV_CHEV_SIZE, chBY + chUX * DEV_CHEV_SIZE)-(chTX, chTY), chClr
+    Line (chBX + chUY * DEV_CHEV_SIZE, chBY - chUX * DEV_CHEV_SIZE)-(chTX, chTY), chClr
 End Sub
 
 Sub COMBAT_SceneDraw()
@@ -109,6 +122,8 @@ Sub COMBAT_OverlayDraw()
     Dim cbtDvBX As Single, cbtDvBY As Single, cbtDvPX As Single, cbtDvPY As Single, cbtDvEX As Single, cbtDvEY As Single
     Dim cbtDvOk As Integer, cbtDvOk2 As Integer, cbtDvK As Integer, cbtDvA As Integer
     Dim cbtDvSpd As Single, cbtDvAng As Single, cbtDvPh As Single, cbtDvR1 As Single, cbtDvR2 As Single
+    Dim cbtDvUX As Single, cbtDvUY As Single, cbtDvLen As Single, cbtDvD As Single, cbtDvT As Integer
+
     Dim cbtOPjX As Single, cbtOPjY As Single, cbtOPjW As Single
     Dim cbtOPjX2 As Single, cbtOPjY2 As Single, cbtOPjW2 As Single
     Dim cbtOPjBX As Single, cbtOPjBY As Single, cbtOPjBZ As Single
@@ -341,12 +356,30 @@ Sub COMBAT_OverlayDraw()
                 Line (cbtDvBX + Cos(cbtDvAng) * cbtDvR1, cbtDvBY + Sin(cbtDvAng) * cbtDvR1)-(cbtDvBX + Cos(cbtDvAng) * cbtDvR2, cbtDvBY + Sin(cbtDvAng) * cbtDvR2), _RGBA(190, 90, 255, cbtDvA)
             Next cbtDvK
         End If
+        ' drag: chevrons marching out from the ship the way it's being pulled, fading as
+        ' they go, so "you're being dragged THAT way" reads at a glance
         If devStage = DEV_ST_PULL Then
             COMBAT_Project player.px, player.py, player.pz, cbtDvPX, cbtDvPY, cbtDvOk
             COMBAT_Project player.px, player.py + devPullY * 25, player.pz + devPullZ * 25, cbtDvEX, cbtDvEY, cbtDvOk2
             If cbtDvOk And cbtDvOk2 Then
-                Line (cbtDvPX, cbtDvPY)-(cbtDvEX, cbtDvEY), _RGBA(190, 90, 255, 220)
-                Circle (cbtDvEX, cbtDvEY), 3, _RGBA(190, 90, 255, 220)
+                cbtDvUX = cbtDvEX - cbtDvPX : cbtDvUY = cbtDvEY - cbtDvPY
+                cbtDvLen = Sqr(cbtDvUX * cbtDvUX + cbtDvUY * cbtDvUY)
+                If cbtDvLen > 0.5 Then
+                    cbtDvUX = cbtDvUX / cbtDvLen : cbtDvUY = cbtDvUY / cbtDvLen
+                    For cbtDvK = 0 To 2
+                        cbtDvPh = devT * 0.04 + cbtDvK / 3
+                        cbtDvPh = cbtDvPh - Int(cbtDvPh)
+                        cbtDvD = DEV_CHEV_NEAR + cbtDvPh * (DEV_CHEV_FAR - DEV_CHEV_NEAR)
+                        cbtDvA = Int(255 * (1 - cbtDvPh))
+                        ' dark outline strokes either side first, then the bright double stroke,
+                        ' so they read over the planet and the boss
+                        COMBAT_Chevron cbtDvPX, cbtDvPY, cbtDvUX, cbtDvUY, cbtDvD + 1, _RGBA(25, 0, 45, Int(cbtDvA * 0.8))
+                        COMBAT_Chevron cbtDvPX, cbtDvPY, cbtDvUX, cbtDvUY, cbtDvD - 2, _RGBA(25, 0, 45, Int(cbtDvA * 0.8))
+                        For cbtDvT = 0 To 1
+                            COMBAT_Chevron cbtDvPX, cbtDvPY, cbtDvUX, cbtDvUY, cbtDvD - cbtDvT, _RGBA(225, 140, 255, cbtDvA)
+                        Next cbtDvT
+                    Next cbtDvK
+                End If
             End If
         End If
     End If
