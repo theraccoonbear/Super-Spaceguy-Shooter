@@ -21,8 +21,8 @@
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
 '  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
 '  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
-'  19.  PLAY boss attack=: bossAttackList$ per boss (stacked attacks)
 '  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
+'  22.  PLAY boss attack=: bossAttackList$ per boss (stacked attacks)
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
