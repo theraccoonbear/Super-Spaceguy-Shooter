@@ -182,13 +182,14 @@ Sub EBULLET_Update
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
             ebullets(ebI).py = ebullets(ebI).py + ebullets(ebI).vy
             ebullets(ebI).pz = ebullets(ebI).pz + ebullets(ebI).vz
-            ' [DEBUG] a boss laser reaching the player's depth: how far it missed and how
-            ' fast the player was moving, for tuning lead aim (IMP_LEAD / IMP_SEEK_V)
-            If debugMode And ebullets(ebI).meshIdx = MESH_BOSS Then
+            ' [TUNING, temporary -- remove before #238 merges] a boss laser reaching the
+            ' player's depth: how far it missed and how fast the player was moving, for
+            ' tuning lead aim (IMP_LEAD / IMP_SEEK_V)
+            If ebullets(ebI).meshIdx = MESH_BOSS Then
                 If ebullets(ebI).px <= player.px And ebullets(ebI).px - ebullets(ebI).vx > player.px Then
                     ebDY = ebullets(ebI).py - player.py : ebDZ = ebullets(ebI).pz - player.pz
                     If Abs(ebDY) <= boxLib(MESH_PLAYER).hy + boxLib(MESH_EBULLET).hy And Abs(ebDZ) <= boxLib(MESH_PLAYER).hz + boxLib(MESH_EBULLET).hz Then ebDbgHit$ = "Y" Else ebDbgHit$ = "N"
-                    DBG_Print "[boss-shot] dy=" + EB_Fmt$(ebDY) + " dz=" + EB_Fmt$(ebDZ) + " hit=" + ebDbgHit$ + " pvy=" + EB_Fmt$(playerVY) + " pvz=" + EB_Fmt$(playerVZ) + " inv=" + LTrim$(Str$(invTimer))
+                    EB_TuneLog "[boss-shot] dy=" + EB_Fmt$(ebDY) + " dz=" + EB_Fmt$(ebDZ) + " hit=" + ebDbgHit$ + " pvy=" + EB_Fmt$(playerVY) + " pvz=" + EB_Fmt$(playerVZ) + " inv=" + LTrim$(Str$(invTimer))
                 End If
             End If
             If ebullets(ebI).vx < 0 Then
@@ -219,3 +220,13 @@ End Sub
 Function EB_Fmt$(ebFV As Single)
     EB_Fmt$ = LTrim$(Str$(Int(ebFV * 100 + 0.5) / 100))
 End Function
+
+' [TUNING, temporary -- remove before #238 merges] appends one line to boss-shots.log
+' in the working directory (the repo root under tools/dev run).
+Sub EB_TuneLog(ebTMsg As String)
+    Dim ebTF As Integer
+    ebTF = FreeFile
+    Open "boss-shots.log" For Append As #ebTF
+    Print #ebTF, Time$ + " " + ebTMsg
+    Close #ebTF
+End Sub

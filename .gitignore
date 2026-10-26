@@ -44,6 +44,7 @@ tests/spk_timing_test
 tests/spore_test
 tests/attack_test
 tools/telem_batch_test
+boss-shots.log
 
 # Local playtest telemetry runs -- not source
 sss_telemetry.csv
