@@ -6,13 +6,22 @@
 '   <from> <to> KEY [KEY ...]   hold the KEYs on frames from..to (inclusive, 0-based)
 '   # comment                   blank lines and comments are ignored
 '
-' KEYs: LEFT RIGHT UP DOWN FIRE ESC TAB. Example (tests/input/boss-hold-left.txt):
+' KEYs: LEFT RIGHT UP DOWN FIRE (= SPACE) ESC TAB ENTER BACKSPACE BACKTICK F1-F12,
+' any letter A-Z (held as both its upper- and lower-case code), any digit 0-9, and
+' #<code> for any other _KEYDOWN code (e.g. #21248 = Delete). Example
+' (tests/input/boss-hold-left.txt):
 '   0 1500 LEFT FIRE
+'
+' Game code reads keys through KEY_Down% / KEY_Hit& (never _KEYDOWN / _KEYHIT directly),
+' so every key in a script reaches every screen. KEY_Hit& reports one press per range,
+' on its first frame, as _KEYHIT would (letters as unshifted lower case).
 '
 ' No rendering or game state here, so tests can drive it:
 '   ok = ISC_ParseLine%(line$)      add one script line; 0 if it's malformed (see iscError)
 '   ok = ISC_Load%(path$)           load a file; 0 on any error (see iscError)
-'   ISC_Apply frame, held()         fill held() for that frame (all other keys up)
+'   ISC_Apply frame, held()         fill held() for that frame (all other keys up), queue presses
+'   down = KEY_Down%(code)          is the key down this frame (script, else _KEYDOWN)
+'   code = KEY_Hit&                 next queued key press, 0 if none (script, else _KEYHIT)
 '   ISC_Clear
 ' Local variable prefix: isc*
 
@@ -20,23 +29,47 @@ Const ISC_MAX = 256
 
 Dim Shared iscCount As Integer, iscActive As Integer, iscError As String
 Dim Shared iscFrom(1 To ISC_MAX) As Long, iscTo(1 To ISC_MAX) As Long, iscKey(1 To ISC_MAX) As Long
+Dim Shared iscAlt(1 To ISC_MAX) As Long
+Dim Shared iscFrame As Long
+Dim Shared iscHitQ(1 To ISC_MAX) As Long, iscHitHead As Integer, iscHitTail As Integer
 
 Sub ISC_Clear
     iscCount = 0 : iscActive = 0 : iscError = ""
+    iscFrame = -1 : iscHitHead = 0 : iscHitTail = 0
 End Sub
 
-' Script key name -> held() slot (E3D_KEY_*, input.bas); 0 if unknown.
-Function ISC_KeyCode&(iscName As String)
-    Select Case UCase$(iscName)
-    Case "LEFT"  : ISC_KeyCode& = E3D_KEY_LEFT
-    Case "RIGHT" : ISC_KeyCode& = E3D_KEY_RIGHT
-    Case "UP"    : ISC_KeyCode& = E3D_KEY_UP
-    Case "DOWN"  : ISC_KeyCode& = E3D_KEY_DOWN
-    Case "FIRE"  : ISC_KeyCode& = E3D_KEY_SPACE
-    Case "ESC"   : ISC_KeyCode& = E3D_KEY_ESCAPE
-    Case "TAB"   : ISC_KeyCode& = E3D_KEY_TAB
-    Case Else    : ISC_KeyCode& = 0
+' Script key name -> its _KEYDOWN code (which is also its held() slot when it has one)
+' and, for letters, the other case's code. Returns 0 if the name is unknown.
+Function ISC_KeyInfo%(iscName As String, iscCode As Long, iscAltCode As Long)
+    Dim iscU As String, iscFn As Long
+    iscU = UCase$(iscName)
+    iscCode = 0 : iscAltCode = 0
+    Select Case iscU
+    Case "LEFT"      : iscCode = E3D_KEY_LEFT
+    Case "RIGHT"     : iscCode = E3D_KEY_RIGHT
+    Case "UP"        : iscCode = E3D_KEY_UP
+    Case "DOWN"      : iscCode = E3D_KEY_DOWN
+    Case "FIRE", "SPACE" : iscCode = E3D_KEY_SPACE
+    Case "ESC"       : iscCode = E3D_KEY_ESCAPE
+    Case "TAB"       : iscCode = E3D_KEY_TAB
+    Case "ENTER"     : iscCode = 13
+    Case "BACKSPACE" : iscCode = 8
+    Case "BACKTICK"  : iscCode = 96
+    Case "F11"       : iscCode = 34048
+    Case "F12"       : iscCode = 34304
+    Case Else
+        If Len(iscU) = 1 And iscU >= "A" And iscU <= "Z" Then
+            iscCode = Asc(LCase$(iscU)) : iscAltCode = Asc(iscU)
+        ElseIf Len(iscU) = 1 And iscU >= "0" And iscU <= "9" Then
+            iscCode = Asc(iscU)
+        ElseIf Left$(iscU, 1) = "F" And ISC_IsNum%(Mid$(iscU, 2)) Then
+            iscFn = Val(Mid$(iscU, 2))
+            If iscFn >= 1 And iscFn <= 10 Then iscCode = 15104 + (iscFn - 1) * 256
+        ElseIf Left$(iscU, 1) = "#" And ISC_IsNum%(Mid$(iscU, 2)) Then
+            iscCode = Val(Mid$(iscU, 2))
+        End If
     End Select
+    ISC_KeyInfo% = (iscCode > 0)
 End Function
 
 ' Next space-separated token of iscLine$ from position iscP (advanced past it).
@@ -64,7 +97,7 @@ End Function
 
 Function ISC_ParseLine%(iscRaw As String)
     Dim iscLine As String, iscP As Integer, iscT As String, iscF As Long, iscTo2 As Long
-    Dim iscK As Long, iscN As Integer
+    Dim iscK As Long, iscK2 As Long, iscN As Integer
     ISC_ParseLine% = 0
     iscLine = LTrim$(RTrim$(iscRaw))
     iscP = InStr(iscLine, Chr$(9))
@@ -83,11 +116,10 @@ Function ISC_ParseLine%(iscRaw As String)
     Do
         iscT = ISC_Token$(iscLine, iscP)
         If iscT = "" Then Exit Do
-        iscK = ISC_KeyCode&(iscT)
-        If iscK = 0 Then iscError = "unknown key '" + iscT + "' in: " + iscLine : Exit Function
+        If ISC_KeyInfo%(iscT, iscK, iscK2) = 0 Then iscError = "unknown key '" + iscT + "' in: " + iscLine : Exit Function
         If iscCount >= ISC_MAX Then iscError = "more than" + Str$(ISC_MAX) + " key ranges" : Exit Function
         iscCount = iscCount + 1
-        iscFrom(iscCount) = iscF : iscTo(iscCount) = iscTo2 : iscKey(iscCount) = iscK
+        iscFrom(iscCount) = iscF : iscTo(iscCount) = iscTo2 : iscKey(iscCount) = iscK : iscAlt(iscCount) = iscK2
         iscN = iscN + 1
     Loop
     If iscN = 0 Then iscError = "no keys in: " + iscLine : Exit Function
@@ -110,10 +142,35 @@ Function ISC_Load%(iscPath As String)
     ISC_Load% = -1
 End Function
 
-Sub ISC_Apply(iscFrame As Long, iscHeld() As Integer)
+Sub ISC_Apply(iscFrameNo As Long, iscHeld() As Integer)
     Dim iscA As Long
+    iscFrame = iscFrameNo
     For iscA = LBound(iscHeld) To UBound(iscHeld) : iscHeld(iscA) = 0 : Next iscA
     For iscA = 1 To iscCount
-        If iscFrame >= iscFrom(iscA) And iscFrame <= iscTo(iscA) Then iscHeld(iscKey(iscA)) = -1
+        If iscFrameNo >= iscFrom(iscA) And iscFrameNo <= iscTo(iscA) Then
+            If iscKey(iscA) <= UBound(iscHeld) Then iscHeld(iscKey(iscA)) = -1
+        End If
+        If iscFrameNo = iscFrom(iscA) And iscHitTail < ISC_MAX Then
+            iscHitTail = iscHitTail + 1 : iscHitQ(iscHitTail) = iscKey(iscA)
+        End If
     Next iscA
 End Sub
+
+Function KEY_Down%(iscDCode As Long)
+    Dim iscDA As Integer
+    If iscActive = 0 Then KEY_Down% = _KeyDown(iscDCode) : Exit Function
+    KEY_Down% = 0
+    For iscDA = 1 To iscCount
+        If iscFrame >= iscFrom(iscDA) And iscFrame <= iscTo(iscDA) Then
+            If iscKey(iscDA) = iscDCode Or iscAlt(iscDA) = iscDCode Then KEY_Down% = -1 : Exit Function
+        End If
+    Next iscDA
+End Function
+
+Function KEY_Hit&
+    If iscActive = 0 Then KEY_Hit& = _KeyHit : Exit Function
+    KEY_Hit& = 0
+    If iscHitHead >= iscHitTail Then iscHitHead = 0 : iscHitTail = 0 : Exit Function
+    iscHitHead = iscHitHead + 1
+    KEY_Hit& = iscHitQ(iscHitHead)
+End Function

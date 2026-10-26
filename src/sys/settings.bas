@@ -102,11 +102,11 @@ Sub OPTS_Update ()
     oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration * settingNarrSpeed / 3 : oVols(4) = settingFullscreen
 
     ' ---- input ----
-    oUp  = _KEYDOWN(18432)   ' up arrow
-    oDn  = _KEYDOWN(20480)   ' down arrow
-    oLf  = _KEYDOWN(19200)   ' left arrow
-    oRt  = _KEYDOWN(19712)   ' right arrow
-    oEsc = _KEYDOWN(27)
+    oUp  = KEY_Down%(18432)   ' up arrow
+    oDn  = KEY_Down%(20480)   ' down arrow
+    oLf  = KEY_Down%(19200)   ' left arrow
+    oRt  = KEY_Down%(19712)   ' right arrow
+    oEsc = KEY_Down%(27)
 
     ' navigate: edge-detect on up/down
     If oUp And Not optUpWas Then
@@ -173,18 +173,18 @@ Sub OPTS_Update ()
     End If
 
     Static oEnterWas As Integer
-    Dim oEnter As Integer : oEnter = _KEYDOWN(13) Or _KEYDOWN(32)
+    Dim oEnter As Integer : oEnter = KEY_Down%(13) Or KEY_Down%(32)
     If oEnter And oEnterWas = 0 And optSel = 5 Then
         SETTINGS_Save
         unSavedName    = telemPlayerName
         unFromSettings = -1
-        Do While _KEYHIT <> 0 : Loop  ' drain ENTER from _KEYHIT buffer before username reads it
+        Do While KEY_Hit& <> 0 : Loop  ' drain ENTER from the key-press buffer before username reads it
         GS_USERNAME_Init
         gameState      = GS_USERNAME
     End If
     oEnterWas = oEnter
 
-    Dim oAbout As Integer : oAbout = _KEYDOWN(65) Or _KEYDOWN(97)
+    Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
     If oAbout And Not optAboutWas Then
         ABOUT_Prep : gameState = GS_ABOUT
     End If

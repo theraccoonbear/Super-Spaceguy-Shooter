@@ -170,12 +170,12 @@ DO
     IF cliFrames > 0 AND gameFrame >= cliFrames THEN SYSTEM
     ' --- input ---
     IF iscActive THEN ISC_Apply gameFrame, held() ELSE E3D_InputUpdate held()
-    IF _KEYDOWN(34048) AND NOT fsKeyWas THEN
+    IF KEY_Down%(34048) AND NOT fsKeyWas THEN
         settingFullscreen = 1 - settingFullscreen
         IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
         SETTINGS_Save
     END IF
-    fsKeyWas = _KEYDOWN(34048)
+    fsKeyWas = KEY_Down%(34048)
 
     ' Detect state transitions for speech triggers
     IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS AND prevGameState <> GS_CONTROLS THEN

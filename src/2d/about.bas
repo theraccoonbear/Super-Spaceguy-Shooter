@@ -14,12 +14,26 @@ Dim Shared aboutScroll    As Single
 Dim Shared aboutUpWas     As Integer
 Dim Shared aboutDnWas     As Integer
 Dim Shared aboutEscWas    As Integer
+Dim Shared aboutPalette(0 To 15) As Long
 
 Sub ABOUT_Prep()
     Dim abBlock As String, abPos As Long, abNxt As Long, abLn As String
     Dim abRem As String, abCut As Integer, abVCut As Integer
     Dim abCI As Integer, abCJ As Integer, abCA As Integer, abLast As String
     Dim abHi As Integer, abHMax As Integer
+    Dim abPi As Integer
+
+    ' ~5 ~3 ~2 ~6 are retinted for the About screen only, to the CTUT logo's word
+    ' colours sampled from assets/ctut_game_studios.png (Closer/Than/You/Think)
+    If aboutPalette(7) = 0 Then
+        For abPi = 0 To 15
+            aboutPalette(abPi) = fontPalette(abPi)
+        Next abPi
+        FONT_BuildSheet aboutPalette(5), _RGB(160, 69, 228), _RGB(120, 33, 200)
+        FONT_BuildSheet aboutPalette(3), _RGB(2, 162, 151), _RGB(2, 132, 124)
+        FONT_BuildSheet aboutPalette(2), _RGB(140, 180, 2), _RGB(110, 145, 2)
+        FONT_BuildSheet aboutPalette(6), _RGB(226, 149, 2), _RGB(201, 114, 1)
+    End If
 
     aboutLineCount = 0
 
@@ -95,16 +109,16 @@ Sub ABOUT_Prep()
     End If
 
     aboutScroll = scrH - 40    ' first line enters bottom fade zone immediately
-    aboutUpWas = _KEYDOWN(18432) : aboutDnWas = _KEYDOWN(20480) : aboutEscWas = _KEYDOWN(27)
+    aboutUpWas = KEY_Down%(18432) : aboutDnWas = KEY_Down%(20480) : aboutEscWas = KEY_Down%(27)
 End Sub
 
 Sub ABOUT_Update()
     Dim abI As Integer, abY As Integer
     Dim abUp As Integer, abDn As Integer, abEsc As Integer, abSy As Integer
 
-    abUp  = _KEYDOWN(18432)   ' up arrow
-    abDn  = _KEYDOWN(20480)   ' down arrow
-    abEsc = _KEYDOWN(27)
+    abUp  = KEY_Down%(18432)   ' up arrow
+    abDn  = KEY_Down%(20480)   ' down arrow
+    abEsc = KEY_Down%(27)
 
     ' manual scroll (4 px/frame while held)
     If abUp Then aboutScroll = aboutScroll + 4
@@ -136,7 +150,7 @@ Sub ABOUT_Update()
         abY = Int(aboutScroll + abI * ABOUT_LINE_H)
         If abY >= 30 And abY < scrH - 36 Then
             If Len(aboutLines$(abI)) > 0 Then
-                FONT_PrintCenteredRichAlpha fontPalette(), backBuffer, aboutLines$(abI), abY, scrW, 255
+                FONT_PrintCenteredRichAlpha aboutPalette(), backBuffer, aboutLines$(abI), abY, scrW, 255
             End If
         End If
     Next abI

@@ -117,3 +117,8 @@ Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) _
     + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
 If stFailed > 0 Then System 1 Else System 0
+
+' stub: debug.bas reads the overlay key through inputscript.bas, which this test doesn't include
+Function KEY_Down% (dbgStubCode As Long)
+    KEY_Down% = 0
+End Function

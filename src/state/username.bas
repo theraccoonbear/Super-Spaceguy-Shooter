@@ -74,7 +74,7 @@ Sub GS_USERNAME_Update ()
     _PUTIMAGE , backBuffer, 0
 
     ' --- key handling ---
-    Dim unKey As Long    : unKey      = _KEYHIT
+    Dim unKey As Long    : unKey      = KEY_Hit&
     Dim unMoveStep As Integer         ' reused for token-aware stepping
     Dim unMoveH    As Integer         ' reused for hex-digit check
 

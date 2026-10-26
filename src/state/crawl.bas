@@ -118,7 +118,7 @@ Sub GS_CRAWL_Update ()
         END IF
     END IF
     spaceWas = held(E3D_KEY_SPACE)
-    IF _KEYDOWN(96) THEN
+    IF KEY_Down%(96) THEN
         IF crawlBtWas = 0 THEN crawlSpkOverlay = 1 - crawlSpkOverlay
         crawlBtWas = -1
     ELSE
