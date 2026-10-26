@@ -15,7 +15,7 @@ Function TELEM_NewUUID$
     Dim uuidByte As Integer
     Dim uuidI As Integer
     For uuidI = 1 To 16
-        uuidByte = Int(Rnd * 256)
+        uuidByte = Int(RNG!(RNG_UNIQUE) * 256)
         If uuidI = 7 Then uuidByte = (uuidByte And &H0F) Or &H40  ' version 4
         If uuidI = 9 Then uuidByte = (uuidByte And &H3F) Or &H80  ' variant 10xx
         uuidStr = uuidStr + Right$("0" + Hex$(uuidByte), 2)

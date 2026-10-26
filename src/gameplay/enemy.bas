@@ -47,9 +47,9 @@ Sub ENEMY_Update
             ' strafe burst
             enemies(enI).strafeCool = enemies(enI).strafeCool - 1
             If enemies(enI).strafeCool <= 0 And diffScale > 0.05 Then
-                enemies(enI).vy = (RND - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
-                enemies(enI).vz = (RND - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
-                enemies(enI).strafeCool = ENEMY_STRAFE_COOL + Int(RND * 60)
+                enemies(enI).vy = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).vz = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).strafeCool = ENEMY_STRAFE_COOL + Int(RNG!(RNG_GAME) * 60)
             End If
 
             ' attitude: bank/pitch from frame-to-frame lateral delta
@@ -99,7 +99,7 @@ Sub ENEMY_Update
                         End If
                     Next enEJ
                 End If
-                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RND * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4)
+                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4)
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped

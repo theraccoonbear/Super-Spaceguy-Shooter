@@ -126,6 +126,7 @@ tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
 tools/buildqb tests/spore_test.bas             && builds/spore_test
 tools/buildqb tests/attack_test.bas            && builds/attack_test
 tools/buildqb tests/inputscript_test.bas       && builds/inputscript_test
+tools/buildqb tests/rng_test.bas               && builds/rng_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
 

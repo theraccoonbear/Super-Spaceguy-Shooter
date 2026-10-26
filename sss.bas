@@ -47,6 +47,7 @@ Dim Shared DB_URL As String
 Dim Shared DB_KEY As String
 
 '$INCLUDE:'src/sys/version.bas'
+'$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/sys/dims.bas'
 '$INCLUDE:'src/game.bi'

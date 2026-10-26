@@ -44,6 +44,7 @@ tests/spk_timing_test
 tests/spore_test
 tests/attack_test
 tests/inputscript_test
+tests/rng_test
 tools/telem_batch_test
 shot-*.png
 boss-shots.log

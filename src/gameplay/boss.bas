@@ -55,7 +55,7 @@ Sub BOSS_Update
             boss.targetZ     = player.pz
             boss.state       = 0
             boss.chargeTimer = BOSS_CHARGE_CD1
-            boss.arcAngle    = Rnd * 6.28318
+            boss.arcAngle    = RNG!(RNG_GAME) * 6.28318
             If bossMusCnt > 0 And Len(bossMusList$(0)) > 0 Then MUS_SetCue bossMusList$(0)
             telemBossPhaseLog = 0
             TELEM_BossReached
@@ -122,13 +122,13 @@ Sub BOSS_Update
         End Select
         IMP_AimLead boss.px, boss.py, boss.pz, player.px, player.py, player.pz, playerVY + devPullY, playerVZ + devPullZ, bssSpd, bssDX, bssDY, bssDZ
 
-        bssAtk = ATK_Pick%(bossAttackList$(), bossAttackCnt, Rnd)
+        bssAtk = ATK_Pick%(bossAttackList$(), bossAttackCnt, RNG!(RNG_GAME))
         If DEV_Busy% Then bssAtk = ATK_LASER  ' devour keeps firing lasers, nothing else
         EB_TuneLog "[boss-volley] phase=" + LTrim$(Str$(boss.phase)) + " atk=" + ATK_Name$(bssAtk)
         ATK_Fired bssAtk
         If bssAtk <> ATK_LASER Then
             If bssAtk = ATK_SPORE Then BOSS_SporeVolley
-            If bssAtk = ATK_CUT Then CUT_Start boss.phase, (Rnd < 0.5), player.px, player.py, player.pz, playerVY, playerVZ
+            If bssAtk = ATK_CUT Then CUT_Start boss.phase, (RNG!(RNG_GAME) < 0.5), player.px, player.py, player.pz, playerVY, playerVZ
             If bssAtk = ATK_DEVOUR Then DEV_Start boss.phase
             Select Case boss.phase
             Case 1 : boss.fireTimer = BOSS_FIRE1
@@ -230,14 +230,14 @@ Sub BOSS_Update
                     For bssP = 1 To FX_MAX_PARTICLES
                         If fxPartActive(bssP) = 0 And bssPK < BOSS_DEATH_PARTS Then
                             fxPartActive(bssP) = -1
-                            fxPartPX(bssP) = boss.px + (RND - 0.5) * 5
-                            fxPartPY(bssP) = boss.py + (RND - 0.5) * 5
-                            fxPartPZ(bssP) = boss.pz + (RND - 0.5) * 5
-                            fxPartVX(bssP) = (RND - 0.5) * 0.40
-                            fxPartVY(bssP) = (RND - 0.5) * 0.40
-                            fxPartVZ(bssP) = (RND - 0.5) * 0.40
-                            fxPartLife(bssP) = 35 + Int(RND * 25)
-                            fxPartClr(bssP)  = _RGB(255, Int(RND * 140) + 60, 0)
+                            fxPartPX(bssP) = boss.px + (RNG!(RNG_FX) - 0.5) * 5
+                            fxPartPY(bssP) = boss.py + (RNG!(RNG_FX) - 0.5) * 5
+                            fxPartPZ(bssP) = boss.pz + (RNG!(RNG_FX) - 0.5) * 5
+                            fxPartVX(bssP) = (RNG!(RNG_FX) - 0.5) * 0.40
+                            fxPartVY(bssP) = (RNG!(RNG_FX) - 0.5) * 0.40
+                            fxPartVZ(bssP) = (RNG!(RNG_FX) - 0.5) * 0.40
+                            fxPartLife(bssP) = 35 + Int(RNG!(RNG_FX) * 25)
+                            fxPartClr(bssP)  = _RGB(255, Int(RNG!(RNG_FX) * 140) + 60, 0)
                             bssPK = bssPK + 1
                         End If
                     Next bssP
@@ -253,7 +253,7 @@ End Sub
 Sub BOSS_SporeVolley
     Dim bsvN As Integer, bsvSide As Single
     bsvN = boss.phase
-    If Rnd < 0.5 Then bsvSide = -1 Else bsvSide = 1
+    If RNG!(RNG_GAME) < 0.5 Then bsvSide = -1 Else bsvSide = 1
     SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py, player.pz
     If bsvN >= 2 Then SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py + 3.2 * bsvSide, player.pz
     If bsvN >= 3 Then SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py, player.pz + 3.2 * bsvSide

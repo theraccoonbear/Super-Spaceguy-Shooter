@@ -1,6 +1,5 @@
 '$INCLUDE:'sys/inputscript.bas'
 '$INCLUDE:'sys/cli.bas'
-'$INCLUDE:'audio/noise.bas'
 '$INCLUDE:'audio/speech.bas'
 '$INCLUDE:'2d/effects.bas'
 '$INCLUDE:'audio/snd.bas'

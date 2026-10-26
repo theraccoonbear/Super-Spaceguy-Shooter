@@ -86,7 +86,6 @@ Sub GAME_InitMeshes
     fTypeToMesh(3) = MESH_ENEMY_VCOL
     fTypeToMesh(4) = MESH_ENEMY_PINCER
     fTypeToMesh(5) = MESH_ENEMY_VWEDGE
-    IF cliSeedSet THEN RANDOMIZE USING cliSeed ELSE RANDOMIZE TIMER
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
 End Sub
 

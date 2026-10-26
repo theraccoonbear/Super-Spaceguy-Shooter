@@ -51,6 +51,8 @@ Sub CLI_Parse()
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--seed needs a whole number, got '" + cliVal + "'")
         cliSeed = Val(cliVal) : cliSeedSet = -1
     End If
+    ' seed every random stream before anything draws (sound tables, the player id)
+    If cliSeedSet Then RNG_Seed cliSeed Else RNG_Seed RNG_ClockSeed~&
 
     cliVal = CLI_Value$(cliLine, "--screenshot-at ")
     Do While cliVal <> ""

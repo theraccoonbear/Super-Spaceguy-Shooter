@@ -320,14 +320,14 @@ End Sub
 Sub BOSS_SetEvasion(phase As Integer)
     ' dart relative to player — keeps boss inside firing cone (15deg pitch / 7deg yaw at BOSS_COMBAT_DIST=45)
     If boss.py >= player.py Then
-        boss.targetY = player.py - (3 + Rnd * 5)
+        boss.targetY = player.py - (3 + RNG!(RNG_GAME) * 5)
     Else
-        boss.targetY = player.py + (3 + Rnd * 5)
+        boss.targetY = player.py + (3 + RNG!(RNG_GAME) * 5)
     End If
     If boss.pz >= player.pz Then
-        boss.targetZ = player.pz - (2 + Rnd * 3)
+        boss.targetZ = player.pz - (2 + RNG!(RNG_GAME) * 3)
     Else
-        boss.targetZ = player.pz + (2 + Rnd * 3)
+        boss.targetZ = player.pz + (2 + RNG!(RNG_GAME) * 3)
     End If
     Select Case phase
         Case 1 : boss.moveTimer = 70

@@ -807,7 +807,7 @@ SUB SPK_Init()
             s = buzz * 0.50
         CASE SPK_DH, SPK_V, SPK_Z, SPK_ZH
             ' Voiced fricatives: formant buzz + HP-filtered noise component
-            nx = AUD_Noise! * 2.0 - 1.0
+            nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
             hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
             spkHpX1 = nx : spkHpY1 = hy
             s = buzz * 0.18 + hy * 0.10
@@ -820,7 +820,7 @@ SUB SPK_Init()
             END IF
         CASE SPK_F, SPK_S, SPK_SH, SPK_TH, SPK_HH
             ' HP-filtered white noise; cutoff set per-phoneme in SPK_BuildWave
-            nx = AUD_Noise! * 2.0 - 1.0
+            nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
             hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
             spkHpX1 = nx : spkHpY1 = hy
             s = hy * 0.20
@@ -834,7 +834,7 @@ SUB SPK_Init()
             IF t < 0.55 THEN
                 s = 0.0
             ELSE
-                nx = AUD_Noise! * 2.0 - 1.0
+                nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
                 hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
                 spkHpX1 = nx : spkHpY1 = hy
                 s = hy * 0.30
@@ -842,7 +842,7 @@ SUB SPK_Init()
         CASE SPK_CH, SPK_JH
             t = spkSamplePos / dur
             IF t < 0.40 THEN s = 0.0 _
-        ELSE s = (AUD_Noise! * 2.0 - 1.0) * 0.20
+        ELSE s = (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.20
         CASE ELSE
             s = 0.0
         END SELECT

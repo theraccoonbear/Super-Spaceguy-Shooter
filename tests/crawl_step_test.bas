@@ -90,7 +90,7 @@ Sub BELT_Init(w As Single, h As Single) : End Sub
 Sub TELEM_SessionEnd()              : End Sub
 
 
-'$INCLUDE:'../src/audio/noise.bas'
+'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 '$INCLUDE:'../src/2d/crawllayout.bas'

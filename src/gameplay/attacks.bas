@@ -4,7 +4,7 @@
 ' and picking it again during that time fires lasers instead. No rendering or game state
 ' here, so tests can drive it:
 '
-'   code = ATK_Pick%(pool$(), poolCnt, r)   r in [0, 1), e.g. Rnd
+'   code = ATK_Pick%(pool$(), poolCnt, r)   r in [0, 1), e.g. RNG!(RNG_GAME)
 '   ATK_Fired code                          start that special's cooldown
 '   ATK_Tick                                once per frame
 '   ATK_Clear                               no cooldowns (boss spawn / reset)
