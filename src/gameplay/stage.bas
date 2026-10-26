@@ -99,6 +99,8 @@ Sub STAGE_Update
             For stI = 1 To MAX_ASTEROIDS : asteroids(stI).active = 0 : Next stI
             For stI = 1 To MAX_EBULLETS  : ebullets(stI).active = 0  : Next stI
             SPORE_Clear
+            CUT_Clear
+            ATK_Clear
             FX_Clear
             spawnTimer = 0
             boss.warnTimer = 0 : boss.active = 0 : boss.hp = 0 : boss.moveTimer = 0 : boss.state = 0

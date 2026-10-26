@@ -150,6 +150,7 @@ run_test spk_timing_test
 run_test crawl_plan_test
 run_test crawl_step_test
 run_test spore_test
+run_test attack_test
 run_http_test http_queue_test
 
 echo "==> All tests passed"

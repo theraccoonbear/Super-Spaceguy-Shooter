@@ -102,17 +102,3 @@ End Function
 Function SPORE_Hurts%(sprH As Integer)
     SPORE_Hurts% = (sporeAge(sprH) > SPORE_DRIFT_FRAMES And sporeAge(sprH) < SPORE_DRIFT_FRAMES + SPORE_LINGER - SPORE_FADE)
 End Function
-
-' Clouds per volley in boss phase svPhase (1-based) for a boss whose attack= list is
-' svList(0..svCnt-1): 0 unless that phase is "A", else the number of "A" phases so far
-' (boss 1 with A,A,A: 1, 2, 3; a boss with A only in phase 1: 1).
-Function SPORE_VolleySize%(svList() As String, svCnt As Integer, svPhase As Integer)
-    Dim svI As Integer, svN As Integer
-    SPORE_VolleySize% = 0
-    If svPhase < 1 Or svPhase > svCnt Then Exit Function
-    If svList(svPhase - 1) <> "A" Then Exit Function
-    For svI = 0 To svPhase - 1
-        If svList(svI) = "A" Then svN = svN + 1
-    Next svI
-    SPORE_VolleySize% = svN
-End Function

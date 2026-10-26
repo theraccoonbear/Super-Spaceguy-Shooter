@@ -5,7 +5,6 @@
 '   - drift from the boss to the target, then lingering, then expiry
 '   - damage only after arrival, only inside the radius and at the cloud's depth,
 '     once per SPORE_TICK per cloud, none during the fade-out
-'   - volley size per boss phase from the attack= list (A,A,A / A,B,B / A,B,C)
 '
 ' Build: ./tools/buildqb tests/spore_test.bas
 ' Run:   ./tests/spore_test    (exit 0 = pass, exit 1 = any failure)
@@ -110,17 +109,6 @@ SPORE_Spawn 20, 0, 0, 0, 0, 0
 SPORE_Spawn 20, 0, 0, 0, 0.5, 0
 stI = ST_Run%(SPORE_DRIFT_FRAMES, 0, 50, 50)
 ST_Assert SPORE_Update%(0, 0.25, 0) = SPORE_DMG * 2, "overlapping clouds each tick"
-
-Print "--- volley size per boss phase (attack= list) ---"
-Dim stL(0 To 7) As String, stP As Integer, stRow As String
-stL(0) = "A" : stL(1) = "A" : stL(2) = "A"
-ST_Assert SPORE_VolleySize%(stL(), 3, 1) = 1 And SPORE_VolleySize%(stL(), 3, 2) = 2 And SPORE_VolleySize%(stL(), 3, 3) = 3, "boss 1 (A,A,A): 1, 2, 3 clouds"
-stL(0) = "A" : stL(1) = "B" : stL(2) = "B"
-ST_Assert SPORE_VolleySize%(stL(), 3, 1) = 1 And SPORE_VolleySize%(stL(), 3, 2) = 0 And SPORE_VolleySize%(stL(), 3, 3) = 0, "boss 2 (A,B,B): 1, 0, 0 clouds"
-stL(0) = "A" : stL(1) = "B" : stL(2) = "C"
-ST_Assert SPORE_VolleySize%(stL(), 3, 1) = 1 And SPORE_VolleySize%(stL(), 3, 2) = 0 And SPORE_VolleySize%(stL(), 3, 3) = 0, "boss 3 (A,B,C): 1, 0, 0 clouds"
-ST_Assert SPORE_VolleySize%(stL(), 0, 1) = 0, "no attack= list: no clouds"
-ST_Assert SPORE_VolleySize%(stL(), 3, 0) = 0 And SPORE_VolleySize%(stL(), 3, 4) = 0, "out-of-range phase: no clouds"
 
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="

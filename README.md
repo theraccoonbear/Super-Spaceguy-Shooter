@@ -96,6 +96,7 @@ tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
 tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
 tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
 tools/buildqb tests/spore_test.bas             && builds/spore_test
+tools/buildqb tests/attack_test.bas            && builds/attack_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
 

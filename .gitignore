@@ -42,6 +42,7 @@ tests/mnv_conformance_test
 tests/mnv_load_test
 tests/spk_timing_test
 tests/spore_test
+tests/attack_test
 tools/telem_batch_test
 
 # Local playtest telemetry runs -- not source

@@ -25,6 +25,7 @@ Sub BOSS_Update
     Dim bssTgtRx As Single, bssTgtRy As Single, bssTgtRz As Single
     Dim bssOldPhase As Integer
     Dim bssMusCue As String, bssSpeechKey As String
+    Dim bssAtk As Integer
 
     ' combat phase complete: hold off one second so the kill explosion plays out, then advance
     If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore And planetTransitionTimer = 0 Then
@@ -106,8 +107,10 @@ Sub BOSS_Update
     boss.ry = boss.ry + (bssTgtRy - boss.ry) * BOSS_ATTITUDE_LERP
     boss.rz = boss.rz + (bssTgtRz - boss.rz) * BOSS_ATTITUDE_LERP
 
-    ' fire patterns
-    boss.fireTimer = boss.fireTimer - 0.025
+    ' fire patterns: one attack per volley from the boss's attack= pool (attacks.bas);
+    ' a running cut chain holds the next volley so attacks never overlap
+    ATK_Tick
+    If CUT_Busy% = 0 Then boss.fireTimer = boss.fireTimer - 0.025
     If boss.fireTimer <= 0 Then
         bssDX = player.px - boss.px
         bssDY = player.py - boss.py
@@ -115,64 +118,76 @@ Sub BOSS_Update
         bssDMag = SQR(bssDX * bssDX + bssDY * bssDY + bssDZ * bssDZ)
         If bssDMag > 0.1 Then bssDX = bssDX/bssDMag : bssDY = bssDY/bssDMag : bssDZ = bssDZ/bssDMag
 
-        Select Case boss.phase
-        Case 1  ' 3-shot Y fan
-            bssShots = 0
-            For bssEJ = 1 To MAX_EBULLETS
-                If ebullets(bssEJ).active = 0 And bssShots < 3 Then
-                    ebullets(bssEJ).active  = -1
-                    ebullets(bssEJ).meshIdx = MESH_BOSS
-                    ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
-                    ebullets(bssEJ).vx = bssDX * 0.26
-                    ebullets(bssEJ).vy = bssDY * 0.26 + (bssShots - 1) * 0.07
-                    ebullets(bssEJ).vz = bssDZ * 0.26
-                    ebullets(bssEJ).scl = 1.0
-                    bssShots = bssShots + 1
-                End If
-            Next bssEJ
-            boss.fireTimer = BOSS_FIRE1
+        bssAtk = ATK_Pick%(bossAttackList$(), bossAttackCnt, Rnd)
+        ATK_Fired bssAtk
+        If bssAtk <> ATK_LASER Then
+            If bssAtk = ATK_SPORE Then BOSS_SporeVolley
+            If bssAtk = ATK_CUT Then CUT_Start boss.phase, (Rnd < 0.5), player.px, player.py, player.pz
+            Select Case boss.phase
+            Case 1 : boss.fireTimer = BOSS_FIRE1
+            Case 2 : boss.fireTimer = BOSS_FIRE2
+            Case Else : boss.fireTimer = BOSS_FIRE3
+            End Select
             BOSS_SetEvasion boss.phase
-
-        Case 2  ' 5-shot aimed cross
-            bssShots = 0
-            For bssEJ = 1 To MAX_EBULLETS
-                If ebullets(bssEJ).active = 0 And bssShots < 5 Then
-                    ebullets(bssEJ).active  = -1
-                    ebullets(bssEJ).meshIdx = MESH_BOSS
-                    ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
-                    ebullets(bssEJ).vx = bssDX * 0.30
-                    Select Case bssShots
-                    Case 0 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30
-                    Case 1 : ebullets(bssEJ).vy = bssDY * 0.30 - 0.11 : ebullets(bssEJ).vz = bssDZ * 0.30
-                    Case 2 : ebullets(bssEJ).vy = bssDY * 0.30 + 0.11 : ebullets(bssEJ).vz = bssDZ * 0.30
-                    Case 3 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30 - 0.11
-                    Case 4 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30 + 0.11
-                    End Select
-                    ebullets(bssEJ).scl = 1.0
-                    bssShots = bssShots + 1
-                End If
-            Next bssEJ
-            boss.fireTimer = BOSS_FIRE2
-            BOSS_SetEvasion boss.phase
-
-        Case 3  ' 7-shot diagonal fan, fast
-            bssShots = 0
-            For bssEJ = 1 To MAX_EBULLETS
-                If ebullets(bssEJ).active = 0 And bssShots < 7 Then
-                    ebullets(bssEJ).active  = -1
-                    ebullets(bssEJ).meshIdx = MESH_BOSS
-                    ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
-                    ebullets(bssEJ).vx = bssDX * 0.35
-                    ebullets(bssEJ).vy = bssDY * 0.35 + (bssShots - 3) * 0.07
-                    ebullets(bssEJ).vz = bssDZ * 0.35 + (bssShots - 3) * 0.07
-                    ebullets(bssEJ).scl = 1.0
-                    bssShots = bssShots + 1
-                End If
-            Next bssEJ
-            boss.fireTimer = BOSS_FIRE3
-            BOSS_SetEvasion boss.phase
-        End Select
-        BOSS_SporeVolley
+        Else
+            Select Case boss.phase
+            Case 1  ' 3-shot Y fan
+                bssShots = 0
+                For bssEJ = 1 To MAX_EBULLETS
+                    If ebullets(bssEJ).active = 0 And bssShots < 3 Then
+                        ebullets(bssEJ).active  = -1
+                        ebullets(bssEJ).meshIdx = MESH_BOSS
+                        ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
+                        ebullets(bssEJ).vx = bssDX * 0.26
+                        ebullets(bssEJ).vy = bssDY * 0.26 + (bssShots - 1) * 0.07
+                        ebullets(bssEJ).vz = bssDZ * 0.26
+                        ebullets(bssEJ).scl = 1.0
+                        bssShots = bssShots + 1
+                    End If
+                Next bssEJ
+                boss.fireTimer = BOSS_FIRE1
+                BOSS_SetEvasion boss.phase
+    
+            Case 2  ' 5-shot aimed cross
+                bssShots = 0
+                For bssEJ = 1 To MAX_EBULLETS
+                    If ebullets(bssEJ).active = 0 And bssShots < 5 Then
+                        ebullets(bssEJ).active  = -1
+                        ebullets(bssEJ).meshIdx = MESH_BOSS
+                        ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
+                        ebullets(bssEJ).vx = bssDX * 0.30
+                        Select Case bssShots
+                        Case 0 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30
+                        Case 1 : ebullets(bssEJ).vy = bssDY * 0.30 - 0.11 : ebullets(bssEJ).vz = bssDZ * 0.30
+                        Case 2 : ebullets(bssEJ).vy = bssDY * 0.30 + 0.11 : ebullets(bssEJ).vz = bssDZ * 0.30
+                        Case 3 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30 - 0.11
+                        Case 4 : ebullets(bssEJ).vy = bssDY * 0.30        : ebullets(bssEJ).vz = bssDZ * 0.30 + 0.11
+                        End Select
+                        ebullets(bssEJ).scl = 1.0
+                        bssShots = bssShots + 1
+                    End If
+                Next bssEJ
+                boss.fireTimer = BOSS_FIRE2
+                BOSS_SetEvasion boss.phase
+    
+            Case 3  ' 7-shot diagonal fan, fast
+                bssShots = 0
+                For bssEJ = 1 To MAX_EBULLETS
+                    If ebullets(bssEJ).active = 0 And bssShots < 7 Then
+                        ebullets(bssEJ).active  = -1
+                        ebullets(bssEJ).meshIdx = MESH_BOSS
+                        ebullets(bssEJ).px = boss.px : ebullets(bssEJ).py = boss.py : ebullets(bssEJ).pz = boss.pz
+                        ebullets(bssEJ).vx = bssDX * 0.35
+                        ebullets(bssEJ).vy = bssDY * 0.35 + (bssShots - 3) * 0.07
+                        ebullets(bssEJ).vz = bssDZ * 0.35 + (bssShots - 3) * 0.07
+                        ebullets(bssEJ).scl = 1.0
+                        bssShots = bssShots + 1
+                    End If
+                Next bssEJ
+                boss.fireTimer = BOSS_FIRE3
+                BOSS_SetEvasion boss.phase
+            End Select
+        End If
     End If
 
     ' player vs boss body collision
@@ -199,7 +214,8 @@ Sub BOSS_Update
                     TELEM_BossDefeated
                     boss.active  = 0
                     planetTransitionTimer = 75
-                    SPORE_Clear  ' no lingering clouds once the boss is dead
+                    SPORE_Clear  ' no lingering clouds or cuts once the boss is dead
+                    CUT_Clear
                     score = score + 2000
                     scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
                     bssPK = 0
@@ -224,12 +240,11 @@ Sub BOSS_Update
     Next bssJ
 End Sub
 
-' Attack A, spore bloom (#26): in an "A" phase each volley also launches spore clouds at
-' where the player is now; how many comes from SPORE_VolleySize% (spores.bas).
+' Attack A, spore bloom (#26): launches spore clouds at where the player is now, one per
+' boss phase reached (1, 2, 3).
 Sub BOSS_SporeVolley
     Dim bsvN As Integer, bsvSide As Single
-    bsvN = SPORE_VolleySize%(bossAttackList$(), bossAttackCnt, boss.phase)
-    If bsvN = 0 Then Exit Sub
+    bsvN = boss.phase
     If Rnd < 0.5 Then bsvSide = -1 Else bsvSide = 1
     SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py, player.pz
     If bsvN >= 2 Then SPORE_Spawn boss.px, boss.py, boss.pz, player.px, player.py + 3.2 * bsvSide, player.pz

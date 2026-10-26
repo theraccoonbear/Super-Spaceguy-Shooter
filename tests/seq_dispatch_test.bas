@@ -22,7 +22,7 @@
 '  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
 '  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
 '  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
-'  22.  PLAY boss attack=: bossAttackList$ per boss (stacked attacks)
+'  22.  PLAY boss attack=: bossAttackList$ per boss (cumulative attack pool)
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -563,21 +563,21 @@ ST_Assert bossManeuverList$(1) = "boss-v-flight",  "18.08  level6 phase2=boss-v-
 ST_Assert bossManeuverList$(2) = "attack-pass",    "18.09  level6 phase3=attack-pass"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
-Print "--- 19. boss attack= parsed into bossAttackList$ (stacked attacks, #26) ---"
+Print "--- 19. boss attack= parsed into bossAttackList$ (cumulative attack pool, #26) ---"
 ST_Reset
 ST_GoTo "boss3"
 SEQ_Advance
-ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "A" And bossAttackList$(1) = "A" And bossAttackList$(2) = "A", "19.01  level3 boss attack=A,A,A"
+ST_Assert bossAttackCnt = 2 And bossAttackList$(0) = "LASER" And bossAttackList$(1) = "SPORE", "19.01  level3 boss attack=laser,spore"
 ST_Reset
 levelNum = 4
 ST_GoTo "boss5"
 SEQ_Advance
-ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "A" And bossAttackList$(1) = "B" And bossAttackList$(2) = "B", "19.02  level5 boss attack=A,B,B"
+ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "LASER" And bossAttackList$(1) = "SPORE" And bossAttackList$(2) = "CUT", "19.02  level5 boss attack=laser,spore,cut"
 ST_Reset
 levelNum = 5
 ST_GoTo "boss6"
 SEQ_Advance
-ST_Assert bossAttackCnt = 3 And bossAttackList$(0) = "A" And bossAttackList$(1) = "B" And bossAttackList$(2) = "C", "19.03  level6 boss attack=A,B,C"
+ST_Assert bossAttackCnt = 4 And bossAttackList$(0) = "LASER" And bossAttackList$(1) = "SPORE" And bossAttackList$(2) = "CUT" And bossAttackList$(3) = "DEVOUR", "19.03  level6 boss attack=laser,spore,cut,devour"
 ST_Assert bossMusCnt = 3 And bossMusList$(2) = "boss3", "19.04  shared CSV parser still fills mus= (boss3 last)"
 ST_Assert bossSpeechCnt = 3 And bossSpeechList$(0) = "" And bossSpeechList$(1) = "speech_boss_phase2", "19.05  shared CSV parser keeps the empty first speech= entry"
 ' ────────────────────────────────────────────────────────────────────────────
