@@ -75,6 +75,8 @@ Dim Shared bossSpeechList$(0 To 7)
 Dim Shared bossSpeechCnt     As Integer
 Dim Shared bossManeuverList$(0 To 7)
 Dim Shared bossManeuverCnt   As Integer
+Dim Shared bossAttackList$(0 To 7)
+Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim introTimer As Integer
@@ -88,6 +90,7 @@ Sub BELT_Init(w As Single, h As Single) : End Sub
 Sub TELEM_SessionEnd()              : End Sub
 
 
+'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 '$INCLUDE:'../src/2d/crawllayout.bas'

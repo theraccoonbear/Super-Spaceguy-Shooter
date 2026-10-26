@@ -84,7 +84,6 @@ Sub SETTINGS_Load ()
         End If
     End If
     If Len(telemPlayerID) < 32 Then
-        RANDOMIZE TIMER
         telemPlayerID = TELEM_NewUUID$
         SETTINGS_Save
     End If

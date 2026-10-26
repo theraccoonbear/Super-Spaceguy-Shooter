@@ -423,7 +423,7 @@ Sub MUS_Fill(musFdoSfx As Integer)
             End If
             If blpEnv < 0 Then blpEnv = 0
             If blpPos < sndBlipPlosLen Then
-                musFnarBlip = (Rnd * 2.0 - 1.0) * blpEnv * 0.22
+                musFnarBlip = (RNG!(RNG_AUDIO) * 2.0 - 1.0) * blpEnv * 0.22
             Else
                 sndBlipPhase = sndBlipPhase + 6.2832 * sndBlipFreq / SAMPLE_RATE
                 If sndBlipPhase > 6.2832 Then sndBlipPhase = sndBlipPhase - 6.2832

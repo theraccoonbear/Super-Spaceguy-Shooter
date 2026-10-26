@@ -60,7 +60,7 @@ Sub SND_Init()
     For sndK = 0 To SND_BOOM_LEN - 1
         sndF    = 300.0 - 260.0 * sndK / SND_BOOM_LEN
         sndFade = (1.0 - sndK / SND_BOOM_LEN) ^ 2
-        sndBoom(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.5 + (Rnd * 2.0 - 1.0) * 0.3) * sndFade
+        sndBoom(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.5 + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.3) * sndFade
     Next sndK
     For sndK = 0 To SND_HIT_LEN - 1
         sndFade = (1.0 - sndK / SND_HIT_LEN) ^ 3
@@ -82,7 +82,7 @@ Sub SND_Init()
             sndFade = Exp(-sndGenPX * 3.5)
         End If
         sndF = 400.0 - 240.0 * sndGenT
-        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.42
+        sndWhoosh(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.82) * sndFade * 0.42
     Next sndK
     ' medium asteroid: fuller mid-range Doppler drop 220→80 Hz
     For sndK = 0 To SND_WHOOSH_LEN - 1
@@ -95,7 +95,7 @@ Sub SND_Init()
             sndFade = Exp(-sndGenPX * 3.5)
         End If
         sndF = 220.0 - 140.0 * sndGenT
-        sndWhooshMd(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (Rnd * 2.0 - 1.0) * 0.82) * sndFade * 0.44
+        sndWhooshMd(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.18 + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.82) * sndFade * 0.44
     Next sndK
     ' large asteroid: deep bass Doppler drop 110→35 Hz, slower decay, more sustain
     For sndK = 0 To SND_WHOOSH_LEN - 1
@@ -108,7 +108,7 @@ Sub SND_Init()
             sndFade = Exp(-sndGenPX * 2.5)
         End If
         sndF = 110.0 - 75.0 * sndGenT
-        sndWhooshLg(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.25 + (Rnd * 2.0 - 1.0) * 0.75) * sndFade * 0.50
+        sndWhooshLg(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) * 0.25 + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.75) * sndFade * 0.50
     Next sndK
 
     ' kick drum: exponential frequency sweep 160->45 Hz over 250ms
@@ -127,7 +127,7 @@ Sub SND_Init()
     For sndK = 0 To SND_SNARE_LEN - 1
         sndGenT  = sndK / SND_SNARE_LEN
         sndFade  = (1.0 - sndGenT) ^ 2
-        sndGenNz = Rnd * 2.0 - 1.0
+        sndGenNz = RNG!(RNG_AUDIO) * 2.0 - 1.0
         sndGenHP = sndGenNz - sndGenPX + 0.65 * sndGenHP
         sndGenPX = sndGenNz
         sndGenPh = sndGenPh + 6.2832 * 180.0 / SAMPLE_RATE
@@ -140,7 +140,7 @@ Sub SND_Init()
     For sndK = 0 To SND_HIHAT_LEN - 1
         sndGenT  = sndK / SND_HIHAT_LEN
         sndFade  = (1.0 - sndGenT) ^ 3
-        sndGenNz = Rnd * 2.0 - 1.0
+        sndGenNz = RNG!(RNG_AUDIO) * 2.0 - 1.0
         sndGenHP = sndGenNz - sndGenPX + 0.85 * sndGenHP
         sndGenPX = sndGenNz
         sndHihat(sndK) = sndGenHP * sndFade * 0.055
@@ -161,7 +161,7 @@ Sub SND_Init()
             sndFade = (1.0 - sndGenPX) ^ 0.5
             If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
             sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
-            sndDeath(sndK) = (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.70
+            sndDeath(sndK) = (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.70
         End If
 
         ' ka 2: t=0.195→0.355 (145-264ms), localT 0→5241 samples
@@ -172,7 +172,7 @@ Sub SND_Init()
             sndFade = (1.0 - sndGenPX) ^ 0.5
             If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
             sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
-            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.85
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 0.85
         End If
 
         ' ka 3: t=0.390→0.550 (290-408ms), localT 0→5241 samples
@@ -183,7 +183,7 @@ Sub SND_Init()
             sndFade = (1.0 - sndGenPX) ^ 0.5
             If sndGenPX < 0.04 Then sndFade = sndFade * (sndGenPX / 0.04)
             sndGenNz = sndGenPX / 0.10 : If sndGenNz > 1.0 Then sndGenNz = 1.0
-            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (Rnd * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 1.00
+            sndDeath(sndK) = sndDeath(sndK) + (Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * (0.30 + 0.45 * sndGenNz) + (RNG!(RNG_AUDIO) * 2.0 - 1.0) * (0.70 - 0.45 * sndGenNz)) * sndFade * 1.00
         End If
 
         ' BOOM: t=0.337→1.0 (250-742ms = 492ms), localT 0→21634 samples; 180→40 Hz
@@ -196,7 +196,7 @@ Sub SND_Init()
             sndFade = Exp(-sndGenPX * 0.7)
             If sndGenPX < 0.02 Then sndFade = sndFade * (sndGenPX / 0.02)
             If sndGenPX > 0.90 Then sndFade = sndFade * (1.0 - sndGenPX) / 0.10
-            sndDeath(sndK) = sndDeath(sndK) + ((Rnd * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.35) * sndFade * 1.0
+            sndDeath(sndK) = sndDeath(sndK) + ((RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.65 + Sin(6.2832 * sndF * sndDLK / SAMPLE_RATE) * 0.35) * sndFade * 1.0
         End If
 
         If sndDeath(sndK) >  1.0 Then sndDeath(sndK) =  1.0
@@ -238,8 +238,8 @@ End Sub
 Sub SND_Blip(blipFreq As Single)
     sndBlipFreq    = blipFreq
     sndBlipPhase   = 0
-    sndBlipLen     = 1323 + INT(RND * 2205)  ' 30–80ms
+    sndBlipLen     = 1323 + INT(RNG!(RNG_AUDIO) * 2205)  ' 30–80ms
     sndBlipPlosLen = 0
-    IF RND > 0.45 THEN sndBlipPlosLen = 441 + INT(RND * 441)  ' ~55% chance of 10–20ms noise burst
+    IF RNG!(RNG_AUDIO) > 0.45 THEN sndBlipPlosLen = 441 + INT(RNG!(RNG_AUDIO) * 441)  ' ~55% chance of 10–20ms noise burst
     sndBlipTimer   = sndBlipLen
 End Sub

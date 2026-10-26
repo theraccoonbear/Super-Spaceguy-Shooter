@@ -288,18 +288,26 @@ DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
+DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
+DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
+DIM SHARED cliSeedSet      AS INTEGER
+DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
+DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
+DIM SHARED cliShotN        AS INTEGER
 DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)
 DIM SHARED unScrollOff     AS INTEGER  ' raw-string scroll offset for input box display
 
-' --- boss phase tickables (populated by SEQ_Advance from sequence.txt mus=/speech=/maneuver=/seek= CSV) ---
+' --- boss phase tickables (populated by SEQ_Advance from sequence.txt mus=/speech=/maneuver=/attack=/seek= CSV) ---
 DIM SHARED bossMusList$(0 To 7)
 DIM SHARED bossMusCnt        AS INTEGER
 DIM SHARED bossSpeechList$(0 To 7)
 DIM SHARED bossSpeechCnt     AS INTEGER
 DIM SHARED bossManeuverList$(0 To 7)
 DIM SHARED bossManeuverCnt   AS INTEGER
+DIM SHARED bossAttackList$(0 To 7)       ' attack= pool (#26): laser / spore / cut / devour; see attacks.bas
+DIM SHARED bossAttackCnt     AS INTEGER
 DIM SHARED bossSeekStr       AS SINGLE   ' bullet homing strength per frame (0=straight, >0=curves)
 DIM SHARED bsmTurnDir      AS INTEGER  ' flyover dramatic turn direction: +1=right arc, -1=left arc; alternates each flyover
 

@@ -24,10 +24,10 @@ Sub FX_SpawnBurst(cx As Single, cy As Single, cz As Single, n As Integer, spd As
             fxPartPX(i)     = cx
             fxPartPY(i)     = cy
             fxPartPZ(i)     = cz
-            fxPartVX(i)     = (Rnd - 0.5) * spd
-            fxPartVY(i)     = (Rnd - 0.5) * spd
-            fxPartVZ(i)     = (Rnd - 0.5) * spd
-            fxPartLife(i)   = lifBase + Int(Rnd * lifVar)
+            fxPartVX(i)     = (RNG!(RNG_FX) - 0.5) * spd
+            fxPartVY(i)     = (RNG!(RNG_FX) - 0.5) * spd
+            fxPartVZ(i)     = (RNG!(RNG_FX) - 0.5) * spd
+            fxPartLife(i)   = lifBase + Int(RNG!(RNG_FX) * lifVar)
             fxPartClr(i)    = clr
             found = found + 1
         End If
@@ -43,10 +43,10 @@ Sub FX_SpawnTrail(cx As Single, cy As Single, cz As Single, n As Integer, spd As
             fxPartPX(fsti)     = cx
             fxPartPY(fsti)     = cy
             fxPartPZ(fsti)     = cz
-            fxPartVX(fsti)     = bvx + (Rnd - 0.5) * spd
-            fxPartVY(fsti)     = bvy + (Rnd - 0.5) * spd
-            fxPartVZ(fsti)     = bvz + (Rnd - 0.5) * spd
-            fxPartLife(fsti)   = lifBase + Int(Rnd * lifVar)
+            fxPartVX(fsti)     = bvx + (RNG!(RNG_FX) - 0.5) * spd
+            fxPartVY(fsti)     = bvy + (RNG!(RNG_FX) - 0.5) * spd
+            fxPartVZ(fsti)     = bvz + (RNG!(RNG_FX) - 0.5) * spd
+            fxPartLife(fsti)   = lifBase + Int(RNG!(RNG_FX) * lifVar)
             fxPartClr(fsti)    = clr
             fstFound = fstFound + 1
         End If
@@ -107,8 +107,8 @@ End Sub
 
 Sub FX_Shake(buf As Long)
     If fxShakeTimer > 0 Then
-        fxShakeX = Int(Rnd * 9) - 4
-        fxShakeY = Int(Rnd * 9) - 4
+        fxShakeX = Int(RNG!(RNG_FX) * 9) - 4
+        fxShakeY = Int(RNG!(RNG_FX) * 9) - 4
         fxShakeTimer = fxShakeTimer - 1
     Else
         fxShakeX = 0 : fxShakeY = 0
@@ -128,10 +128,10 @@ Sub FX_VCRNoise(scrW As Single, scrH As Single)
     Next vcrY
     ' tracking noise bands (2-4 per frame, random position/opacity)
     For vcrBi = 0 To 2
-        If Rnd > 0.35 Then
-            vcrY  = Int(Rnd * scrH)
-            vcrHh = 1 + Int(Rnd * 3)
-            LINE (0, vcrY)-(scrW - 1, vcrY + vcrHh), _RGBA(200 + Int(Rnd * 55), 195 + Int(Rnd * 55), 185 + Int(Rnd * 55), 55 + Int(Rnd * 90)), BF
+        If RNG!(RNG_FX) > 0.35 Then
+            vcrY  = Int(RNG!(RNG_FX) * scrH)
+            vcrHh = 1 + Int(RNG!(RNG_FX) * 3)
+            LINE (0, vcrY)-(scrW - 1, vcrY + vcrHh), _RGBA(200 + Int(RNG!(RNG_FX) * 55), 195 + Int(RNG!(RNG_FX) * 55), 185 + Int(RNG!(RNG_FX) * 55), 55 + Int(RNG!(RNG_FX) * 90)), BF
         End If
     Next vcrBi
 End Sub

@@ -1,7 +1,7 @@
 Sub CLI_Parse()
     Dim cliLine As String : cliLine = Command$
     Dim cliFH As Integer
-    Dim cliPos As Integer, cliI As Integer
+    Dim cliPos As Integer, cliI As Integer, cliVal As String
 
     If InStr(cliLine, "--version") > 0 Or cliLine = "-v" Or Left$(cliLine, 3) = "-v " Then
         cliFH = FreeFile
@@ -34,6 +34,37 @@ Sub CLI_Parse()
         cliScene = LTrim$(RTrim$(cliScene))
     End If
 
+    ' --input-script <file> (no spaces in the path), --frames N, --seed N
+    cliVal = CLI_Value$(cliLine, "--input-script ")
+    If cliVal <> "" Then
+        ' the process runs from the executable's folder; relative paths mean the launch folder
+        If Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then cliVal = _StartDir$ + "/" + cliVal
+        If ISC_Load%(cliVal) = 0 Then GAME_Usage(iscError)
+    End If
+    cliVal = CLI_Value$(cliLine, "--frames ")
+    If cliVal <> "" Then
+        If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--frames needs a whole number, got '" + cliVal + "'")
+        cliFrames = Val(cliVal)
+    End If
+    cliVal = CLI_Value$(cliLine, "--seed ")
+    If cliVal <> "" Then
+        If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--seed needs a whole number, got '" + cliVal + "'")
+        cliSeed = Val(cliVal) : cliSeedSet = -1
+    End If
+    ' seed every random stream before anything draws (sound tables, the player id)
+    If cliSeedSet Then RNG_Seed cliSeed Else RNG_Seed RNG_ClockSeed~&
+
+    cliVal = CLI_Value$(cliLine, "--screenshot-at ")
+    Do While cliVal <> ""
+        cliPos = InStr(cliVal, ",")
+        If cliPos = 0 Then cliPos = Len(cliVal) + 1
+        If ISC_IsNum%(Left$(cliVal, cliPos - 1)) = 0 Then GAME_Usage("--screenshot-at needs frame numbers like 300,900, got '" + Left$(cliVal, cliPos - 1) + "'")
+        If cliShotN >= UBound(cliShotAt) Then GAME_Usage("--screenshot-at takes at most" + Str$(UBound(cliShotAt)) + " frames")
+        cliShotN = cliShotN + 1
+        cliShotAt(cliShotN) = Val(Left$(cliVal, cliPos - 1))
+        cliVal = Mid$(cliVal, cliPos + 1)
+    Loop
+
     If LCase$(Left$(cliScene, 6)) = "crawl:" Then
         cliSceneType = "crawl:"
     ElseIf cliScene <> "" Then
@@ -47,3 +78,15 @@ Sub CLI_Parse()
         End If
     End If
 End Sub
+
+' The word after cvFlag$ (which includes its trailing space) in cvLine$, or "".
+Function CLI_Value$(cvLine As String, cvFlag As String)
+    Dim cvPos As Integer, cvV As String
+    CLI_Value$ = ""
+    cvPos = InStr(cvLine, cvFlag)
+    If cvPos = 0 Then Exit Function
+    cvV = LTrim$(Mid$(cvLine, cvPos + Len(cvFlag)))
+    cvPos = InStr(cvV, " ")
+    If cvPos > 0 Then cvV = Left$(cvV, cvPos - 1)
+    CLI_Value$ = cvV
+End Function

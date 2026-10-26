@@ -47,6 +47,7 @@ Dim Shared DB_URL As String
 Dim Shared DB_KEY As String
 
 '$INCLUDE:'src/sys/version.bas'
+'$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/sys/dims.bas'
 '$INCLUDE:'src/game.bi'
@@ -166,8 +167,9 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
+    IF cliFrames > 0 AND gameFrame >= cliFrames THEN SYSTEM
     ' --- input ---
-    E3D_InputUpdate held()
+    IF iscActive THEN ISC_Apply gameFrame, held() ELSE E3D_InputUpdate held()
     IF _KEYDOWN(34048) AND NOT fsKeyWas THEN
         settingFullscreen = 1 - settingFullscreen
         IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
@@ -240,7 +242,9 @@ DO
             httpLastTag = ""
         End If
     End If
-    _LIMIT 60
+    IF iscActive = 0 THEN _LIMIT 60  ' scripted runs go flat out: gameplay steps per frame, not per second
     _DISPLAY
+    IF cliShotN > 0 THEN GAME_MaybeScreenshot
+    gameFrame = gameFrame + 1
 LOOP
 

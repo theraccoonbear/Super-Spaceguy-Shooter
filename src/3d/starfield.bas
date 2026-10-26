@@ -53,13 +53,13 @@ Sub E3D_StarfieldAddLayer (camX As Single, camY As Single, camZ As Single, count
         If E3D_sfCount < E3D_SF_MAX Then
             E3D_sfCount = E3D_sfCount + 1
             n = E3D_sfCount
-            E3D_sfX(n)   = camX + Rnd * rangeX
-            E3D_sfY(n)   = camY + Rnd * rangeY - rangeY * 0.5
-            E3D_sfZ(n)   = camZ + Rnd * rangeZ - rangeZ * 0.5
-            E3D_sfVX(n)  = -(spdMin + Rnd * (spdMax - spdMin))
+            E3D_sfX(n)   = camX + RNG!(RNG_FX) * rangeX
+            E3D_sfY(n)   = camY + RNG!(RNG_FX) * rangeY - rangeY * 0.5
+            E3D_sfZ(n)   = camZ + RNG!(RNG_FX) * rangeZ - rangeZ * 0.5
+            E3D_sfVX(n)  = -(spdMin + RNG!(RNG_FX) * (spdMax - spdMin))
             E3D_sfRY(n)  = rangeY
             E3D_sfRZ(n)  = rangeZ
-            E3D_sfClr(n) = colors(Int(Rnd * 3))
+            E3D_sfClr(n) = colors(Int(RNG!(RNG_FX) * 3))
         End If
     Next i
 End Sub
@@ -81,9 +81,9 @@ Sub E3D_StarfieldUpdate (camX As Single, camY As Single, camZ As Single)
         If E3D_sfX(i) < camX - 2 Then
             ry = E3D_sfRY(i)
             rz = E3D_sfRZ(i)
-            E3D_sfX(i) = camX + 20 + Rnd * 30
-            E3D_sfY(i) = camY + Rnd * ry - ry * 0.5
-            E3D_sfZ(i) = camZ + Rnd * rz - rz * 0.5
+            E3D_sfX(i) = camX + 20 + RNG!(RNG_FX) * 30
+            E3D_sfY(i) = camY + RNG!(RNG_FX) * ry - ry * 0.5
+            E3D_sfZ(i) = camZ + RNG!(RNG_FX) * rz - rz * 0.5
         End If
     Next i
 End Sub
@@ -126,7 +126,7 @@ Sub BELT_Init(bliW As Single, bliH As Single)
     bltCount  = 0
     bltActive = -1
     For bliI = 1 To BELT_MAX
-        bliR = RND
+        bliR = RNG!(RNG_FX)
         If bliR < 0.40 Then
             bltSz(bliI) = 0
         ElseIf bliR < 0.70 Then
@@ -136,15 +136,15 @@ Sub BELT_Init(bliW As Single, bliH As Single)
         Else
             bltSz(bliI) = 3
         End If
-        bltAngle(bliI) = RND * _PI(2)
-        bltDepth(bliI) = RND * bltMaxD     ' scatter so they don't all flash from center at once
+        bltAngle(bliI) = RNG!(RNG_FX) * _PI(2)
+        bltDepth(bliI) = RNG!(RNG_FX) * bltMaxD     ' scatter so they don't all flash from center at once
         Select Case bltSz(bliI)
-        Case 0 : bltDSpd(bliI) = 0.15 + RND * 0.20
-        Case 1 : bltDSpd(bliI) = 0.30 + RND * 0.25
-        Case 2 : bltDSpd(bliI) = 0.55 + RND * 0.35
-        Case Else : bltDSpd(bliI) = 1.0 + RND * 0.6
+        Case 0 : bltDSpd(bliI) = 0.15 + RNG!(RNG_FX) * 0.20
+        Case 1 : bltDSpd(bliI) = 0.30 + RNG!(RNG_FX) * 0.25
+        Case 2 : bltDSpd(bliI) = 0.55 + RNG!(RNG_FX) * 0.35
+        Case Else : bltDSpd(bliI) = 1.0 + RNG!(RNG_FX) * 0.6
         End Select
-        bltClr(bliI) = bliColors(Int(RND * 5))
+        bltClr(bliI) = bliColors(Int(RNG!(RNG_FX) * 5))
         bltCount     = bltCount + 1
     Next bliI
 End Sub
@@ -154,8 +154,8 @@ Sub BELT_Update(bluW As Single, bluH As Single)
     For bluI = 1 To bltCount
         bltDepth(bluI) = bltDepth(bluI) + bltDSpd(bluI)
         If bltDepth(bluI) > bltMaxD * 1.05 Then
-            bltAngle(bluI) = RND * _PI(2)
-            bltDepth(bluI) = RND * 4
+            bltAngle(bluI) = RNG!(RNG_FX) * _PI(2)
+            bltDepth(bluI) = RNG!(RNG_FX) * 4
         End If
     Next bluI
 End Sub

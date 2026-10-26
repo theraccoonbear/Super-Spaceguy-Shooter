@@ -180,5 +180,5 @@ Sub GS_USERNAME_Update ()
 End Sub
 
 Function UN_AutoName$ ()
-    UN_AutoName$ = "PILOT-" + Right$("000" + LTrim$(Str$(Int(RND * 9000) + 1000)), 4)
+    UN_AutoName$ = "PILOT-" + Right$("000" + LTrim$(Str$(Int(RNG!(RNG_UNIQUE) * 9000) + 1000)), 4)
 End Function

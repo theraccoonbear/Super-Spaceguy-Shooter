@@ -47,9 +47,9 @@ Sub ENEMY_Update
             ' strafe burst
             enemies(enI).strafeCool = enemies(enI).strafeCool - 1
             If enemies(enI).strafeCool <= 0 And diffScale > 0.05 Then
-                enemies(enI).vy = (RND - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
-                enemies(enI).vz = (RND - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
-                enemies(enI).strafeCool = ENEMY_STRAFE_COOL + Int(RND * 60)
+                enemies(enI).vy = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).vz = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).strafeCool = ENEMY_STRAFE_COOL + Int(RNG!(RNG_GAME) * 60)
             End If
 
             ' attitude: bank/pitch from frame-to-frame lateral delta
@@ -99,7 +99,7 @@ Sub ENEMY_Update
                         End If
                     Next enEJ
                 End If
-                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RND * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4)
+                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4)
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped
@@ -168,19 +168,16 @@ Sub EBULLET_Update
     Dim ebI As Integer
     Dim ebHit As Integer
     Dim ebDY As Single, ebDZ As Single
-    Dim ebSeekDY As Single, ebSeekDZ As Single, ebSeekMag As Single
+    Dim ebSeekTY As Single, ebSeekTZ As Single, ebSeekF As Single
 
     For ebI = 1 To MAX_EBULLETS
         If ebullets(ebI).active Then
-            ' boss bullets: steer vy/vz toward player using lerp so speed stays bounded
-            If ebullets(ebI).meshIdx = MESH_BOSS And bossSeekStr > 0 Then
-                ebSeekDY = player.py - ebullets(ebI).py
-                ebSeekDZ = player.pz - ebullets(ebI).pz
-                ebSeekMag = SQR(ebSeekDY * ebSeekDY + ebSeekDZ * ebSeekDZ)
-                If ebSeekMag > 0.1 Then
-                    ebullets(ebI).vy = ebullets(ebI).vy + ((ebSeekDY / ebSeekMag) * 0.12 - ebullets(ebI).vy) * bossSeekStr
-                    ebullets(ebI).vz = ebullets(ebI).vz + ((ebSeekDZ / ebSeekMag) * 0.12 - ebullets(ebI).vz) * bossSeekStr
-                End If
+            ' boss bullets: steer vy/vz toward the player's lead point using lerp so speed
+            ' stays bounded (impact.bas; the impact-ring prediction runs the same step)
+            If ebullets(ebI).meshIdx = MESH_BOSS Then
+                ebSeekF = IMP_FramesLeft!(ebullets(ebI).px, ebullets(ebI).vx, player.px)
+                IMP_LeadPoint player.py, player.pz, playerVY + devPullY, playerVZ + devPullZ, ebSeekF, ebSeekTY, ebSeekTZ
+                IMP_SeekStep ebullets(ebI).py, ebullets(ebI).pz, ebullets(ebI).vy, ebullets(ebI).vz, ebSeekTY, ebSeekTZ, bossSeekStr, ebSeekF
             End If
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
             ebullets(ebI).py = ebullets(ebI).py + ebullets(ebI).vy

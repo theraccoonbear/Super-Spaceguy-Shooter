@@ -89,6 +89,20 @@ Sub SEQ_Add(seqaKind As Integer, seqaSval As String, seqaLabel As String)
     seqCount = seqCount + 1
 End Sub
 
+' Splits "a,b,c" into sscOut$(0..) (at most 8 entries); empty entries are kept, so
+' ",x,y" gives "", "x", "y".
+Sub SEQ_SplitCSV(sscSrc As String, sscOut() As String, sscCnt As Integer)
+    Dim sscStart As Integer, sscComma As Integer
+    sscCnt = 0 : sscStart = 1
+    Do While sscStart <= Len(sscSrc) And sscCnt < 8
+        sscComma = InStr(sscStart, sscSrc, ",")
+        If sscComma = 0 Then sscComma = Len(sscSrc) + 1
+        sscOut(sscCnt) = Mid$(sscSrc, sscStart, sscComma - sscStart)
+        sscCnt = sscCnt + 1
+        sscStart = sscComma + 1
+    Loop
+End Sub
+
 ' Extract value for key from a "key=val key2=val2 ..." string.
 Function SEQ_GetKV$(seqgSval As String, seqgKey As String)
     Dim seqgSearch As String, seqgI As Integer, seqgStart As Integer, seqgEnd As Integer
@@ -420,43 +434,14 @@ Sub SEQ_Advance()
                     boss.warnTimer = BOSS_WARN_FRAMES
                     gameState      = GS_PLAYING
                     SPK_Say GTEXT_Get$("speech_boss_warning")
-                    ' parse mus=cue1,cue2,... phase music tickable
-                    Dim seqaBossMusStr As String : seqaBossMusStr = SEQ_GetKV$(seqSval$(seqIdx), "mus")
-                    Dim seqaBossMusStart As Integer, seqaBossMusComma As Integer
-                    bossMusCnt = 0 : seqaBossMusStart = 1
-                    Do While seqaBossMusStart <= Len(seqaBossMusStr) And bossMusCnt < 8
-                        seqaBossMusComma = InStr(seqaBossMusStart, seqaBossMusStr, ",")
-                        If seqaBossMusComma = 0 Then seqaBossMusComma = Len(seqaBossMusStr) + 1
-                        bossMusList$(bossMusCnt) = Mid$(seqaBossMusStr, seqaBossMusStart, seqaBossMusComma - seqaBossMusStart)
-                        bossMusCnt = bossMusCnt + 1
-                        seqaBossMusStart = seqaBossMusComma + 1
-                    Loop
-                    ' parse speech=key1,key2,... phase speech tickable
-                    Dim seqaBossSpeechStr As String : seqaBossSpeechStr = SEQ_GetKV$(seqSval$(seqIdx), "speech")
-                    Dim seqaBossSpeechStart As Integer, seqaBossSpeechComma As Integer
-                    bossSpeechCnt = 0 : seqaBossSpeechStart = 1
-                    Do While seqaBossSpeechStart <= Len(seqaBossSpeechStr) And bossSpeechCnt < 8
-                        seqaBossSpeechComma = InStr(seqaBossSpeechStart, seqaBossSpeechStr, ",")
-                        If seqaBossSpeechComma = 0 Then seqaBossSpeechComma = Len(seqaBossSpeechStr) + 1
-                        bossSpeechList$(bossSpeechCnt) = Mid$(seqaBossSpeechStr, seqaBossSpeechStart, seqaBossSpeechComma - seqaBossSpeechStart)
-                        bossSpeechCnt = bossSpeechCnt + 1
-                        seqaBossSpeechStart = seqaBossSpeechComma + 1
-                    Loop
-                    ' parse seek= bullet homing strength
-                    bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))
-                    ' parse maneuver= per-phase flight patterns (CSV, same shape as mus=)
+                    ' per-phase CSV lists (one entry per boss phase); music cue applied in boss.bas at spawn
+                    SEQ_SplitCSV SEQ_GetKV$(seqSval$(seqIdx), "mus"), bossMusList$(), bossMusCnt
+                    SEQ_SplitCSV SEQ_GetKV$(seqSval$(seqIdx), "speech"), bossSpeechList$(), bossSpeechCnt
+                    bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))   ' bullet homing strength
                     Dim seqaMnvStr As String : seqaMnvStr = SEQ_GetKV$(seqSval$(seqIdx), "maneuver")
                     If Len(seqaMnvStr) = 0 Then seqaMnvStr = "flyover"
-                    Dim seqaMnvStart As Integer, seqaMnvComma As Integer
-                    bossManeuverCnt = 0 : seqaMnvStart = 1
-                    Do While seqaMnvStart <= Len(seqaMnvStr) And bossManeuverCnt < 8
-                        seqaMnvComma = InStr(seqaMnvStart, seqaMnvStr, ",")
-                        If seqaMnvComma = 0 Then seqaMnvComma = Len(seqaMnvStr) + 1
-                        bossManeuverList$(bossManeuverCnt) = Mid$(seqaMnvStr, seqaMnvStart, seqaMnvComma - seqaMnvStart)
-                        bossManeuverCnt = bossManeuverCnt + 1
-                        seqaMnvStart = seqaMnvComma + 1
-                    Loop
-                    ' music cue applied in boss.bas when warn timer expires and boss spawns
+                    SEQ_SplitCSV seqaMnvStr, bossManeuverList$(), bossManeuverCnt
+                    SEQ_SplitCSV UCase$(SEQ_GetKV$(seqSval$(seqIdx), "attack")), bossAttackList$(), bossAttackCnt
                 Case "asteroid"
                     levelNum       = levelNum + 1
                     DBG_Print "[SEQ] PLAY asteroid fired: levelNum=" + Str$(levelNum) + " seqIdx=" + Str$(seqIdx)

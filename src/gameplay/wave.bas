@@ -103,7 +103,7 @@ Sub WAVE_Spawn
         ' run 1-2 of the same formation type, then switch
         If waveCount <= 0 Then
             Do
-                waveType = Int(RND * wvPoolSize)
+                waveType = Int(RNG!(RNG_GAME) * wvPoolSize)
             Loop While waveType = wavePrev
             wavePrev  = waveType
             waveCount = 1
@@ -122,17 +122,17 @@ Sub WAVE_Spawn
         End Select
         If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
-        wvCX = player.px + SPAWN_DIST_MIN + RND * SPAWN_DIST_VAR
-        wvCY = player.py + (RND * (SPAWN_SPREAD_Y * 2)) - SPAWN_SPREAD_Y
-        wvCZ = player.pz + (RND * (SPAWN_SPREAD_Z * 2)) - SPAWN_SPREAD_Z
+        wvCX = player.px + SPAWN_DIST_MIN + RNG!(RNG_GAME) * SPAWN_DIST_VAR
+        wvCY = player.py + (RNG!(RNG_GAME) * (SPAWN_SPREAD_Y * 2)) - SPAWN_SPREAD_Y
+        wvCZ = player.pz + (RNG!(RNG_GAME) * (SPAWN_SPREAD_Z * 2)) - SPAWN_SPREAD_Z
         ' per-type speed: solo=slow, pincer/vwedge=fast
         Select Case wvType
-        Case 0    : wvVX = -(0.06 + RND * 0.04)
-        Case 1    : wvVX = -(0.09 + RND * 0.05)
-        Case 2    : wvVX = -(0.07 + RND * 0.04)
-        Case 3    : wvVX = -(0.09 + RND * 0.04)
-        Case 4    : wvVX = -(0.13 + RND * 0.05)
-        Case Else : wvVX = -(0.14 + RND * 0.06)
+        Case 0    : wvVX = -(0.06 + RNG!(RNG_GAME) * 0.04)
+        Case 1    : wvVX = -(0.09 + RNG!(RNG_GAME) * 0.05)
+        Case 2    : wvVX = -(0.07 + RNG!(RNG_GAME) * 0.04)
+        Case 3    : wvVX = -(0.09 + RNG!(RNG_GAME) * 0.04)
+        Case 4    : wvVX = -(0.13 + RNG!(RNG_GAME) * 0.05)
+        Case Else : wvVX = -(0.14 + RNG!(RNG_GAME) * 0.06)
         End Select
         wvVX = wvVX * (1.0 + diffScale * DIFF_SPEED_SCALE)
         spawnFlashPX = wvCX : spawnFlashPY = wvCY : spawnFlashPZ = wvCZ
@@ -174,9 +174,9 @@ Sub WAVE_Spawn
                     enemies(wvI).vy = 0
                     enemies(wvI).vz = 0
                     enemies(wvI).dry = 0
-                    enemies(wvI).scl = 0.9 + RND * 0.4
-                    enemies(wvI).strafeCool = ENEMY_STRAFE_COOL + Int(RND * 60)
-                    enemyFireTimer(wvI) = EFIRE_INIT_MIN + RND * EFIRE_INIT_VAR
+                    enemies(wvI).scl = 0.9 + RNG!(RNG_GAME) * 0.4
+                    enemies(wvI).strafeCool = ENEMY_STRAFE_COOL + Int(RNG!(RNG_GAME) * 60)
+                    enemyFireTimer(wvI) = EFIRE_INIT_MIN + RNG!(RNG_GAME) * EFIRE_INIT_VAR
                     Exit For
                 End If
             Next wvI
@@ -187,31 +187,31 @@ Sub WAVE_Spawn
             If asteroids(wvI).active = 0 Then
                 asteroids(wvI).active  = -1
                 asteroids(wvI).meshIdx = MESH_ASTEROID
-                asteroids(wvI).px  = player.px + 45 + RND * 20
-                asteroids(wvI).py  = player.py + (RND * 140) - 70
-                asteroids(wvI).pz  = player.pz + (RND * 180) - 90
-                asteroids(wvI).vx         = -(0.04 + RND * 0.05)
+                asteroids(wvI).px  = player.px + 45 + RNG!(RNG_GAME) * 20
+                asteroids(wvI).py  = player.py + (RNG!(RNG_GAME) * 140) - 70
+                asteroids(wvI).pz  = player.pz + (RNG!(RNG_GAME) * 180) - 90
+                asteroids(wvI).vx         = -(0.04 + RNG!(RNG_GAME) * 0.05)
                 asteroids(wvI).vy         = 0
                 asteroids(wvI).vz         = 0
-                asteroids(wvI).drx        = (RND - 0.5) * 2
-                asteroids(wvI).dry        = (RND - 0.5) * 2
-                asteroids(wvI).drz        = (RND - 0.5) * 2
-                asteroids(wvI).scl        = 0.7 + RND * 0.9
+                asteroids(wvI).drx        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvI).dry        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvI).drz        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvI).scl        = 0.7 + RNG!(RNG_GAME) * 0.9
                 asteroids(wvI).life       = 0  ' combat: expire by px < -5 only
-                asteroids(wvI).strafeCool = Int(RND * 6)
+                asteroids(wvI).strafeCool = Int(RNG!(RNG_GAME) * 6)
                 Exit For
             End If
         Next wvI
 
         ' powerup (rare)
-        If Int(RND * 6) = 0 Then
+        If Int(RNG!(RNG_GAME) * 6) = 0 Then
             For wvI = 1 To MAX_POWERUPS
                 If powerups(wvI).active = 0 Then
                     powerups(wvI).active  = -1
                     powerups(wvI).meshIdx = MESH_POWERUP
-                    powerups(wvI).px  =  26 + RND * 6
-                    powerups(wvI).py  = player.py + (RND * 80)  - 40
-                    powerups(wvI).pz  = player.pz + (RND * 100) - 50
+                    powerups(wvI).px  =  26 + RNG!(RNG_GAME) * 6
+                    powerups(wvI).py  = player.py + (RNG!(RNG_GAME) * 80)  - 40
+                    powerups(wvI).pz  = player.pz + (RNG!(RNG_GAME) * 100) - 50
                     powerups(wvI).vx  = -0.05
                     powerups(wvI).dry = 2.0
                     powerups(wvI).drz = 1.5
@@ -234,15 +234,15 @@ Sub WAVE_SpawnAsteroidField
     Dim wvafXO(0 To 7) As Single, wvafYO(0 To 7) As Single, wvafZO(0 To 7) As Single
     Dim wvafVY As Single, wvafVZ As Single, wvafScl As Single, wvafTint As Integer, wvafErratic As Integer
 
-    wvafCX = player.px + 150 + RND * 30 + astSpawnXBias
+    wvafCX = player.px + 150 + RNG!(RNG_GAME) * 30 + astSpawnXBias
     If astForceTarget Then
-        wvafCY    = player.py + (RND * 3) - 1.5
-        wvafCZ    = player.pz + (RND * 3) - 1.5
+        wvafCY    = player.py + (RNG!(RNG_GAME) * 3) - 1.5
+        wvafCZ    = player.pz + (RNG!(RNG_GAME) * 3) - 1.5
         astForceTarget = 0
         astIdleTimer   = 0
     Else
-        wvafCY = player.py + (RND * 5) - 2.5
-        wvafCZ = player.pz + (RND * 5) - 2.5
+        wvafCY = player.py + (RNG!(RNG_GAME) * 5) - 2.5
+        wvafCZ = player.pz + (RNG!(RNG_GAME) * 5) - 2.5
     End If
     wvafN  = 0
 
@@ -259,7 +259,7 @@ Sub WAVE_SpawnAsteroidField
         wvafN = 8
 
     Case 1  ' Y corridor: tighter walls above/below, 2 stragglers threading the gap
-        wvafGap = player.py + (RND * 10) - 5
+        wvafGap = player.py + (RNG!(RNG_GAME) * 10) - 5
         wvafCY  = wvafGap
         ' upper wall
         wvafXO(0) =  0 : wvafYO(0) =  7 : wvafZO(0) = -8
@@ -302,21 +302,21 @@ Sub WAVE_SpawnAsteroidField
         ' erratic ones are non-lethal (visual thrill only); strafeCool >= 10 is the flag
         Dim wvafErraticChance As Integer
         If settingNerf Then wvafErraticChance = 20 Else wvafErraticChance = 10
-        If Int(RND * wvafErraticChance) = 0 Then
-            wvafVY = (RND - 0.5) * 0.35
-            wvafVZ = (RND - 0.5) * 0.35
+        If Int(RNG!(RNG_GAME) * wvafErraticChance) = 0 Then
+            wvafVY = (RNG!(RNG_GAME) - 0.5) * 0.35
+            wvafVZ = (RNG!(RNG_GAME) - 0.5) * 0.35
             wvafErratic = -1
         Else
-            wvafVY = (RND - 0.5) * 0.06
-            wvafVZ = (RND - 0.5) * 0.06
+            wvafVY = (RNG!(RNG_GAME) - 0.5) * 0.06
+            wvafVZ = (RNG!(RNG_GAME) - 0.5) * 0.06
             wvafErratic = 0
         End If
-        If Int(RND * 5) = 0 Then
-            wvafScl = 3.0 + RND * 1.5
+        If Int(RNG!(RNG_GAME) * 5) = 0 Then
+            wvafScl = 3.0 + RNG!(RNG_GAME) * 1.5
         Else
-            wvafScl = 0.5 + RND * 1.6
+            wvafScl = 0.5 + RNG!(RNG_GAME) * 1.6
         End If
-        wvafTint = Int(RND * 6)
+        wvafTint = Int(RNG!(RNG_GAME) * 6)
         For wvafI = 1 To MAX_ASTEROIDS
             If asteroids(wvafI).active = 0 Then
                 asteroids(wvafI).active     = -1
@@ -325,16 +325,16 @@ Sub WAVE_SpawnAsteroidField
                 If wvafErratic Then asteroids(wvafI).px = asteroids(wvafI).px + 50
                 asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
                 asteroids(wvafI).pz         = wvafCZ + wvafZO(wvafJ)
-                If Int(RND * 6) = 0 Then
-                    asteroids(wvafI).vx = -(1.2 + RND * 0.3)
+                If Int(RNG!(RNG_GAME) * 6) = 0 Then
+                    asteroids(wvafI).vx = -(1.2 + RNG!(RNG_GAME) * 0.3)
                 Else
-                    asteroids(wvafI).vx = -(0.45 + RND * 0.25)
+                    asteroids(wvafI).vx = -(0.45 + RNG!(RNG_GAME) * 0.25)
                 End If
                 asteroids(wvafI).vy         = wvafVY
                 asteroids(wvafI).vz         = wvafVZ
-                asteroids(wvafI).drx        = (RND - 0.5) * 2
-                asteroids(wvafI).dry        = (RND - 0.5) * 2
-                asteroids(wvafI).drz        = (RND - 0.5) * 2
+                asteroids(wvafI).drx        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvafI).dry        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvafI).drz        = (RNG!(RNG_GAME) - 0.5) * 2
                 asteroids(wvafI).scl        = wvafScl
                 asteroids(wvafI).life = 0  ' expire by position (px < player.px-20), not timer
                 ' strafeCool >= 10 marks erratic (non-lethal); Mod 10 gives tint index

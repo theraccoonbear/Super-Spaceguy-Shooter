@@ -10,24 +10,11 @@ Sub GS_PLAYING_Update ()
     Dim hit As Integer
     Dim i As Integer, j As Integer
     Dim gspAstNear As Integer, gspAstI As Integer
+    Dim spDmg As Integer
 
-    ' ESC during planet/cinematic: skip straight to title (no confirm needed)
-    IF gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
-        IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
-            telemExitReason = "quit"
-            TELEM_SessionEnd
-            SEQ_RewindToTitle
-            gameState = GS_TITLE
-            planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
-            MUS_SetCue "title"
-            escWas = held(E3D_KEY_ESCAPE)
-            EXIT SUB
-        END IF
-        escWas = held(E3D_KEY_ESCAPE)
-    END IF
-
-    ' ESC confirm dialog (playing only)
-    IF gameState = GS_PLAYING THEN
+    ' ESC confirm dialog: in play and during the planet arrival / cinematic, which it
+    ' pauses the same way (nothing below runs while it's open)
+    IF gameState = GS_PLAYING OR gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
         IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
             escConfirm = 1 - escConfirm
             IF escConfirm THEN
@@ -44,13 +31,14 @@ Sub GS_PLAYING_Update ()
                 TELEM_SessionEnd
                 SEQ_RewindToTitle
                 gameState = GS_TITLE
+                planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
                 MUS_SetCue "title"
             END IF
             escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
             IF (_KEYDOWN(78) OR _KEYDOWN(110)) AND escNWas = 0 THEN escConfirm = 0
             escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
             IF (_KEYDOWN(67) OR _KEYDOWN(99)) AND escCWas = 0 THEN
-                CONTROLS_Prep GS_PLAYING : gameState = GS_CONTROLS
+                CONTROLS_Prep gameState : gameState = GS_CONTROLS
             END IF
             escCWas = _KEYDOWN(67) OR _KEYDOWN(99)
             _DEST backBuffer
@@ -223,6 +211,13 @@ Sub GS_PLAYING_Update ()
 
             BOSS_Update
             EBULLET_Update
+            spDmg = SPORE_Update%(player.px, player.py, player.pz)
+            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "spore" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
+            spDmg = CUT_Update%(player.px, player.py, player.pz, playerVY, playerVZ)
+            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "cut" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
+            DEV_Update
+            DEV_Pull player.py, player.pz, boss.py, boss.pz
+            player.py = player.py + devPullY : player.pz = player.pz + devPullZ
             FX_Update
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
             IF bltActive THEN BELT_Update scrW, scrH

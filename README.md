@@ -55,12 +55,23 @@ tools/dev test    # full test suite (.github/scripts/qb64test.sh, same as CI)
 tools/dev bake    # tools/bake_speech_dict
 tools/dev emit    # regenerate spline math (npm install in math/ + node tools/emit-spline.js)
 tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` runs one command
-tools/dev run     # play the game in the container on your display; `tools/dev run --scene boss1` passes args through
+tools/dev run     # play the game in the container on your display; args pass through to sss
+tools/dev headless  # run the game on an off-screen display (Xvfb), e.g. for scripted playtests (below)
 ```
+
+Typical workflow:
+
+```bash
+git pull
+tools/dev run --scene boss3 --god   # rebuilds first if any source changed, then plays
+tools/dev test                      # full suite before you commit (pre-commit checklist in CLAUDE.md)
+```
+
+`run` takes any [CLI option](#cli-options). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
 
 The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
 
-`tools/dev run` builds `builds/sss` if it is missing, then runs it with your desktop passed through: the X11 socket and `DISPLAY`/`XAUTHORITY` (XWayland on Wayland desktops), the PulseAudio/PipeWire socket from `$XDG_RUNTIME_DIR`, and `/dev/dri` for GPU rendering. For that container only, SELinux labeling is turned off (`--security-opt label=disable`) so it can share the sockets, and `--ipc=host` lets X11 shared memory work. If no audio socket is found it warns and runs silently. Every other command stays headless. You can also run a container-built `builds/sss` directly on the host if it has the GL/X11/ALSA runtime libraries.
+`tools/dev run` and `tools/dev headless` rebuild `builds/sss` if it is missing, older than any file in `sss.bas`, `src/`, `assets/` or `VERSION` (so a `git pull` or a branch switch never plays a stale build), or was built natively on a host with a newer glibc than the container, then runs it with your desktop passed through: the X11 socket and `DISPLAY`/`XAUTHORITY` (XWayland on Wayland desktops), the PulseAudio/PipeWire socket from `$XDG_RUNTIME_DIR`, and `/dev/dri` for GPU rendering. For that container only, SELinux labeling is turned off (`--security-opt label=disable`) so it can share the sockets, and `--ipc=host` lets X11 shared memory work. If no audio socket is found it warns and runs silently. Every other command stays headless. You can also run a container-built `builds/sss` directly on the host if it has the GL/X11/ALSA runtime libraries.
 
 ### CLI options
 
@@ -75,26 +86,47 @@ sss [options]
   --nerf                 Nerf mode: shorter stages, weaker bosses (for testing/streaming)
   --debug                Enable the debug HUD overlay and diagnostic console output
   --no-telem             Disable gameplay telemetry for this session (on by default; see below)
+  --input-script <file>  Play from a script instead of the keyboard/gamepad (see below)
+  --frames N             Quit after N frames (60 per second)
+  --seed N               Fixed random seed, so a scripted run repeats exactly
+  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
+
+**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE ESC TAB`, and `#` starts a comment. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
+
+```bash
+tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
+```
+
+Add `--screenshot-at 200,700,1250` to save those frames as `shot-<frame>.png` (gitignored) to look at afterwards. A relative script path is resolved from the directory you launch from.
 
 ## Testing
 
 ```bash
 # full suite -- same one CI runs on Linux, macOS, and Windows
-QB64_BIN_DIR=/path/to/qb64pe .github/scripts/qb64test.sh
+tools/dev test                                           # in the container
+QB64_BIN_DIR=/path/to/qb64pe .github/scripts/qb64test.sh # native
 
-# or individually
+# or individually (native; in the container wrap one line, e.g.
+#   tools/dev shell bash -c "tools/buildqb tests/spore_test.bas && builds/spore_test")
 tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
 tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test
 tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
 tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
 tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
+tools/buildqb tests/mnv_load_test.bas          && builds/mnv_load_test
+tools/buildqb tests/mnv_transition_test.bas    && builds/mnv_transition_test
+tools/buildqb tests/mnv_conformance_test.bas   && builds/mnv_conformance_test
 tools/buildqb tests/spk_timing_test.bas        && builds/spk_timing_test
 tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
 tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
+tools/buildqb tests/spore_test.bas             && builds/spore_test
+tools/buildqb tests/attack_test.bas            && builds/attack_test
+tools/buildqb tests/inputscript_test.bas       && builds/inputscript_test
+tools/buildqb tests/rng_test.bas               && builds/rng_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
 
