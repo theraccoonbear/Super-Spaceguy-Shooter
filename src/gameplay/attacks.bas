@@ -31,17 +31,6 @@ Function ATK_Code%(atkName As String)
     End Select
 End Function
 
-' ATK_* code -> attack= name (for debug output).
-Function ATK_Name$(atkNC As Integer)
-    Select Case atkNC
-    Case ATK_LASER  : ATK_Name$ = "laser"
-    Case ATK_SPORE  : ATK_Name$ = "spore"
-    Case ATK_CUT    : ATK_Name$ = "cut"
-    Case ATK_DEVOUR : ATK_Name$ = "devour"
-    Case Else       : ATK_Name$ = "?"
-    End Select
-End Function
-
 Function ATK_Built%(atkB As Integer)
     ATK_Built% = (atkB >= ATK_LASER And atkB <= ATK_COUNT)
 End Function

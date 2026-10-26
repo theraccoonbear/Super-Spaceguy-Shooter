@@ -124,7 +124,6 @@ Sub BOSS_Update
 
         bssAtk = ATK_Pick%(bossAttackList$(), bossAttackCnt, RNG!(RNG_GAME))
         If DEV_Busy% Then bssAtk = ATK_LASER  ' devour keeps firing lasers, nothing else
-        EB_TuneLog "[boss-volley] phase=" + LTrim$(Str$(boss.phase)) + " atk=" + ATK_Name$(bssAtk)
         ATK_Fired bssAtk
         If bssAtk <> ATK_LASER Then
             If bssAtk = ATK_SPORE Then BOSS_SporeVolley

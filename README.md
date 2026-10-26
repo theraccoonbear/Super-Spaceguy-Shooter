@@ -100,7 +100,7 @@ sss [options]
 tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
 ```
 
-Add `--screenshot-at 200,700,1250` to save those frames as `shot-<frame>.png` (gitignored) to look at afterwards. A relative script path is resolved from the directory you launch from. While the branch is being tuned, boss fights append `[boss-volley]` / `[boss-shot]` lines to `boss-shots.log` there. This is temporary, for #26.
+Add `--screenshot-at 200,700,1250` to save those frames as `shot-<frame>.png` (gitignored) to look at afterwards. A relative script path is resolved from the directory you launch from.
 
 ## Testing
 

@@ -47,7 +47,6 @@ tests/inputscript_test
 tests/rng_test
 tools/telem_batch_test
 shot-*.png
-boss-shots.log
 
 # Local playtest telemetry runs -- not source
 sss_telemetry.csv
