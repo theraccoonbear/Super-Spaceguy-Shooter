@@ -223,11 +223,11 @@ Function EB_Fmt$(ebFV As Single)
 End Function
 
 ' [TUNING, temporary -- remove before #238 merges] appends one line to boss-shots.log
-' in the working directory (the repo root under tools/dev run).
+' in the directory the game was launched from (_STARTDIR$, like sss_settings.ini).
 Sub EB_TuneLog(ebTMsg As String)
     Dim ebTF As Integer
     ebTF = FreeFile
-    Open "boss-shots.log" For Append As #ebTF
+    Open _STARTDIR$ + "/boss-shots.log" For Append As #ebTF
     Print #ebTF, Time$ + " " + ebTMsg
     Close #ebTF
 End Sub
