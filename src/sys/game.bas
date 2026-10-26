@@ -86,7 +86,7 @@ Sub GAME_InitMeshes
     fTypeToMesh(3) = MESH_ENEMY_VCOL
     fTypeToMesh(4) = MESH_ENEMY_PINCER
     fTypeToMesh(5) = MESH_ENEMY_VWEDGE
-    RANDOMIZE TIMER
+    IF cliSeedSet THEN RANDOMIZE USING cliSeed ELSE RANDOMIZE TIMER
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
 End Sub
 
@@ -115,9 +115,12 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30), asteroid field 10% length"
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"
     CLI_Emit guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
+    CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
+    CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
+    CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"
     SEQ_PrintScenes guFH
     If InStr(_OS$, "WIN") = 0 Then Close #guFH
-    System
+    If guErr <> "" Then System 1 Else System 0
 End Sub

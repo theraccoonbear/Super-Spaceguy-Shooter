@@ -238,8 +238,8 @@ End Sub
 Sub SND_Blip(blipFreq As Single)
     sndBlipFreq    = blipFreq
     sndBlipPhase   = 0
-    sndBlipLen     = 1323 + INT(RND * 2205)  ' 30–80ms
+    sndBlipLen     = 1323 + INT(AUD_Noise! * 2205)  ' 30–80ms
     sndBlipPlosLen = 0
-    IF RND > 0.45 THEN sndBlipPlosLen = 441 + INT(RND * 441)  ' ~55% chance of 10–20ms noise burst
+    IF AUD_Noise! > 0.45 THEN sndBlipPlosLen = 441 + INT(AUD_Noise! * 441)  ' ~55% chance of 10–20ms noise burst
     sndBlipTimer   = sndBlipLen
 End Sub

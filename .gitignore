@@ -43,6 +43,7 @@ tests/mnv_load_test
 tests/spk_timing_test
 tests/spore_test
 tests/attack_test
+tests/inputscript_test
 tools/telem_batch_test
 boss-shots.log
 

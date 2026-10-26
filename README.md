@@ -56,6 +56,7 @@ tools/dev bake    # tools/bake_speech_dict
 tools/dev emit    # regenerate spline math (npm install in math/ + node tools/emit-spline.js)
 tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` runs one command
 tools/dev run     # play the game in the container on your display; args pass through to sss
+tools/dev headless  # run the game on an off-screen display (Xvfb), e.g. for scripted playtests (below)
 ```
 
 Typical workflow:
@@ -85,9 +86,20 @@ sss [options]
   --nerf                 Nerf mode: shorter stages, weaker bosses (for testing/streaming)
   --debug                Enable the debug HUD overlay and diagnostic console output
   --no-telem             Disable gameplay telemetry for this session (on by default; see below)
+  --input-script <file>  Play from a script instead of the keyboard/gamepad (see below)
+  --frames N             Quit after N frames (60 per second)
+  --seed N               Fixed random seed, so a scripted run repeats exactly
 ```
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
+
+**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE ESC TAB`, and `#` starts a comment. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
+
+```bash
+tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
+```
+
+A relative script path is resolved from the directory you launch from. While the branch is being tuned, boss fights append `[boss-volley]` / `[boss-shot]` lines to `boss-shots.log` there. This is temporary, for #26.
 
 ## Testing
 
@@ -112,6 +124,7 @@ tools/buildqb tests/crawl_plan_test.bas        && builds/crawl_plan_test
 tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
 tools/buildqb tests/spore_test.bas             && builds/spore_test
 tools/buildqb tests/attack_test.bas            && builds/attack_test
+tools/buildqb tests/inputscript_test.bas       && builds/inputscript_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
 ```
 

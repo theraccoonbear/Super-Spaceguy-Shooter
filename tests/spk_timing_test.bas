@@ -18,6 +18,7 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 
 Sub DBG_Print(stDbgMsg As String) : End Sub
 
+'$INCLUDE:'../src/audio/noise.bas'
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 

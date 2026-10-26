@@ -288,6 +288,10 @@ DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
+DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
+DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
+DIM SHARED cliSeedSet      AS INTEGER
+DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from settings (return to GS_OPTIONS)
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)

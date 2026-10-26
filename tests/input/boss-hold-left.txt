@@ -1,0 +1,4 @@
+# Hold-one-direction exploit check (#26): hold LEFT and fire for 25 s of a boss fight.
+#   tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
+# then read boss-shots.log: with lead aim, held-direction lasers should log hit=Y.
+0 1500 LEFT FIRE

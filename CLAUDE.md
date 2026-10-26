@@ -60,6 +60,7 @@
    ./tools/buildqb tests/crawl_step_test.bas        && builds/crawl_step_test
    ./tools/buildqb tests/spore_test.bas             && builds/spore_test
    ./tools/buildqb tests/attack_test.bas            && builds/attack_test
+   ./tools/buildqb tests/inputscript_test.bas       && builds/inputscript_test
    tools/http_queue_test   # builds + runs http_queue_test.bas against a local mock server
    ```
    All tests must pass (exit 0) before committing. No exceptions.

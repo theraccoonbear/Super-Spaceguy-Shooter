@@ -203,6 +203,7 @@ Sub EBULLET_Update
             ebullets(ebI).px, ebullets(ebI).py, ebullets(ebI).pz, boxLib(MESH_EBULLET), ebHit
             If ebHit And invTimer = 0 Then
                 ebullets(ebI).active = 0
+                If ebullets(ebI).meshIdx = MESH_BOSS Then EB_TuneLog "[boss-shot] dy=" + EB_Fmt$(ebullets(ebI).py - player.py) + " dz=" + EB_Fmt$(ebullets(ebI).pz - player.pz) + " hit=Y pvy=" + EB_Fmt$(playerVY) + " pvz=" + EB_Fmt$(playerVZ) + " inv=0"  ' [TUNING, temporary]
                 telemDeathCause = "ebullet"
                 PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
             ElseIf Not ebHit Then
