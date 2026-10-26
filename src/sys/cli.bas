@@ -9,7 +9,7 @@ Sub CLI_Parse()
             _Console On
             _Dest _Console
         Else
-            Open "/dev/stdout" For Output As #cliFH
+            Open "/dev/stdout" For Append As #cliFH
         End If
         CLI_Emit cliFH, "Super Spaceguy Shooter " + VERSION$
         If InStr(_OS$, "WIN") = 0 Then Close #cliFH
