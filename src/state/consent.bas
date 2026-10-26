@@ -47,7 +47,7 @@ Sub GS_CONSENT_Update()
     _DEST 0
     _PUTIMAGE , backBuffer, 0
 
-    Dim cnKey As Long : cnKey = _KEYHIT
+    Dim cnKey As Long : cnKey = KEY_Hit&
     Select Case cnKey
         Case 32          ' SPACE -- OK this session
             telemConsent = -1

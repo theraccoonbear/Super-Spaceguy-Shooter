@@ -67,8 +67,8 @@ Sub DBG_Overlay()
     Dim dbgBci As Integer, dbgBa As Integer, dbgBb As Integer, dbgBdiff As Integer
     Dim dbgBclr As Long
 
-    If _KeyDown(96) And Not dbgGraveWas Then dbgOverlay = 1 - dbgOverlay
-    dbgGraveWas = _KeyDown(96)
+    If KEY_Down%(96) And Not dbgGraveWas Then dbgOverlay = 1 - dbgOverlay
+    dbgGraveWas = KEY_Down%(96)
 
     dbgFrameMs = (Timer - dbgT0) * 1000
 

@@ -36,21 +36,21 @@ Sub GS_TITLE_Update ()
     IF held(E3D_KEY_ESCAPE) AND escWas = 0 AND held(E3D_KEY_PAD_START) = 0 THEN titleEscConfirm = 1 - titleEscConfirm
     escWas = held(E3D_KEY_ESCAPE)
     IF titleEscConfirm THEN
-        IF _KEYDOWN(65) OR _KEYDOWN(97) THEN
+        IF KEY_Down%(65) OR KEY_Down%(97) THEN
             ABOUT_Prep : gameState = GS_ABOUT : titleEscConfirm = 0
         END IF
-        IF _KEYDOWN(67) OR _KEYDOWN(99) THEN
+        IF KEY_Down%(67) OR KEY_Down%(99) THEN
             CONTROLS_Prep GS_TITLE : gameState = GS_CONTROLS
         END IF
-        IF _KEYDOWN(83) OR _KEYDOWN(115) THEN
+        IF KEY_Down%(83) OR KEY_Down%(115) THEN
             gameState = GS_OPTIONS : titleEscConfirm = 0
-            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = _KEYDOWN(65) OR _KEYDOWN(97)
+            optUpWas = -1 : optDnWas = 0 : optLfWas = 0 : optRtWas = 0 : optEscWas = -1 : optAboutWas = KEY_Down%(65) OR KEY_Down%(97)
         END IF
-        IF _KEYDOWN(76) OR _KEYDOWN(108) THEN
+        IF KEY_Down%(76) OR KEY_Down%(108) THEN
             gameState = GS_LEADERBOARD : titleEscConfirm = 0
         END IF
-        IF _KEYDOWN(81) OR _KEYDOWN(113) THEN SYSTEM
-        IF _KEYDOWN(78) OR _KEYDOWN(110) THEN titleEscConfirm = 0
+        IF KEY_Down%(81) OR KEY_Down%(113) THEN SYSTEM
+        IF KEY_Down%(78) OR KEY_Down%(110) THEN titleEscConfirm = 0
         MUS_Fill 0
         EXIT SUB
     END IF

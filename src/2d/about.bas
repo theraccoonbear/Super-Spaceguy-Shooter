@@ -109,16 +109,16 @@ Sub ABOUT_Prep()
     End If
 
     aboutScroll = scrH - 40    ' first line enters bottom fade zone immediately
-    aboutUpWas = _KEYDOWN(18432) : aboutDnWas = _KEYDOWN(20480) : aboutEscWas = _KEYDOWN(27)
+    aboutUpWas = KEY_Down%(18432) : aboutDnWas = KEY_Down%(20480) : aboutEscWas = KEY_Down%(27)
 End Sub
 
 Sub ABOUT_Update()
     Dim abI As Integer, abY As Integer
     Dim abUp As Integer, abDn As Integer, abEsc As Integer, abSy As Integer
 
-    abUp  = _KEYDOWN(18432)   ' up arrow
-    abDn  = _KEYDOWN(20480)   ' down arrow
-    abEsc = _KEYDOWN(27)
+    abUp  = KEY_Down%(18432)   ' up arrow
+    abDn  = KEY_Down%(20480)   ' down arrow
+    abEsc = KEY_Down%(27)
 
     ' manual scroll (4 px/frame while held)
     If abUp Then aboutScroll = aboutScroll + 4

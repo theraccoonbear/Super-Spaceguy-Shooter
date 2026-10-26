@@ -18,14 +18,14 @@ Sub GS_PLAYING_Update ()
         IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
             escConfirm = 1 - escConfirm
             IF escConfirm THEN
-                escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
-                escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
-                escCWas = _KEYDOWN(67) OR _KEYDOWN(99)
+                escYWas = KEY_Down%(89) OR KEY_Down%(121)
+                escNWas = KEY_Down%(78) OR KEY_Down%(110)
+                escCWas = KEY_Down%(67) OR KEY_Down%(99)
             END IF
         END IF
         escWas = held(E3D_KEY_ESCAPE)
         IF escConfirm THEN
-            IF (_KEYDOWN(89) OR _KEYDOWN(121)) AND escYWas = 0 THEN
+            IF (KEY_Down%(89) OR KEY_Down%(121)) AND escYWas = 0 THEN
                 escConfirm = 0
                 telemExitReason = "quit"
                 TELEM_SessionEnd
@@ -34,13 +34,13 @@ Sub GS_PLAYING_Update ()
                 planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
                 MUS_SetCue "title"
             END IF
-            escYWas = _KEYDOWN(89) OR _KEYDOWN(121)
-            IF (_KEYDOWN(78) OR _KEYDOWN(110)) AND escNWas = 0 THEN escConfirm = 0
-            escNWas = _KEYDOWN(78) OR _KEYDOWN(110)
-            IF (_KEYDOWN(67) OR _KEYDOWN(99)) AND escCWas = 0 THEN
+            escYWas = KEY_Down%(89) OR KEY_Down%(121)
+            IF (KEY_Down%(78) OR KEY_Down%(110)) AND escNWas = 0 THEN escConfirm = 0
+            escNWas = KEY_Down%(78) OR KEY_Down%(110)
+            IF (KEY_Down%(67) OR KEY_Down%(99)) AND escCWas = 0 THEN
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
             END IF
-            escCWas = _KEYDOWN(67) OR _KEYDOWN(99)
+            escCWas = KEY_Down%(67) OR KEY_Down%(99)
             _DEST backBuffer
             UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 52, "ABORT MISSION"
             FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 4,  scrW, 255

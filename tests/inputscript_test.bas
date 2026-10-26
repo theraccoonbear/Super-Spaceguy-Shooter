@@ -2,8 +2,9 @@
 '
 ' Drives the real module: parsing (ranges, several keys, comments, blanks, tabs, case),
 ' rejecting malformed lines, ISC_Apply holding exactly the scripted keys on the
-' scripted frames (inclusive ends, overlapping ranges, everything else up), and a
-' missing file.
+' scripted frames (inclusive ends, overlapping ranges, everything else up), any-key
+' names (letters in both cases, digits, F-keys, #code), KEY_Down% on/off frames
+' (including codes above 32767), KEY_Hit& press order, and a missing file.
 '
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
@@ -82,6 +83,69 @@ ISC_Apply 21, isHeld()
 IS_Assert isHeld(E3D_KEY_LEFT) = 0 And isHeld(E3D_KEY_UP) And IS_Down% = 1, "after a range ends its keys come up"
 ISC_Apply 31, isHeld()
 IS_Assert IS_Down% = 0, "after every range: nothing held"
+
+Print "--- any key ---"
+ISC_Clear
+isOk = ISC_ParseLine%("0 0 a 5 ENTER BACKSPACE SPACE BACKTICK F1 F10 F11 F12 #21248")
+IS_Assert isOk And iscCount = 11, "letters, digits, named keys, F-keys and #code parse"
+IS_Assert iscKey(1) = 97 And iscAlt(1) = 65, "a letter is its lower- and upper-case code"
+IS_Assert iscKey(2) = 53 And iscKey(3) = 13 And iscKey(4) = 8 And iscKey(5) = 32 And iscKey(6) = 96, "5 ENTER BACKSPACE SPACE BACKTICK codes"
+IS_Assert iscKey(7) = 15104 And iscKey(8) = 17408 And iscKey(9) = 34048 And iscKey(10) = 34304, "F1 F10 F11 F12 codes"
+IS_Assert iscKey(11) = 21248, "#<code> is that code"
+isOk = ISC_ParseLine%("0 0 F13")
+isOk2 = ISC_ParseLine%("0 0 #")
+isOk3 = ISC_ParseLine%("0 0 AB")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "F13, bare #, two letters are unknown"
+isOk = ISC_ParseLine%("0 0 #x1")
+IS_Assert isOk = 0 And InStr(iscError, "#x1") > 0, "non-numeric #code rejected"
+
+Print "--- KEY_Down ---"
+ISC_Clear
+IS_Assert ISC_ParseLine%("10 20 A F11 LEFT"), "load: 10-20 A F11 LEFT"
+iscActive = -1
+ISC_Apply 9, isHeld()
+IS_Assert KEY_Down%(65) = 0 And KEY_Down%(97) = 0 And KEY_Down%(34048) = 0, "before the range: up"
+ISC_Apply 10, isHeld()
+IS_Assert KEY_Down%(65) And KEY_Down%(97), "letter down as upper and lower case"
+IS_Assert KEY_Down%(34048), "F11 (code above 32767) down"
+IS_Assert KEY_Down%(19200) And isHeld(E3D_KEY_LEFT), "LEFT is down to KEY_Down and held()"
+IS_Assert isHeld(97) And IS_Down% = 2, "letter fills its held() slot; F11 has none"
+IS_Assert KEY_Down%(66) = 0 And KEY_Down%(98) = 0, "other letters stay up"
+ISC_Apply 20, isHeld()
+IS_Assert KEY_Down%(97) And KEY_Down%(34048), "last frame still down"
+ISC_Apply 21, isHeld()
+IS_Assert KEY_Down%(97) = 0 And KEY_Down%(34048) = 0 And KEY_Down%(19200) = 0, "after the range: up"
+
+Print "--- KEY_Hit ---"
+Dim isHit1 As Long, isHit2 As Long, isHit3 As Long, isHit4 As Long
+ISC_Clear
+IS_Assert ISC_ParseLine%("5 9 Y ENTER"), "load: 5-9 Y ENTER"
+IS_Assert ISC_ParseLine%("7 7 #21248"), "load: 7-7 #21248"
+iscActive = -1
+ISC_Apply 4, isHeld()
+isHit1 = KEY_Hit&
+IS_Assert isHit1 = 0, "nothing queued before any range"
+ISC_Apply 5, isHeld()
+isHit1 = KEY_Hit&
+isHit2 = KEY_Hit&
+isHit3 = KEY_Hit&
+IS_Assert isHit1 = 121 And isHit2 = 13 And isHit3 = 0, "first frame of a range: one press each, in script order, then 0"
+ISC_Apply 6, isHeld()
+isHit1 = KEY_Hit&
+IS_Assert isHit1 = 0, "holding a key does not repeat the press"
+ISC_Apply 7, isHeld()
+isHit1 = KEY_Hit&
+IS_Assert isHit1 = 21248, "a later range's press arrives on its first frame"
+ISC_Clear
+IS_Assert ISC_ParseLine%("1 1 Q") And ISC_ParseLine%("2 2 ESC"), "load: 1 Q, 2 ESC"
+iscActive = -1
+ISC_Apply 1, isHeld()
+ISC_Apply 2, isHeld()
+isHit1 = KEY_Hit&
+isHit2 = KEY_Hit&
+isHit3 = KEY_Hit&
+isHit4 = KEY_Hit&
+IS_Assert isHit1 = 113 And isHit2 = 27 And isHit3 = 0 And isHit4 = 0, "unread presses stay queued across frames, in order"
 
 Print "--- files ---"
 isOk = ISC_Load%("no/such/script.txt")
