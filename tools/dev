@@ -8,8 +8,9 @@
 #   bake           tools/bake_speech_dict
 #   emit           npm install in math/, then node tools/emit-spline.js
 #   shell [cmd]    interactive shell in the container, or run one command
-#   run [args]     play the game: builds/sss (built first if missing) on your
-#                  display and audio (X11/XWayland, PulseAudio/PipeWire, /dev/dri)
+#   run [args]     play the game: builds/sss (rebuilt first if missing or older
+#                  than any source) on your display and audio (X11/XWayland,
+#                  PulseAudio/PipeWire, /dev/dri)
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
 # file land on the host owned by you. Only `run` touches your display/audio.
@@ -24,7 +25,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 pick_engine() {
@@ -160,7 +161,10 @@ case "$cmd" in
         ;;
     run)
         pick_engine; ensure_image
-        if [ ! -x "$REPO/builds/sss" ]; then
+        # Rebuild when the binary is missing or any game source is newer than it
+        # (e.g. after a git pull), so `run` never plays a stale build.
+        if [ ! -x "$REPO/builds/sss" ] || [ -n "$(cd "$REPO" && find sss.bas src assets VERSION -newer builds/sss -print -quit)" ]; then
+            echo ">>> sources changed since the last build; rebuilding builds/sss..."
             run_in bash -c "./tools/buildqb sss.bas"
         fi
         gui_args
