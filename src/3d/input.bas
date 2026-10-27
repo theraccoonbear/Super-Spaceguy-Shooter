@@ -40,19 +40,32 @@ Const E3D_CTRL_BTN_START   = 8     ' Start / Options
 Sub E3D_CtrlInit
     Dim ctrlN As Integer, ctrlI As Integer
     ctrlN = _DEVICES
-    ctrlDev = 0
     DBG_Print "Input devices (" + LTRIM$(STR$(ctrlN)) + "):"
     For ctrlI = 1 To ctrlN
         DBG_Print "  [" + LTRIM$(STR$(ctrlI)) + "] " + _DEVICE$(ctrlI)
-        If InStr(_DEVICE$(ctrlI), "[CONTROLLER]") > 0 Or InStr(_DEVICE$(ctrlI), "[GAMEPAD]") > 0 Or InStr(_DEVICE$(ctrlI), "[JOYSTICK]") > 0 Then
-            ctrlDev = ctrlI
-        End If
     Next ctrlI
+    E3D_CtrlScan ctrlN
     If ctrlDev > 0 Then
         DBG_Print "Gamepad: device " + LTRIM$(STR$(ctrlDev))
     Else
         DBG_Print "No gamepad found; keyboard-only"
     End If
+End Sub
+
+' Sets ctrlDev to the last connected pad among devices 1..ctrlScanN, or 0.
+' A pad unplugged mid-run keeps its slot (its name gains "[DISCONNECTED]"), so
+' only a pad absent at launch needs the rescan in E3D_InputUpdate.
+Sub E3D_CtrlScan (ctrlScanN As Integer)
+    Dim ctrlScanI As Integer, ctrlScanName As String
+    ctrlDev = 0
+    For ctrlScanI = 1 To ctrlScanN
+        ctrlScanName = _DEVICE$(ctrlScanI)
+        If InStr(ctrlScanName, "[DISCONNECTED]") = 0 Then
+            If InStr(ctrlScanName, "[CONTROLLER]") > 0 Or InStr(ctrlScanName, "[GAMEPAD]") > 0 Or InStr(ctrlScanName, "[JOYSTICK]") > 0 Then
+                ctrlDev = ctrlScanI
+            End If
+        End If
+    Next ctrlScanI
 End Sub
 
 ' Call once per frame before reading input.
@@ -77,7 +90,20 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_PAD_START) = 0 : held(E3D_KEY_PAD_A) = 0 : held(E3D_KEY_PAD_B) = 0
     held(E3D_KEY_PAD_X) = 0 : held(E3D_KEY_PAD_Y) = 0 : held(E3D_KEY_PAD_SELECT) = 0
 
-    If ctrlDev = 0 Then Exit Sub
+    Static ctrlPlugTick As Integer
+    Static ctrlPlugSeen As Integer
+    Dim ctrlPlugNow As Integer
+    If ctrlDev = 0 Then
+        ctrlPlugTick = ctrlPlugTick + 1
+        If ctrlPlugTick < 60 Then Exit Sub
+        ctrlPlugTick = 0
+        ctrlPlugNow = _DEVICES
+        If ctrlPlugNow = ctrlPlugSeen Then Exit Sub
+        ctrlPlugSeen = ctrlPlugNow
+        E3D_CtrlScan ctrlPlugNow
+        If ctrlDev = 0 Then Exit Sub
+        DBG_Print "Gamepad: device " + LTRIM$(STR$(ctrlDev))
+    End If
 
     Static ctrlAxX    As Single
     Static ctrlAxY    As Single
