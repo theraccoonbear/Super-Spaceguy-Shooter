@@ -8,6 +8,7 @@
 '   ./tools/buildqb tests/scene_jump_planet_test.bas
 ' Run:   builds/scene_jump_planet_test   (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
@@ -19,6 +20,7 @@ Const GS_INTRO           = 5
 Const GS_CRAWL           = 6
 Const LEVEL_COMBAT       = 0
 Const LEVEL_ASTEROID     = 1
+Const LEVEL_BOSS         = 2
 Const PLANET_COUNT       = 6
 Const NERF_FACTOR        = 0.1
 Const BOSS_WARN_FRAMES   = 120
@@ -67,7 +69,17 @@ Dim Shared bossAttackList$(0 To 7)
 Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
-Dim introTimer As Integer
+Dim Shared introTimer As Integer
+Dim Shared stageScoreBase As Long
+Dim Shared scrW         As Single
+Dim Shared planetR       As Single
+Dim Shared planetBgR     As Single
+Dim Shared planetBgAlpha As Single
+Dim Shared astParsecs    As Integer
+Type GameObj
+    px As Single
+End Type
+Dim Shared player       As GameObj
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
 Sub MUS_SetCue(c As String)         : End Sub

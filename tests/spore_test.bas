@@ -9,6 +9,7 @@
 ' Build: ./tools/buildqb tests/spore_test.bas
 ' Run:   ./tests/spore_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 '$INCLUDE:'../src/gameplay/spores.bas'

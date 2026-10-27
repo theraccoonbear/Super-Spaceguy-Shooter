@@ -22,6 +22,8 @@ Const E3D_CTRL_BTN_FIRE    = 1     ' A / Cross
 Const E3D_CTRL_BTN_SELECT  = 7     ' Back / Select
 Const E3D_CTRL_BTN_START   = 8     ' Start / Options
 
+Dim Shared ctrlDev As Integer
+
 ' Scan for a connected gamepad/joystick; call once at startup after SCREEN is open.
 Sub E3D_CtrlInit
     Dim ctrlN As Integer, ctrlI As Integer
