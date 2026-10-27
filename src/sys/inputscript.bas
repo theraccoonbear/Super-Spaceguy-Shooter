@@ -42,7 +42,7 @@
 '   ISC_Clear
 ' Local variable prefix: isc*
 
-Const ISC_MAX = 256
+Const ISC_MAX = 1024
 ' script codes for the pad's raw state (never a real key code): PADBTN<n> is
 ' ISC_PAD_BTN - n, PADAXIS<n>- is ISC_PAD_AXNEG - n, PADAXIS<n>+ is ISC_PAD_AXPOS - n
 Const ISC_PAD_BTN   = -1000

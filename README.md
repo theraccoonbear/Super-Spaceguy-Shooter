@@ -124,6 +124,15 @@ The runner builds and runs each test in `tests/` on one of several workers, then
 
 **A new controller:** record it once, commit the file, and it's tested. `tools/padrecord.bas` opens a small window that asks you to hold each control in turn (stick and d-pad directions, A, B, X, Y, Start, Back, and nothing at all) and press ENTER, then writes the pad's raw buttons and axes to `tests/input/pads/<name>.txt`. Build it and run it from the repo root with the pad plugged in: `tools/buildqb tools/padrecord.bas && builds/padrecord <name>`. `tests/pad_map_test` loads every file there and checks each control reaches the right game action, so a control the mapping drops fails CI by pad and control name (e.g. `xbox360_xpad: DPAD_UP produced nothing`).
 
+**Full playthrough** (`tests/playthrough/`, #100): one scripted, seeded run (`--god --nerf --seed 1 --frames 20000`, input `tests/playthrough/playthrough.txt`) plays the whole game the way a fresh install sees it, from a launch folder with no `sss_settings.ini`: data notice, callsign, lead-in cards, intro crawl, emperor card, title, all six stages (crawls, combat, the three bosses, the asteroid field, planet arrivals and cinematics), the outro and back to the title.
+
+```bash
+tools/dev build                                  # the run needs builds/sss
+tools/dev shell tests/playthrough/run.sh         # about 2.5 minutes; extra args go to sss, e.g. --screenshot-at 3000,9000
+```
+
+The game writes a milestone log when the `SSS_MILESTONE_LOG` env var names a file (off otherwise): one line per frame on which the game state or the sequence step changed (`<frame> <state> <seqIdx> <label> <TASK> <args>`), plus `<frame> EXIT` when `--frames` ends the run. `run.sh` checks that the game exited cleanly at `--frames`, that the log matches `tests/playthrough/expected.txt` in order with nothing missing or extra (so it reaches the final title inside the frame budget), and that the local telemetry CSV has one `boss_defeated` per boss and a winning `session_end`. A failure names the milestone where the run went wrong or stalled; the log, the game's output and the CSV stay in `builds/playthrough/` (CI uploads them as the `playthrough-logs` artifact). The binary must be built with an empty `assets/.env`, because the run OKs the data notice and would otherwise send its telemetry and leaderboard score. CI runs it on Linux as its own step. When the game flow changes on purpose (a stage added or reordered), update `expected.txt`, and `playthrough.txt` and `FRAMES` in `run.sh` if the run gets longer.
+
 Each subsystem doc below has its own "test in isolation" section with more detail.
 
 ## Telemetry and leaderboards

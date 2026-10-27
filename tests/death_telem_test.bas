@@ -87,6 +87,7 @@ Dim Shared waveType          As Integer
 Dim Shared leaderboardPlayerID As String
 Dim Shared telemPlayerName     As String
 Dim Shared settingNerf         As Integer
+Dim Shared godMode             As Integer
 
 Dim Shared dtEnds As Integer, dtScorePosts As Integer
 
@@ -168,6 +169,18 @@ Print "--- 4. a new session can end again ---"
 DT_NewGame 1
 TELEM_SessionEnd
 TC_Assert dtEnds = 1, "4.01  next session ends once"
+Print ""
+
+Print "--- 5. --god: lethal hits in one frame cost nothing ---"
+DT_NewGame 1
+godMode = -1
+PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
+PLAYER_TakeDamage DMG_COLLISION * 6, SHAKE_COLLISION, FLASH_COLLISION
+godMode = 0
+TC_Assert shipLives = 1, "5.01  no ship lost"
+TC_Assert deathTimer = 0, "5.02  no death"
+TC_Assert lives = 100,   "5.03  shields full"
+TC_Assert dtEnds = 0,    "5.04  session still open"
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _

@@ -65,6 +65,21 @@ Dim Shared enemies(1 To MAX_ENEMIES) As GameObj
 Dim Shared boxLib(1 To MESH_COUNT) As E3D_AABB
 Dim Shared vpMat As E3D_Matrix4
 
+' -- sequencer and frame counter, as sequence.bas / dims.bas declare them (milestone log) --
+Const SEQ_MAX     = 64
+Const SEQ_CRAWL   = 1
+Const SEQ_EMPEROR = 2
+Const SEQ_PLAY    = 3
+Const SEQ_TITLE   = 4
+Const SEQ_ARRIVE  = 5
+Dim Shared seqKind(0 To SEQ_MAX - 1) As Integer
+Dim Shared seqSval$(0 To SEQ_MAX - 1)
+Dim Shared seqLabel$(0 To SEQ_MAX - 1)
+Dim Shared seqCount As Integer, seqIdx As Integer
+Dim Shared gameFrame As Long
+Dim Shared dbgMlogPath As String
+Dim Shared dbgMlogState As Integer, dbgMlogSeq As Integer
+
 '$INCLUDE:'../src/sys/debug.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 
@@ -112,6 +127,53 @@ dbgTtyOK = 0
 DBG_Print "should be a silent no-op"
 GTEXT_Log "should be a silent no-op"
 ST_Assert -1, "DBG_Print/GTEXT_Log ran without error while disabled"
+
+Print ""
+Print "--- milestone log (SSS_MILESTONE_LOG, for tests/playthrough) ---"
+Dim mlFile As String, mlFH As Integer, mlLine As String, mlN As Integer
+Dim mlLines(1 To 10) As String
+mlFile = _StartDir$ + "/dbg_milestone_test.log"
+seqCount = 2
+seqKind(0) = SEQ_CRAWL : seqLabel$(0) = "level1" : seqSval$(0) = "txt=stage1 mus=crawl"
+seqKind(1) = SEQ_PLAY  : seqLabel$(1) = "level1" : seqSval$(1) = "type=combat mus=game trigger=10 "
+
+Environ "SSS_MILESTONE_LOG="
+DBG_MilestoneInit
+gameState = GS_CRAWL : seqIdx = 0 : gameFrame = 1
+DBG_MilestoneLog
+ST_Assert dbgMlogPath = "", "unset: off"
+
+Environ "SSS_MILESTONE_LOG=" + mlFile
+DBG_MilestoneInit
+ST_Assert dbgMlogPath = mlFile, "set: absolute path used as is"
+gameState = GS_CONSENT : seqIdx = -1 : gameFrame = 0 : DBG_MilestoneLog
+gameFrame = 1 : DBG_MilestoneLog
+gameState = GS_CRAWL : seqIdx = 0 : gameFrame = 7 : DBG_MilestoneLog
+gameFrame = 8 : DBG_MilestoneLog
+seqIdx = 1 : gameState = GS_PLAYING : gameFrame = 40 : DBG_MilestoneLog
+gameState = GS_PLANET : gameFrame = 90 : DBG_MilestoneLog
+DBG_MilestoneWrite "120 EXIT"
+mlFH = FreeFile
+Open mlFile For Input As #mlFH
+Do While Not EOF(mlFH)
+    Line Input #mlFH, mlLine
+    mlN = mlN + 1
+    If mlN <= 10 Then mlLines(mlN) = mlLine
+Loop
+Close #mlFH
+Kill mlFile
+ST_Assert mlN = 5, "one line per change, plus EXIT (got" + Str$(mlN) + ")"
+ST_Assert mlLines(1) = "0 GS_CONSENT -1", "before the sequence starts: frame, state, -1"
+ST_Assert mlLines(2) = "7 GS_CRAWL 0 level1 CRAWL txt=stage1 mus=crawl", "sequence step: label, task, args"
+ST_Assert mlLines(3) = "40 GS_PLAYING 1 level1 PLAY type=combat mus=game trigger=10", "trailing space trimmed"
+ST_Assert mlLines(4) = "90 GS_PLANET 1 level1 PLAY type=combat mus=game trigger=10", "state change alone logs"
+ST_Assert mlLines(5) = "120 EXIT", "EXIT line"
+Environ "SSS_MILESTONE_LOG=dbg_milestone_rel.log"
+DBG_MilestoneInit
+ST_Assert dbgMlogPath = _StartDir$ + "/dbg_milestone_rel.log", "relative path: the launch folder"
+ST_Assert _FileExists(dbgMlogPath), "file created at startup"
+If _FileExists(dbgMlogPath) Then Kill dbgMlogPath
+Environ "SSS_MILESTONE_LOG="
 
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) _
