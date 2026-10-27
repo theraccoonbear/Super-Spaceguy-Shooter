@@ -119,6 +119,8 @@ bash tests/tools_dev_test.sh  # checks the container command `tools/dev run` bui
 
 The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name in `TESTS` in `.github/scripts/qb64test.sh`.
 
+**A new controller:** record it once, commit the file, and it's tested. `tools/padrecord.bas` opens a small window that asks you to hold each control in turn (stick and d-pad directions, A, B, X, Y, Start, Back, and nothing at all) and press ENTER, then writes the pad's raw buttons and axes to `tests/input/pads/<name>.txt`. Build it and run it from the repo root with the pad plugged in: `tools/buildqb tools/padrecord.bas && builds/padrecord <name>`. `tests/pad_map_test` loads every file there and checks each control reaches the right game action, so a control the mapping drops fails CI by pad and control name (e.g. `xbox360_xpad: DPAD_UP produced nothing`).
+
 Each subsystem doc below has its own "test in isolation" section with more detail.
 
 ## Telemetry and leaderboards
