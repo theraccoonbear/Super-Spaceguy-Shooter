@@ -20,7 +20,7 @@ Const BOSS_ATTITUDE_LERP = 0.07  ' attitude settle rate (< player 0.09 = heavier
 
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssSpd As Single
-    Dim bssEJ As Integer, bssJ As Integer, bssP As Integer, bssPK As Integer
+    Dim bssEJ As Integer, bssJ As Integer
     Dim bssShots As Integer
     Dim bssHit As Integer
     Dim bssPrevY As Single, bssPrevZ As Single
@@ -201,7 +201,7 @@ Sub BOSS_Update
     boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), bssHit
     If bssHit And invTimer = 0 Then
         telemDeathCause = "boss_col"
-        PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+        PLAYER_TakeHit DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
     End If
 
     ' player bullets vs boss
@@ -216,31 +216,7 @@ Sub BOSS_Update
                 fxShakeTimer = 2
                 SND_Boom
                 If boss.hp <= 0 Then
-                    If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
-                    TELEM_BossDefeated
-                    boss.active  = 0
-                    planetTransitionTimer = 75
-                    SPORE_Clear  ' no lingering clouds or cuts once the boss is dead
-                    CUT_Clear
-                    DEV_Clear
-                    score = score + 2000
-                    scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
-                    bssPK = 0
-                    For bssP = 1 To FX_MAX_PARTICLES
-                        If fxPartActive(bssP) = 0 And bssPK < BOSS_DEATH_PARTS Then
-                            fxPartActive(bssP) = -1
-                            fxPartPX(bssP) = boss.px + (RNG!(RNG_FX) - 0.5) * 5
-                            fxPartPY(bssP) = boss.py + (RNG!(RNG_FX) - 0.5) * 5
-                            fxPartPZ(bssP) = boss.pz + (RNG!(RNG_FX) - 0.5) * 5
-                            fxPartVX(bssP) = (RNG!(RNG_FX) - 0.5) * 0.40
-                            fxPartVY(bssP) = (RNG!(RNG_FX) - 0.5) * 0.40
-                            fxPartVZ(bssP) = (RNG!(RNG_FX) - 0.5) * 0.40
-                            fxPartLife(bssP) = 35 + Int(RNG!(RNG_FX) * 25)
-                            fxPartClr(bssP)  = _RGB(255, Int(RNG!(RNG_FX) * 140) + 60, 0)
-                            bssPK = bssPK + 1
-                        End If
-                    Next bssP
-                    MUS_SetCue "game"
+                    BOSS_Defeat
                     ' the boss is gone: a second bullet landing this same frame must not run
                     ' the defeat (score, telemetry, stage transition) again (#168)
                     Exit For
@@ -248,6 +224,37 @@ Sub BOSS_Update
             End If
         End If
     Next bssJ
+End Sub
+
+' The boss is beaten (by lasers or a nova pulse): score, credits, telemetry, the stage transition.
+Sub BOSS_Defeat
+    Dim bsdP As Integer, bsdPK As Integer
+    If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
+    TELEM_BossDefeated
+    boss.active  = 0
+    planetTransitionTimer = 75
+    SPORE_Clear  ' no lingering clouds or cuts once the boss is dead
+    CUT_Clear
+    DEV_Clear
+    score = score + 2000
+    scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
+    bsdPK = 0
+    For bsdP = 1 To FX_MAX_PARTICLES
+        If fxPartActive(bsdP) = 0 And bsdPK < BOSS_DEATH_PARTS Then
+            fxPartActive(bsdP) = -1
+            fxPartPX(bsdP) = boss.px + (RNG!(RNG_FX) - 0.5) * 5
+            fxPartPY(bsdP) = boss.py + (RNG!(RNG_FX) - 0.5) * 5
+            fxPartPZ(bsdP) = boss.pz + (RNG!(RNG_FX) - 0.5) * 5
+            fxPartVX(bsdP) = (RNG!(RNG_FX) - 0.5) * 0.40
+            fxPartVY(bsdP) = (RNG!(RNG_FX) - 0.5) * 0.40
+            fxPartVZ(bsdP) = (RNG!(RNG_FX) - 0.5) * 0.40
+            fxPartLife(bsdP) = 35 + Int(RNG!(RNG_FX) * 25)
+            fxPartClr(bsdP)  = _RGB(255, Int(RNG!(RNG_FX) * 140) + 60, 0)
+            bsdPK = bsdPK + 1
+        End If
+    Next bsdP
+    MUS_SetCue "game"
+    CR_Add crBoss
 End Sub
 
 ' Attack A, spore bloom (#26): launches spore clouds at where the player is now, one per

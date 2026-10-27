@@ -142,8 +142,16 @@ Sub TELEM_BossDefeated()
     TELEM_Row "boss_defeated", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills))
 End Sub
 
+' A dock purchase (#268): which upgrade, the level it reached, what it cost, what's left.
+Sub TELEM_UpgradeBought(tlubItem As String, tlubLevel As Integer, tlubPrice As Long)
+    TELEM_Row "upgrade_bought", "item=" + tlubItem + "|level=" + LTrim$(Str$(tlubLevel)) _
+            + "|price=" + LTrim$(Str$(tlubPrice)) + "|credits_left=" + LTrim$(Str$(credits))
+End Sub
+
 Sub TELEM_SessionEnd()
     If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
+    TELEM_Row "credits_earned", "earned=" + LTrim$(Str$(creditsEarned)) + "|spent=" + LTrim$(Str$(creditsSpent)) _
+            + "|left=" + LTrim$(Str$(credits))
     Dim tlMisses As Long : tlMisses = telemShotsFired - telemShotsHit
     Dim tlData As String
     tlData = "exit=" + telemExitReason _

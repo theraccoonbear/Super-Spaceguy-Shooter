@@ -16,6 +16,7 @@ CONST GS_USERNAME    = 11
 CONST GS_LEADERBOARD = 12
 CONST GS_CONTROLS    = 13
 CONST GS_CRAWLS      = 14   ' --crawls dev browser (src/2d/crawlbrowse.bas)
+CONST GS_DOCK        = 15   ' upgrade dock between stages (src/state/dock.bas)
 CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
@@ -230,6 +231,33 @@ DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED held(0 TO 32767) AS INTEGER
 DIM SHARED fireTimer AS SINGLE
 
+' --- credits and upgrades (#268): src/gameplay/upgrades.bas owns the table; UPG_Apply
+' sets the effect values below from the bought levels. Defaults are the level-0 values.
+DIM SHARED credits       AS LONG
+DIM SHARED creditsEarned AS LONG
+DIM SHARED creditsSpent  AS LONG
+DIM SHARED shieldMax  AS INTEGER : shieldMax  = 100
+DIM SHARED laserMax   AS SINGLE  : laserMax   = 100.0
+DIM SHARED laserRegen AS SINGLE  : laserRegen = 0.30
+DIM SHARED fuelMax    AS SINGLE  : fuelMax    = 100.0
+DIM SHARED fireCool   AS SINGLE  : fireCool   = 0.18
+DIM SHARED shipMaxVel AS SINGLE  : shipMaxVel = 0.12
+DIM SHARED gunShots   AS INTEGER : gunShots   = 1
+DIM SHARED gunSpread  AS SINGLE
+DIM SHARED armourMul  AS SINGLE  : armourMul  = 1.0
+DIM SHARED regenEvery AS INTEGER   ' frames per shield point regained (0 = no regen)
+DIM SHARED regenDelay AS INTEGER   ' frames without a hit before regen starts
+DIM SHARED regenTick  AS INTEGER
+DIM SHARED noHitFrames AS LONG
+DIM SHARED tractorR    AS SINGLE, tractorPull AS SINGLE
+DIM SHARED novaCharges AS INTEGER, novaMax AS INTEGER
+DIM SHARED novaRadius  AS SINGLE, novaBossDmg AS INTEGER
+DIM SHARED novaFxTimer AS INTEGER
+DIM SHARED rollTimer   AS INTEGER, rollCool AS INTEGER, rollCoolMax AS INTEGER, rollDir AS INTEGER
+DIM SHARED rollFrames  AS INTEGER : rollFrames = 20
+DIM SHARED rollSpeed   AS SINGLE  : rollSpeed  = 0.32
+DIM SHARED dockBgImg   AS LONG
+
 ' --- telemetry ---
 DIM SHARED dbgTtyOK          AS INTEGER
 DIM SHARED telemOn           AS INTEGER
@@ -292,6 +320,7 @@ DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instea
 DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
 DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
 DIM SHARED cliSeedSet      AS INTEGER
+DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N credits (testing the dock)
 DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
 DIM SHARED cliShotN        AS INTEGER

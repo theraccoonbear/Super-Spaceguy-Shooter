@@ -117,6 +117,7 @@ Sub ENEMY_Update
                         score = score + SCORE_ENEMY
                         If debugMode Then DBG_Print "[kill] enemy  score=" + LTrim$(Str$(score))
                         TELEM_EnemyKilled
+                        CR_Add crKill
                         SND_Boom
                         scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
                         Select Case enemies(enI).meshIdx
@@ -158,7 +159,7 @@ Sub ENEMY_Update
                 SND_Boom
                 FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
                 telemDeathCause = "enemy_col"
-                PLAYER_TakeDamage DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+                PLAYER_TakeHit DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
             End If
         End If
     Next enI

@@ -9,9 +9,11 @@
 Sub GAME_ResetState
     Dim grI As Integer
 
+    UPG_Reset
+    credits = cliCredits
     score = 0 : IF settingNerf THEN stageScore = BOSS_TRIGGER_NERF ELSE stageScore = BOSS_TRIGGER
-    lives = 100 : shipLives = 3 : laserEnergy = 100.0 : gameOver = 0 : diffTime = 0 : diffScale = 0 : levelNum = 0
-    fuelLevel = 100.0 : fuelStranded = 0
+    lives = shieldMax : shipLives = 3 : laserEnergy = laserMax : gameOver = 0 : diffTime = 0 : diffScale = 0 : levelNum = 0
+    fuelLevel = fuelMax : fuelStranded = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
     thrusterScale = 0.30 : invTimer = 120 : deathTimer = 0 : escConfirm = 0 : titleEscConfirm = 0
@@ -118,6 +120,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
+    CLI_Emit guFH, "  --credits N            Start every run with N credits (for trying the upgrade dock)"
     CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"

@@ -101,7 +101,10 @@ Sub HUD_Draw
     End If
 
     ' score
-    FONT_PrintAlpha fontPalette(9), backBuffer, "SCORE: " + LTRIM$(STR$(score)), 4, 4, 255
+    hdHiStr = "SCORE: " + LTRIM$(STR$(score))
+    FONT_PrintAlpha fontPalette(9), backBuffer, hdHiStr, 4, 4, 255
+    ' credits (#268): the dock's currency, separate from score
+    FONT_PrintAlpha fontPalette(14), backBuffer, "$" + LTRIM$(STR$(credits)), 4 + (LEN(hdHiStr) + 1) * FONT_CHAR_W, 4, 255
     ' ship life icons — bottom-left corner
     For hdJ = 1 To 3
         If hdJ <= shipLives Then
@@ -113,20 +116,44 @@ Sub HUD_Draw
         End If
     Next hdJ
 
+    ' dock abilities (#268): nova charges and roll readiness, above the ship icons
+    Dim hdAbY As Integer, hdAbK As Integer, hdAbFill As Integer
+    hdAbY = scrH - 30
+    If novaMax > 0 Then
+        If novaCharges > 0 Then hdAbK = 11 Else hdAbK = 8
+        FONT_PrintAlpha fontPalette(hdAbK), backBuffer, "NOVA", 3, hdAbY, 255
+        For hdAbK = 1 To novaMax
+            If hdAbK <= novaCharges Then
+                LINE (38 + (hdAbK - 1) * 7, hdAbY + 6)-(42 + (hdAbK - 1) * 7, hdAbY + 10), _RGB(150, 235, 255), BF
+            Else
+                LINE (38 + (hdAbK - 1) * 7, hdAbY + 6)-(42 + (hdAbK - 1) * 7, hdAbY + 10), _RGB(50, 70, 90), B
+            End If
+        Next hdAbK
+        hdAbY = hdAbY - 16
+    End If
+    If rollCoolMax > 0 Then
+        If rollCool = 0 Then hdAbK = 11 Else hdAbK = 8
+        FONT_PrintAlpha fontPalette(hdAbK), backBuffer, "ROLL", 3, hdAbY, 255
+        hdAbFill = INT(20 * (1 - rollCool / rollCoolMax))
+        LINE (38, hdAbY + 6)-(59, hdAbY + 10), _RGB(15, 20, 30), BF
+        If hdAbFill > 0 Then LINE (39, hdAbY + 7)-(38 + hdAbFill, hdAbY + 9), _RGB(150, 235, 255), BF
+        LINE (38, hdAbY + 6)-(59, hdAbY + 10), _RGB(70, 90, 100), B
+    End If
+
     ' gauges: SH [=] LA [=] FU [=]
-    hdShieldPct = lives / 100.0
+    hdShieldPct = lives / shieldMax
     If hdShieldPct > 1.0 Then hdShieldPct = 1.0
     If hdShieldPct < 0.0 Then hdShieldPct = 0.0
     hdShieldFill = INT(hdShieldPct * 28)
-    hdLaserFill  = INT((laserEnergy / 100.0) * 28)
-    hdFuelFill   = INT((fuelLevel   / 100.0) * 28)
+    hdLaserFill  = INT((laserEnergy / laserMax) * 28)
+    hdFuelFill   = INT((fuelLevel   / fuelMax) * 28)
 
     FONT_PrintAlpha fontPalette(9), backBuffer, "SH", scrW - 150, 4, 255
     LINE (scrW - 134, 8)-(scrW - 104, 14), _RGB(15, 20, 30), BF
     If hdShieldFill > 0 Then
-        If lives > 60 Then
+        If lives * 10 > shieldMax * 6 Then
             hdShieldClr = _RGB(50, 210, 60)
-        ElseIf lives > 30 Then
+        ElseIf lives * 10 > shieldMax * 3 Then
             hdShieldClr = _RGB(235, 190, 15)
         Else
             hdShieldClr = _RGB(240, 50, 35)
@@ -139,7 +166,7 @@ Sub HUD_Draw
     FONT_PrintAlpha fontPalette(9), backBuffer, "LA", scrW - 100, 4, 255
     LINE (scrW - 84, 8)-(scrW - 54, 14), _RGB(15, 20, 30), BF
     If hdLaserFill > 0 Then
-        If laserEnergy > 30 Then
+        If laserEnergy > laserMax * 0.3 Then
             hdLaserClr = _RGB(60, 180, 255)
         Else
             hdLaserClr = _RGB(255, 140, 20)
@@ -152,7 +179,7 @@ Sub HUD_Draw
     FONT_PrintAlpha fontPalette(9), backBuffer, "FU", scrW - 50, 4, 255
     LINE (scrW - 34, 8)-(scrW - 4, 14), _RGB(15, 20, 30), BF
     If hdFuelFill > 0 Then
-        If fuelLevel > 40 Then
+        If fuelLevel > fuelMax * 0.4 Then
             hdFuelClr = _RGB(230, 180, 30)
         Else
             hdFuelClr = _RGB(255, 80, 20)

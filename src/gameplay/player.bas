@@ -10,17 +10,16 @@
 ' Local variable prefix: plr* (physics)  plc* (camera)
 
 Const PLAYER_ACCEL     = 0.14    ' velocity lerp rate (controls both accel and drag)
-Const PLAYER_MAX_VEL   = 0.12    ' max lateral velocity per frame
+Const PLAYER_MAX_VEL   = 0.12    ' max lateral velocity per frame at level 0 (thrusters raise shipMaxVel)
 Const ATTITUDE_LERP    = 0.09    ' ship tilt/roll settle rate
 Const BULLET_SPEED     = 0.35    ' player bullet X velocity
-Const FIRE_COOLDOWN    = 0.18    ' seconds between shots
 Const LASER_COST       = 5.0     ' laser energy drained per shot (%)
 Const AIM_ASSIST       = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
-Const LASER_REGEN      = 0.30    ' laser energy per frame (~18%/sec at 60fps)
 Const FUEL_DRAIN       = 0.0185  ' base drain per frame (~90 sec at 60fps)
 Const FUEL_DRAIN_BOOST = 0.006   ' extra drain per frame when thrusting
 Const BULLET_RANGE     = 110     ' cull player bullet beyond player.px + this
 Const BULLET_TRAIL_LEN = 2.0     ' world-unit length of bolt body (rear to tip along nose)
+Const TWIN_GAP         = 0.35    ' sideways offset of the outer shots (twin cannons / spread shot)
 Const DMG_COLLISION    = 17      ' shield damage from collision
 Const DMG_ASTEROID     = 100     ' asteroid collision: always fatal
 Const DMG_LASER        = 5       ' shield damage from enemy bullet
@@ -37,10 +36,10 @@ Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrR
     ' input -> target velocity
     plrTgtVY = 0 : plrTgtVZ = 0
     If gameState = GS_PLAYING And Not fuelStranded Then
-        If plrUp    Then plrTgtVY =  PLAYER_MAX_VEL
-        If plrDown  Then plrTgtVY = -PLAYER_MAX_VEL
-        If plrLeft  Then plrTgtVZ = -PLAYER_MAX_VEL
-        If plrRight Then plrTgtVZ =  PLAYER_MAX_VEL
+        If plrUp    Then plrTgtVY =  shipMaxVel
+        If plrDown  Then plrTgtVY = -shipMaxVel
+        If plrLeft  Then plrTgtVZ = -shipMaxVel
+        If plrRight Then plrTgtVZ =  shipMaxVel
     End If
 
     ' lerp velocity toward target (PLAYER_ACCEL drives both accel and drag)
@@ -52,6 +51,8 @@ Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrR
         player.py = player.py + playerVY
         player.pz = player.pz + playerVZ
     End If
+    ' evasive roll (#268): a sideways dash, untouchable while it lasts
+    If rollTimer > 0 And gameState = GS_PLAYING Then player.pz = player.pz + rollDir * rollSpeed
 
     ' isManeuver: ship is meaningfully in motion (drives fuel drain + thruster FX)
     If Abs(playerVY) > 0.005 Or Abs(playerVZ) > 0.005 Then
@@ -66,7 +67,7 @@ Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrR
         plrTgtRx =  32 * cinPhase
         plrTgtRy = -12 * cinPhase
     ElseIf Not fuelStranded Then
-        plrNorm = PLAYER_MAX_VEL
+        plrNorm = shipMaxVel
         plrTgtRx =  (playerVZ / plrNorm) * 22   ' bank into left/right
         plrTgtRy = -(playerVZ / plrNorm) * 7    ' yaw nudge
         plrTgtRz =  (playerVY / plrNorm) * 15   ' pitch up/down
@@ -74,86 +75,115 @@ Sub PLAYER_Update(plrUp As Integer, plrDown As Integer, plrLeft As Integer, plrR
     player.rx = player.rx + (plrTgtRx - player.rx) * ATTITUDE_LERP
     player.ry = player.ry + (plrTgtRy - player.ry) * ATTITUDE_LERP
     player.rz = player.rz + (plrTgtRz - player.rz) * ATTITUDE_LERP
+    If rollTimer > 0 Then
+        player.rx = plrTgtRx + rollDir * 360.0 * (rollFrames - rollTimer) / rollFrames
+    ElseIf player.rx > 180 Then
+        player.rx = player.rx - 360
+    ElseIf player.rx < -180 Then
+        player.rx = player.rx + 360
+    End If
 End Sub
 
 Sub PLAYER_Fire
-    Dim plfI As Integer, plfAaI As Integer
+    Dim plfI As Integer, plfAaI As Integer, plfK As Integer, plfFired As Integer
     Dim plfRx As Single, plfRy As Single, plfRz As Single
     Dim plfNx As Single, plfNy As Single, plfNz As Single
+    Dim plfPX As Single, plfPY As Single, plfPZ As Single
+    Dim plfOff As Single, plfSp As Single, plfSide As Integer
     Dim plfAaDX As Single, plfAaDY As Single, plfAaDZ As Single, plfAaDist As Single
     Dim plfAaBest As Single, plfAaNY As Single, plfAaNZ As Single
 
     If held(E3D_KEY_SPACE) = 0 Or gameState <> GS_PLAYING Then Exit Sub
     If fireTimer > 0 Or laserEnergy < LASER_COST Then Exit Sub
 
-    For plfI = 1 To MAX_BULLETS
-        If bullets(plfI).active = 0 Then
-            bullets(plfI).active  = -1
-            bullets(plfI).meshIdx = MESH_BULLET
-            plfRx = player.rx * _PI / 180.0
-            plfRy = player.ry * _PI / 180.0
-            plfRz = player.rz * _PI / 180.0
-            plfNx = COS(plfRz) * COS(plfRy)
-            plfNy = COS(plfRx)*SIN(plfRz)*COS(plfRy) + SIN(plfRx)*SIN(plfRy)
-            plfNz = SIN(plfRx)*SIN(plfRz)*COS(plfRy) - COS(plfRx)*SIN(plfRy)
-            bullets(plfI).px = player.px + plfNx * (BULLET_TRAIL_LEN + 1.0)
-            bullets(plfI).py = player.py + plfNy * (BULLET_TRAIL_LEN + 1.0)
-            bullets(plfI).pz = player.pz + plfNz * (BULLET_TRAIL_LEN + 1.0)
-            ' aim assist: nudge toward nearest enemy OR the boss within ~20 deg forward cone.
-            ' The boss is a separate BossObj, not a member of enemies() -- checked here the
-            ' same way so it isn't silently exempt from the only mechanism that makes shots
-            ' land reliably (bullet direction otherwise comes from player.rx/ry/rz, a small,
-            ' velocity-derived cosmetic tilt that decays to zero the moment you stop
-            ' accelerating, not a real aim direction).
-            plfAaBest = 1e9
-            For plfAaI = 1 To MAX_ENEMIES
-                If enemies(plfAaI).active Then
-                    plfAaDX = enemies(plfAaI).px - player.px
-                    plfAaDY = enemies(plfAaI).py - player.py
-                    plfAaDZ = enemies(plfAaI).pz - player.pz
-                    plfAaDist = SQR(plfAaDX*plfAaDX + plfAaDY*plfAaDY + plfAaDZ*plfAaDZ)
-                    If plfAaDist > 0.1 And plfAaDX > 0 Then
-                        If (plfAaDX / plfAaDist) > 0.94 Then  ' cos(20°) ≈ 0.94
-                            If plfAaDist < plfAaBest Then
-                                plfAaBest = plfAaDist
-                                plfAaNY = plfAaDY / plfAaDist
-                                plfAaNZ = plfAaDZ / plfAaDist
-                            End If
-                        End If
-                    End If
-                End If
-            Next plfAaI
-            If boss.active Then
-                plfAaDX = boss.px - player.px
-                plfAaDY = boss.py - player.py
-                plfAaDZ = boss.pz - player.pz
-                plfAaDist = SQR(plfAaDX*plfAaDX + plfAaDY*plfAaDY + plfAaDZ*plfAaDZ)
-                If plfAaDist > 0.1 And plfAaDX > 0 Then
-                    If (plfAaDX / plfAaDist) > 0.94 Then  ' cos(20°) ≈ 0.94
-                        If plfAaDist < plfAaBest Then
-                            plfAaBest = plfAaDist
-                            plfAaNY = plfAaDY / plfAaDist
-                            plfAaNZ = plfAaDZ / plfAaDist
-                        End If
+    plfRx = player.rx * _PI / 180.0
+    plfRy = player.ry * _PI / 180.0
+    plfRz = player.rz * _PI / 180.0
+    plfNx = COS(plfRz) * COS(plfRy)
+    plfNy = COS(plfRx)*SIN(plfRz)*COS(plfRy) + SIN(plfRx)*SIN(plfRy)
+    plfNz = SIN(plfRx)*SIN(plfRz)*COS(plfRy) - COS(plfRx)*SIN(plfRy)
+    plfPX = player.px + plfNx * (BULLET_TRAIL_LEN + 1.0)
+    plfPY = player.py + plfNy * (BULLET_TRAIL_LEN + 1.0)
+    plfPZ = player.pz + plfNz * (BULLET_TRAIL_LEN + 1.0)
+    ' aim assist: nudge toward nearest enemy OR the boss within ~20 deg forward cone.
+    ' The boss is a separate BossObj, not a member of enemies() -- checked here the
+    ' same way so it isn't silently exempt from the only mechanism that makes shots
+    ' land reliably (bullet direction otherwise comes from player.rx/ry/rz, a small,
+    ' velocity-derived cosmetic tilt that decays to zero the moment you stop
+    ' accelerating, not a real aim direction).
+    plfAaBest = 1e9
+    For plfAaI = 1 To MAX_ENEMIES
+        If enemies(plfAaI).active Then
+            plfAaDX = enemies(plfAaI).px - player.px
+            plfAaDY = enemies(plfAaI).py - player.py
+            plfAaDZ = enemies(plfAaI).pz - player.pz
+            plfAaDist = SQR(plfAaDX*plfAaDX + plfAaDY*plfAaDY + plfAaDZ*plfAaDZ)
+            If plfAaDist > 0.1 And plfAaDX > 0 Then
+                If (plfAaDX / plfAaDist) > 0.94 Then  ' cos(20°) ≈ 0.94
+                    If plfAaDist < plfAaBest Then
+                        plfAaBest = plfAaDist
+                        plfAaNY = plfAaDY / plfAaDist
+                        plfAaNZ = plfAaDZ / plfAaDist
                     End If
                 End If
             End If
-            If plfAaBest < 1e9 Then
-                plfNy = plfNy + (plfAaNY - plfNy) * AIM_ASSIST
-                plfNz = plfNz + (plfAaNZ - plfNz) * AIM_ASSIST
-            End If
-            bullets(plfI).vx   = plfNx * BULLET_SPEED
-            bullets(plfI).vy   = plfNy * BULLET_SPEED
-            bullets(plfI).vz   = plfNz * BULLET_SPEED
-            bullets(plfI).life = BULLET_RANGE / BULLET_SPEED
-            bullets(plfI).scl  = 1.0
-            fireTimer   = FIRE_COOLDOWN
-            laserEnergy = laserEnergy - LASER_COST
-            SND_Shoot
-            telemShotsFired = telemShotsFired + 1
-            Exit For
         End If
-    Next plfI
+    Next plfAaI
+    If boss.active Then
+        plfAaDX = boss.px - player.px
+        plfAaDY = boss.py - player.py
+        plfAaDZ = boss.pz - player.pz
+        plfAaDist = SQR(plfAaDX*plfAaDX + plfAaDY*plfAaDY + plfAaDZ*plfAaDZ)
+        If plfAaDist > 0.1 And plfAaDX > 0 Then
+            If (plfAaDX / plfAaDist) > 0.94 Then  ' cos(20°) ≈ 0.94
+                If plfAaDist < plfAaBest Then
+                    plfAaBest = plfAaDist
+                    plfAaNY = plfAaDY / plfAaDist
+                    plfAaNZ = plfAaDZ / plfAaDist
+                End If
+            End If
+        End If
+    End If
+    If plfAaBest < 1e9 Then
+        plfNy = plfNy + (plfAaNY - plfNy) * AIM_ASSIST
+        plfNz = plfNz + (plfAaNZ - plfNz) * AIM_ASSIST
+    End If
+
+    plfFired = 0
+    ' gunShots (#268): 1 = one shot, 2 = a parallel pair, 3 = centre plus two angled out by gunSpread
+    For plfK = 1 To gunShots
+        plfSide = 0
+        If gunShots = 2 Then plfSide = plfK * 2 - 3
+        If gunShots >= 3 Then
+            If plfK = 2 Then plfSide = -1
+            If plfK = 3 Then plfSide = 1
+        End If
+        plfOff = plfSide * TWIN_GAP
+        plfSp = 0
+        If gunShots >= 3 Then plfSp = plfSide * gunSpread
+        For plfI = 1 To MAX_BULLETS
+            If bullets(plfI).active = 0 Then
+                bullets(plfI).active  = -1
+                bullets(plfI).meshIdx = MESH_BULLET
+                bullets(plfI).px = plfPX
+                bullets(plfI).py = plfPY
+                bullets(plfI).pz = plfPZ + plfOff
+                bullets(plfI).vx   = plfNx * BULLET_SPEED
+                bullets(plfI).vy   = plfNy * BULLET_SPEED
+                bullets(plfI).vz   = (plfNz + plfSp) * BULLET_SPEED
+                bullets(plfI).life = BULLET_RANGE / BULLET_SPEED
+                bullets(plfI).scl  = 1.0
+                telemShotsFired = telemShotsFired + 1
+                plfFired = -1
+                Exit For
+            End If
+        Next plfI
+    Next plfK
+    If plfFired Then
+        fireTimer   = fireCool
+        laserEnergy = laserEnergy - LASER_COST
+        SND_Shoot
+    End If
 End Sub
 
 Sub PLAYER_CamUpdate
@@ -178,13 +208,15 @@ End Sub
 Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     If gameState <> GS_PLAYING Then Exit Sub
     If deathTimer > 0 Then Exit Sub  ' a second lethal hit in the same frame would cost another ship and re-run the death path
+    If rollTimer > 0 Then Exit Sub   ' evasive roll: untouchable for its length (#268)
+    noHitFrames = 0
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit
     TELEM_PlayerDamaged
     ' --god refills shields once per frame in playing.bas, which a big hit (an asteroid)
     ' or a burst of hits within one frame could still outrun
-    If godMode Then lives = 100
+    If godMode Then lives = shieldMax
     If lives <= 0 Then
         shipLives = shipLives - 1
         SND_Death
@@ -199,7 +231,12 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
             telemExitReason = "death"
             TELEM_SessionEnd
         Else
-            lives = 100 : fuelLevel = 100.0 : fuelStranded = 0
+            lives = shieldMax : fuelLevel = fuelMax : fuelStranded = 0
         End If
     End If
+End Sub
+
+' Collisions (ships, the boss, asteroids): hull armour cuts the damage (#268)
+Sub PLAYER_TakeHit(pthDmg As Integer, pthShake As Integer, pthFlash As Integer)
+    PLAYER_TakeDamage UPG_ArmourDmg%(pthDmg), pthShake, pthFlash
 End Sub

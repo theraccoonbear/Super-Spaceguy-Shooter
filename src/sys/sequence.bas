@@ -4,13 +4,14 @@
 '   label:id              section header (id appended -> --scene name "labelid")
 '     TASK key=val ...    task line (must be indented)
 '
-' Task types: CRAWL EMPEROR TITLE PLAY ARRIVE
+' Task types: CRAWL EMPEROR TITLE PLAY ARRIVE DOCK
 '   CRAWL  txt=<gtext-key>  mus=<cue>
 '   EMPEROR mus=<cue>
 '   TITLE  mus=<cue>
 '   PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
 '     trigger: score units of 100 pts before combat phase ends (nerf: * NERF_FACTOR)
 '   ARRIVE mus=<cue>
+'   DOCK   [mus=<cue>]   upgrade dock (src/state/dock.bas); none after the last stage
 '
 ' Writes a line to the CLI output stream. On Windows the QB64-PE console has no
 ' Win32 CON: device to OPEN, so output must go through _DEST _CONSOLE + PRINT
@@ -40,6 +41,7 @@ Const SEQ_EMPEROR = 2
 Const SEQ_PLAY    = 3
 Const SEQ_TITLE   = 4
 Const SEQ_ARRIVE  = 5
+Const SEQ_DOCK    = 6
 
 Dim Shared seqKind(0 To SEQ_MAX - 1)   As Integer
 Dim Shared seqSval$(0 To SEQ_MAX - 1)
@@ -148,6 +150,7 @@ Sub SEQ_Load(seqlData As String)
                 Case "TITLE"            : SEQ_Add SEQ_TITLE,    seqlSval, seqlLabel
                 Case "PLAY"             : SEQ_Add SEQ_PLAY,     seqlSval, seqlLabel
                 Case "ARRIVE"           : SEQ_Add SEQ_ARRIVE,   seqlSval, seqlLabel
+                Case "DOCK"             : SEQ_Add SEQ_DOCK,     seqlSval, seqlLabel
             End Select
         Else
             ' label header: "name:id" or "name:"
@@ -247,6 +250,9 @@ Function SEQ_JumpToScene%(seqjSpec As String)
             seqjTaskKind    = SEQ_PLAY
             seqjPlaySub     = "boss"
             seqjTargetLabel = "level" + LTrim$(Str$(seqjNum))
+        Case "dock"
+            seqjTaskKind    = SEQ_DOCK
+            seqjTargetLabel = "level" + LTrim$(Str$(seqjNum))
         Case Else
             seqLastError = "--scene '" + seqjSpec + "': unknown type '" + seqjType + "'"
             SEQ_JumpToScene% = -1 : Exit Function
@@ -296,6 +302,7 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
     Dim seqpCNums(0 To SEQ_MAX - 1) As Integer, seqpCCnt As Integer
     Dim seqpPNums(0 To SEQ_MAX - 1) As Integer, seqpPCnt As Integer
     Dim seqpBNums(0 To SEQ_MAX - 1) As Integer, seqpBCnt As Integer
+    Dim seqpDNums(0 To SEQ_MAX - 1) As Integer, seqpDCnt As Integer
     Dim seqpHasTitle As Integer, seqpHasEmp As Integer
     Dim seqpMin As Integer, seqpMax As Integer, seqpJ As Integer
     Dim seqpOut As String
@@ -313,6 +320,8 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
             Select Case seqKind(seqpI)
                 Case SEQ_CRAWL
                     seqpCNums(seqpCCnt) = seqpN : seqpCCnt = seqpCCnt + 1
+                Case SEQ_DOCK
+                    seqpDNums(seqpDCnt) = seqpN : seqpDCnt = seqpDCnt + 1
                 Case SEQ_PLAY
                     Select Case LCase$(SEQ_GetKV$(seqSval$(seqpI), "type"))
                         Case "combat", "asteroid"
@@ -366,6 +375,14 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
             seqpOut = seqpOut + "]"
         End If
         CLI_Emit seqpFH, "  boss" + seqpOut
+    End If
+    If seqpDCnt > 0 Then
+        seqpOut = "["
+        For seqpJ = 0 To seqpDCnt - 1
+            If seqpJ > 0 Then seqpOut = seqpOut + ","
+            seqpOut = seqpOut + LTrim$(Str$(seqpDNums(seqpJ)))
+        Next seqpJ
+        CLI_Emit seqpFH, "  dock" + seqpOut + "]"
     End If
     If seqpHasTitle Then CLI_Emit seqpFH, "  title"
     If seqpHasEmp Then CLI_Emit seqpFH, "  emperor"
@@ -455,7 +472,7 @@ Sub SEQ_Advance()
                     astDestName   = planetNames(levelNum)
                     astParsecs    = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If astParsecs = 0 Then astParsecs = 340
-                    fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC
+                    fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC * fuelMax / 100
                     BELT_Init scrW, scrH
                     If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                         diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
@@ -484,5 +501,10 @@ Sub SEQ_Advance()
             DBG_Print "[SEQ] ARRIVE set: planetCurrent=" + Str$(planetCurrent) + " planetNameIdx=" + Str$(planetNameIdx)
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             If Len(seqaMus) > 0 Then MUS_SetCue seqaMus Else MUS_SetCue "planet"
+            CR_StageClear
+        Case SEQ_DOCK
+            DOCK_Enter
+            seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
+            If Len(seqaMus) > 0 Then MUS_SetCue seqaMus
     End Select
 End Sub

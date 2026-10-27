@@ -6,8 +6,8 @@
 Const CTL_PAGES  = 2
 Const CTL_KEY_X  = 28
 Const CTL_ACT_X  = 124
-Const CTL_ROW_Y  = 50
-Const CTL_ROW_H  = 16
+Const CTL_ROW_Y  = 46
+Const CTL_ROW_H  = 14
 
 Dim Shared ctlReturnState As Integer
 Dim Shared ctlPage        As Integer
@@ -50,26 +50,30 @@ Sub CONTROLS_Update ()
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "KEYBOARD  1/2", 30, scrW, 255
         CONTROLS_Row 0, "ARROWS/WASD", "MOVE SHIP"
         CONTROLS_Row 1, "SPACE",       "FIRE"
-        CONTROLS_Row 2, "ESC",         "PAUSE / ABORT"
-        CONTROLS_Row 3, "TAB",         "CAMERA MODE ON/OFF"
-        CONTROLS_Row 4, " UP/DOWN",    "TILT CAMERA"
-        CONTROLS_Row 5, " R",          "RESET CAMERA"
-        CONTROLS_Row 6, "P",           "START GAME (TITLE)"
-        CONTROLS_Row 7, "F11",         "FULLSCREEN"
-        CONTROLS_Row 8, "HOLD SPACE",  "FAST-FWD STORY"
-        CONTROLS_Row 9, "SPACE+ESC",   "SKIP STORY"
+        CONTROLS_Row 2, "E",           "EVASIVE ROLL (DOCK)"
+        CONTROLS_Row 3, "Q",           "NOVA PULSE (DOCK)"
+        CONTROLS_Row 4, "ESC",         "PAUSE / ABORT"
+        CONTROLS_Row 5, "TAB",         "CAMERA MODE ON/OFF"
+        CONTROLS_Row 6, " UP/DOWN",    "TILT CAMERA"
+        CONTROLS_Row 7, " R",          "RESET CAMERA"
+        CONTROLS_Row 8, "P",           "START GAME (TITLE)"
+        CONTROLS_Row 9, "F11",         "FULLSCREEN"
+        CONTROLS_Row 10, "HOLD SPACE", "FAST-FWD STORY"
+        CONTROLS_Row 11, "SPACE+ESC",  "SKIP STORY"
     Else
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "GAMEPAD  2/2", 30, scrW, 255
         CONTROLS_Row 0, "LEFT STICK",  "MOVE / MENU SELECT"
         CONTROLS_Row 1, "A",           "FIRE / MENU OK"
         CONTROLS_Row 2, "B",           "FIRE / MENU BACK"
-        CONTROLS_Row 3, "START",       "PAUSE / ABORT"
-        CONTROLS_Row 4, "START",       "START GAME (TITLE)"
-        CONTROLS_Row 5, "BACK",        "OPTIONS (TITLE)"
-        CONTROLS_Row 6, "BACK",        "CAMERA MODE ON/OFF"
-        CONTROLS_Row 7, " STICK U/D",  "TILT CAMERA"
-        CONTROLS_Row 8, "HOLD A/B",    "FAST-FWD STORY"
-        CONTROLS_Row 9, "A+START",     "SKIP STORY"
+        CONTROLS_Row 3, "X",           "EVASIVE ROLL (DOCK)"
+        CONTROLS_Row 4, "Y",           "NOVA PULSE (DOCK)"
+        CONTROLS_Row 5, "START",       "PAUSE / ABORT"
+        CONTROLS_Row 6, "START",       "START GAME (TITLE)"
+        CONTROLS_Row 7, "BACK",        "OPTIONS (TITLE)"
+        CONTROLS_Row 8, "BACK",        "CAMERA MODE ON/OFF"
+        CONTROLS_Row 9, " STICK U/D",  "TILT CAMERA"
+        CONTROLS_Row 10, "HOLD A/B",    "FAST-FWD STORY"
+        CONTROLS_Row 11, "A+START",     "SKIP STORY"
     End If
 
     FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "<- -> page   ESC/B back", scrH - 14, scrW, 255

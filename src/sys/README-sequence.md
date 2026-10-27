@@ -20,6 +20,7 @@ Five task types:
 | `TITLE` | `mus=<cue>` | Shows the title screen |
 | `PLAY` | `type=combat\|boss\|asteroid` `mus=<cue>` `[trigger=<n>]` | Enters gameplay. `trigger` is a score/distance threshold, see below |
 | `ARRIVE` | `mus=<cue>` | Shows the planet-arrival screen for the stage just completed |
+| `DOCK` | `[mus=<cue>]` | Opens the upgrade dock (`src/state/dock.bas`); after every arrival but the last. `--scene dockN` jumps to it |
 
 Example (`assets/sequence.txt`, stage 3, a combat phase followed by a boss fight):
 
@@ -29,6 +30,7 @@ level:3
     PLAY type=combat mus=game trigger=10
     PLAY type=boss mus=boss
     ARRIVE mus=planet
+    DOCK
 ```
 
 `trigger` means different things per `PLAY` type: for `combat`, score units of 100 points before the phase ends (halved... actually scaled by `NERF_FACTOR` in `--nerf` mode); for `asteroid`, distance in parsecs; `boss` ignores it (a boss fight ends when the boss dies, not on a score threshold).

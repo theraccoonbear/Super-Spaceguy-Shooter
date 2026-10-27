@@ -108,9 +108,9 @@ Sub GS_PLAYING_Update ()
             planetTransitionTimer = planetTransitionTimer - 1
             IF planetTransitionTimer = 0 THEN SEQ_Advance
         END IF
-        IF laserEnergy < 100.0 THEN
-            laserEnergy = laserEnergy + LASER_REGEN
-            IF laserEnergy > 100.0 THEN laserEnergy = 100.0
+        IF laserEnergy < laserMax THEN
+            laserEnergy = laserEnergy + laserRegen
+            IF laserEnergy > laserMax THEN laserEnergy = laserMax
         END IF
         STAGE_Update
 
@@ -142,7 +142,7 @@ Sub GS_PLAYING_Update ()
                 END IF
             END IF
             IF godMode THEN
-                lives = 100 : laserEnergy = 100.0 : fuelLevel = 100.0 : fuelStranded = 0
+                lives = shieldMax : laserEnergy = laserMax : fuelLevel = fuelMax : fuelStranded = 0
             END IF
 
             IF isManeuver THEN
@@ -153,6 +153,7 @@ Sub GS_PLAYING_Update ()
                 thrusterScale = thrusterScale + (0.28 - thrusterScale) * 0.06
             END IF
 
+            ABL_Update
             PLAYER_Fire
 
             IF (INT(tt * 40)) MOD 2 = 0 THEN
@@ -201,13 +202,14 @@ Sub GS_PLAYING_Update ()
                     powerups(i).ry  = powerups(i).ry  + powerups(i).dry
                     powerups(i).rz  = powerups(i).rz  + powerups(i).drz
                     IF powerups(i).px < -5 THEN powerups(i).active = 0
+                    IF tractorR > 0 THEN ABL_Tractor i
 
                     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
                     powerups(i).px, powerups(i).py, powerups(i).pz, boxLib(MESH_POWERUP), hit
                     IF hit THEN
                         powerups(i).active = 0
                         lives = lives + SHIELD_RESTORE
-                        IF lives > 100 THEN lives = 100
+                        IF lives > shieldMax THEN lives = shieldMax
                         score = score + SCORE_POWERUP
                         SND_Pup
                         TELEM_PowerupCollected
@@ -320,6 +322,7 @@ Sub GS_PLAYING_Update ()
     E3D_SceneFlush vpMat, scrW, scrH
 
     COMBAT_OverlayDraw
+    ABL_Draw
 
     FX_Draw vpMat, scrW, scrH
     HUD_Draw

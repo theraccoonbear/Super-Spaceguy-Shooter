@@ -13,6 +13,8 @@ Const E3D_KEY_TAB    = 9
 Const E3D_KEY_R      = 114
 Const E3D_KEY_P      = 112
 Const E3D_KEY_ENTER  = 13
+Const E3D_KEY_Q      = 113   ' nova pulse (#268)
+Const E3D_KEY_E      = 101   ' evasive roll (#268)
 ' Virtual slots, one per gamepad button (no keyboard key uses codes 1-6), so menus can
 ' tell a pad button from the key it doubles as: Start also sets ESCAPE, A sets SPACE,
 ' Back sets TAB.
@@ -117,6 +119,8 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_R)      = Abs(_KeyDown(82)) OR Abs(_KeyDown(114))
     held(E3D_KEY_P)      = Abs(_KeyDown(80)) OR Abs(_KeyDown(112))
     held(E3D_KEY_ENTER)  = Abs(_KeyDown(13))
+    held(E3D_KEY_Q)      = Abs(_KeyDown(81)) OR Abs(_KeyDown(113))
+    held(E3D_KEY_E)      = Abs(_KeyDown(69)) OR Abs(_KeyDown(101))
     held(E3D_KEY_PAD_START) = 0 : held(E3D_KEY_PAD_A) = 0 : held(E3D_KEY_PAD_B) = 0
     held(E3D_KEY_PAD_X) = 0 : held(E3D_KEY_PAD_Y) = 0 : held(E3D_KEY_PAD_SELECT) = 0
 
