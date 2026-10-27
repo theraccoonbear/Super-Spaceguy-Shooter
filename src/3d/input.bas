@@ -27,6 +27,8 @@ Const E3D_KEY_PAD_SELECT = 6
 Const E3D_AXIS_DEADZONE    = 0.25  ' ignore stick deflection below this threshold
 Const E3D_CTRL_AXIS_X      = 1     ' left stick horizontal
 Const E3D_CTRL_AXIS_Y      = 2     ' left stick vertical
+Const E3D_CTRL_HAT_X       = 7     ' d-pad horizontal (xpad reports the hat as axes)
+Const E3D_CTRL_HAT_Y       = 8     ' d-pad vertical (xpad reports the hat as axes)
 Const E3D_CTRL_BTN_FIRE    = 1     ' A / Cross
 Const E3D_CTRL_BTN_B       = 2     ' B / Circle
 Const E3D_CTRL_BTN_X       = 3     ' X / Square
@@ -79,6 +81,8 @@ Sub E3D_InputUpdate (held() As Integer)
 
     Static ctrlAxX    As Single
     Static ctrlAxY    As Single
+    Static ctrlHatX   As Single
+    Static ctrlHatY   As Single
     Static ctrlFire   As Integer
     Static ctrlB      As Integer
     Static ctrlX      As Integer
@@ -92,6 +96,8 @@ Sub E3D_InputUpdate (held() As Integer)
         If ctrlD = ctrlDev Then
             If _LASTAXIS(ctrlDev)   >= E3D_CTRL_AXIS_X     Then ctrlAxX   = _AXIS(E3D_CTRL_AXIS_X)
             If _LASTAXIS(ctrlDev)   >= E3D_CTRL_AXIS_Y     Then ctrlAxY   = _AXIS(E3D_CTRL_AXIS_Y)
+            If _LASTAXIS(ctrlDev)   >= E3D_CTRL_HAT_X      Then ctrlHatX  = _AXIS(E3D_CTRL_HAT_X)
+            If _LASTAXIS(ctrlDev)   >= E3D_CTRL_HAT_Y      Then ctrlHatY  = _AXIS(E3D_CTRL_HAT_Y)
             If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_FIRE   Then ctrlFire  = Abs(_BUTTON(E3D_CTRL_BTN_FIRE))
             If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_B      Then ctrlB     = Abs(_BUTTON(E3D_CTRL_BTN_B))
             If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_X      Then ctrlX     = Abs(_BUTTON(E3D_CTRL_BTN_X))
@@ -101,7 +107,13 @@ Sub E3D_InputUpdate (held() As Integer)
         End If
     Loop While ctrlD <> 0
 
-    E3D_PadApply held(), ctrlAxX, ctrlAxY, ctrlFire, ctrlB, ctrlX, ctrlY, ctrlStart, ctrlSel
+    Dim ctrlMixX As Single, ctrlMixY As Single
+    ctrlMixX = ctrlAxX
+    If Abs(ctrlHatX) > Abs(ctrlMixX) Then ctrlMixX = ctrlHatX
+    ctrlMixY = ctrlAxY
+    If Abs(ctrlHatY) > Abs(ctrlMixY) Then ctrlMixY = ctrlHatY
+
+    E3D_PadApply held(), ctrlMixX, ctrlMixY, ctrlFire, ctrlB, ctrlX, ctrlY, ctrlStart, ctrlSel
 End Sub
 
 ' The one gamepad -> held() mapping, shared by the real pad (E3D_InputUpdate) and
