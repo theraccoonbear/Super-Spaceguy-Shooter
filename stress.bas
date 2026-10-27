@@ -233,3 +233,7 @@ Sub MakeSphere (mesh As E3D_Mesh, radius As Single, hueShift As Single)
 
     E3D_BakeMeshNormals mesh
 End Sub
+
+' src/3d/input.bas logs via the game's DBG_Print (src/sys/debug.bas), which this tool doesn't include
+Sub DBG_Print (dbgMsg As String)
+End Sub

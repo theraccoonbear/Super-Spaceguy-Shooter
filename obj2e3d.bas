@@ -127,3 +127,7 @@ Function FmtF$ (v As Single)
     END IF
     FmtF$ = s
 End Function
+
+' src/3d/input.bas logs via the game's DBG_Print (src/sys/debug.bas), which this tool doesn't include
+Sub DBG_Print (dbgMsg As String)
+End Sub
