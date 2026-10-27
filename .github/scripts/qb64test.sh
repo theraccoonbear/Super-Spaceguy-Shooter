@@ -50,6 +50,7 @@ TESTS=(
   spk_timing_test
   snd_init_test
   telem_creds_test
+  death_telem_test
   dbg_output_test
   mnv_load_test
   spore_test
