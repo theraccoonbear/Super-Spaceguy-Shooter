@@ -12,6 +12,9 @@ Const DOCK_PX2 = 315
 Const DOCK_PY2 = 235
 Const DOCK_ROW_Y = 46
 Const DOCK_ROW_H = 17
+Const DOCK_PANEL_ALPHA = 100   ' list panel opacity (0-255): low so the dock art shows; text gets a drop shadow
+
+Dim Shared dockShadowSheet As Long   ' all-black font sheet for the 1px text shadow, built on first use
 
 Sub DOCK_Enter
     DOCK_Open
@@ -34,6 +37,16 @@ Sub DOCK_Update
     End If
 End Sub
 
+' Text with a 1px dark drop shadow, so it reads over the see-through panel.
+Sub DOCK_Text (dktPal As Integer, dktTxt As String, dktX As Integer, dktY As Integer, dktA As Integer)
+    If dockShadowSheet = 0 Then
+        FONT_BuildSheet dockShadowSheet, _RGB(0, 0, 0), _RGB(0, 0, 0)
+        _Dest backBuffer
+    End If
+    FONT_PrintAlpha dockShadowSheet, backBuffer, dktTxt, dktX + 1, dktY + 1, dktA
+    FONT_PrintAlpha fontPalette(dktPal), backBuffer, dktTxt, dktX, dktY, dktA
+End Sub
+
 Sub DOCK_Draw
     Dim dkdI As Integer, dkdRow As Integer, dkdY As Integer, dkdPal As Integer
     Dim dkdName As String, dkdLv As String, dkdPrice As String, dkdCr As String
@@ -47,7 +60,7 @@ Sub DOCK_Draw
     End If
 
     ' see-through panel: dark enough to read white text over the busy art
-    Line (DOCK_PX1, DOCK_PY1)-(DOCK_PX2, DOCK_PY2), _RGBA(2, 4, 18, 200), BF
+    Line (DOCK_PX1, DOCK_PY1)-(DOCK_PX2, DOCK_PY2), _RGBA(2, 4, 18, DOCK_PANEL_ALPHA), BF
     Line (DOCK_PX1, DOCK_PY1)-(DOCK_PX2, DOCK_PY2), _RGB(0, 55, 110), B
     Line (DOCK_PX1 + 1, DOCK_PY1 + 1)-(DOCK_PX2 - 1, DOCK_PY2 - 1), _RGB(0, 130, 210), B
     dkdCC = _RGB(0, 210, 255)
@@ -57,11 +70,11 @@ Sub DOCK_Draw
     Line (DOCK_PX2, DOCK_PY2)-(DOCK_PX2 - 7, DOCK_PY2), dkdCC : Line (DOCK_PX2, DOCK_PY2)-(DOCK_PX2, DOCK_PY2 - 7), dkdCC
     Line (DOCK_PX1 + 2, DOCK_PY1 + 2)-(DOCK_PX2 - 2, DOCK_PY1 + 20), _RGB(0, 28, 68), BF
     Line (DOCK_PX1 + 2, DOCK_PY1 + 20)-(DOCK_PX2 - 2, DOCK_PY1 + 20), _RGB(0, 100, 180)
-    FONT_PrintAlpha fontPalette(11), backBuffer, "UPGRADE DOCK", DOCK_PX1 + 8, DOCK_PY1 + 3, 255
+    DOCK_Text 11, "UPGRADE DOCK", DOCK_PX1 + 8, DOCK_PY1 + 3, 255
     dkdCr = "$" + LTrim$(Str$(credits))
-    FONT_PrintAlpha fontPalette(14), backBuffer, dkdCr, DOCK_PX2 - 7 - Len(dkdCr) * FONT_CHAR_W, DOCK_PY1 + 3, 255
+    DOCK_Text 14, dkdCr, DOCK_PX2 - 7 - Len(dkdCr) * FONT_CHAR_W, DOCK_PY1 + 3, 255
     If planetCurrent >= 1 And planetCurrent <= PLANET_COUNT Then
-        FONT_PrintAlpha fontPalette(8), backBuffer, UCase$(Left$(planetNames(planetCurrent), 24)), DOCK_PX1 + 8, DOCK_PY1 + 22, 255
+        DOCK_Text 8, UCase$(Left$(planetNames(planetCurrent), 24)), DOCK_PX1 + 8, DOCK_PY1 + 22, 255
     End If
 
     For dkdRow = 0 To DOCK_VISIBLE - 1
@@ -74,7 +87,7 @@ Sub DOCK_Draw
         End If
         If dkdI = DOCK_LAUNCH Then
             If dkdI = dockSel Then dkdPal = 15 Else dkdPal = 10
-            FONT_PrintAlpha fontPalette(dkdPal), backBuffer, "LAUNCH >>", DOCK_PX1 + 8, dkdY, 255
+            DOCK_Text dkdPal, "LAUNCH >>", DOCK_PX1 + 8, dkdY, 255
         Else
             dkdName = UPG_Name$(dkdI)
             dkdPriceN = UPG_Price&(dkdI)
@@ -91,33 +104,33 @@ Sub DOCK_Draw
             Else
                 dkdPal = 9
             End If
-            FONT_PrintAlpha fontPalette(dkdPal), backBuffer, dkdName, DOCK_PX1 + 8, dkdY, 255
-            FONT_PrintAlpha fontPalette(dkdPal), backBuffer, dkdLv, DOCK_PX1 + 136, dkdY, 255
+            DOCK_Text dkdPal, dkdName, DOCK_PX1 + 8, dkdY, 255
+            DOCK_Text dkdPal, dkdLv, DOCK_PX1 + 136, dkdY, 255
             If dkdPriceN > credits Then
                 dkdPal = 12
             ElseIf dkdPriceN > 0 Then
                 dkdPal = 14
             End If
             dkdX = DOCK_PX2 - 7 - Len(dkdPrice) * FONT_CHAR_W
-            FONT_PrintAlpha fontPalette(dkdPal), backBuffer, dkdPrice, dkdX, dkdY, 255
+            DOCK_Text dkdPal, dkdPrice, dkdX, dkdY, 255
         End If
     Next dkdRow
     ' scroll hints
-    If dockTop > 1 Then FONT_PrintAlpha fontPalette(11), backBuffer, "^", DOCK_PX2 - 12, DOCK_ROW_Y - 14, 200
-    If dockTop + DOCK_VISIBLE - 1 < DOCK_LAUNCH Then FONT_PrintAlpha fontPalette(11), backBuffer, "v", DOCK_PX2 - 12, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H - 3, 200
+    If dockTop > 1 Then DOCK_Text 11, "^", DOCK_PX2 - 12, DOCK_ROW_Y - 14, 200
+    If dockTop + DOCK_VISIBLE - 1 < DOCK_LAUNCH Then DOCK_Text 11, "v", DOCK_PX2 - 12, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H - 3, 200
 
     dkdY = DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 2
     Line (DOCK_PX1 + 4, dkdY - 2)-(DOCK_PX2 - 4, dkdY - 2), _RGB(0, 100, 180)
     If dockSel = DOCK_LAUNCH Then
-        FONT_PrintAlpha fontPalette(9), backBuffer, "ON TO THE NEXT STAGE", DOCK_PX1 + 8, dkdY, 255
+        DOCK_Text 9, "ON TO THE NEXT STAGE", DOCK_PX1 + 8, dkdY, 255
     Else
-        FONT_PrintAlpha fontPalette(9), backBuffer, UPG_Desc$(dockSel), DOCK_PX1 + 8, dkdY, 255
+        DOCK_Text 9, UPG_Desc$(dockSel), DOCK_PX1 + 8, dkdY, 255
     End If
     If dockMsgTimer > 0 Then
         If dockMsgBad Then dkdPal = 12 Else dkdPal = 10
-        FONT_PrintAlpha fontPalette(dkdPal), backBuffer, dockMsg, DOCK_PX1 + 8, dkdY + 16, 255
+        DOCK_Text dkdPal, dockMsg, DOCK_PX1 + 8, dkdY + 16, 255
     End If
-    FONT_PrintAlpha fontPalette(8), backBuffer, "ENTER/A BUY  ESC/B GO", DOCK_PX1 + 8, DOCK_PY2 - 18, 255
+    DOCK_Text 8, "ENTER/A BUY  ESC/B GO", DOCK_PX1 + 8, DOCK_PY2 - 18, 255
 
     _Dest 0
     _PutImage , backBuffer, 0
