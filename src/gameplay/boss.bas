@@ -241,6 +241,9 @@ Sub BOSS_Update
                         End If
                     Next bssP
                     MUS_SetCue "game"
+                    ' the boss is gone: a second bullet landing this same frame must not run
+                    ' the defeat (score, telemetry, stage transition) again (#168)
+                    Exit For
                 End If
             End If
         End If

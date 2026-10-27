@@ -23,6 +23,7 @@
 '  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
 '  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
 '  22.  PLAY boss attack=: bossAttackList$ per boss (cumulative attack pool)
+'  23.  stale arrival planetTimer cleared when the next combat/asteroid stage starts (#168)
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -580,6 +581,30 @@ SEQ_Advance
 ST_Assert bossAttackCnt = 4 And bossAttackList$(0) = "LASER" And bossAttackList$(1) = "SPORE" And bossAttackList$(2) = "CUT" And bossAttackList$(3) = "DEVOUR", "19.03  level6 boss attack=laser,spore,cut,devour"
 ST_Assert bossMusCnt = 3 And bossMusList$(2) = "boss3", "19.04  shared CSV parser still fills mus= (boss3 last)"
 ST_Assert bossSpeechCnt = 3 And bossSpeechList$(0) = "" And bossSpeechList$(1) = "speech_boss_phase2", "19.05  shared CSV parser keeps the empty first speech= entry"
+' ────────────────────────────────────────────────────────────────────────────
+' 20. #168: an arrival cut short (planetTimer still running, cinematic never
+'     reached) must not carry the last chapter's planet into the next stage.
+' ────────────────────────────────────────────────────────────────────────────
+Print ""
+Print "--- 20. stale arrival planet cleared on next stage (issue #168) ---"
+ST_Reset
+levelNum = 3
+ST_GoTo "boss3"
+SEQ_Advance                      ' boss3
+SEQ_Advance                      ' ARRIVE level3
+ST_Assert gameState = GS_PLANET And planetTimer = 1 And planetCurrent = 3, "20.01  boss3 -> ARRIVE planet3, planetTimer=1"
+planetTimer = 75                 ' arrival interrupted before the cinematic (planetTimer < 120)
+SEQ_Advance                      ' CRAWL stage4
+ST_Assert gameState = GS_CRAWL,                   "20.02  next step is the chapter 4 crawl"
+SEQ_Advance                      ' PLAY asteroid
+ST_Assert levelType = LEVEL_ASTEROID And levelNum = 4, "20.03  asteroid stage, levelNum=4"
+ST_Assert planetTimer = 0,                        "20.04  asteroid PLAY clears stale planetTimer (no chapter 3 planet)"
+SEQ_Advance                      ' ARRIVE level4
+planetTimer = 75
+SEQ_Advance                      ' CRAWL stage5
+SEQ_Advance                      ' PLAY combat
+ST_Assert levelType = LEVEL_COMBAT And levelNum = 5, "20.05  combat stage, levelNum=5"
+ST_Assert planetTimer = 0,                        "20.06  combat PLAY clears stale planetTimer (no chapter 4 planet)"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="

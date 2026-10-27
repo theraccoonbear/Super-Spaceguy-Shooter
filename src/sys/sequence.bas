@@ -412,6 +412,7 @@ Sub SEQ_Advance()
                     seqaTrig  = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If seqaTrig = 0 Then seqaTrig = 10
                     stageScoreBase  = score
+                    planetTimer     = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR       = 3.0
                     planetBgAlpha   = 245.0
                     If settingNerf Then
@@ -447,6 +448,7 @@ Sub SEQ_Advance()
                     DBG_Print "[SEQ] PLAY asteroid fired: levelNum=" + Str$(levelNum) + " seqIdx=" + Str$(seqIdx)
                     levelType      = LEVEL_ASTEROID
                     stageScore     = 2147483647
+                    planetTimer    = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR      = 3.0
                     planetBgAlpha  = 245.0
                     astFieldStart  = tt
