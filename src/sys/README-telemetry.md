@@ -2,7 +2,7 @@
 
 ## What problem it solves
 
-The author wants aggregate, anonymous gameplay data (where do players die, how far do they get, does the difficulty ramp feel right) without collecting anything personally identifying, and an optional online leaderboard. `telemetry.bas` always logs events locally to CSV, and if a backend is configured and the player has consented, also batches them and POSTs to a [Supabase](https://supabase.com) REST endpoint via [`http.bas`](README-http.md). `lbrd.bas` is the read side: it polls and parses the top-scores leaderboard for display on the title screen.
+The author wants aggregate, anonymous gameplay data (where do players die, how far do they get, does the difficulty ramp feel right) without collecting anything personally identifying, and an optional online leaderboard. `telemetry.bas` always logs events locally to CSV, and if a backend is configured and the player has consented, also batches them and POSTs them to the project's [Cloudflare Worker backend](../../server/) via [`http.bas`](README-http.md). `lbrd.bas` is the read side: it polls and parses the top-scores leaderboard for display on the title screen.
 
 ## Consent and configuration flow
 
@@ -19,34 +19,35 @@ Every event goes through `TELEM_Row(event$, data$)`, which:
 
 Events fired today (see call sites in `gameplay/`, `state/`, `sys/sequence.bas`): `session_start`, `enemy_killed`, `powerup_collected`, `enemy_escaped`, `fuel_exhausted`, `player_damaged`, `player_death`, `boss_reached`, `boss_phase`, `boss_defeated`, `session_end`. `TELEM_SessionEnd` is idempotent (guarded on `telemSession` being non-empty) since it can be reached from more than one exit path.
 
-### Inferred Supabase schema
+### Backend schema
 
-This is inferred from the JSON shapes the code sends. It's worth confirming against the actual Supabase project rather than treating as authoritative:
+The tables are defined in [`server/migrations/`](../../server/migrations/) and the routes and validation in [`server/src/index.ts`](../../server/src/index.ts), with tests in `server/test/`:
 
-- **`sss_telemetry`** (POST target for the batched event array): `session` (text), `ev_time` (number), `event` (text), `player_id` (text), `data` (text), one row per event.
-- **`scores`** (POST target for score submission, only sent if `DB_URL`/`DB_KEY` are set, consent was given, and `score > 0`): `player_id`, `player_name`, `score`, `wave`, `session`.
-- **`top_scores`** (GET target for the leaderboard poll, `?order=score.desc&limit=N&select=player_name,score`): a view or table exposing at least `player_name` and `score`, ordered descending. Likely a Supabase *view* over `scores` (name differs from the POST target) rather than a table `lbrd.bas` writes to directly.
+- **`sss_telemetry`** (POST target for the batched event array): `session` (text, max 64 chars), `ev_time` (non-negative integer), `event` (text, max 64), `player_id` (text, max 64), `data` (text, max 1024), one row per event.
+- **`scores`** (POST target for score submission, only sent if `DB_URL`/`DB_KEY` are set, consent was given, and `score > 0`): `player_id` (max 64), `player_name` (max 32), `score`, `wave` (non-negative integers), `session` (max 64).
+- **`top_scores`** (GET target for the leaderboard poll, `?order=score.desc&limit=N&select=player_name,score`): a read-only route over `scores`, highest score first, ties broken by earlier submission. It's public; the two POSTs need `DB_KEY`.
+
+The Worker rejects anything outside these shapes with a 400, so a payload change in `telemetry.bas` needs a matching change (and test) in `server/`.
 
 ## Leaderboard (`lbrd.bas`)
 
 ```basic
 LBRD_Poll               ' enqueue a GET for the top N scores; call once per title-screen entry
-LBRD_Parse body$         ' parse the Supabase JSON array response into lbrdName$()/lbrdScore()
+LBRD_Parse body$         ' parse the backend's JSON array response into lbrdName$()/lbrdScore()
 LBRD_Rank%(score)        ' 1-based rank a given score would have on the current board, or 0
 ```
 
-`LBRD_Parse` is a linear string scan tailored to the exact flat-object array shape Supabase returns for this query, not a general JSON parser. If the query's `select=` list ever changes, this parser needs to change with it.
+`LBRD_Parse` is a linear string scan tailored to the exact flat-object array shape the backend returns for this query (`server/test/top_scores.test.ts` pins it), not a general JSON parser. If the query's `select=` list ever changes, this parser needs to change with it.
 
 ## How to query the data locally
 
-Without a configured backend, `sss_telemetry.csv` in the game's working directory is the only telemetry output. It's plain CSV, so any spreadsheet tool or `awk`/`csvkit`/pandas works directly. With a backend configured, the same events also land in Supabase, queryable via its REST API or SQL editor.
+Without a configured backend, `sss_telemetry.csv` in the game's working directory is the only telemetry output. It's plain CSV, so any spreadsheet tool or `awk`/`csvkit`/pandas works directly. With a backend configured, the same events also land in the D1 database, queryable with `npx wrangler d1 execute sss --remote --command "SELECT ..."` from `server/` or in the Cloudflare dashboard.
 
 ## Known limitations and gotchas
 
 - **No delivery guarantee.** The batched POST fires once at session end via `HTTP_Post`. If it fails, the batch is just dropped (see [`http.bas`](README-http.md)'s "no retry logic" note); the local CSV is the only durable record.
 - **`telemBatch` grows unbounded within a session.** For a normal play session this is fine (dozens of events, well under the 128 KB POST cap in `curl_qb64.h`), but an unusually long session could theoretically exceed it, and there's no chunking.
-- **The inferred Supabase schema above is not verified against the actual project.** If it's wrong, fix this doc, don't guess again from the code.
-- **`LBRD_Parse`'s hand-rolled scan breaks silently on unexpected response shapes.** A Supabase schema or query change that alters the JSON structure won't raise an error, it'll just parse zero or garbled entries.
+- **`LBRD_Parse`'s hand-rolled scan breaks silently on unexpected response shapes.** A backend or query change that alters the JSON structure won't raise an error, it'll just parse zero or garbled entries.
 
 ## Testing in isolation
 
@@ -56,4 +57,4 @@ Without a configured backend, `sss_telemetry.csv` in the game's working director
 tools/buildqb tests/telem_creds_test.bas && builds/telem_creds_test
 ```
 
-There is no test that exercises `TELEM_Row`/`TELEM_SessionEnd`'s CSV writing or the real Supabase POST payloads end-to-end. If you're changing the event schema, verify manually against a real (or mock) backend.
+There is no test that exercises `TELEM_Row`/`TELEM_SessionEnd`'s CSV writing end-to-end. The backend side of the payloads is tested in `server/` (`npm test`) against copies of the JSON the game builds; if you change the event schema, update those tests too.

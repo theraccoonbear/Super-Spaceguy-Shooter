@@ -1,0 +1,10 @@
+name = "sss-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sss"
+# Fill in from the output of `npx wrangler d1 create sss`.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

@@ -50,3 +50,7 @@ src/gameplay/spline_path_gen.bi
 memory/
 .aider*
 .claude/worktrees/
+
+# Cloudflare Worker backend (server/)
+server/node_modules/
+server/.wrangler/

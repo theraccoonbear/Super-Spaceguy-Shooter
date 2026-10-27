@@ -31,7 +31,7 @@ httpLastTag  ' the tag string of the most recently completed request
 httpLastBody ' response body of the most recently completed request
 ```
 
-`key$` is sent as both a Supabase `apikey` header and a `Authorization: Bearer` header. That's Supabase's REST API convention, not a general-purpose auth scheme.
+`key$` is sent as both an `apikey` header and an `Authorization: Bearer` header, the PostgREST convention the game used with its original Supabase backend. The [Worker backend](../../server/) accepts either.
 
 ### Example: fire-and-forget POST, checked next frame
 
