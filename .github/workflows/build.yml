@@ -56,96 +56,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache spline toolchain (math/node_modules)
-        id: cache_node_modules
-        uses: actions/cache@v4
+      - name: Set up QB64-PE
+        uses: ./.github/actions/setup-qb64pe
         with:
-          path: math/node_modules
-          key: math-node-modules-${{ runner.os }}-${{ hashFiles('math/package-lock.json') }}
-
-      - name: Regenerate spline math from DSL
-        shell: bash
-        run: |
-          if [ "${{ steps.cache_node_modules.outputs.cache-hit }}" != "true" ]; then
-            (cd math && npm install)
-          fi
-          node tools/emit-spline.js
-
-      # Keyed on the pinned version (the release tag), so a cache hit needs no API lookup.
-      - name: Cache QB64-PE
-        id: cache_qb64pe
-        uses: actions/cache@v4
-        with:
-          path: qb64pe-bin
-          key: qb64pe-${{ env.QB64PE_VERSION }}-${{ runner.os }}
-
-      - name: Resolve QB64-PE release version
-        if: steps.cache_qb64pe.outputs.cache-hit != 'true'
-        id: qb64pe_release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          RELEASE_JSON=$(gh api repos/QB64-Phoenix-Edition/QB64pe/releases/tags/${QB64PE_VERSION})
-          case "$(uname -s)" in
-            Darwin*)              FILTER="osx" ;;
-            MINGW*|MSYS*|CYGWIN*) FILTER="win-x64" ;;
-            *)                    FILTER="lnx" ;;
-          esac
-          ASSET_URL=$(echo "$RELEASE_JSON" \
-            | python3 -c "import sys,json; f='${FILTER}'; assets=json.load(sys.stdin)['assets']; print(next(a['browser_download_url'] for a in assets if f in a['name'].lower()))")
-          VERSION=$(echo "$RELEASE_JSON" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
-          echo "asset_url=$ASSET_URL" >> $GITHUB_OUTPUT
-          echo "version=$VERSION"     >> $GITHUB_OUTPUT
-
-      # On a QB64-PE cache hit setup_lnx.sh is skipped, so everything QB64-PE links against must be listed here.
-      # The Xrandr/Xcursor/Xinerama/Xi set is needed by the GLFW backend (v4.7+).
-      # Cached .debs instead of downloading and installing them every run (that step took
-      # 12-123 s). The action doesn't refresh the package index itself: on a cache miss a
-      # stale index 404s, the action still reports success and caches nothing, so update
-      # first, and check the libraries are really there afterwards (bump `version` to
-      # discard a bad cache).
-      - name: Refresh apt package index
-        if: runner.os == 'Linux'
-        run: sudo apt-get update -qq
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
-          version: 2
-
-      # A cache restore unpacks the .debs without running ldconfig, so refresh the
-      # linker cache before checking (and before anything links against them).
-      - name: Check Linux dependencies are installed
-        if: runner.os == 'Linux'
-        run: |
-          sudo ldconfig
-          for lib in libGL.so.1 libGLU.so.1 libasound.so.2 libX11.so.6 libXext.so.6 libpng16.so.16 libcurl.so.4 libXrandr.so.2 libXcursor.so.1 libXinerama.so.1 libXi.so.6; do
-            ldconfig -p | grep -q "$lib" || { echo "::error::$lib missing after the apt cache step"; exit 1; }
-          done
-          command -v xvfb-run > /dev/null || { echo "::error::xvfb-run missing after the apt cache step"; exit 1; }
-
-      - name: Install QB64-PE (Linux/macOS)
-        if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        run: |
-          curl -fsSL -o qb64pe.tar.gz "${{ steps.qb64pe_release.outputs.asset_url }}"
-          tar xzf qb64pe.tar.gz
-          case "$(uname -s)" in
-            Darwin*) cd qb64pe && bash setup_osx.command 1 && cd .. ;;
-            *)       cd qb64pe && bash setup_lnx.sh 1      && cd .. ;;
-          esac
-          mv qb64pe qb64pe-bin
-
-      - name: Install QB64-PE (Windows)
-        if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.7z
-          7z x qb64pe.7z
-          Rename-Item qb64pe qb64pe-bin
+          qb64pe-version: ${{ env.QB64PE_VERSION }}
 
       # One worker per vCPU: CI runners' vCPUs aren't desktop hyperthreads, so the
       # script's half-the-CPUs default would leave them idle.
