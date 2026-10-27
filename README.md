@@ -149,7 +149,7 @@ Golden-screenshot tests catch rendering regressions (blend state, font alpha, ov
 | `boss6` | devour's pull streaks and chevrons |
 
 ```bash
-tools/dev render                # in the container: build sss, run every scene, compare (about a minute)
+tools/dev render                # in the container: build sss, run every scene, compare (~2 min, mostly the build)
 tools/dev render boss5 title    # just these scenes
 tools/dev render --no-build     # reuse builds/sss
 tools/dev render --update       # re-bless: run each scene 3 times, check the runs are byte-identical, save as goldens
