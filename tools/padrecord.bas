@@ -11,8 +11,6 @@
 Option _Explicit
 $Console
 
-Dim Shared ctrlDev As Integer
-
 '$INCLUDE:'../src/3d/input.bas'
 
 Const PR_COUNT = 15

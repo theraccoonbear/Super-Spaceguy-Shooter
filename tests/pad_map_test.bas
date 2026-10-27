@@ -9,9 +9,8 @@
 ' Build: ./tools/buildqb tests/pad_map_test.bas
 ' Run:   ./tests/pad_map_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
-
-Dim Shared ctrlDev As Integer  ' sss.bas declares it for the game
 
 '$INCLUDE:'../src/3d/input.bas'
 

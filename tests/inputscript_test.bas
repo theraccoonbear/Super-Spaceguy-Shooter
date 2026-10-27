@@ -17,7 +17,6 @@ Option _Explicit
 $CONSOLE:ONLY
 
 Dim Shared held(0 To 32767) As Integer  ' the game's held() (dims.bas); KEY_Pressed% reads it
-Dim Shared ctrlDev As Integer           ' sss.bas declares it for the game
 
 ' game states and the shared vars src/state/titlenav.bas uses (must match dims.bas)
 Const GS_TITLE       = 0
