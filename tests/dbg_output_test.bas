@@ -35,6 +35,7 @@ Const GS_USERNAME    = 11
 Const GS_LEADERBOARD = 12
 Const GS_CONTROLS    = 13
 Const GS_CRAWLS      = 14
+Const GS_DOCK        = 15
 Const MAX_ENEMIES = 1
 Const MESH_COUNT  = 1
 
@@ -72,6 +73,7 @@ Const SEQ_EMPEROR = 2
 Const SEQ_PLAY    = 3
 Const SEQ_TITLE   = 4
 Const SEQ_ARRIVE  = 5
+Const SEQ_DOCK    = 6
 Dim Shared seqKind(0 To SEQ_MAX - 1) As Integer
 Dim Shared seqSval$(0 To SEQ_MAX - 1)
 Dim Shared seqLabel$(0 To SEQ_MAX - 1)

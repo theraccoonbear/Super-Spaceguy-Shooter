@@ -64,6 +64,21 @@ Dim Shared fireTimer         As Single
 Dim Shared laserEnergy       As Single
 Dim Shared fuelLevel         As Single
 Dim Shared lives             As Integer
+Dim Shared shieldMax         As Integer : shieldMax = 100
+Dim Shared fuelMax           As Single  : fuelMax = 100
+Dim Shared shipMaxVel        As Single  : shipMaxVel = 0.12
+Dim Shared fireCool          As Single  : fireCool = 0.18
+Dim Shared gunShots          As Integer : gunShots = 1
+Dim Shared gunSpread         As Single
+Dim Shared rollTimer         As Integer
+Dim Shared rollDir           As Integer
+Dim Shared rollFrames        As Integer : rollFrames = 20
+Dim Shared rollSpeed         As Single
+Dim Shared noHitFrames       As Long
+Dim Shared credits           As Long
+Dim Shared creditsEarned     As Long
+Dim Shared creditsSpent      As Long
+Function UPG_ArmourDmg% (d As Integer) : UPG_ArmourDmg% = d : End Function
 Dim Shared shipLives         As Integer
 Dim Shared deathTimer        As Integer
 Dim Shared gameOver          As Integer
