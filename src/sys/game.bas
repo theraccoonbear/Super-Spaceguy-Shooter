@@ -113,7 +113,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --god                  God mode: shields, health, and laser never deplete"
     CLI_Emit guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30), asteroid field 10% length"
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"
-    CLI_Emit guFH, "  --telem                Enable gameplay telemetry logging to sss_telemetry.csv"
+    CLI_Emit guFH, "  --no-telem             Disable gameplay telemetry for this session"
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
