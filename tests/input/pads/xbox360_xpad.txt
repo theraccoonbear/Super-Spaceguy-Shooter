@@ -1,0 +1,35 @@
+# Gamepad fixture: one real controller's raw input, read by tests/pad_map_test.bas.
+# Record a new one with tools/padrecord.bas.
+#
+# A Nintendo-labelled pad in Xbox 360 mode on Linux (xpad driver). Left stick is
+# axes 1/2, the d-pad is axes 7 (-1 left, +1 right) and 8 (-1 up, +1 down), the
+# triggers and right stick are axes 3/4/5/6. Buttons: A=1 B=2 X=3 Y=4 LB=5 RB=6
+# Back=7 Start=8 Guide=9 LS=10 RS=11.
+#
+# Rows are copied from a 30 s probe log of this pad (padprobe), except:
+#   X, Y, STICK_LEFT  derived from the xpad layout above (the log has no clean sample)
+# Real quirks kept on purpose: at rest the triggers read -1 (IDLE, START, BACK);
+# STICK_UP/RIGHT were sampled with the right stick pushed too, and STICK_UP's
+# x reads -0.24, just inside the 0.25 deadzone.
+#
+# Format: header lines, then one line per control:
+#   <CONTROL> btn=<pressed buttons, comma-separated, or empty> axes=<one value per axis>
+NAME xbox360_xpad
+DEVICE [CONTROLLER][[NAME][Microsoft X-Box 360 pad]][BUTTON][AXIS]
+BUTTONS 11
+AXES 8
+IDLE btn= axes=0 -0.01 -1 0 -0.01 -1 0 0
+STICK_UP btn= axes=-0.24 -1 0 -1 1 0 0 0
+STICK_DOWN btn= axes=0 1 0 0 -0.01 -1 0 0
+STICK_LEFT btn= axes=-1 0 0 0 0 0 0 0
+STICK_RIGHT btn= axes=1 -0.01 0 -1 1 0 0 0
+DPAD_UP btn= axes=0 0 0 0 0 0 0 -1
+DPAD_DOWN btn= axes=0 0 0 0 0 0 0 1
+DPAD_LEFT btn= axes=0 0 0 0 0 0 -1 0
+DPAD_RIGHT btn= axes=0 0 0 0 0 0 1 0
+A btn=1 axes=0 0 0 0 0 0 0 0
+B btn=2 axes=0 0 0 0 0 0 0 0
+X btn=3 axes=0 0 0 0 0 0 0 0
+Y btn=4 axes=0 0 0 0 0 0 0 0
+START btn=8 axes=0 -0.01 -1 0 -0.01 -1 0 0
+BACK btn=7 axes=0 -0.01 -1 0 -0.01 -1 0 0

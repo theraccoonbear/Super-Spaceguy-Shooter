@@ -66,10 +66,10 @@ Sub GS_USERNAME_Update ()
     ' key hints
     Dim unHY As Integer : unHY = scrH \ 2 + 22
     Dim unKX As Integer : unKX = scrW \ 2 - 44
-    FONT_PrintAlpha fontPalette(15), backBuffer, "ENTER", unKX,                   unHY,      255
-    FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",    unKX + 7 * FONT_CHAR_W, unHY,      255
-    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",   unKX,                   unHY + 16, 200
-    FONT_PrintAlpha fontPalette(8),  backBuffer, "SKIP",  unKX + 5 * FONT_CHAR_W, unHY + 16, 200
+    FONT_PrintAlpha fontPalette(15), backBuffer, "ENTER/A", unKX,                   unHY,      255
+    FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",      unKX + 9 * FONT_CHAR_W, unHY,      255
+    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC/B",   unKX,                   unHY + 16, 200
+    FONT_PrintAlpha fontPalette(8),  backBuffer, "SKIP",    unKX + 9 * FONT_CHAR_W, unHY + 16, 200
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
@@ -77,6 +77,8 @@ Sub GS_USERNAME_Update ()
     ' --- key handling ---
     Dim unKey As Long    : unKey      = KEY_Hit&
     Dim unKeyUsed As Integer
+    If KEY_Pressed%(E3D_KEY_PAD_A) Then unKey = 13
+    If KEY_Pressed%(E3D_KEY_PAD_B) Then unKey = 27
 
     Select Case unKey
         Case 13, 32  ' ENTER / SPACE -- confirm (min 3 chars)
@@ -84,7 +86,7 @@ Sub GS_USERNAME_Update ()
             If Len(telemPlayerName) >= 3 Then
                 SETTINGS_Save
                 If unFromSettings Then
-                    unFromSettings = 0 : gameState = GS_OPTIONS
+                    unFromSettings = 0 : TITLE_ReturnTo GS_OPTIONS
                 Else
                     LEADIN_Init : gameState = GS_LEADIN
                 End If
@@ -93,7 +95,7 @@ Sub GS_USERNAME_Update ()
         Case 27  ' ESC
             If unFromSettings Then
                 telemPlayerName = unSavedName
-                unFromSettings = 0 : gameState = GS_OPTIONS
+                unFromSettings = 0 : TITLE_ReturnTo GS_OPTIONS
             Else
                 telemPlayerName = UN_AutoName$
                 SETTINGS_Save

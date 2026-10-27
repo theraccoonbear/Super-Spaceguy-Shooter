@@ -44,7 +44,7 @@ Sub CRAWLBROWSE_Update ()
     Dim cbUp As Integer, cbDn As Integer, cbLf As Integer, cbRt As Integer, cbEnter As Integer, cbEsc As Integer
 
     cbUp = held(E3D_KEY_UP) : cbDn = held(E3D_KEY_DOWN) : cbLf = held(E3D_KEY_LEFT) : cbRt = held(E3D_KEY_RIGHT)
-    cbEnter = KEY_Down%(13) : cbEsc = held(E3D_KEY_ESCAPE)
+    cbEnter = KEY_Down%(13) Or (held(E3D_KEY_PAD_A) <> 0) : cbEsc = held(E3D_KEY_ESCAPE)
     If cbActive = 0 Then
         ' first frame here (startup or back from a crawl): ignore keys still held, restore the saved setting
         cbUpWas = -1 : cbDnWas = -1 : cbLfWas = -1 : cbRtWas = -1 : cbEnterWas = -1 : cbEscWas = -1

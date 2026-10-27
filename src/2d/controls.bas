@@ -20,7 +20,7 @@ Sub CONTROLS_Prep (ctlpReturn As Integer)
     ctlReturnState = ctlpReturn
     ctlPage = 0
     ctlSavedImg = _CopyImage(backBuffer)
-    ctlEscWas = held(E3D_KEY_ESCAPE) : ctlLfWas = held(E3D_KEY_LEFT) : ctlRtWas = held(E3D_KEY_RIGHT)
+    ctlEscWas = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0) : ctlLfWas = held(E3D_KEY_LEFT) : ctlRtWas = held(E3D_KEY_RIGHT)
 End Sub
 
 Sub CONTROLS_Row (ctlrRow As Integer, ctlrKey As String, ctlrAct As String)
@@ -33,7 +33,7 @@ End Sub
 Sub CONTROLS_Update ()
     Dim ctlEsc As Integer, ctlLf As Integer, ctlRt As Integer, ctlSy As Integer
 
-    ctlEsc = held(E3D_KEY_ESCAPE) : ctlLf = held(E3D_KEY_LEFT) : ctlRt = held(E3D_KEY_RIGHT)
+    ctlEsc = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0) : ctlLf = held(E3D_KEY_LEFT) : ctlRt = held(E3D_KEY_RIGHT)
     If ctlLf And ctlLfWas = 0 Then ctlPage = (ctlPage + CTL_PAGES - 1) Mod CTL_PAGES
     If ctlRt And ctlRtWas = 0 Then ctlPage = (ctlPage + 1) Mod CTL_PAGES
     ctlLfWas = ctlLf : ctlRtWas = ctlRt
@@ -60,18 +60,19 @@ Sub CONTROLS_Update ()
         CONTROLS_Row 9, "SPACE+ESC",   "SKIP STORY"
     Else
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "GAMEPAD  2/2", 30, scrW, 255
-        CONTROLS_Row 0, "LEFT STICK",  "MOVE SHIP"
-        CONTROLS_Row 1, "A",           "FIRE"
-        CONTROLS_Row 2, "START",       "PAUSE / ABORT"
-        CONTROLS_Row 3, "START",       "START GAME (TITLE)"
-        CONTROLS_Row 4, "BACK",        "CAMERA MODE ON/OFF"
-        CONTROLS_Row 5, " STICK U/D",  "TILT CAMERA"
-        CONTROLS_Row 6, "HOLD A",      "FAST-FWD STORY"
-        CONTROLS_Row 7, "A+START",     "SKIP STORY"
-        FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "MENUS USE THE KEYBOARD", CTL_ROW_Y + 9 * CTL_ROW_H, scrW, 255
+        CONTROLS_Row 0, "LEFT STICK",  "MOVE / MENU SELECT"
+        CONTROLS_Row 1, "A",           "FIRE / MENU OK"
+        CONTROLS_Row 2, "B",           "FIRE / MENU BACK"
+        CONTROLS_Row 3, "START",       "PAUSE / ABORT"
+        CONTROLS_Row 4, "START",       "START GAME (TITLE)"
+        CONTROLS_Row 5, "BACK",        "OPTIONS (TITLE)"
+        CONTROLS_Row 6, "BACK",        "CAMERA MODE ON/OFF"
+        CONTROLS_Row 7, " STICK U/D",  "TILT CAMERA"
+        CONTROLS_Row 8, "HOLD A/B",    "FAST-FWD STORY"
+        CONTROLS_Row 9, "A+START",     "SKIP STORY"
     End If
 
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "<- -> page   ESC back", scrH - 14, scrW, 255
+    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "<- -> page   ESC/B back", scrH - 14, scrW, 255
 
     _Dest 0
     _PutImage , backBuffer, 0
