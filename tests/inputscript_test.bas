@@ -6,7 +6,9 @@
 ' names (letters in both cases, digits, F-keys, #code), KEY_Down% on/off frames
 ' (including codes above 32767), KEY_Hit& press order, a missing file, the PAD_* gamepad
 ' names (same held() slots as a real controller, invisible to KEY_Down%/KEY_Hit&), and
-' the menu actions KEY_Pressed% / KEY_Confirm% / KEY_Back% (one press, not a hold).
+' the menu actions KEY_Pressed% / KEY_Confirm% / KEY_Back% (one press, not a hold), the raw
+' pad tokens (PADBTN<n>, PADAXIS<n>+/-, PAD_DPAD_*) going through E3D_PadMap, and a d-pad +
+' A/B walk through the title console into Settings and back.
 '
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
@@ -14,9 +16,19 @@
 $CONSOLE:ONLY
 
 Dim Shared held(0 To 32767) As Integer  ' the game's held() (dims.bas); KEY_Pressed% reads it
+Dim Shared ctrlDev As Integer           ' sss.bas declares it for the game
+
+' game states and the shared vars src/state/titlenav.bas uses (must match dims.bas)
+Const GS_TITLE       = 0
+Const GS_OPTIONS     = 7
+Const GS_ABOUT       = 8
+Const GS_LEADERBOARD = 12
+Const GS_CONTROLS    = 13
+Dim Shared gameState As Integer, escWas As Integer, optEscWas As Integer
 
 '$INCLUDE:'../src/3d/input.bas'
 '$INCLUDE:'../src/sys/inputscript.bas'
+'$INCLUDE:'../src/state/titlenav.bas'
 
 Dim Shared isPassed As Integer, isFailed As Integer
 Dim Shared isHeld(0 To 32767) As Integer
@@ -224,6 +236,83 @@ isP2 = KEY_Pressed%(E3D_KEY_DOWN)
 KEY_FrameBegin : ISC_Apply 32, held()
 isP3 = KEY_Pressed%(E3D_KEY_DOWN)
 IS_Assert isP1 = -1 And isP2 = 0 And isP3 = 0, "stick down: one press, then held, then released"
+
+Print "--- raw pad tokens ---"
+ISC_Clear
+isOk = ISC_ParseLine%("0 0 PADBTN1 padbtn32 PADAXIS1- PADAXIS16+ PAD_DPAD_UP PAD_DPAD_DOWN PAD_DPAD_LEFT PAD_DPAD_RIGHT")
+IS_Assert isOk And iscCount = 8, "PADBTN<n>, PADAXIS<n>+/-, PAD_DPAD_* parse, any case"
+isOk = ISC_ParseLine%("0 0 PADBTN0")
+isOk2 = ISC_ParseLine%("0 0 PADBTN33")
+isOk3 = ISC_ParseLine%("0 0 PADAXIS17+")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "PADBTN0, PADBTN33, PADAXIS17+ are out of range"
+isOk = ISC_ParseLine%("0 0 PADAXIS3")
+isOk2 = ISC_ParseLine%("0 0 PADAXIS+")
+IS_Assert isOk = 0 And isOk2 = 0, "PADAXIS needs a number and a + or -"
+ISC_Clear
+IS_Assert ISC_ParseLine%("10 10 PADBTN1"), "load: 10 PADBTN1"
+IS_Assert ISC_ParseLine%("11 11 PADAXIS8-"), "load: 11 PADAXIS8-"
+IS_Assert ISC_ParseLine%("12 12 PAD_DPAD_RIGHT"), "load: 12 PAD_DPAD_RIGHT"
+IS_Assert ISC_ParseLine%("13 13 PADBTN9 PADAXIS3+"), "load: 13 PADBTN9 PADAXIS3+ (Guide, trigger)"
+IS_Assert ISC_ParseLine%("14 14 PAD_DPAD_UP PAD_DOWN"), "load: 14 PAD_DPAD_UP PAD_DOWN"
+iscActive = -1
+ISC_Apply 10, isHeld()
+IS_Assert padRawBtn(1) = 1 And isHeld(E3D_KEY_SPACE) And isHeld(E3D_KEY_PAD_A) And IS_Down% = 2, "PADBTN1 is the raw A button -> SPACE + PAD_A"
+ISC_Apply 11, isHeld()
+IS_Assert padRawBtn(1) = 0 And padRawAxis(8) = -1 And isHeld(E3D_KEY_UP) And IS_Down% = 1, "PADAXIS8- is d-pad up -> UP, and last frame's button is released"
+ISC_Apply 12, isHeld()
+IS_Assert padRawAxis(7) = 1 And padRawAxis(8) = 0 And isHeld(E3D_KEY_RIGHT) And IS_Down% = 1, "PAD_DPAD_RIGHT sets axis 7 +1 -> RIGHT"
+ISC_Apply 13, isHeld()
+IS_Assert padRawBtn(9) = 1 And padRawAxis(3) = 1 And IS_Down% = 0, "unmapped controls (Guide, a trigger) press nothing"
+ISC_Apply 14, isHeld()
+IS_Assert isHeld(E3D_KEY_DOWN) And isHeld(E3D_KEY_UP) = 0 And IS_Down% = 1, "stick and d-pad both full on one axis: one direction, the stick (the d-pad wins only when pushed further)"
+
+Print "--- d-pad + A/B menu walk ---"
+' Title console and Settings, driven by d-pad and A/B only, reading exactly what
+' GS_TITLE_Update / OPTS_Update read (KEY_Pressed / KEY_Confirm / held PAD_B), with
+' the real TITLE_ReturnTo. Those Subs draw to the screen, so a $CONSOLE:ONLY test can't
+' call them directly; the walk mirrors their input lines.
+Dim isFr As Long, isConsole As Integer, isConSel As Integer, isOptSel As Integer
+Dim isDnWas As Integer, isUpWas As Integer, isOptDn As Integer, isOptUp As Integer, isOptEsc As Integer
+Dim isLog As String
+ISC_Clear
+IS_Assert ISC_ParseLine%("2 3 PAD_SELECT"), "load: 2-3 PAD_SELECT (BACK opens the console)"
+IS_Assert ISC_ParseLine%("6 7 PAD_DPAD_DOWN"), "load: 6-7 PAD_DPAD_DOWN"
+IS_Assert ISC_ParseLine%("10 11 PAD_DPAD_DOWN"), "load: 10-11 PAD_DPAD_DOWN"
+IS_Assert ISC_ParseLine%("14 15 PAD_A"), "load: 14-15 PAD_A (pick SETTINGS)"
+IS_Assert ISC_ParseLine%("18 19 PAD_DPAD_DOWN"), "load: 18-19 PAD_DPAD_DOWN"
+IS_Assert ISC_ParseLine%("22 23 PAD_DPAD_DOWN"), "load: 22-23 PAD_DPAD_DOWN"
+IS_Assert ISC_ParseLine%("26 27 PAD_DPAD_UP"), "load: 26-27 PAD_DPAD_UP"
+IS_Assert ISC_ParseLine%("30 31 PAD_B"), "load: 30-31 PAD_B (back to the title)"
+iscActive = -1
+gameState = GS_TITLE : escWas = 0 : optEscWas = 0
+isConsole = 0 : isConSel = 0 : isOptSel = 0
+For isFr = 0 To 40
+    KEY_FrameBegin
+    ISC_Apply isFr, held()
+    If gameState = GS_TITLE Then
+        If KEY_Pressed%(E3D_KEY_PAD_SELECT) Then isConsole = 1 - isConsole : isConSel = 0 : isLog = isLog + " console"
+        If isConsole Then
+            If KEY_Pressed%(E3D_KEY_UP) Then isConSel = (isConSel + 5) Mod 6
+            If KEY_Pressed%(E3D_KEY_DOWN) Then isConSel = (isConSel + 1) Mod 6 : isLog = isLog + " con" + LTrim$(Str$(isConSel))
+            isP1 = KEY_Confirm%
+            If isP1 And isConSel = 2 Then
+                gameState = GS_OPTIONS : isConsole = 0 : isLog = isLog + " SETTINGS"
+                isOptUp = -1 : isOptDn = 0 : optEscWas = -1
+            End If
+        End If
+    ElseIf gameState = GS_OPTIONS Then
+        isUpWas = (held(E3D_KEY_UP) <> 0) : isDnWas = (held(E3D_KEY_DOWN) <> 0)
+        isOptEsc = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0)
+        If isUpWas And Not isOptUp Then isOptSel = (isOptSel + 5) Mod 6 : isLog = isLog + " opt" + LTrim$(Str$(isOptSel))
+        If isDnWas And Not isOptDn Then isOptSel = (isOptSel + 1) Mod 6 : isLog = isLog + " opt" + LTrim$(Str$(isOptSel))
+        If isOptEsc And Not optEscWas Then TITLE_ReturnTo GS_TITLE : isLog = isLog + " TITLE"
+        isOptUp = isUpWas : isOptDn = isDnWas
+        If gameState = GS_OPTIONS Then optEscWas = isOptEsc
+    End If
+Next isFr
+Print "      walk:" + isLog
+IS_Assert isLog = " console con1 con2 SETTINGS opt1 opt2 opt1 TITLE", "BACK opens, d-pad down x2 to SETTINGS, A opens it, d-pad down/down/up moves, B returns"
+IS_Assert gameState = GS_TITLE And escWas <> 0 And isConsole = 0, "back on the title, console shut, ESC marked seen"
 
 Print "--- files ---"
 isOk = ISC_Load%("no/such/script.txt")
