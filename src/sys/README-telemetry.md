@@ -37,7 +37,7 @@ LBRD_Parse body$         ' parse the backend's JSON array response into lbrdName
 LBRD_Rank%(score)        ' 1-based rank a given score would have on the current board, or 0
 ```
 
-`LBRD_Parse` is a linear string scan tailored to the exact flat-object array shape the backend returns for this query (`server/test/top_scores.test.ts` pins it), not a general JSON parser. If the query's `select=` list ever changes, this parser needs to change with it.
+`LBRD_Parse` is a linear string scan tailored to the exact flat-object array shape the backend returns for this query (`server/test/top_scores.test.ts` checks the Worker returns `tests/input/leaderboard.json`, the saved response `--leaderboard-file` loads, byte for byte), not a general JSON parser. If the query's `select=` list ever changes, this parser needs to change with it.
 
 ## How to query the data locally
 

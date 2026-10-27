@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
+import fixture from "../../tests/input/leaderboard.json?raw";
 import { gameHeaders, get, post, seedScores } from "./helpers";
 
 const GAME_QUERY = "/top_scores?order=score.desc&limit=10&select=player_name,score";
 
 function lbrdParse(body: string): [string, number][] {
-  const out: [string, number][] = [];
-  for (const obj of body.match(/\{[^}]*\}/g) ?? []) {
-    const name = obj.match(/"player_name":"([^"]*)"/);
-    const score = obj.match(/"score":\s*([0-9]+)/);
-    if (name && score) out.push([name[1], Number(score[1])]);
-  }
-  return out;
+  return (JSON.parse(body) as Record<string, unknown>[]).map((row) => {
+    expect(Object.keys(row)).toEqual(["player_name", "score"]);
+    return [row.player_name as string, row.score as number];
+  });
 }
 
 describe("GET /top_scores", () => {
@@ -103,6 +101,15 @@ describe("GET /top_scores", () => {
     "/top_scores?score=gt.5",
   ])("rejects %s with 400", async (path) => {
     expect((await get(path)).status).toBe(400);
+  });
+
+  it("serves the leaderboard fixture LBRD_Parse is tested against, byte for byte", async () => {
+    const expected = fixture.trim();
+    for (const row of JSON.parse(expected) as { player_name: string; score: number }[]) {
+      const body = JSON.stringify({ player_id: "p", player_name: row.player_name, score: row.score, wave: 1, session: "s" });
+      expect((await post("/scores", body)).status).toBe(201);
+    }
+    expect(await (await get(GAME_QUERY)).text()).toBe(expected);
   });
 
   it("rejects POST with 405", async () => {
