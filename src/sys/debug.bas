@@ -18,26 +18,76 @@ End Sub
 Sub DBG_LogStateChange()
     If debugMode = 0 Then Exit Sub
     If gameState = prevGameState Then Exit Sub
-    Dim dbgStateName As String
-    Select Case gameState
-        Case GS_TITLE    : dbgStateName = "GS_TITLE"
-        Case GS_PLAYING  : dbgStateName = "GS_PLAYING"
-        Case GS_GAMEOVER : dbgStateName = "GS_GAMEOVER"
-        Case GS_PLANET   : dbgStateName = "GS_PLANET"
-        Case GS_CINEMATIC: dbgStateName = "GS_CINEMATIC"
-        Case GS_INTRO    : dbgStateName = "GS_INTRO"
-        Case GS_CRAWL    : dbgStateName = "GS_CRAWL"
-        Case GS_OPTIONS  : dbgStateName = "GS_OPTIONS"
-        Case GS_ABOUT    : dbgStateName = "GS_ABOUT"
-        Case GS_LEADIN   : dbgStateName = "GS_LEADIN"
-        Case GS_CONSENT     : dbgStateName = "GS_CONSENT"
-        Case GS_USERNAME    : dbgStateName = "GS_USERNAME"
-        Case GS_LEADERBOARD : dbgStateName = "GS_LEADERBOARD"
-        Case GS_CONTROLS    : dbgStateName = "GS_CONTROLS"
-        Case GS_CRAWLS      : dbgStateName = "GS_CRAWLS"
-        Case Else           : dbgStateName = "GS_?" + LTrim$(Str$(gameState))
+    DBG_Print "[state] " + DBG_StateName$(gameState)
+End Sub
+
+Function DBG_StateName$(dbgSnState As Integer)
+    Select Case dbgSnState
+        Case GS_TITLE    : DBG_StateName$ = "GS_TITLE"
+        Case GS_PLAYING  : DBG_StateName$ = "GS_PLAYING"
+        Case GS_GAMEOVER : DBG_StateName$ = "GS_GAMEOVER"
+        Case GS_PLANET   : DBG_StateName$ = "GS_PLANET"
+        Case GS_CINEMATIC: DBG_StateName$ = "GS_CINEMATIC"
+        Case GS_INTRO    : DBG_StateName$ = "GS_INTRO"
+        Case GS_CRAWL    : DBG_StateName$ = "GS_CRAWL"
+        Case GS_OPTIONS  : DBG_StateName$ = "GS_OPTIONS"
+        Case GS_ABOUT    : DBG_StateName$ = "GS_ABOUT"
+        Case GS_LEADIN   : DBG_StateName$ = "GS_LEADIN"
+        Case GS_CONSENT     : DBG_StateName$ = "GS_CONSENT"
+        Case GS_USERNAME    : DBG_StateName$ = "GS_USERNAME"
+        Case GS_LEADERBOARD : DBG_StateName$ = "GS_LEADERBOARD"
+        Case GS_CONTROLS    : DBG_StateName$ = "GS_CONTROLS"
+        Case GS_CRAWLS      : DBG_StateName$ = "GS_CRAWLS"
+        Case Else           : DBG_StateName$ = "GS_?" + LTrim$(Str$(dbgSnState))
     End Select
-    DBG_Print "[state] " + dbgStateName
+End Function
+
+' Milestone log for the full-playthrough test (tests/playthrough/run.sh). Off unless
+' the SSS_MILESTONE_LOG env var names a file (relative = the launch folder). Then the
+' file is emptied at startup and gets one line for each frame on which gameState or
+' the sequence step changed, plus EXIT when --frames ends the run:
+'   <frame> <state> <seqIdx> [<label> <TASK> <task args>]
+'   <frame> EXIT
+Sub DBG_MilestoneInit()
+    Dim dbgMiF As Integer
+    dbgMlogPath = Environ$("SSS_MILESTONE_LOG")
+    If dbgMlogPath = "" Then Exit Sub
+    If Left$(dbgMlogPath, 1) <> "/" And Mid$(dbgMlogPath, 2, 1) <> ":" Then dbgMlogPath = _StartDir$ + "/" + dbgMlogPath
+    dbgMlogState = -1 : dbgMlogSeq = -2
+    dbgMiF = FreeFile
+    Open dbgMlogPath For Output As #dbgMiF
+    Close #dbgMiF
+End Sub
+
+' Call once per frame; writes a line only when gameState or seqIdx changed.
+Sub DBG_MilestoneLog()
+    Dim dbgMlLine As String
+    If dbgMlogPath = "" Then Exit Sub
+    If gameState = dbgMlogState And seqIdx = dbgMlogSeq Then Exit Sub
+    dbgMlogState = gameState : dbgMlogSeq = seqIdx
+    dbgMlLine = LTrim$(Str$(gameFrame)) + " " + DBG_StateName$(gameState) + " " + LTrim$(Str$(seqIdx))
+    If seqIdx >= 0 And seqIdx < seqCount Then
+        dbgMlLine = dbgMlLine + " " + seqLabel$(seqIdx)
+        Select Case seqKind(seqIdx)
+            Case SEQ_CRAWL   : dbgMlLine = dbgMlLine + " CRAWL"
+            Case SEQ_EMPEROR : dbgMlLine = dbgMlLine + " CARD"
+            Case SEQ_PLAY    : dbgMlLine = dbgMlLine + " PLAY"
+            Case SEQ_TITLE   : dbgMlLine = dbgMlLine + " TITLE"
+            Case SEQ_ARRIVE  : dbgMlLine = dbgMlLine + " ARRIVE"
+            Case Else        : dbgMlLine = dbgMlLine + " ?"
+        End Select
+        dbgMlLine = RTrim$(dbgMlLine + " " + seqSval$(seqIdx))
+    End If
+    DBG_MilestoneWrite dbgMlLine
+End Sub
+
+Sub DBG_MilestoneWrite(dbgMwLine As String)
+    Dim dbgMwF As Integer
+    If dbgMlogPath = "" Then Exit Sub
+    dbgMwF = FreeFile
+    Open dbgMlogPath For Append As #dbgMwF
+    Print #dbgMwF, dbgMwLine
+    Close #dbgMwF
 End Sub
 
 Sub DBG_Print(dbgMsg As String)

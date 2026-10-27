@@ -130,6 +130,7 @@ SPK_Init
 E3D_CtrlInit
 SETTINGS_Load
 TELEM_Init
+DBG_MilestoneInit
 IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 IF cliCrawls THEN
     CRAWLBROWSE_Init
@@ -167,7 +168,7 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
-    IF cliFrames > 0 AND gameFrame >= cliFrames THEN SYSTEM
+    IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : SYSTEM
     ' --- input ---
     IF iscActive THEN ISC_Apply gameFrame, held() ELSE E3D_InputUpdate held()
     IF KEY_Down%(34048) AND NOT fsKeyWas THEN
@@ -183,6 +184,7 @@ DO
         If lbrdPollDone = 0 Then LBRD_Poll
     END IF
     DBG_LogStateChange
+    DBG_MilestoneLog
     prevGameState = gameState
 
     SELECT CASE gameState

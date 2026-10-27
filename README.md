@@ -118,6 +118,15 @@ tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP s
 
 The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name in `TESTS` in `.github/scripts/qb64test.sh`.
 
+**Full playthrough** (`tests/playthrough/`, #100): one scripted, seeded run (`--god --nerf --seed 1 --frames 20000`, input `tests/playthrough/playthrough.txt`) plays the whole game the way a fresh install sees it, from a launch folder with no `sss_settings.ini`: data notice, callsign, lead-in cards, intro crawl, emperor card, title, all six stages (crawls, combat, the three bosses, the asteroid field, planet arrivals and cinematics), the outro and back to the title.
+
+```bash
+tools/dev build                                  # the run needs builds/sss
+tools/dev shell tests/playthrough/run.sh         # about 2.5 minutes; extra args go to sss, e.g. --screenshot-at 3000,9000
+```
+
+The game writes a milestone log when the `SSS_MILESTONE_LOG` env var names a file (off otherwise): one line per frame on which the game state or the sequence step changed (`<frame> <state> <seqIdx> <label> <TASK> <args>`), plus `<frame> EXIT` when `--frames` ends the run. `run.sh` checks that the game exited cleanly at `--frames`, that the log matches `tests/playthrough/expected.txt` in order with nothing missing or extra (so it reaches the final title inside the frame budget), and that the local telemetry CSV has one `boss_defeated` per boss and a winning `session_end`. A failure names the milestone where the run went wrong or stalled; the log, the game's output and the CSV stay in `builds/playthrough/` (CI uploads them as the `playthrough-logs` artifact). The binary must be built with an empty `assets/.env`, because the run OKs the data notice and would otherwise send its telemetry and leaderboard score. CI runs it on Linux as its own step. When the game flow changes on purpose (a stage added or reordered), update `expected.txt`, and `playthrough.txt` and `FRAMES` in `run.sh` if the run gets longer.
+
 Each subsystem doc below has its own "test in isolation" section with more detail.
 
 ## Telemetry and leaderboards

@@ -156,6 +156,26 @@ jobs:
           echo "vCPUs: $CPUS"
           QB64_TEST_JOBS="$CPUS" QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
 
+      # Full-playthrough smoke test (#100), Linux only (it needs Xvfb). It builds its own
+      # sss with no telemetry credentials: the scripted run OKs the data notice, so a
+      # build with them would send telemetry and a leaderboard score. "Build sss.bas"
+      # below rebuilds with the credentials.
+      - name: Playthrough smoke test (tests/playthrough)
+        if: runner.os == 'Linux'
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          DB_URL= DB_KEY= QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+          tests/playthrough/run.sh
+
+      - name: Upload playthrough logs on failure
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playthrough-logs
+          path: builds/playthrough/
+          if-no-files-found: ignore
+
       - name: Build sss.bas
         shell: bash
         env:
