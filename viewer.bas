@@ -299,3 +299,7 @@ _DISPLAY
 LOOP UNTIL _KEYDOWN(27) OR _KEYDOWN(113) OR _KEYDOWN(81)
 
 END
+
+' src/3d/input.bas logs via the game's DBG_Print (src/sys/debug.bas), which this tool doesn't include
+Sub DBG_Print (dbgMsg As String)
+End Sub

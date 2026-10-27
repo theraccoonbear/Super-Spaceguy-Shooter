@@ -58,10 +58,18 @@ TESTS=(
   rng_test
 )
 
+# Dev tools at the repo root: compiled only (they're interactive), so an engine change
+# that breaks them fails CI instead of going unnoticed (#224).
+TOOLS=(
+  viewer
+  stress
+  obj2e3d
+)
+
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 JOBS="${QB64_TEST_JOBS:-$((CPUS / 2))}"
 [ "$JOBS" -lt 2 ] && JOBS=2
-[ "$JOBS" -gt "${#TESTS[@]}" ] && JOBS="${#TESTS[@]}"
+[ "$JOBS" -gt "$((${#TESTS[@]} + ${#TOOLS[@]}))" ] && JOBS="$((${#TESTS[@]} + ${#TOOLS[@]}))"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -129,13 +137,19 @@ build_test() {
 # JOBS of these at once). Writes $WORK/<name>.log, .result ("PASS"/"FAIL <why>"),
 # .time ("<build>s build, <run>s run").
 test_job() {
-  local name="$1" slot qbdir bin t0 t1 t2 log="$WORK/$1.log"
+  local name="$1" slot qbdir bin t0 t1 t2 log="$WORK/$1.log" src out is_tool=0
+  case " $TOOL_NAMES " in *" $name "*) is_tool=1 ;; esac
+  if [ "$is_tool" = 1 ]; then
+    src="$REPODIR/${name}.bas"; out="$WORK/${name}"
+  else
+    src="$REPODIR/tests/${name}.bas"; out="$REPODIR/tests/${name}"
+  fi
   for ((slot = 1; slot <= JOBS; slot++)); do
     mkdir "$WORK/lock$slot" 2> /dev/null && break
   done
   qbdir="$(cat "$WORK/qbdir$slot")"
   t0=$SECONDS
-  if ! bin="$(build_test "$qbdir" "$REPODIR/tests/${name}.bas" "$REPODIR/tests/${name}" 2>> "$log")"; then
+  if ! bin="$(build_test "$qbdir" "$src" "$out" 2>> "$log")"; then
     if [ "$IS_WIN" = 0 ]; then
       cat "$qbdir"/internal/temp*/compilelog.txt >> "$log" 2> /dev/null || true
     fi
@@ -146,6 +160,11 @@ test_job() {
   fi
   rmdir "$WORK/lock$slot"
   t1=$SECONDS
+  if [ "$is_tool" = 1 ]; then
+    echo "PASS" > "$WORK/$name.result"
+    echo "$((t1 - t0))s build (compile only)" > "$WORK/$name.time"
+    return 0
+  fi
   if "$bin" >> "$log" 2>&1; then
     if grep -q "=== ${name} ===" "$log"; then
       echo "PASS" > "$WORK/$name.result"
@@ -159,15 +178,16 @@ test_job() {
   echo "$((t1 - t0))s build, $((t2 - t1))s run" > "$WORK/$name.time"
 }
 
-export REPODIR QB64_DIR IS_WIN WORK JOBS
+TOOL_NAMES="${TOOLS[*]}"
+export REPODIR QB64_DIR IS_WIN WORK JOBS TOOL_NAMES
 export -f build_test test_job
 
-echo "==> Building and running ${#TESTS[@]} tests, $JOBS at a time..."
+echo "==> Building and running ${#TESTS[@]} tests and compiling ${#TOOLS[@]} tools, $JOBS at a time..."
 SUITE_T0=$SECONDS
-printf '%s\n' "${TESTS[@]}" | xargs -P "$JOBS" -I{} bash -c 'test_job "$1"' _ {}
+printf '%s\n' "${TESTS[@]}" "${TOOLS[@]}" | xargs -P "$JOBS" -I{} bash -c 'test_job "$1"' _ {}
 
 FAILED=()
-for name in "${TESTS[@]}"; do
+for name in "${TESTS[@]}" "${TOOLS[@]}"; do
   echo ""
   echo "==> ${name}"
   cat "$WORK/$name.log" 2> /dev/null || true
@@ -229,7 +249,7 @@ run_http_test http_queue_test
 
 echo ""
 echo "==> Summary ($((SECONDS - SUITE_T0))s, $JOBS workers)"
-for name in "${TESTS[@]}" http_queue_test; do
+for name in "${TESTS[@]}" "${TOOLS[@]}" http_queue_test; do
   printf '    %-24s %-6s %s\n' "$name" "$(cut -d' ' -f1 < "$WORK/$name.result")" "$(cat "$WORK/$name.time" 2> /dev/null || true)"
 done
 
