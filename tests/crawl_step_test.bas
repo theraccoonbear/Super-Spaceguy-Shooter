@@ -102,6 +102,7 @@ Sub CRAWL_Prep(k As String, h As Single) : End Sub
 Sub SETTINGS_Save()                 : End Sub
 Sub BELT_Init(w As Single, h As Single) : End Sub
 Sub CR_StageClear()                 : End Sub
+Sub CR_CashOutWin()                 : End Sub
 Sub DOCK_Enter()                    : gameState = 15 : End Sub   ' GS_DOCK
 Sub TELEM_SessionEnd()              : End Sub
 

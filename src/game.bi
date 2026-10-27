@@ -1,6 +1,7 @@
 '$INCLUDE:'sys/inputscript.bas'
 '$INCLUDE:'sys/cli.bas'
 '$INCLUDE:'sys/config.bas'
+'$INCLUDE:'gameplay/credits.bas'
 '$INCLUDE:'gameplay/upgrades.bas'
 '$INCLUDE:'state/docklogic.bas'
 '$INCLUDE:'audio/speech.bas'

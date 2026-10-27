@@ -260,3 +260,22 @@ Sub HUD_Draw
     End If
 
 End Sub
+
+' Win tally on the title after the outro (#268): leftover credits counted up into the final
+' score, then fading out. crTallyTimer is set by CR_CashOutWin.
+Sub HUD_RunTally
+    Dim hdtFrac As Single, hdtBonus As Long, hdtA As Integer
+    If crTallyTimer <= 0 Then Exit Sub
+    crTallyTimer = crTallyTimer - 1
+    hdtFrac = (300 - crTallyTimer) / 60
+    If hdtFrac > 1 Then hdtFrac = 1
+    hdtBonus = Int(crBonusPts * hdtFrac)
+    hdtA = 255
+    If crTallyTimer < 40 Then hdtA = Int(255 * crTallyTimer / 40)
+    _Dest backBuffer
+    Line (scrW \ 2 - 90, 132)-(scrW \ 2 + 90, 190), _RGBA(2, 4, 18, hdtA * 4 \ 5), BF
+    Line (scrW \ 2 - 90, 132)-(scrW \ 2 + 90, 190), _RGBA(0, 130, 210, hdtA), B
+    FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "MISSION COMPLETE", 136, scrW, hdtA
+    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTrim$(Str$(hdtBonus)), 153, scrW, hdtA
+    FONT_PrintCenteredAlpha fontPalette(9), backBuffer, "FINAL SCORE " + LTrim$(Str$(score - crBonusPts + hdtBonus)), 170, scrW, hdtA
+End Sub

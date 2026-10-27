@@ -9,7 +9,7 @@
 ' parses them). No rendering or input here, so tests drive it directly:
 '   UPG_Load                       read the table and amounts (after CFG_Parse$ of each file)
 '   UPG_Reset                      new run: no credits, every upgrade at level 0
-'   CR_Add n                       earn n credits (amounts: crKill, crBoss, crStage, ...)
+'   (earning and the end-of-run bonus are in credits.bas)
 '   r = UPG_Buy%(id)               buy the next level: UPG_OK / UPG_NOFUNDS / UPG_MAXED / UPG_FULL
 '   UPG_Apply                      recompute the effect values in dims.bas from the levels
 '   UPG_DockVisit                  per dock: refill nova charges, allow one hull repair
@@ -51,8 +51,6 @@ Dim Shared upgPrice(1 To UPG_COUNT, 1 To UPG_MAX_LV) As Long
 Dim Shared upgFxA(1 To UPG_COUNT, 0 To UPG_MAX_LV) As Single
 Dim Shared upgFxB(1 To UPG_COUNT, 0 To UPG_MAX_LV) As Single
 Dim Shared upgLoadErr As String
-Dim Shared crKill As Long, crBoss As Long, crStage As Long
-Dim Shared crAstNear As Long, crAstKill As Long, crAstSurvive As Long
 
 ' Splits "a,b,c" into upgsOut$(1..) (at most UPG_MAX_LV + 1 entries).
 Sub UPG_Split (upgsSrc As String, upgsSep As String, upgsOut() As String, upgsCnt As Integer)
@@ -129,6 +127,7 @@ Function UPG_Load%
     crAstNear = Val(CFG_Get$(cfgEconomy, "cr_ast_near"))
     crAstKill = Val(CFG_Get$(cfgEconomy, "cr_ast_kill"))
     crAstSurvive = Val(CFG_Get$(cfgEconomy, "cr_ast_survive"))
+    If Len(CFG_Get$(cfgEconomy, "credit_bonus_rate")) > 0 Then crBonusRate = Val(CFG_Get$(cfgEconomy, "credit_bonus_rate")) Else crBonusRate = 1
     novaRadius = Val(CFG_Get$(cfgAbilities, "nova_radius"))
     novaBossDmg = Val(CFG_Get$(cfgAbilities, "nova_boss_dmg"))
     rollFrames = Val(CFG_Get$(cfgAbilities, "roll_frames"))
@@ -224,15 +223,6 @@ End Function
 Sub UPG_DockVisit
     novaCharges = novaMax
     upgLevel(UPG_REPAIR) = 0
-End Sub
-
-Sub CR_Add (crN As Long)
-    credits = credits + crN
-    creditsEarned = creditsEarned + crN
-End Sub
-
-Sub CR_StageClear
-    CR_Add crStage
 End Sub
 
 ' Starts a roll toward urDir (-1 / +1). Needs the upgrade, no roll running, no cooldown.
@@ -341,17 +331,6 @@ Function UPG_KeyOf$ (ukId As Integer)
     End Select
 End Function
 
-' --credits <n>: a whole number 0..999999999. 0 (and crpN untouched) if it isn't one.
-Function CR_ParseArg% (crpS As String, crpN As Long)
-    Dim crpI As Integer
-    CR_ParseArg% = 0
-    If Len(crpS) = 0 Or Len(crpS) > 9 Then Exit Function
-    For crpI = 1 To Len(crpS)
-        If Mid$(crpS, crpI, 1) < "0" Or Mid$(crpS, crpI, 1) > "9" Then Exit Function
-    Next crpI
-    crpN = Val(crpS)
-    CR_ParseArg% = -1
-End Function
 
 Sub UPG_AddHint (uahText As String)
     If Len(uahText) = 0 Then Exit Sub

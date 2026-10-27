@@ -329,7 +329,7 @@ On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsig
 
 ## Credits and the upgrade dock
 
-Credits (`$`, shown next to the score) are a second currency, separate from score: spending them never lowers your score or rank. Kills, bosses, stage clears and the asteroid field (near misses, asteroids a nova pulse destroys, and getting through) earn them. After each planet arrival except the last, the **upgrade dock** opens: buy upgrades for the rest of the run, or leave with one press. Credits and upgrades reset on a new game.
+Credits (`$`, shown next to the score) are a second currency, separate from score: spending them never lowers your score or rank. Kills, bosses, stage clears and the asteroid field (near misses, asteroids a nova pulse destroys, and getting through) earn them. After each planet arrival except the last, the **upgrade dock** opens: buy upgrades for the rest of the run, or leave with one press. Credits and upgrades reset on a new game. At the end of a run, win or death, leftover credits become score (1 point per credit by default, `credit_bonus_rate` in `assets/config/economy.ini`), shown as `CREDITS BONUS +N` on the game-over screen or the title after the outro, and counted in your high score and leaderboard score.
 
 ### Upgrades
 

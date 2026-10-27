@@ -17,7 +17,7 @@ Every event goes through `TELEM_Row(event$, data$)`, which:
 - Appends a CSV row to `sss_telemetry.csv` in the working directory: `time,session,event,data` (`time` = seconds since midnight, `session` = `YYYYMMDDHHMMSS` boot timestamp, `data` = pipe-separated `key=value` pairs).
 - If `DB_URL` is set, also appends a JSON object to an in-memory batch (`telemBatch`) via [`json.bas`](../sys/json.bas)'s minimal encoder, sent as one array in a single POST when the session ends.
 
-Events fired today (see call sites in `gameplay/`, `state/`, `sys/sequence.bas`): `session_start`, `enemy_killed`, `powerup_collected`, `enemy_escaped`, `fuel_exhausted`, `player_damaged`, `player_death`, `boss_reached`, `boss_phase`, `boss_defeated`, `upgrade_bought` (item, level, price, credits_left; one per dock purchase), `credits_earned` (earned, spent, left; logged just before `session_end`), `session_end`. `TELEM_SessionEnd` is idempotent (guarded on `telemSession` being non-empty) since it can be reached from more than one exit path.
+Events fired today (see call sites in `gameplay/`, `state/`, `sys/sequence.bas`): `session_start`, `enemy_killed`, `powerup_collected`, `enemy_escaped`, `fuel_exhausted`, `player_damaged`, `player_death`, `boss_reached`, `boss_phase`, `boss_defeated`, `upgrade_bought` (item, level, price, credits_left; one per dock purchase), `credits_earned` (earned, spent, left; logged just before `session_end`), `credit_bonus` (credits, rate, points, score; once per run that ends in a win or a death, when leftover credits become score), `session_end`. `TELEM_SessionEnd` is idempotent (guarded on `telemSession` being non-empty) since it can be reached from more than one exit path.
 
 ### Backend schema
 

@@ -228,6 +228,7 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
         If shipLives <= 0 Then
             gameOver = -1
             TELEM_PlayerDeath
+            CR_CashOut   ' leftover credits become score before the high score and the score POST
             telemExitReason = "death"
             TELEM_SessionEnd
         Else

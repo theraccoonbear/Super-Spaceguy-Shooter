@@ -17,12 +17,14 @@ $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 
 Sub DBG_Print (dktDbg As String) : End Sub
 Sub TELEM_UpgradeBought (dtuItem As String, dtuLevel As Integer, dtuPrice As Long) : End Sub
+Sub TELEM_CreditBonus (dtcC As Long, dtcR As Double, dtcP As Long) : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/sys/inputscript.bas'
 '$INCLUDE:'../src/sys/config.bas'
+'$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 '$INCLUDE:'../src/state/docklogic.bas'
 

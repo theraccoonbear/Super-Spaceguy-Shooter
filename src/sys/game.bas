@@ -10,6 +10,7 @@ Sub GAME_ResetState
     Dim grI As Integer
 
     UPG_Reset
+    CR_ResetRun
     credits = cliCredits
     ablHintTimer = 0
     score = 0 : IF settingNerf THEN stageScore = BOSS_TRIGGER_NERF ELSE stageScore = BOSS_TRIGGER

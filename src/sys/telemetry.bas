@@ -148,6 +148,12 @@ Sub TELEM_UpgradeBought(tlubItem As String, tlubLevel As Integer, tlubPrice As L
             + "|price=" + LTrim$(Str$(tlubPrice)) + "|credits_left=" + LTrim$(Str$(credits))
 End Sub
 
+' End of a run (#268): leftover credits cashed in for score, logged once per run.
+Sub TELEM_CreditBonus(tlcbCredits As Long, tlcbRate As Double, tlcbPts As Long)
+    TELEM_Row "credit_bonus", "credits=" + LTrim$(Str$(tlcbCredits)) + "|rate=" + LTrim$(Str$(tlcbRate)) _
+            + "|points=" + LTrim$(Str$(tlcbPts)) + "|score=" + LTrim$(Str$(score))
+End Sub
+
 Sub TELEM_SessionEnd()
     If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
     TELEM_Row "credits_earned", "earned=" + LTrim$(Str$(creditsEarned)) + "|spent=" + LTrim$(Str$(creditsSpent)) _

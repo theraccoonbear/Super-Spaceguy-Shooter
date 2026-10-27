@@ -104,13 +104,13 @@ Dim Shared telemPlayerName     As String
 Dim Shared settingNerf         As Integer
 Dim Shared godMode             As Integer
 
-Dim Shared dtEnds As Integer, dtScorePosts As Integer
+Dim Shared dtEnds As Integer, dtScorePosts As Integer, dtPostBody As String
 
 Sub DBG_Print (msg As String)
     If Left$(msg, 18) = "TELEM: SessionEnd " Then dtEnds = dtEnds + 1
 End Sub
 Sub HTTP_Post (u As String, k As String, b As String, t As String)
-    If t = "score_post" Then dtScorePosts = dtScorePosts + 1
+    If t = "score_post" Then dtScorePosts = dtScorePosts + 1 : dtPostBody = b
 End Sub
 Function JSON_Obj$ (s As String) : JSON_Obj$ = "{" + s + "}" : End Function
 Function JSON_S$   (k As String, v As String) : JSON_S$ = k + ":" + v : End Function
@@ -122,6 +122,7 @@ Sub FX_SpawnBurst (cx As Single, cy As Single, cz As Single, n As Integer, spd A
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
+'$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/player.bas'
 
 Dim Shared tcPass As Integer, tcFail As Integer
@@ -139,7 +140,8 @@ End Sub
 Sub DT_NewGame (dtShips As Integer)
     gameState = GS_PLAYING : lives = 100 : shipLives = dtShips
     deathTimer = 0 : gameOver = 0 : score = 500
-    dtEnds = 0 : dtScorePosts = 0
+    dtEnds = 0 : dtScorePosts = 0 : dtPostBody = ""
+    CR_ResetRun : credits = 0
     TELEM_SessionStart
 End Sub
 
@@ -196,6 +198,18 @@ TC_Assert shipLives = 1, "5.01  no ship lost"
 TC_Assert deathTimer = 0, "5.02  no death"
 TC_Assert lives = 100,   "5.03  shields full"
 TC_Assert dtEnds = 0,    "5.04  session still open"
+Print ""
+
+Print "--- 6. leftover credits become score once, before the score post (#268) ---"
+DT_NewGame 1
+credits = 300
+PLAYER_TakeDamage DMG_COLLISION * 6, SHAKE_COLLISION, FLASH_COLLISION
+PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
+TC_Assert score = 800 And credits = 0,                 "6.01  500 score + 300 credits = 800, credits spent"
+TC_Assert crBonusPts = 300 And crBonusCredits = 300,   "6.02  the game-over tally has 300 credits -> +300"
+TC_Assert dtScorePosts = 1 And InStr(dtPostBody, "score:800") > 0, "6.03  the leaderboard post carries the bonus (score:800)"
+CR_CashOut
+TC_Assert score = 800,                                 "6.04  a later cash-out call adds nothing"
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _

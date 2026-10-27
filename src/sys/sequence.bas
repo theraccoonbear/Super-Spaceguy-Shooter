@@ -401,6 +401,7 @@ Sub SEQ_Advance()
     Dim seqaType As String, seqaMus As String, seqaTrig As Integer
     seqIdx = seqIdx + 1
     If seqIdx >= seqCount Then
+        CR_CashOutWin
         telemExitReason = "win"
         TELEM_SessionEnd
         SEQ_RewindToTitle
@@ -486,6 +487,7 @@ Sub SEQ_Advance()
                     gameState = GS_PLAYING
             End Select
         Case SEQ_TITLE
+            CR_CashOutWin   ' leftover credits -> score first, so high score and leaderboard include them
             If score > highScore Then highScore = score : SETTINGS_Save
             telemExitReason = "win"
             TELEM_SessionEnd

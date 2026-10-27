@@ -110,6 +110,7 @@ Sub CRAWL_Prep(k As String, h As Single) : End Sub
 Sub SETTINGS_Save()                 : End Sub
 Sub BELT_Init(w As Single, h As Single) : End Sub
 Sub CR_StageClear()                 : End Sub
+Sub CR_CashOutWin()                 : End Sub
 Sub DOCK_Enter()                    : gameState = 15 : End Sub   ' GS_DOCK
 Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function

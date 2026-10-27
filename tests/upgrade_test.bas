@@ -24,11 +24,16 @@ Dim Shared utItem As String, utLevel As Integer, utPrice As Long, utBuys As Inte
 Sub TELEM_UpgradeBought (tuItem As String, tuLevel As Integer, tuPrice As Long)
     utItem = tuItem : utLevel = tuLevel : utPrice = tuPrice : utBuys = utBuys + 1
 End Sub
+Dim Shared utBonusLogs As Integer
+Sub TELEM_CreditBonus (tcbC As Long, tcbR As Double, tcbP As Long)
+    utBonusLogs = utBonusLogs + 1
+End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/sys/config.bas'
+'$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 
 Dim Shared utPassed As Integer, utFailed As Integer
@@ -292,6 +297,25 @@ utOk = CR_ParseArg%("-5", utArg)
 UT_Assert utOk = 0 And utArg = 7, "--credits -5 is a usage error"
 UT_Assert CR_ParseArg%("12x", utArg) = 0 And CR_ParseArg%("1.5", utArg) = 0, "--credits 12x / 1.5 are usage errors"
 UT_Assert CR_ParseArg%("", utArg) = 0 And CR_ParseArg%("9999999999", utArg) = 0, "--credits needs a value that fits"
+
+Print ""
+Print "--- end-of-run credit bonus ---"
+UT_Assert UT_Near%(crBonusRate, 1), "credit_bonus_rate from economy.ini is 1"
+UT_Assert CR_BonusPoints&(2350, 1) = 2350, "rate 1: 2350 credits -> 2350 points"
+UT_Assert CR_BonusPoints&(2350, 0.5) = 1175 And CR_BonusPoints&(7, 0.3) = 2 And CR_BonusPoints&(10, 0.3) = 3, "decimal rates round down (7 x 0.3 -> 2, 10 x 0.3 -> 3)"
+UT_Assert CR_BonusPoints&(0, 1) = 0 And CR_BonusPoints&(500, 0) = 0, "no credits, or rate 0: nothing"
+UPG_Reset : CR_ResetRun
+score = 1000 : credits = 400 : utBonusLogs = 0
+CR_CashOut
+UT_Assert score = 1400 And credits = 0 And crBonusPts = 400 And crBonusCredits = 400 And utBonusLogs = 1, "cash-out: 400 credits -> +400 score, credits spent, logged once"
+credits = 50
+CR_CashOut
+CR_CashOutWin
+UT_Assert score = 1400 And credits = 50 And utBonusLogs = 1 And crTallyTimer = 0, "a second cash-out (death then win paths) does nothing"
+CR_ResetRun
+score = 0 : credits = 120
+CR_CashOutWin
+UT_Assert score = 120 And crTallyTimer > 0 And utBonusLogs = 2, "a new run cashes out again; the win path shows the tally"
 
 Print ""
 Print "--- new game resets the run ---"

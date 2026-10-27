@@ -38,6 +38,7 @@ Sub GS_TITLE_Update ()
         FONT_PrintAlpha fontPalette(15), backBuffer, "N",            gstKX, scrH\2 + 44, 255
         FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",          gstKX + 2 * FONT_CHAR_W, scrH\2 + 44, 255
     END IF
+    IF titleEscConfirm = 0 THEN HUD_RunTally
     _DEST 0
     _PUTIMAGE , backBuffer, 0
     ' gamepad Start also sets ESCAPE; on the title it means "play", not "open console" (Back opens it)
