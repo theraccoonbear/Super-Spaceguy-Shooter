@@ -74,6 +74,7 @@ TESTS=(
   spore_test
   attack_test
   inputscript_test
+  pad_map_test
   rng_test
   titlenav_test
   textedit_test
