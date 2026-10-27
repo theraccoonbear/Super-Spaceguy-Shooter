@@ -87,6 +87,7 @@ sss [options]
   --debug                Enable the debug HUD overlay and diagnostic console output
   --no-telem             Disable gameplay telemetry for this session (on by default; see below)
   --input-script <file>  Play from a script instead of the keyboard/gamepad (see below)
+  --leaderboard-file <file>  Show a saved top_scores JSON response on the leaderboard instead of polling (offline testing)
   --frames N             Quit after N frames (60 per second)
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
@@ -101,6 +102,8 @@ tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input
 ```
 
 Add `--screenshot-at 200,700,1250` to save those frames as `shot-<frame>.png` (gitignored) to look at afterwards. A relative script path is resolved from the directory you launch from.
+
+`--leaderboard-file <file>` fills the leaderboard from a saved `top_scores` response, so it can be checked without the network: `tools/dev headless --scene title --no-telem --seed 1 --frames 130 --leaderboard-file tests/input/leaderboard.json --input-script tests/input/open-leaderboard.txt --screenshot-at 120`.
 
 ## Testing
 
