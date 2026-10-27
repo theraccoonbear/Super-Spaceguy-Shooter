@@ -2,16 +2,18 @@
 '
 ' Left/right arrows move cursor; Home/End jump to ends.
 ' Delete: forward delete at cursor. Backspace: delete before cursor.
-' ~X color token pairs are treated as atomic units for cursor movement.
-' The input box scrolls when text exceeds UN_BOX_VIS raw chars.
+' ~X color token pairs are treated as atomic units for cursor movement and render live.
+' The input box scrolls when text exceeds UN_BOX_VIS visible chars.
+' Editing logic lives in src/2d/textedit.bas (TXE_*).
 '
 ' On confirm (ENTER, >= 3 chars), writes telemPlayerName + calls SETTINGS_Save.
 
-Const UN_BOX_VIS = 18  ' raw chars visible in input box (one slot reserved for cursor)
+Const UN_BOX_VIS = 18  ' visible columns in the input box (one slot reserved for cursor)
 
 Sub GS_USERNAME_Init ()
     unCursorPos = Len(telemPlayerName)
     unScrollOff = 0
+    unBlinkN = 0
 End Sub
 
 Sub GS_USERNAME_Update ()
@@ -38,28 +40,27 @@ Sub GS_USERNAME_Update ()
     LINE (unBoxX1, unBoxY1)-(unBoxX2, unBoxY2), _RGB(0, 40, 90), BF
     LINE (unBoxX1, unBoxY1)-(unBoxX2, unBoxY2), _RGB(0, 80, 160), B
 
-    ' clamp cursor and scroll
+    ' text from the scroll offset, in the color in force there, plus an overlaid cursor
     If unCursorPos < 0 Then unCursorPos = 0
     If unCursorPos > Len(telemPlayerName) Then unCursorPos = Len(telemPlayerName)
-    If unCursorPos < unScrollOff Then unScrollOff = unCursorPos
-    If unCursorPos > unScrollOff + UN_BOX_VIS - 1 Then unScrollOff = unCursorPos - (UN_BOX_VIS - 1)
-    If unScrollOff < 0 Then unScrollOff = 0
-
-    ' render text slice + inline cursor
-    Dim unSlice As String    : unSlice    = Mid$(telemPlayerName, unScrollOff + 1, UN_BOX_VIS)
-    Dim unVisCur As Integer  : unVisCur   = unCursorPos - unScrollOff
-    Dim unCurCh As String    : unCurCh    = " "
-    If Int(tt * 2) Mod 2 = 0 Then unCurCh = "_"
+    unScrollOff = TXE_Scroll%(telemPlayerName, unCursorPos, unScrollOff, UN_BOX_VIS)
+    Dim unTxtX As Integer : unTxtX = unBoxX1 + 2
+    Dim unTxtY As Integer : unTxtY = scrH \ 2 - 4
     Dim unDispStr As String
-    unDispStr = Left$(unSlice, unVisCur) + unCurCh + Mid$(unSlice, unVisCur + 1)
-    FONT_PrintAlpha fontPalette(15), backBuffer, unDispStr, unBoxX1 + 2, scrH \ 2 - 4, 255
-
-    ' scroll indicators at box edges
-    If unScrollOff > 0 Then
-        FONT_PrintAlpha fontPalette(9), backBuffer, Chr$(17), unBoxX1 + 2, scrH \ 2 - 4, 160
+    unDispStr = "~F" + TXE_ColorAt$(telemPlayerName, unScrollOff) + Mid$(telemPlayerName, unScrollOff + 1)
+    FONT_PrintRichAlpha fontPalette(), backBuffer, FONT_RichTrunc$(unDispStr, UN_BOX_VIS), unTxtX, unTxtY, 255
+    ' tt doesn't advance on this screen; 60 fps: on 0.5 s, off 0.5 s, solid again after each key
+    unBlinkN = unBlinkN + 1
+    If (unBlinkN \ 30) Mod 2 = 0 Then
+        FONT_PrintAlpha fontPalette(15), backBuffer, "_", unTxtX + TXE_VisCol%(telemPlayerName, unScrollOff, unCursorPos) * FONT_CHAR_W, unTxtY, 255
     End If
-    If unScrollOff + UN_BOX_VIS < Len(telemPlayerName) Then
-        FONT_PrintAlpha fontPalette(9), backBuffer, Chr$(16), unBoxX2 - FONT_CHAR_W - 2, scrH \ 2 - 4, 160
+
+    ' scroll indicators just outside the box edges
+    If TXE_VisCol%(telemPlayerName, 0, unScrollOff) > 0 Then
+        FONT_PrintAlpha fontPalette(9), backBuffer, "<", unBoxX1 - FONT_CHAR_W - 1, unTxtY, 200
+    End If
+    If TXE_VisCol%(telemPlayerName, unScrollOff, Len(telemPlayerName)) > UN_BOX_VIS Then
+        FONT_PrintAlpha fontPalette(9), backBuffer, ">", unBoxX2 + 2, unTxtY, 200
     End If
 
     ' key hints
@@ -75,8 +76,7 @@ Sub GS_USERNAME_Update ()
 
     ' --- key handling ---
     Dim unKey As Long    : unKey      = KEY_Hit&
-    Dim unMoveStep As Integer         ' reused for token-aware stepping
-    Dim unMoveH    As Integer         ' reused for hex-digit check
+    Dim unKeyUsed As Integer
 
     Select Case unKey
         Case 13, 32  ' ENTER / SPACE -- confirm (min 3 chars)
@@ -100,80 +100,9 @@ Sub GS_USERNAME_Update ()
                 LEADIN_Init : gameState = GS_LEADIN
             End If
 
-        Case 19200  ' left arrow
-            If unCursorPos > 0 Then
-                unMoveStep = 1
-                If unCursorPos >= 2 Then
-                    If Mid$(telemPlayerName, unCursorPos - 1, 1) = Chr$(126) Then
-                        unMoveH = Asc(UCase$(Mid$(telemPlayerName, unCursorPos, 1)))
-                        If (unMoveH >= 48 And unMoveH <= 57) Or (unMoveH >= 65 And unMoveH <= 70) Then
-                            unMoveStep = 2
-                        End If
-                    End If
-                End If
-                unCursorPos = unCursorPos - unMoveStep
-            End If
-
-        Case 19712  ' right arrow
-            If unCursorPos < Len(telemPlayerName) Then
-                unMoveStep = 1
-                If unCursorPos + 2 <= Len(telemPlayerName) Then
-                    If Mid$(telemPlayerName, unCursorPos + 1, 1) = Chr$(126) Then
-                        unMoveH = Asc(UCase$(Mid$(telemPlayerName, unCursorPos + 2, 1)))
-                        If (unMoveH >= 48 And unMoveH <= 57) Or (unMoveH >= 65 And unMoveH <= 70) Then
-                            unMoveStep = 2
-                        End If
-                    End If
-                End If
-                unCursorPos = unCursorPos + unMoveStep
-            End If
-
-        Case 18176  ' Home
-            unCursorPos = 0
-
-        Case 20224  ' End
-            unCursorPos = Len(telemPlayerName)
-
-        Case 8  ' backspace -- delete char(s) before cursor
-            If unCursorPos > 0 Then
-                unMoveStep = 1
-                If unCursorPos >= 2 Then
-                    If Mid$(telemPlayerName, unCursorPos - 1, 1) = Chr$(126) Then
-                        unMoveH = Asc(UCase$(Mid$(telemPlayerName, unCursorPos, 1)))
-                        If (unMoveH >= 48 And unMoveH <= 57) Or (unMoveH >= 65 And unMoveH <= 70) Then
-                            unMoveStep = 2
-                        End If
-                    End If
-                End If
-                telemPlayerName = Left$(telemPlayerName, unCursorPos - unMoveStep) _
-                                + Mid$(telemPlayerName, unCursorPos + 1)
-                unCursorPos = unCursorPos - unMoveStep
-            End If
-
-        Case 21248  ' Delete -- forward delete at cursor
-            If unCursorPos < Len(telemPlayerName) Then
-                unMoveStep = 1
-                If unCursorPos + 2 <= Len(telemPlayerName) Then
-                    If Mid$(telemPlayerName, unCursorPos + 1, 1) = Chr$(126) Then
-                        unMoveH = Asc(UCase$(Mid$(telemPlayerName, unCursorPos + 2, 1)))
-                        If (unMoveH >= 48 And unMoveH <= 57) Or (unMoveH >= 65 And unMoveH <= 70) Then
-                            unMoveStep = 2
-                        End If
-                    End If
-                End If
-                telemPlayerName = Left$(telemPlayerName, unCursorPos) _
-                                + Mid$(telemPlayerName, unCursorPos + unMoveStep + 1)
-            End If
-
         Case Else
-            If unKey >= 32 And unKey <= 126 Then  ' printable ASCII
-                If Len(telemPlayerName) < UN_MAX_LEN Then
-                    telemPlayerName = Left$(telemPlayerName, unCursorPos) _
-                                    + Chr$(unKey) _
-                                    + Mid$(telemPlayerName, unCursorPos + 1)
-                    unCursorPos = unCursorPos + 1
-                End If
-            End If
+            unKeyUsed = TXE_Key%(telemPlayerName, unCursorPos, unKey, UN_MAX_LEN)
+            If unKeyUsed Then unBlinkN = 0
     End Select
 
     MUS_Fill 0
