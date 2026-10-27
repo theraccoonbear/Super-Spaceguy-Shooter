@@ -11,9 +11,6 @@ Sub HUD_Draw
     Dim hdTR As Integer
     Dim hdTSX As Single, hdTSY As Single
     Dim hdPjX As Single, hdPjY As Single, hdPjW As Single
-    Dim hdShieldPct As Single, hdShieldFill As Integer, hdShieldClr As Long
-    Dim hdLaserFill As Integer, hdLaserClr As Long
-    Dim hdFuelFill As Integer, hdFuelClr As Long
     Dim hdBossHPBar As Integer
     Dim hdPartFade As Single
     Dim hdThrobBright As Integer
@@ -101,7 +98,10 @@ Sub HUD_Draw
     End If
 
     ' score
-    FONT_PrintAlpha fontPalette(9), backBuffer, "SCORE: " + LTRIM$(STR$(score)), 4, 4, 255
+    hdHiStr = "SCORE: " + LTRIM$(STR$(score))
+    FONT_PrintAlpha fontPalette(9), backBuffer, hdHiStr, 4, 4, 255
+    ' credits (#268): the dock's currency, separate from score
+    FONT_PrintAlpha fontPalette(14), backBuffer, "$" + LTRIM$(STR$(credits)), 4 + (LEN(hdHiStr) + 1) * FONT_CHAR_W, 4, 255
     ' ship life icons — bottom-left corner
     For hdJ = 1 To 3
         If hdJ <= shipLives Then
@@ -113,54 +113,34 @@ Sub HUD_Draw
         End If
     Next hdJ
 
-    ' gauges: SH [=] LA [=] FU [=]
-    hdShieldPct = lives / 100.0
-    If hdShieldPct > 1.0 Then hdShieldPct = 1.0
-    If hdShieldPct < 0.0 Then hdShieldPct = 0.0
-    hdShieldFill = INT(hdShieldPct * 28)
-    hdLaserFill  = INT((laserEnergy / 100.0) * 28)
-    hdFuelFill   = INT((fuelLevel   / 100.0) * 28)
-
-    FONT_PrintAlpha fontPalette(9), backBuffer, "SH", scrW - 150, 4, 255
-    LINE (scrW - 134, 8)-(scrW - 104, 14), _RGB(15, 20, 30), BF
-    If hdShieldFill > 0 Then
-        If lives > 60 Then
-            hdShieldClr = _RGB(50, 210, 60)
-        ElseIf lives > 30 Then
-            hdShieldClr = _RGB(235, 190, 15)
-        Else
-            hdShieldClr = _RGB(240, 50, 35)
-        End If
-        LINE (scrW - 133, 9)-(scrW - 133 + hdShieldFill, 13), hdShieldClr, BF
-        LINE (scrW - 133, 9)-(scrW - 133 + hdShieldFill, 10), _RGB(180, 255, 190), BF
+    ' dock abilities (#268): nova charges and roll readiness, above the ship icons
+    Dim hdAbY As Integer, hdAbK As Integer, hdAbFill As Integer
+    hdAbY = scrH - 30
+    If novaMax > 0 Then
+        If novaCharges > 0 Then hdAbK = 11 Else hdAbK = 8
+        FONT_PrintAlpha fontPalette(hdAbK), backBuffer, "NOVA", 3, hdAbY, 255
+        For hdAbK = 1 To novaMax
+            If hdAbK <= novaCharges Then
+                LINE (38 + (hdAbK - 1) * 7, hdAbY + 6)-(42 + (hdAbK - 1) * 7, hdAbY + 10), _RGB(150, 235, 255), BF
+            Else
+                LINE (38 + (hdAbK - 1) * 7, hdAbY + 6)-(42 + (hdAbK - 1) * 7, hdAbY + 10), _RGB(50, 70, 90), B
+            End If
+        Next hdAbK
+        hdAbY = hdAbY - 16
     End If
-    LINE (scrW - 134, 8)-(scrW - 104, 14), _RGB(70, 90, 100), B
-
-    FONT_PrintAlpha fontPalette(9), backBuffer, "LA", scrW - 100, 4, 255
-    LINE (scrW - 84, 8)-(scrW - 54, 14), _RGB(15, 20, 30), BF
-    If hdLaserFill > 0 Then
-        If laserEnergy > 30 Then
-            hdLaserClr = _RGB(60, 180, 255)
-        Else
-            hdLaserClr = _RGB(255, 140, 20)
-        End If
-        LINE (scrW - 83, 9)-(scrW - 83 + hdLaserFill, 13), hdLaserClr, BF
-        LINE (scrW - 83, 9)-(scrW - 83 + hdLaserFill, 10), _RGB(200, 235, 255), BF
+    If rollCoolMax > 0 Then
+        If rollCool = 0 Then hdAbK = 11 Else hdAbK = 8
+        FONT_PrintAlpha fontPalette(hdAbK), backBuffer, "ROLL", 3, hdAbY, 255
+        hdAbFill = INT(20 * (1 - rollCool / rollCoolMax))
+        LINE (38, hdAbY + 6)-(59, hdAbY + 10), _RGB(15, 20, 30), BF
+        If hdAbFill > 0 Then LINE (39, hdAbY + 7)-(38 + hdAbFill, hdAbY + 9), _RGB(150, 235, 255), BF
+        LINE (38, hdAbY + 6)-(59, hdAbY + 10), _RGB(70, 90, 100), B
     End If
-    LINE (scrW - 84, 8)-(scrW - 54, 14), _RGB(70, 90, 100), B
 
-    FONT_PrintAlpha fontPalette(9), backBuffer, "FU", scrW - 50, 4, 255
-    LINE (scrW - 34, 8)-(scrW - 4, 14), _RGB(15, 20, 30), BF
-    If hdFuelFill > 0 Then
-        If fuelLevel > 40 Then
-            hdFuelClr = _RGB(230, 180, 30)
-        Else
-            hdFuelClr = _RGB(255, 80, 20)
-        End If
-        LINE (scrW - 33, 9)-(scrW - 33 + hdFuelFill, 13), hdFuelClr, BF
-        LINE (scrW - 33, 9)-(scrW - 33 + hdFuelFill, 10), _RGB(255, 230, 130), BF
-    End If
-    LINE (scrW - 34, 8)-(scrW - 4, 14), _RGB(70, 90, 100), B
+    ' gauges (#268): SH / LA / FU stacked top right, each bar as long as its capacity
+    HUD_Gauge "SH", lives, shieldMax, 4, 1, 0
+    HUD_Gauge "LA", laserEnergy, laserMax, 15, 2, 0
+    HUD_Gauge "FU", fuelLevel, fuelMax, 26, 3, 0
 
     ' boss HP bar
     If boss.active Then
@@ -232,4 +212,80 @@ Sub HUD_Draw
         FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "GET READY", scrH * 2 \ 3, scrW, hdThrobBright
     End If
 
+End Sub
+
+' Win tally on the title after the outro (#268): leftover credits counted up into the final
+' score, then fading out. crTallyTimer is set by CR_CashOutWin.
+Sub HUD_RunTally
+    Dim hdtFrac As Single, hdtBonus As Long, hdtA As Integer
+    If crTallyTimer <= 0 Then Exit Sub
+    crTallyTimer = crTallyTimer - 1
+    hdtFrac = (300 - crTallyTimer) / 60
+    If hdtFrac > 1 Then hdtFrac = 1
+    hdtBonus = Int(crBonusPts * hdtFrac)
+    hdtA = 255
+    If crTallyTimer < 40 Then hdtA = Int(255 * crTallyTimer / 40)
+    _Dest backBuffer
+    UI_PanelFade scrW \ 2 - 90, 132, scrW \ 2 + 90, 190, hdtA
+    UI_TextCentered 11, "MISSION COMPLETE", 136, hdtA
+    UI_TextCentered 14, "CREDITS BONUS +" + LTrim$(Str$(hdtBonus)), 153, hdtA
+    UI_TextCentered 9, "FINAL SCORE " + LTrim$(Str$(score - crBonusPts + hdtBonus)), 170, hdtA
+End Sub
+
+' Gauge colour by kind (1 shield, 2 laser, 3 fuel) and how full it is; hgcHi = the 1px top highlight.
+Function HUD_GaugeClr& (hgcKind As Integer, hgcVal As Single, hgcCap As Single, hgcHi As Integer)
+    Select Case hgcKind
+        Case 1
+            If hgcHi Then
+                HUD_GaugeClr& = _RGB(180, 255, 190)
+            ElseIf hgcVal * 10 > hgcCap * 6 Then
+                HUD_GaugeClr& = _RGB(50, 210, 60)
+            ElseIf hgcVal * 10 > hgcCap * 3 Then
+                HUD_GaugeClr& = _RGB(235, 190, 15)
+            Else
+                HUD_GaugeClr& = _RGB(240, 50, 35)
+            End If
+        Case 2
+            If hgcHi Then
+                HUD_GaugeClr& = _RGB(200, 235, 255)
+            ElseIf hgcVal > hgcCap * 0.3 Then
+                HUD_GaugeClr& = _RGB(60, 180, 255)
+            Else
+                HUD_GaugeClr& = _RGB(255, 140, 20)
+            End If
+        Case Else
+            If hgcHi Then
+                HUD_GaugeClr& = _RGB(255, 230, 130)
+            ElseIf hgcVal > hgcCap * 0.4 Then
+                HUD_GaugeClr& = _RGB(230, 180, 30)
+            Else
+                HUD_GaugeClr& = _RGB(255, 80, 20)
+            End If
+    End Select
+End Function
+
+' One capacity bar with its top-left corner at (hbX, hbY), 7px tall, UPG_BarLen% long for
+' hbCap; hbGhostCap > hbCap outlines the extra length that capacity would add (dock preview).
+Sub HUD_Bar (hbX As Integer, hbY As Integer, hbVal As Single, hbCap As Single, hbKind As Integer, hbGhostCap As Single)
+    Dim hbLen As Integer, hbFill As Integer, hbGLen As Integer
+    hbLen = UPG_BarLen%(hbCap)
+    hbFill = UPG_BarFill%(hbVal, hbCap)
+    If hbGhostCap > hbCap Then
+        hbGLen = UPG_BarLen%(hbGhostCap)
+        If hbGLen > hbLen Then Line (hbX + hbLen + 2, hbY)-(hbX + hbGLen + 2, hbY + 6), _RGB(0, 210, 255), B
+    End If
+    Line (hbX, hbY)-(hbX + hbLen + 2, hbY + 6), _RGB(15, 20, 30), BF
+    If hbFill > 0 Then
+        Line (hbX + 1, hbY + 1)-(hbX + 1 + hbFill, hbY + 5), HUD_GaugeClr&(hbKind, hbVal, hbCap, 0), BF
+        Line (hbX + 1, hbY + 1)-(hbX + 1 + hbFill, hbY + 2), HUD_GaugeClr&(hbKind, hbVal, hbCap, -1), BF
+    End If
+    Line (hbX, hbY)-(hbX + hbLen + 2, hbY + 6), _RGB(70, 90, 100), B
+End Sub
+
+' A HUD gauge row: label then bar, left-aligned in a column wide enough for the longest bar.
+Sub HUD_Gauge (hgLbl As String, hgVal As Single, hgCap As Single, hgY As Integer, hgKind As Integer, hgGhostCap As Single)
+    Dim hgBX As Integer
+    hgBX = scrW - 6 - UPG_BAR_MAX
+    FONT_PrintAlpha fontPalette(9), backBuffer, hgLbl, hgBX - 18, hgY, 255
+    HUD_Bar hgBX, hgY + 4, hgVal, hgCap, hgKind, hgGhostCap
 End Sub

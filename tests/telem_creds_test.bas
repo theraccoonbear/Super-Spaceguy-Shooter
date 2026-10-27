@@ -59,6 +59,9 @@ Dim Shared leaderboardPlayerID As String
 Dim Shared telemPlayerName     As String
 Dim Shared settingNerf         As Integer
 Dim Shared lives               As Integer
+Dim Shared credits             As Long
+Dim Shared creditsEarned       As Long
+Dim Shared creditsSpent        As Long
 Dim Shared fuelLevel           As Single
 Dim Shared laserEnergy         As Single
 

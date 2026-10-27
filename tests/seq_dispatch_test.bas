@@ -72,6 +72,7 @@ Dim Shared diffScale    As Single
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
 Dim Shared fuelLevel    As Single
+Dim Shared fuelMax      As Single : fuelMax = 100   ' asteroid stage fuel scales with the tank (#268)
 Dim Shared planetCurrent As Integer
 Dim Shared planetNameIdx As Integer
 Dim Shared planetTimer  As Integer
@@ -103,11 +104,15 @@ End Type
 Dim Shared player       As GameObj
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
-Sub MUS_SetCue(c As String)         : End Sub
+Dim Shared stLastCue As String
+Sub MUS_SetCue(c As String)         : stLastCue = c : End Sub
 Sub StarfieldReset(x As Single, y As Single, z As Single) : End Sub
 Sub CRAWL_Prep(k As String, h As Single) : End Sub
 Sub SETTINGS_Save()                 : End Sub
 Sub BELT_Init(w As Single, h As Single) : End Sub
+Sub CR_StageClear()                 : End Sub
+Sub CR_CashOutWin()                 : End Sub
+Sub DOCK_Enter()                    : gameState = 15 : End Sub   ' GS_DOCK
 Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 Sub DBG_Print(s As String)          : End Sub
@@ -175,25 +180,30 @@ End Sub
 '  3  CRAWL stage1      label=level1
 '  4  PLAY  combat/10   label=level1
 '  5  ARRIVE            label=level1
-'  6  CRAWL stage2      label=level2
-'  7  PLAY  combat/15   label=level2
-'  8  ARRIVE            label=level2
-'  9  CRAWL stage3      label=level3
-' 10  PLAY  combat/10   label=level3
-' 11  PLAY  boss        label=level3
-' 12  ARRIVE            label=level3
-' 13  CRAWL stage4      label=level4
-' 14  PLAY  asteroid    label=level4
-' 15  ARRIVE            label=level4
-' 16  CRAWL stage5      label=level5
-' 17  PLAY  combat/15   label=level5
-' 18  PLAY  boss        label=level5
-' 19  ARRIVE            label=level5
-' 20  CRAWL stage6      label=level6
-' 21  PLAY  combat/20   label=level6
-' 22  PLAY  boss        label=level6
-' 23  ARRIVE            label=level6
-' 24  CRAWL outro       label=outro
+'  6  DOCK              label=level1
+'  7  CRAWL stage2      label=level2
+'  8  PLAY  combat/15   label=level2
+'  9  ARRIVE            label=level2
+' 10  DOCK              label=level2
+' 11  CRAWL stage3      label=level3
+' 12  PLAY  combat/10   label=level3
+' 13  PLAY  boss        label=level3
+' 14  ARRIVE            label=level3
+' 15  DOCK              label=level3
+' 16  CRAWL stage4      label=level4
+' 17  PLAY  asteroid    label=level4
+' 18  ARRIVE            label=level4
+' 19  DOCK              label=level4
+' 20  CRAWL stage5      label=level5
+' 21  PLAY  combat/15   label=level5
+' 22  PLAY  boss        label=level5
+' 23  ARRIVE            label=level5
+' 24  DOCK              label=level5
+' 25  CRAWL stage6      label=level6
+' 26  PLAY  combat/20   label=level6
+' 27  PLAY  boss        label=level6
+' 28  ARRIVE            label=level6   (no DOCK after the last stage)
+' 29  CRAWL outro       label=outro
 
 Print "=== seq_dispatch_test ==="
 Print ""
@@ -203,7 +213,7 @@ Print ""
 ' ────────────────────────────────────────────────────────────────────────────
 Print "--- 1. parser ---"
 ST_Reset
-ST_Assert seqCount = 26,                                         "1.01  seqCount=26"
+ST_Assert seqCount = 31,                                         "1.01  seqCount=31"
 ST_Assert seqKind(0)  = SEQ_CRAWL,                              "1.02  idx 0 is CRAWL"
 ST_Assert seqLabel$(0) = "crawl0",                              "1.03  idx 0 label=crawl0"
 ST_Assert SEQ_GetKV$(seqSval$(0), "txt") = "intro",             "1.04  idx 0 txt=intro"
@@ -217,15 +227,18 @@ ST_Assert SEQ_GetKV$(seqSval$(4), "type") = "combat",           "1.11  idx 4 typ
 ST_Assert SEQ_GetKV$(seqSval$(4), "trigger") = "10",            "1.12  idx 4 trigger=10"
 ST_Assert seqKind(5)  = SEQ_ARRIVE,                             "1.13  idx 5 is ARRIVE"
 ST_Assert seqLabel$(5) = "level1",                              "1.14  idx 5 label=level1"
-ST_Assert seqKind(11) = SEQ_PLAY,                               "1.15  idx 11 is PLAY"
-ST_Assert SEQ_GetKV$(seqSval$(11), "type") = "boss",            "1.16  idx 11 type=boss"
-ST_Assert seqLabel$(11) = "level3",                             "1.17  idx 11 label=level3"
-ST_Assert seqKind(14) = SEQ_PLAY,                               "1.18  idx 14 is PLAY"
-ST_Assert SEQ_GetKV$(seqSval$(14), "type") = "asteroid",        "1.19  idx 14 type=asteroid"
-ST_Assert seqLabel$(14) = "level4",                             "1.20  idx 14 label=level4"
-ST_Assert seqKind(24) = SEQ_CRAWL,                              "1.21  idx 24 is CRAWL (outro)"
-ST_Assert seqLabel$(24) = "outro",                              "1.22  idx 24 label=outro"
-ST_Assert seqKind(25) = SEQ_TITLE,                              "1.23  idx 25 is TITLE (outro)"
+ST_Assert seqKind(13) = SEQ_PLAY,                               "1.15  idx 13 is PLAY"
+ST_Assert SEQ_GetKV$(seqSval$(13), "type") = "boss",            "1.16  idx 13 type=boss"
+ST_Assert seqLabel$(13) = "level3",                             "1.17  idx 13 label=level3"
+ST_Assert seqKind(17) = SEQ_PLAY,                               "1.18  idx 17 is PLAY"
+ST_Assert SEQ_GetKV$(seqSval$(17), "type") = "asteroid",        "1.19  idx 17 type=asteroid"
+ST_Assert seqLabel$(17) = "level4",                             "1.20  idx 17 label=level4"
+ST_Assert seqKind(29) = SEQ_CRAWL,                              "1.21  idx 29 is CRAWL (outro)"
+ST_Assert seqLabel$(29) = "outro",                              "1.22  idx 29 label=outro"
+ST_Assert seqKind(30) = SEQ_TITLE,                              "1.23  idx 30 is TITLE (outro)"
+ST_Assert seqKind(6) = SEQ_DOCK And seqLabel$(6) = "level1",   "1.24  idx 6 is DOCK (level1, after ARRIVE)"
+ST_Assert seqKind(24) = SEQ_DOCK And seqLabel$(24) = "level5", "1.25  idx 24 is DOCK (level5)"
+ST_Assert seqKind(28) = SEQ_ARRIVE And seqKind(29) = SEQ_CRAWL, "1.26  no DOCK after the last stage"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 2. SEQ_GetKV$
@@ -254,19 +267,26 @@ ST_Assert ST_Jump%("crawl1") = 3,    "3.04  crawl1 -> idx 3 (level:1 CRAWL)"
 ST_Reset
 ST_Assert ST_Jump%("playing1") = 4,  "3.05  playing1 -> idx 4 (level:1 combat)"
 ST_Reset
-ST_Assert ST_Jump%("crawl3") = 9,    "3.06  crawl3 -> idx 9 (level:3 CRAWL)"
+ST_Assert ST_Jump%("crawl3") = 11,   "3.06  crawl3 -> idx 11 (level:3 CRAWL)"
 ST_Reset
-ST_Assert ST_Jump%("playing3") = 10, "3.07  playing3 -> idx 10 (level:3 combat)"
+ST_Assert ST_Jump%("playing3") = 12, "3.07  playing3 -> idx 12 (level:3 combat)"
 ST_Reset
-ST_Assert ST_Jump%("boss3") = 11,    "3.08  boss3 -> idx 11 (level:3 boss PLAY)"
+ST_Assert ST_Jump%("boss3") = 13,    "3.08  boss3 -> idx 13 (level:3 boss PLAY)"
 ST_Reset
-ST_Assert ST_Jump%("playing4") = 14, "3.09  playing4 -> idx 14 (level:4 asteroid = playing)"
+ST_Assert ST_Jump%("playing4") = 17, "3.09  playing4 -> idx 17 (level:4 asteroid = playing)"
 ST_Reset
-ST_Assert ST_Jump%("boss5") = 18,    "3.10  boss5 -> idx 18 (level:5 boss PLAY)"
+ST_Assert ST_Jump%("boss5") = 22,    "3.10  boss5 -> idx 22 (level:5 boss PLAY)"
 ST_Reset
-ST_Assert ST_Jump%("playing6") = 21, "3.11  playing6 -> idx 21 (level:6 combat)"
+ST_Assert ST_Jump%("playing6") = 26, "3.11  playing6 -> idx 26 (level:6 combat)"
 ST_Reset
-ST_Assert ST_Jump%("boss6") = 22,    "3.12  boss6 -> idx 22 (level:6 boss PLAY)"
+ST_Assert ST_Jump%("boss6") = 27,    "3.12  boss6 -> idx 27 (level:6 boss PLAY)"
+ST_Reset
+ST_Assert ST_Jump%("dock1") = 6,    "3.13  dock1 -> idx 6 (level:1 DOCK)"
+ST_Assert gameState = 15,            "3.14  dock1 dispatches DOCK_Enter (GS_DOCK)"
+ST_Reset
+ST_Assert ST_Jump%("dock5") = 24,   "3.15  dock5 -> idx 24"
+ST_Reset
+ST_Assert SEQ_JumpToScene("dock6") = -1, "3.16  dock6 -> -1 (no dock after the last stage)"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 4. SEQ_JumpToScene: invalid paths
@@ -334,19 +354,25 @@ ST_Reset
 ST_GoTo "playing3"
 score = 0 : levelNum = 2   ' simulate levels 1+2 already done
 SEQ_Advance   ' PLAY type=combat, level:3
-ST_Assert seqIdx = 10,                                   "7.01  at idx 10 (level:3 combat)"
+ST_Assert seqIdx = 12,                                   "7.01  at idx 12 (level:3 combat)"
 ST_Assert levelNum = 3,                                  "7.02  levelNum=3"
 ST_Assert stageScore = 1000,                             "7.03  stageScore=trigger*100=1000"
 ' score threshold -> SEQ_Advance -> boss PLAY
 SEQ_Advance   ' PLAY type=boss
-ST_Assert seqIdx = 11,                                   "7.04  at idx 11 (boss PLAY)"
+ST_Assert seqIdx = 13,                                   "7.04  at idx 13 (boss PLAY)"
 ST_Assert gameState = GS_PLAYING,                        "7.05  gameState stays GS_PLAYING during boss"
 ST_Assert stageScore = 2147483647,                       "7.06  stageScore=MAX (combat trigger disabled)"
 ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "7.07  boss.warnTimer set"
 ' boss defeated -> SEQ_Advance -> ARRIVE
 SEQ_Advance   ' ARRIVE
-ST_Assert seqIdx = 12,                                   "7.08  at idx 12 (ARRIVE)"
+ST_Assert seqIdx = 14,                                   "7.08  at idx 14 (ARRIVE)"
 ST_Assert gameState = GS_PLANET,                         "7.09  gameState=GS_PLANET after boss"
+SEQ_Advance   ' DOCK
+ST_Assert seqIdx = 15 And gameState = 15,                "7.10  ARRIVE -> DOCK (idx 15, GS_DOCK)"
+ST_Assert stLastCue = "dock",                            "7.10b entering the dock switches to the dock cue"
+SEQ_Advance   ' leaving the dock
+ST_Assert gameState = GS_CRAWL And seqLabel$(seqIdx) = "level4", "7.11  DOCK -> next chapter crawl"
+ST_Assert stLastCue = "crawl",                           "7.11b leaving the dock switches the music to the crawl cue"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 8. stageScore: normal vs nerf
@@ -390,14 +416,15 @@ Dim st9j As Integer : st9j = ST_Jump%("playing1")   ' idx=4, levelNum=1
 ST_Assert levelNum = 1,                                  "9.01  levelNum=1 after level:1 combat"
 SEQ_Advance            ' ARRIVE (seqIdx=5): levelNum unchanged
 ST_Assert levelNum = 1,                                  "9.02  levelNum unchanged at ARRIVE"
-SEQ_Advance            ' CRAWL stage2 (seqIdx=6): levelNum unchanged
+SEQ_Advance            ' DOCK (seqIdx=6)
+SEQ_Advance            ' CRAWL stage2 (seqIdx=7): levelNum unchanged
 ST_Assert levelNum = 1,                                  "9.03  levelNum unchanged at CRAWL"
-SEQ_Advance            ' PLAY combat level:2 (seqIdx=7)
+SEQ_Advance            ' PLAY combat level:2 (seqIdx=8)
 ST_Assert levelNum = 2,                                  "9.04  levelNum=2 after level:2 combat"
-SEQ_Advance : SEQ_Advance   ' ARRIVE -> CRAWL stage3
-SEQ_Advance            ' PLAY combat level:3 (seqIdx=10)
+SEQ_Advance : SEQ_Advance : SEQ_Advance   ' ARRIVE -> DOCK -> CRAWL stage3
+SEQ_Advance            ' PLAY combat level:3 (seqIdx=12)
 ST_Assert levelNum = 3,                                  "9.05  levelNum=3 after level:3 combat"
-SEQ_Advance            ' PLAY boss level:3 (seqIdx=11): levelNum must NOT increment
+SEQ_Advance            ' PLAY boss level:3 (seqIdx=13): levelNum must NOT increment
 ST_Assert levelNum = 3,                                  "9.06  levelNum unchanged on boss PLAY"
 
 ' ────────────────────────────────────────────────────────────────────────────
@@ -409,14 +436,14 @@ ST_Reset
 levelNum = 3
 ST_GoTo "playing4"
 SEQ_Advance
-ST_Assert seqIdx = 14,                                   "10.01  at idx 14 (asteroid PLAY)"
+ST_Assert seqIdx = 17,                                   "10.01  at idx 17 (asteroid PLAY)"
 ST_Assert levelNum = 4,                                  "10.02  levelNum incremented to 4"
 ST_Assert levelType = LEVEL_ASTEROID,                    "10.03  levelType=LEVEL_ASTEROID"
 ST_Assert stageScore = 2147483647,                       "10.04  stageScore=MAX (no score trigger)"
 ST_Assert gameState = GS_PLAYING,                        "10.05  gameState=GS_PLAYING"
 ' simulate asteroid field completion -> ARRIVE
-SEQ_Advance   ' idx 15: ARRIVE
-ST_Assert seqIdx = 15,                                   "10.06  at idx 15 (ARRIVE)"
+SEQ_Advance   ' idx 18: ARRIVE
+ST_Assert seqIdx = 18,                                   "10.06  at idx 18 (ARRIVE)"
 ST_Assert gameState = GS_PLANET,                         "10.07  gameState=GS_PLANET"
 ST_Assert planetCurrent = 4,                             "10.08  planetCurrent=levelNum=4 (playing4->planet4)"
 ST_Assert planetNameIdx = 4,                             "10.09  planetNameIdx=4"
@@ -430,12 +457,12 @@ Print "--- 11. ARRIVE planet = levelNum ---"
 ST_Reset
 levelNum = 5
 ST_GoTo "playing6"
-SEQ_Advance           ' idx 21: combat PLAY, levelNum -> 6
+SEQ_Advance           ' idx 26: combat PLAY, levelNum -> 6
 ST_Assert levelNum = 6,                                  "11.01  levelNum=6 after level:6 combat"
-SEQ_Advance           ' idx 22: boss PLAY, levelNum unchanged
+SEQ_Advance           ' idx 27: boss PLAY, levelNum unchanged
 ST_Assert levelNum = 6,                                  "11.02  levelNum=6 unchanged on boss PLAY"
-SEQ_Advance           ' idx 23: ARRIVE
-ST_Assert seqIdx = 23,                                   "11.03  at idx 23 (level:6 ARRIVE)"
+SEQ_Advance           ' idx 28: ARRIVE
+ST_Assert seqIdx = 28,                                   "11.03  at idx 28 (level:6 ARRIVE)"
 ST_Assert planetCurrent = 6,                             "11.04  planetCurrent=levelNum=6"
 ST_Assert planetNameIdx = 6,                             "11.05  planetNameIdx=6"
 ' level 3: combat -> boss -> ARRIVE
@@ -470,11 +497,11 @@ ST_Assert seqKind(0) = SEQ_EMPEROR,                      "12.04  EMPEROR alias -
 Print ""
 Print "--- 13. outro -> title fallback ---"
 ST_Reset
-seqIdx = 23   ' position just before outro CRAWL (24)
-SEQ_Advance   ' advance to outro CRAWL (idx 24)
-ST_Assert seqIdx = 24 And gameState = GS_CRAWL,          "13.01  at outro CRAWL"
+seqIdx = 28   ' position just before outro CRAWL (29)
+SEQ_Advance   ' advance to outro CRAWL (idx 29)
+ST_Assert seqIdx = 29 And gameState = GS_CRAWL,          "13.01  at outro CRAWL"
 score = 7777 : highScore = 0
-SEQ_Advance   ' outro CRAWL -> SEQ_TITLE (idx 25) -> save highScore -> rewind to first TITLE
+SEQ_Advance   ' outro CRAWL -> SEQ_TITLE (idx 30) -> save highScore -> rewind to first TITLE
 ST_Assert gameState = GS_TITLE,                          "13.02  outro TITLE -> GS_TITLE"
 ST_Assert seqKind(seqIdx) = SEQ_TITLE,                   "13.03  parked on first SEQ_TITLE node"
 ST_Assert highScore = 7777,                              "13.04  highScore saved via outro TITLE"
@@ -500,7 +527,7 @@ Print ""
 Print "--- 15. --scene boss3 regression (issue #187) ---"
 ST_Reset   ' gameState = GS_TITLE, boss.warnTimer = 0
 Dim st15R As Integer : st15R = SEQ_JumpToScene("boss3")
-ST_Assert st15R = 11,                                    "15.01  boss3 positioned at idx 11"
+ST_Assert st15R = 13,                                    "15.01  boss3 positioned at idx 13"
 SEQ_Advance
 ST_Assert gameState = GS_PLAYING,                        "15.02  gameState=GS_PLAYING after boss dispatch"
 ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "15.03  boss.warnTimer set"
@@ -606,6 +633,7 @@ SEQ_Advance                      ' boss3
 SEQ_Advance                      ' ARRIVE level3
 ST_Assert gameState = GS_PLANET And planetTimer = 1 And planetCurrent = 3, "20.01  boss3 -> ARRIVE planet3, planetTimer=1"
 planetTimer = 75                 ' arrival interrupted before the cinematic (planetTimer < 120)
+SEQ_Advance                      ' DOCK level3
 SEQ_Advance                      ' CRAWL stage4
 ST_Assert gameState = GS_CRAWL,                   "20.02  next step is the chapter 4 crawl"
 SEQ_Advance                      ' PLAY asteroid
@@ -613,6 +641,7 @@ ST_Assert levelType = LEVEL_ASTEROID And levelNum = 4, "20.03  asteroid stage, l
 ST_Assert planetTimer = 0,                        "20.04  asteroid PLAY clears stale planetTimer (no chapter 3 planet)"
 SEQ_Advance                      ' ARRIVE level4
 planetTimer = 75
+SEQ_Advance                      ' DOCK level4
 SEQ_Advance                      ' CRAWL stage5
 SEQ_Advance                      ' PLAY combat
 ST_Assert levelType = LEVEL_COMBAT And levelNum = 5, "20.05  combat stage, levelNum=5"

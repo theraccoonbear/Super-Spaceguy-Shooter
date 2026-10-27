@@ -10,22 +10,36 @@ Sub GS_GAMEOVER_Update ()
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
     E3D_StarfieldDraw vpMat, scrW, scrH
     gameOverDelay = gameOverDelay - 1
-    UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 54, scrW \ 2 + 88, scrH \ 2 + 54, "GAME OVER"
-    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score)), scrH \ 2 - 28, scrW, 255
-    IF score >= highScore THEN
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 - 8, scrW, 255
+    ' leftover credits were cashed in at the death (CR_CashOut): count the bonus up into the score
+    Dim gsgBonus As Long, gsgFrac As Single
+    gsgFrac = (90 - gameOverDelay) / 45
+    IF gsgFrac < 0 THEN gsgFrac = 0
+    IF gsgFrac > 1 THEN gsgFrac = 1
+    gsgBonus = INT(crBonusPts * gsgFrac)
+    Dim gsgY As Integer, gsgStep As Integer
+    IF crBonusCredits > 0 THEN
+        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 62, scrW \ 2 + 88, scrH \ 2 + 62, "GAME OVER"
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTRIM$(STR$(gsgBonus)), scrH \ 2 - 38, scrW, 255
+        gsgY = scrH \ 2 - 20 : gsgStep = 18
     ELSE
-        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), scrH \ 2 - 8, scrW, 255
+        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 54, scrW \ 2 + 88, scrH \ 2 + 54, "GAME OVER"
+        gsgY = scrH \ 2 - 28 : gsgStep = 20
+    END IF
+    FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score - crBonusPts + gsgBonus)), gsgY, scrW, 255
+    IF score >= highScore THEN
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), gsgY + gsgStep, scrW, 255
+    ELSE
+        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "BEST:   " + LTRIM$(STR$(highScore)), gsgY + gsgStep, scrW, 255
     END IF
     Dim gsgRank As Integer : gsgRank = LBRD_Rank%(score)
     IF gsgRank > 0 THEN
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "RANK:   #" + LTRIM$(STR$(gsgRank)), scrH \ 2 + 12, scrW, 255
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "RANK:   #" + LTRIM$(STR$(gsgRank)), gsgY + gsgStep * 2, scrW, 255
     ELSEIF lbrdCount > 0 THEN
-        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "RANK:   --", scrH \ 2 + 12, scrW, 200
+        FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "RANK:   --", gsgY + gsgStep * 2, scrW, 200
     END IF
     IF gameOverDelay <= 0 THEN
         gsgThrobBright = INT(170 + 85 * SIN(tt * 5))
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", scrH \ 2 + 32, scrW, gsgThrobBright
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO PLAY", gsgY + gsgStep * 3, scrW, gsgThrobBright
         IF held(E3D_KEY_SPACE) AND spaceWas = 0 THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)

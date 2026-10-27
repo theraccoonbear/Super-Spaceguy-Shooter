@@ -88,9 +88,10 @@ Sub STAGE_Update
         End If
         ' fully faded — reset arena and advance to next crawl
         If cinematicFade >= 255 Then
-            lives = 100 : invTimer = 180
-            laserEnergy = 100.0
-            fuelLevel = 100.0 : fuelStranded = 0
+            ' shields are not refilled here: that is the dock's shield recharge (#268)
+            invTimer = 180
+            laserEnergy = laserMax
+            fuelLevel = fuelMax : fuelStranded = 0
             player.py = player.py * 0.25 : player.pz = player.pz * 0.25
             camF.lagY = 0 : camF.lagZ = 0 : camF.fwdY = 0 : camF.fwdZ = 0
             playerVY = 0 : playerVZ = 0

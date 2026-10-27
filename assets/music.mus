@@ -152,3 +152,22 @@ PAD am_pad     0.015  0.00003   A2  C3  E3
 CUE gameover  60
 VOICE gobass  go_bass
 CHORD am_pad
+
+# ================================================================
+# DOCK  (upgrade dock between stages — relaxed F major hangar loop, 96 BPM)
+# Fmaj7 | Dm7 | Bbmaj7 | Gm7 C  -- 4 bars; bass and lead both 64 steps so they stay locked
+# ================================================================
+INST dlead    0.028  0.30  0.06  0.60
+
+SEQ dock_bass   F2 6  C3 2  F2 4  A2 4  D2 6  A2 2  D3 4  C3 4  Bb1 6  F2 2  Bb2 4  A2 4  G2 6  D3 2  C2 4  E2 4
+SEQ dock_lead   R 4  A4 2  C5 2  E5 4  D5 2  C5 2  D5 6  C5 2  A4 4  F4 4  R 4  F4 2  A4 2  D5 4  C5 2  A4 2  Bb4 4  A4 2  G4 2  A4 6  R 2
+
+PAD fmaj7_pad  0.012  0.00003   F3  A3  C4  E4
+
+DRUM dock_hh    K . H . . . H . K . H . . . H H
+
+CUE dock  96
+VOICE tbass  dock_bass
+VOICE dlead  dock_lead
+CHORD fmaj7_pad
+DRUMS dock_hh

@@ -38,6 +38,7 @@ Function DBG_StateName$(dbgSnState As Integer)
         Case GS_LEADERBOARD : DBG_StateName$ = "GS_LEADERBOARD"
         Case GS_CONTROLS    : DBG_StateName$ = "GS_CONTROLS"
         Case GS_CRAWLS      : DBG_StateName$ = "GS_CRAWLS"
+        Case GS_DOCK        : DBG_StateName$ = "GS_DOCK"
         Case Else           : DBG_StateName$ = "GS_?" + LTrim$(Str$(dbgSnState))
     End Select
 End Function
@@ -74,6 +75,7 @@ Sub DBG_MilestoneLog()
             Case SEQ_PLAY    : dbgMlLine = dbgMlLine + " PLAY"
             Case SEQ_TITLE   : dbgMlLine = dbgMlLine + " TITLE"
             Case SEQ_ARRIVE  : dbgMlLine = dbgMlLine + " ARRIVE"
+            Case SEQ_DOCK    : dbgMlLine = dbgMlLine + " DOCK"
             Case Else        : dbgMlLine = dbgMlLine + " ?"
         End Select
         dbgMlLine = RTrim$(dbgMlLine + " " + seqSval$(seqIdx))

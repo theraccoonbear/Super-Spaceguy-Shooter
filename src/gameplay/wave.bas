@@ -47,6 +47,7 @@ Sub WAVE_Spawn
                 scorePopTimer = 45
                 scorePopY = scrH * 0.4
             End If
+            CR_Add crAstSurvive
             SEQ_Advance   ' -> SEQ_ARRIVE: sets GS_PLANET, planet indices, music
         End If
         wvAstElapsed = tt - astFieldStart

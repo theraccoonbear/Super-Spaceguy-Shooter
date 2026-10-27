@@ -80,6 +80,8 @@ TESTS=(
   textedit_test
   lbrd_test
   font_render_test
+  upgrade_test
+  dock_test
 )
 
 # Dev tools (path from the repo root, no .bas): compiled only (they're interactive), so an engine change

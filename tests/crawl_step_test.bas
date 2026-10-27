@@ -64,6 +64,7 @@ Dim Shared diffScale    As Single
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
 Dim Shared fuelLevel    As Single
+Dim Shared fuelMax      As Single : fuelMax = 100   ' asteroid stage fuel scales with the tank (#268)
 Dim Shared planetCurrent As Integer
 Dim Shared planetNameIdx As Integer
 Dim Shared planetTimer  As Integer
@@ -100,11 +101,15 @@ Sub StarfieldReset(x As Single, y As Single, z As Single) : End Sub
 Sub CRAWL_Prep(k As String, h As Single) : End Sub
 Sub SETTINGS_Save()                 : End Sub
 Sub BELT_Init(w As Single, h As Single) : End Sub
+Sub CR_StageClear()                 : End Sub
+Sub CR_CashOutWin()                 : End Sub
+Sub DOCK_Enter()                    : gameState = 15 : End Sub   ' GS_DOCK
 Sub TELEM_SessionEnd()              : End Sub
 
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 '$INCLUDE:'../src/2d/crawllayout.bas'
 '$INCLUDE:'../src/sys/sequence.bas'

@@ -1,4 +1,5 @@
-' scene_jump_planet_test.bas -- verify --scene playingN arrives at planet N
+' scene_jump_planet_test.bas -- verify --scene playingN arrives at planet N, and --scene dockN
+' opens the dock after stage N and then plays stage N+1 (#268)
 '
 ' Regression: playing4 showed planet1 (Caldorinthia) instead of planet4 (Xeromith).
 ' This test simulates the exact sss.bas CLI flow: GAME_ResetState + levelNum=N-1 +
@@ -18,6 +19,7 @@ Const GS_PLAYING         = 1
 Const GS_PLANET          = 3
 Const GS_INTRO           = 5
 Const GS_CRAWL           = 6
+
 Const LEVEL_COMBAT       = 0
 Const LEVEL_ASTEROID     = 1
 Const LEVEL_BOSS         = 2
@@ -51,6 +53,7 @@ Dim Shared diffScale    As Single
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
 Dim Shared fuelLevel    As Single
+Dim Shared fuelMax      As Single : fuelMax = 100   ' asteroid stage fuel scales with the tank (#268)
 Dim Shared planetCurrent As Integer
 Dim Shared planetNameIdx As Integer
 Dim Shared planetTimer  As Integer
@@ -87,6 +90,9 @@ Sub StarfieldReset(x As Single, y As Single, z As Single) : End Sub
 Sub CRAWL_Prep(k As String, h As Single) : End Sub
 Sub SETTINGS_Save()                 : End Sub
 Sub BELT_Init(w As Single, h As Single) : End Sub
+Sub CR_StageClear()                 : End Sub
+Sub CR_CashOutWin()                 : End Sub
+Sub DOCK_Enter()                    : gameState = 15 : End Sub   ' GS_DOCK
 Sub SPK_Say(s As String)            : End Sub
 Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 Sub DBG_Print(s As String)          : End Sub
@@ -174,6 +180,28 @@ ST_Assert SEQ_JumpToScene("crawl:nope") < 0 And InStr(seqLastError, "nope") > 0,
 ST_Assert SEQ_JumpToScene("crawl:Stage3") >= 0, "crawl:<key> is case-insensitive"
 Print ""
 
+
+' ── --scene dockN: the dock after stage N, then on to stage N+1 (#268) ───────
+' Mirrors sss.bas: GAME_ResetState, levelNum = N, planetCurrent = N, jump, advance.
+Print "--- --scene dockN ---"
+Dim sdN As Integer, sdAt As Integer
+For sdN = 1 To 5
+    gameState = GS_TITLE : levelNum = sdN : planetCurrent = sdN : planetNameIdx = sdN
+    SEQ_Load _EMBEDDED$("SEQTXT")
+    sdAt = SEQ_JumpToScene("dock" + LTrim$(Str$(sdN)))
+    ST_Assert sdAt >= 0 And seqKind(sdAt) = SEQ_DOCK And seqLabel$(sdAt) = "level" + LTrim$(Str$(sdN)), "dock" + LTrim$(Str$(sdN)) + " lands on the level" + LTrim$(Str$(sdN)) + " DOCK task"
+    SEQ_Advance
+    ST_Assert gameState = 15 And seqIdx = sdAt, "dock" + LTrim$(Str$(sdN)) + " opens the dock (GS_DOCK)"
+    SEQ_Advance
+    ST_Assert gameState = GS_CRAWL And seqLabel$(seqIdx) = "level" + LTrim$(Str$(sdN + 1)), "leaving dock" + LTrim$(Str$(sdN)) + " goes to the stage " + LTrim$(Str$(sdN + 1)) + " crawl"
+    SEQ_Advance
+    ST_Assert gameState = GS_PLAYING And levelNum = sdN + 1, "then stage " + LTrim$(Str$(sdN + 1)) + " plays (levelNum=" + LTrim$(Str$(levelNum)) + ")"
+Next sdN
+SEQ_Load _EMBEDDED$("SEQTXT")
+ST_Assert SEQ_JumpToScene("dock6") < 0 And InStr(seqLastError, "no DOCK") > 0, "dock6: error, no dock after the last stage"
+ST_Assert SEQ_JumpToScene("dock7") < 0 And InStr(seqLastError, "level7") > 0, "dock7: error names the missing label"
+ST_Assert SEQ_JumpToScene("dock0") < 0, "dock0: error"
+Print ""
 ' ─────────────────────────────────────────────────────────────────────────────
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
 If stFailed > 0 Then System 1 Else System 0

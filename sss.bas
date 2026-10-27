@@ -25,9 +25,13 @@ $EMBED:'assets/planet-04-clean.png':'PLANET04'
 $EMBED:'assets/planet-05-clean.png':'PLANET05'
 $EMBED:'assets/planet-06-clean.png':'PLANET06'
 $EMBED:'assets/grotuk.png':'EMPERORIMG'
+$EMBED:'assets/dock_bg.png':'DOCKBG'
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'assets/config/economy.ini':'CFGECONOMY'
+$EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
+$EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
@@ -85,8 +89,14 @@ _SCREENSHOW
 backBuffer = _NEWIMAGE(scrW, scrH, 32)
 titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
+dockBgImg       = _LOADIMAGE(_EMBEDDED$("DOCKBG"),     32, "memory")
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
+cfgEconomy   = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
+cfgUpgrades  = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
+cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
+IF UPG_Load% = 0 THEN GAME_Usage upgLoadErr
+UPG_Reset
 bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
 bossManeuverList$(0) = "flyover"
 bossManeuverCnt = 1
@@ -147,6 +157,11 @@ ELSEIF cliScene <> "" THEN
         GAME_ResetState
         levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1))  ' boss PLAY doesn't +1 levelNum
         IF levelNum < 1 THEN levelNum = 1
+    ELSEIF cliSceneType = "dock" THEN
+        GAME_ResetState
+        levelNum = Val(Mid$(cliScene, Len(cliSceneType) + 1))
+        IF levelNum < 1 THEN levelNum = 1
+        planetCurrent = levelNum : planetNameIdx = levelNum
     END IF
     IF seqJumpCrawl$ = "" THEN SEQ_Advance
 ELSE
@@ -219,6 +234,10 @@ DO
         CONTROLS_Update
         ' opened from the in-game pause dialog: keep music starved (silent) like the dialog does
         IF ctlReturnState <> GS_PLAYING THEN MUS_Fill 0
+
+    CASE GS_DOCK
+        DOCK_Update
+        MUS_Fill 0
 
     CASE GS_LEADIN
         LEADIN_Update

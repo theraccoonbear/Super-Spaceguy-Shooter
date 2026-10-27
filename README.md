@@ -67,7 +67,7 @@ tools/dev run --scene boss3 --god   # rebuilds first if any source changed, then
 tools/dev test                      # full suite before you commit (pre-commit checklist in CLAUDE.md)
 ```
 
-`run` takes any [CLI option](#cli-options). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
+`run` takes any [CLI option](#cli-options). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--scene dock2 --credits 2000` opens the upgrade dock after stage 2 (docks follow stages 1-5) with 2000 credits to spend, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
 
 The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
 
@@ -90,6 +90,9 @@ sss [options]
   --leaderboard-file <file>  Show a saved top_scores JSON response on the leaderboard instead of polling (offline testing)
   --frames N             Quit after N frames (60 per second)
   --seed N               Fixed random seed, so a scripted run repeats exactly
+  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
+  --ships N              Start every run with N ships (testing)
+  --shields N            Start every run with N shield points (testing, e.g. damaged shields at the dock)
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 
@@ -278,6 +281,8 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 |---|---|---|
 | Arrow keys / WASD | Left stick | Move ship |
 | Space (hold) | A or B | Fire (both bottom face buttons, so a Nintendo-labeled pad fires from either) |
+| E | X | Evasive roll, once bought at the dock |
+| Q | Y | Nova pulse, once bought at the dock |
 | ESC | Start | Pause / abort-mission dialog (Y / A confirms the abort, C / X shows controls, ESC / B cancels) |
 | TAB | Back / Select | Camera mode on/off. The game freezes while you adjust; pressing it again locks the angle and saves it |
 | ↑ / ↓ (camera mode) | Stick up/down | Tilt the camera |
@@ -308,11 +313,61 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 
 On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsign needs the keyboard; with a gamepad, A keeps the shown name (or picks a random one) and B skips.
 
+### Upgrade dock
+
+| Key | Gamepad | Action |
+|---|---|---|
+| ↑ / ↓ (or W / S) | Stick or d-pad up/down | Pick an upgrade (the list scrolls) |
+| ENTER | A | Buy the next level (on LAUNCH: leave) |
+| ESC | B or Start | Leave for the next stage at once |
+
 ### Debug
 
 | Key | Action |
 |---|---|
 | `` ` `` | Toggle the debug HUD overlay. It starts on with `--debug`, but the key works in any build |
+
+---
+
+## Credits and the upgrade dock
+
+Credits (`$`, shown next to the score) are a second currency, separate from score: spending them never lowers your score or rank. Kills, bosses, stage clears and the asteroid field (near misses, asteroids a nova pulse destroys, and getting through) earn them. After each planet arrival except the last, the **upgrade dock** opens: buy upgrades for the rest of the run, or leave with one press. Credits and upgrades reset on a new game. At the end of a run, win or death, leftover credits become score (1 point per credit by default, `credit_bonus_rate` in `assets/config/economy.ini`), shown as `CREDITS BONUS +N` on the game-over screen or the title after the outro, and counted in your high score and leaderboard score.
+
+### Upgrades
+
+| Upgrade | What it does | Levels |
+|---|---|---|
+| Laser capacitor | Bigger laser bank (LA) that recharges faster | 3 |
+| Twin cannons → spread shot | Two parallel shots per trigger pull, then a three-way spread | 2 |
+| Rapid fire | Shorter delay between shots | 2 |
+| Shield capacity | Bigger shield (SH) | 3 |
+| Shield regen | Shields refill on their own after a few seconds without a hit | 2 |
+| Hull armour | Less damage from collisions and asteroids | 2 |
+| Nova pulse | **Q** / pad **Y**: clears every enemy shot and blasts ships and asteroids near you; a boss loses a few points. Charges per stage refill at every dock | 3 |
+| Thrusters | Faster sideways movement | 2 |
+| Evasive roll | **E** / pad **X**: a quick sideways dash (the way you're steering) that nothing can hit; level 2 cools down faster | 2 |
+| Tractor beam | Pulls power-ups toward the ship | 2 |
+| Fuel tank | Bigger fuel tank | 2 |
+| Shield recharge | Refills the shields (planet arrivals refill laser and fuel, not shields) | once per dock |
+
+A status box at the bottom left shows the ship's shields (SH), laser (LA) and fuel (FU) as bars and percentages, so you can judge the shield recharge, which shows `SHIELDS 35% > 100%` (or `SHIELDS FULL`: buying it then does nothing and costs nothing). In the dock, the two lines under the list say what the highlighted upgrade does and exactly what its next level changes (for example `MAX 100>125, REGEN +20%`), or `MAXED`. The same list is in game on the Controls screen's **SHIP SYSTEMS** pages (pages 3 and 4: ← → or the stick). The first launch after buying the roll or the nova shows its key (`NOVA READY - Q / PAD Y`) for a few seconds. The descriptions sit next to each upgrade in `assets/config/upgrades.ini` (`upgdesc_*`); the hints are in `assets/config/abilities.ini` (`hint_*`).
+
+Tuning lives in purpose-named config files under `assets/config/` (see [Config files](#config-files)): credit amounts and the economy maths in `economy.ini`, prices, levels, effects and descriptions in `upgrades.ini`, and nova / roll behaviour in `abilities.ini`. `--scene dockN` opens the dock after stage N and `--credits N` starts with N credits, to try it out.
+
+### Config files
+
+Game data that isn't code lives in small `key=value` files (`;` starts a comment, no spaces around `=`), embedded at build time and parsed by one shared loader, `CFG_Parse$` / `CFG_Get$` in `src/sys/config.bas`:
+
+| File | Holds |
+|---|---|
+| `assets/gamevalues.ini` | Text substitution tokens for `assets/gametext.txt` (names of the emperor, planets, ships). Only text tokens: `tools/bake_speech_dict` and the unused-token check read it with `gametext.txt` |
+| `assets/config/economy.ini` | Credits earned per kill, boss, stage clear and asteroid event, with the economy maths |
+| `assets/config/upgrades.ini` | The dock's upgrade table: names, prices per level, effect values per level, and each upgrade's description |
+| `assets/config/abilities.ini` | Active ability behaviour: nova charges, radius and boss damage; roll cooldowns, length and speed; the first-purchase hints |
+
+A new file needs an `$EMBED` line in `sss.bas` and a `CFG_Parse$` call next to the others.
+
+**Dock background:** `assets/dock_bg.png`, a 320x240 PNG (the game's resolution; other sizes are scaled to fit), embedded at build time. Replace the file and rebuild to change it. The list sits on a see-through panel over the right two-thirds.
 
 ---
 

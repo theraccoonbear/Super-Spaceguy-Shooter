@@ -18,7 +18,10 @@ Const VERSION$ = "0.0.0-test"
 Const GS_PLAYING   = 1
 Const GS_CINEMATIC = 4
 Const MAX_ENEMIES  = 35
-Const MAX_BULLETS  = 30
+Const MAX_BULLETS  = 256
+Const BULLET_SPEED = 0.35
+Const BULLET_RANGE = 110
+Const FIRE_TICK    = 0.025
 Const MESH_BULLET  = 4
 Const E3D_KEY_SPACE = 32
 Const CAM_LAG_RATE  = 0.1
@@ -64,6 +67,21 @@ Dim Shared fireTimer         As Single
 Dim Shared laserEnergy       As Single
 Dim Shared fuelLevel         As Single
 Dim Shared lives             As Integer
+Dim Shared shieldMax         As Integer : shieldMax = 100
+Dim Shared fuelMax           As Single  : fuelMax = 100
+Dim Shared shipMaxVel        As Single  : shipMaxVel = 0.12
+Dim Shared fireCool          As Single  : fireCool = 0.18
+Dim Shared gunShots          As Integer : gunShots = 1
+Dim Shared gunSpread         As Single
+Dim Shared rollTimer         As Integer
+Dim Shared rollDir           As Integer
+Dim Shared rollFrames        As Integer : rollFrames = 20
+Dim Shared rollSpeed         As Single
+Dim Shared noHitFrames       As Long
+Dim Shared credits           As Long
+Dim Shared creditsEarned     As Long
+Dim Shared creditsSpent      As Long
+Function UPG_ArmourDmg% (d As Integer) : UPG_ArmourDmg% = d : End Function
 Dim Shared shipLives         As Integer
 Dim Shared deathTimer        As Integer
 Dim Shared gameOver          As Integer
@@ -89,13 +107,13 @@ Dim Shared telemPlayerName     As String
 Dim Shared settingNerf         As Integer
 Dim Shared godMode             As Integer
 
-Dim Shared dtEnds As Integer, dtScorePosts As Integer
+Dim Shared dtEnds As Integer, dtScorePosts As Integer, dtPostBody As String
 
 Sub DBG_Print (msg As String)
     If Left$(msg, 18) = "TELEM: SessionEnd " Then dtEnds = dtEnds + 1
 End Sub
 Sub HTTP_Post (u As String, k As String, b As String, t As String)
-    If t = "score_post" Then dtScorePosts = dtScorePosts + 1
+    If t = "score_post" Then dtScorePosts = dtScorePosts + 1 : dtPostBody = b
 End Sub
 Function JSON_Obj$ (s As String) : JSON_Obj$ = "{" + s + "}" : End Function
 Function JSON_S$   (k As String, v As String) : JSON_S$ = k + ":" + v : End Function
@@ -107,6 +125,7 @@ Sub FX_SpawnBurst (cx As Single, cy As Single, cz As Single, n As Integer, spd A
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
+'$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/player.bas'
 
 Dim Shared tcPass As Integer, tcFail As Integer
@@ -124,7 +143,8 @@ End Sub
 Sub DT_NewGame (dtShips As Integer)
     gameState = GS_PLAYING : lives = 100 : shipLives = dtShips
     deathTimer = 0 : gameOver = 0 : score = 500
-    dtEnds = 0 : dtScorePosts = 0
+    dtEnds = 0 : dtScorePosts = 0 : dtPostBody = ""
+    CR_ResetRun : credits = 0
     TELEM_SessionStart
 End Sub
 
@@ -181,6 +201,41 @@ TC_Assert shipLives = 1, "5.01  no ship lost"
 TC_Assert deathTimer = 0, "5.02  no death"
 TC_Assert lives = 100,   "5.03  shields full"
 TC_Assert dtEnds = 0,    "5.04  session still open"
+Print ""
+
+Print "--- 6. leftover credits become score once, before the score post (#268) ---"
+DT_NewGame 1
+credits = 300
+PLAYER_TakeDamage DMG_COLLISION * 6, SHAKE_COLLISION, FLASH_COLLISION
+PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
+TC_Assert score = 800 And credits = 0,                 "6.01  500 score + 300 credits = 800, credits spent"
+TC_Assert crBonusPts = 300 And crBonusCredits = 300,   "6.02  the game-over tally has 300 credits -> +300"
+TC_Assert dtScorePosts = 1 And InStr(dtPostBody, "score:800") > 0, "6.03  the leaderboard post carries the bonus (score:800)"
+CR_CashOut
+TC_Assert score = 800,                                 "6.04  a later cash-out call adds nothing"
+Print ""
+
+Print "--- 7. a full bullet pool recycles the oldest shots instead of going silent (#268) ---"
+Dim dtBI As Integer, dtBNew As Integer, dtBOld As Integer
+For dtBI = 1 To MAX_BULLETS
+    bullets(dtBI).active = -1 : bullets(dtBI).life = 100 + (dtBI Mod 100)
+Next dtBI
+bullets(40).life = 3 : bullets(77).life = 1 : bullets(200).life = 2
+TC_Assert PLAYER_BulletSlot% = 77, "7.01  full pool: the slot with the least life left (77)"
+bullets(150).active = 0
+TC_Assert PLAYER_BulletSlot% = 150, "7.02  a free slot wins over recycling"
+bullets(150).active = -1 : bullets(150).life = 250
+gameState = GS_PLAYING : held(E3D_KEY_SPACE) = -1 : fireTimer = 0 : laserEnergy = 100
+gunShots = 3 : gunSpread = 0.08 : telemShotsFired = 0
+PLAYER_Fire
+held(E3D_KEY_SPACE) = 0
+For dtBI = 1 To MAX_BULLETS
+    If bullets(dtBI).life > BULLET_RANGE / BULLET_SPEED - 0.01 Then dtBNew = dtBNew + 1
+    If bullets(dtBI).active = 0 Then dtBOld = dtBOld + 1
+Next dtBI
+TC_Assert telemShotsFired = 3 And fireTimer > 0 And laserEnergy < 100, "7.03  a 3-shot volley fires with every slot taken"
+TC_Assert dtBNew = 3 And dtBOld = 0, "7.04  it took 3 slots, all still active"
+TC_Assert bullets(77).life > 300 And bullets(200).life > 300 And bullets(40).life > 300, "7.05  the three oldest (77, 200, 40) were the ones reused"
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _

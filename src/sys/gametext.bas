@@ -1,6 +1,7 @@
 ' gametext.bas  --  keyed text block loader with token substitution
 '
-' Two-pass load:
+' Two-pass load (the key=value parsing itself is CFG_Parse$ in config.bas, shared with the
+' other config files):
 '   1. GTEXT_LoadVars  parses gamevalues.ini  ->  sssTokStore$
 '   2. GTEXT_Load      parses gametext.txt    ->  sssBlkStore$
 '      Token substitution is applied at load time; GTEXT_Get$ returns final text.
@@ -19,28 +20,17 @@ End Sub
 
 Sub GTEXT_LoadVars(src As String)
     Dim gvP As Long, gvQ As Long, gvE As Long
-    Dim gvL As String, gvC As Integer
-    sssTokStore$ = ""
+    sssTokStore$ = CFG_Parse$(src)
     gvP = 1
-    Do While gvP <= Len(src)
-        gvQ = InStr(gvP, src, Chr$(10))
-        If gvQ = 0 Then gvQ = Len(src) + 1
-        gvL = Mid$(src, gvP, gvQ - gvP)
-        If Right$(gvL, 1) = Chr$(13) Then gvL = Left$(gvL, Len(gvL) - 1)
-        gvP = gvQ + 1
-        gvL = LTrim$(RTrim$(gvL))
-        If Len(gvL) > 0 Then
-            If Left$(gvL, 1) <> ";" Then
-                gvE = InStr(gvL, "=")
-                If gvE > 1 Then
-                    sssTokStore$ = sssTokStore$ + Left$(gvL, gvE - 1) + Chr$(1) + Mid$(gvL, gvE + 1) + Chr$(2)
-                    GTEXT_Log "  tok: " + Left$(gvL, gvE - 1) + " = " + Mid$(gvL, gvE + 1)
-                    gvC = gvC + 1
-                End If
-            End If
-        End If
+    Do While gvP <= Len(sssTokStore$)
+        gvQ = InStr(gvP, sssTokStore$, Chr$(1))
+        If gvQ = 0 Then Exit Do
+        gvE = InStr(gvQ + 1, sssTokStore$, Chr$(2))
+        If gvE = 0 Then gvE = Len(sssTokStore$) + 1
+        GTEXT_Log "  tok: " + Mid$(sssTokStore$, gvP, gvQ - gvP) + " = " + Mid$(sssTokStore$, gvQ + 1, gvE - gvQ - 1)
+        gvP = gvE + 1
     Loop
-    GTEXT_Log LTrim$(Str$(gvC)) + " tokens loaded from gamevalues.ini"
+    GTEXT_Log LTrim$(Str$(CFG_Count%(sssTokStore$))) + " tokens loaded from gamevalues.ini"
 End Sub
 
 Function GTEXT_Render$(grS As String)
@@ -140,22 +130,7 @@ Sub GTEXT_Diag
 End Sub
 
 Function GTEXT_Var$(gvarK As String)
-    Dim gvarP As Long, gvarQ As Long, gvarE As Long
-    gvarP = 1
-    Do While gvarP <= Len(sssTokStore$)
-        gvarQ = InStr(gvarP, sssTokStore$, Chr$(1))
-        If gvarQ = 0 Then Exit Do
-        If Mid$(sssTokStore$, gvarP, gvarQ - gvarP) = gvarK Then
-            gvarE = InStr(gvarQ + 1, sssTokStore$, Chr$(2))
-            If gvarE = 0 Then gvarE = Len(sssTokStore$) + 1
-            GTEXT_Var$ = Mid$(sssTokStore$, gvarQ + 1, gvarE - gvarQ - 1)
-            Exit Function
-        End If
-        gvarE = InStr(gvarQ + 1, sssTokStore$, Chr$(2))
-        If gvarE = 0 Then Exit Do
-        gvarP = gvarE + 1
-    Loop
-    GTEXT_Var$ = ""
+    GTEXT_Var$ = CFG_Get$(sssTokStore$, gvarK)
 End Function
 
 Function GTEXT_Get$(ggK As String)

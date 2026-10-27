@@ -41,7 +41,7 @@ Sub ASTEROIDS_Update()
                     SND_Boom
                     FX_SpawnBurst asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, 8, 0.18, 15, 7, _RGB(120 + Int(RNG!(RNG_FX) * 40), 100 + Int(RNG!(RNG_FX) * 30), 75 + Int(RNG!(RNG_FX) * 20))
                     telemDeathCause = "asteroid"
-                    PLAYER_TakeDamage DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
+                    PLAYER_TakeHit DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
                 End If
             ElseIf astNmSndCool = 0 And levelType = LEVEL_ASTEROID Then
                 If Abs(asteroids(astUI).py - player.py) < 7 And Abs(asteroids(astUI).pz - player.pz) < 7 Then
@@ -51,6 +51,7 @@ Sub ASTEROIDS_Update()
                         SND_Whoosh asteroids(astUI).scl
                         astUNmPts = INT(asteroids(astUI).scl * 60)
                         score = score + astUNmPts
+                        CR_Add crAstNear
                         scorePopVal = astUNmPts
                         scorePopTimer = 30
                         scorePopY = scrH * 0.4
