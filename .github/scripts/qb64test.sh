@@ -37,6 +37,24 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
+# The mnv tests include src/gameplay/spline_path_gen.bi, which is generated (not
+# committed). Regenerate it as tools/buildqb sss.bas does when it's missing or older
+# than its inputs, so a fresh checkout can run the suite without a game build (#254).
+SPLINE_GEN="$REPODIR/src/gameplay/spline_path_gen.bi"
+SPLINE_INPUTS=(math/formula.expr math/package.json math/package-lock.json tools/emit-spline.js)
+if [ ! -f "$SPLINE_GEN" ] || [ -n "$(cd "$REPODIR" && find "${SPLINE_INPUTS[@]}" -newer "$SPLINE_GEN" -print -quit)" ]; then
+  echo "==> Generating spline math from DSL (spline_path_gen.bi missing or stale)..."
+  for tool in node npm; do
+    if ! command -v "$tool" > /dev/null 2>&1; then
+      echo "ERROR: $tool not found, and src/gameplay/spline_path_gen.bi needs regenerating."
+      echo "       Install Node.js, or run the suite in the container: tools/dev test"
+      exit 1
+    fi
+  done
+  (cd "$REPODIR/math" && npm install --prefer-offline --silent)
+  (cd "$REPODIR" && node tools/emit-spline.js)
+fi
+
 # Longest-running first, so it isn't the last thing left. http_queue_test runs on its
 # own at the end (it needs the mock server on a fixed port).
 TESTS=(
