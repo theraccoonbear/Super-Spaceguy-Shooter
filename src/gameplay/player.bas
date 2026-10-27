@@ -177,6 +177,7 @@ End Sub
 
 Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     If gameState <> GS_PLAYING Then Exit Sub
+    If deathTimer > 0 Then Exit Sub  ' a second lethal hit in the same frame would cost another ship and re-run the death path
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit
