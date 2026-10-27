@@ -27,6 +27,7 @@ sss_settings.ini
 sss_speech.log
 .env
 assets/.env
+server/.dev.vars
 builds/
 # Test binaries (sources are tests/*_test.bas, which this does not match)
 tests/*_test

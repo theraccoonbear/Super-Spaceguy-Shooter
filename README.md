@@ -162,6 +162,16 @@ The Worker serves the three calls the game makes: `POST /sss_telemetry`, `POST /
 
 Run `npm test` in `server/` to test the Worker locally (Vitest in the Workers runtime with D1 migrations applied); CI runs it too. Later schema changes go in a new `server/migrations/NNNN_*.sql` file, applied with `npm run migrate`.
 
+**Local testing.** To run the Worker on your machine with a local D1, from `server/`:
+
+```bash
+echo "API_KEY=localkey" > .dev.vars            # the local DB_KEY; .dev.vars is gitignored
+npx wrangler d1 migrations apply sss --local
+npx wrangler dev --ip 0.0.0.0                  # serves http://localhost:8787
+```
+
+Then point the game at it in `assets/.env` with `DB_KEY=localkey` and a `DB_URL` that depends on where the game runs. A native build uses `DB_URL=http://localhost:8787`. A game run with `tools/dev run` uses `DB_URL=http://host.containers.internal:8787`, because inside the container `localhost` is the container, not your machine. `DB_URL` and `DB_KEY` are embedded at build time, so rebuild after editing `assets/.env`.
+
 The free plan allows 100,000 Worker requests and 100,000 D1 rows written per day; past that, requests fail until the 00:00 UTC reset. Cloudflare's [Workers](https://developers.cloudflare.com/workers/platform/limits/) and [D1](https://developers.cloudflare.com/d1/platform/pricing/) limits pages list no inactivity pause.
 
 ---
