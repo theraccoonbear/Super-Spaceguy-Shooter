@@ -37,7 +37,7 @@ Sub GS_TITLE_Update ()
     escWas = held(E3D_KEY_ESCAPE)
     IF titleEscConfirm THEN
         IF KEY_Down%(65) OR KEY_Down%(97) THEN
-            ABOUT_Prep : gameState = GS_ABOUT : titleEscConfirm = 0
+            ABOUT_Prep GS_TITLE : gameState = GS_ABOUT : titleEscConfirm = 0
         END IF
         IF KEY_Down%(67) OR KEY_Down%(99) THEN
             CONTROLS_Prep GS_TITLE : gameState = GS_CONTROLS

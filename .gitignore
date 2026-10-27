@@ -45,6 +45,7 @@ tests/spore_test
 tests/attack_test
 tests/inputscript_test
 tests/rng_test
+tests/titlenav_test
 tools/telem_batch_test
 shot-*.png
 

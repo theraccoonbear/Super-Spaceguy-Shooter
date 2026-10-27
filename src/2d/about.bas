@@ -1,6 +1,6 @@
 ' about.bas — About / credits scroll screen
 '
-' ABOUT_Prep    load [BLOCK:about] from gametext.txt, inject title header
+' ABOUT_Prep    remember where ESC returns to; load [BLOCK:about] from gametext.txt, inject title header
 ' ABOUT_Update  render panel + auto-scroll + manual up/dn + ESC back
 
 Const ABOUT_MAX_LINES = 64
@@ -14,9 +14,11 @@ Dim Shared aboutScroll    As Single
 Dim Shared aboutUpWas     As Integer
 Dim Shared aboutDnWas     As Integer
 Dim Shared aboutEscWas    As Integer
+Dim Shared aboutReturnState As Integer
 Dim Shared aboutPalette(0 To 15) As Long
 
-Sub ABOUT_Prep()
+Sub ABOUT_Prep (abpReturn As Integer)
+    aboutReturnState = abpReturn
     Dim abBlock As String, abPos As Long, abNxt As Long, abLn As String
     Dim abRem As String, abCut As Integer, abVCut As Integer
     Dim abCI As Integer, abCJ As Integer, abCA As Integer, abLast As String
@@ -132,7 +134,7 @@ Sub ABOUT_Update()
     Dim abFloor As Single : abFloor = -(aboutLineCount * ABOUT_LINE_H) + 24
     If aboutScroll < abFloor Then aboutScroll = abFloor
 
-    If abEsc And Not aboutEscWas Then gameState = GS_TITLE
+    If abEsc And Not aboutEscWas Then TITLE_ReturnTo aboutReturnState
 
     aboutUpWas = abUp : aboutDnWas = abDn : aboutEscWas = abEsc
 

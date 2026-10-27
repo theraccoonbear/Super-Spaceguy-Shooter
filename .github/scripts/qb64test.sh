@@ -57,6 +57,7 @@ TESTS=(
   attack_test
   inputscript_test
   rng_test
+  titlenav_test
 )
 
 # Dev tools at the repo root: compiled only (they're interactive), so an engine change
