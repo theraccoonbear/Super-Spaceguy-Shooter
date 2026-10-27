@@ -5,6 +5,8 @@
 #   image          build (or rebuild) the dev image from tools/container/Containerfile
 #   build          tools/buildqb sss.bas, then the builds/sss --version smoke test
 #   test           the full test suite (.github/scripts/qb64test.sh, same as CI)
+#   render [args]  golden-screenshot render tests (tests/render/run.sh; --update
+#                  re-blesses the goldens)
 #   bake           tools/bake_speech_dict
 #   emit           npm install in math/, then node tools/emit-spline.js
 #   shell [cmd]    interactive shell in the container, or run one command
@@ -178,6 +180,10 @@ case "$cmd" in
     test)
         pick_engine; ensure_image
         run_in bash .github/scripts/qb64test.sh
+        ;;
+    render)
+        pick_engine; ensure_image
+        run_in bash tests/render/run.sh "$@"
         ;;
     bake)
         pick_engine; ensure_image

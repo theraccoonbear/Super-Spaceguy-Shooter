@@ -173,6 +173,9 @@ tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
 tools/http_queue_test                          # needs Python; starts mock server automatically
 
+# Golden-screenshot render tests (tests/render/; --update re-blesses goldens)
+tools/dev render
+
 # Rebake speech dict (required after gametext changes)
 bash tools/bake_speech_dict
 

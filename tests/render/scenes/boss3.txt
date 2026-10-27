@@ -1,0 +1,6 @@
+# Boss 3: lead-aimed bolts with their closing impact rings (360), then spore clouds (440).
+#! args: --scene boss3
+#! shots: 360,440
+0 440 FIRE
+100 160 LEFT
+300 340 UP

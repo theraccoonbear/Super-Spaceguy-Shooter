@@ -98,6 +98,22 @@ jobs:
             exit 1
           }
 
+      # Golden-screenshot render tests (tests/render/). Linux only: only this job has Xvfb,
+      # and the goldens come from the same Ubuntu toolchain (tools/dev); another OS's
+      # compiler and libm can round the rasterizer's float math differently.
+      - name: Render tests
+        if: runner.os == 'Linux'
+        shell: bash
+        run: QB64_BIN_DIR=qb64pe-bin bash tests/render/run.sh --no-build
+
+      - name: Upload render test screenshots and diffs
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-test-results
+          path: tests/render/out/
+          if-no-files-found: ignore
+
       - name: Dump compile log on failure
         if: failure()
         shell: bash
