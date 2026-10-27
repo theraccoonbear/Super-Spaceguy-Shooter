@@ -59,12 +59,15 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `STAGE_` | `src/gameplay/stage.bas` | Level layout and enemy-wave scheduling |
 | `BOSS_` | `src/gameplay/boss.bas` | Boss fight logic and phase management |
 | `MNV_` | `src/gameplay/maneuvers.bas` | `.mvr` spline-route loader. Not used by gameplay; kept for possible cinematics (see ADR-0001) |
-| `GS_*` | `src/state/*.bas` | Per-screen game states (title, crawl, combat, asteroid, game over, consent, username, leaderboard, lead-in) |
+| `GS_*` | `src/state/*.bas` | Per-screen game states (title, crawl, combat, asteroid, game over, consent, username, leaderboard, lead-in, upgrade dock) |
 | `HUD_` | `src/2d/hud.bas` | In-game heads-up display |
 | `FONT_` | `src/2d/font.bas` | Bitmap font renderer with color palettes |
 | `UI_` | `src/2d/ui.bas` | Sci-fi panel UI components |
 | `CRAWL_` | `src/2d/crawl.bas` | Scrolling narrative crawl renderer |
 | `FX_` | `src/2d/effects.bas` | Particle and visual effects |
+| `UPG_` / `CR_` | `src/gameplay/upgrades.bas` | Credits and the upgrade table (prices, levels, effects from `gamevalues.ini`) |
+| `DOCK_` | `src/state/docklogic.bas`, `src/state/dock.bas` | Upgrade dock: list logic and input, then drawing |
+| `ABL_` | `src/gameplay/abilities.bas` | In-flight upgrade effects: evasive roll, nova pulse, tractor beam |
 
 ---
 
@@ -73,7 +76,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | Term | Meaning |
 |---|---|
 | **stage** | One of six numbered combat/boss/asteroid levels. A sequence of `PLAY` waypoints in `sequence.txt`. |
-| **waypoint** *(sequencer)* | A named entry in the linear `SEQ_` table (CRAWL, CARD, TITLE, PLAY, ARRIVE). Completely unrelated to path-editor waypoints. |
+| **waypoint** *(sequencer)* | A named entry in the linear `SEQ_` table (CRAWL, CARD, TITLE, PLAY, ARRIVE, DOCK). Completely unrelated to path-editor waypoints. |
 | **cue** | A named music segment (`"intro"`, `"game"`, `"boss"`, `"outro"`). Triggered by name; engine crossfades or cuts. |
 | **wave** *(audio)* | A synthesized sample buffer in `snd.bas`/`wave.bas`. |
 | **wave** *(enemies)* | A timed spawn group of enemies scheduled in `stage.bas`. Context disambiguates; they never appear in the same file. |

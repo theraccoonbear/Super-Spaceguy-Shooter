@@ -90,6 +90,7 @@ sss [options]
   --leaderboard-file <file>  Show a saved top_scores JSON response on the leaderboard instead of polling (offline testing)
   --frames N             Quit after N frames (60 per second)
   --seed N               Fixed random seed, so a scripted run repeats exactly
+  --credits N            Start every run with N credits (for trying the upgrade dock)
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 
@@ -278,6 +279,8 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 |---|---|---|
 | Arrow keys / WASD | Left stick | Move ship |
 | Space (hold) | A or B | Fire (both bottom face buttons, so a Nintendo-labeled pad fires from either) |
+| E | X | Evasive roll, once bought at the dock |
+| Q | Y | Nova pulse, once bought at the dock |
 | ESC | Start | Pause / abort-mission dialog (Y / A confirms the abort, C / X shows controls, ESC / B cancels) |
 | TAB | Back / Select | Camera mode on/off. The game freezes while you adjust; pressing it again locks the angle and saves it |
 | ↑ / ↓ (camera mode) | Stick up/down | Tilt the camera |
@@ -308,11 +311,44 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 
 On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsign needs the keyboard; with a gamepad, A keeps the shown name (or picks a random one) and B skips.
 
+### Upgrade dock
+
+| Key | Gamepad | Action |
+|---|---|---|
+| ↑ / ↓ (or W / S) | Stick or d-pad up/down | Pick an upgrade (the list scrolls) |
+| ENTER | A | Buy the next level (on LAUNCH: leave) |
+| ESC | B or Start | Leave for the next stage at once |
+
 ### Debug
 
 | Key | Action |
 |---|---|
 | `` ` `` | Toggle the debug HUD overlay. It starts on with `--debug`, but the key works in any build |
+
+---
+
+## Credits and the upgrade dock
+
+Credits (`$`, shown next to the score) are a second currency, separate from score: spending them never lowers your score or rank. Kills, bosses, stage clears and the asteroid field (near misses, asteroids a nova pulse destroys, and getting through) earn them. After each planet arrival except the last, the **upgrade dock** opens: buy upgrades for the rest of the run, or leave with one press. Credits and upgrades reset on a new game.
+
+| Upgrade | Levels | Effect |
+|---|---|---|
+| Laser capacitor | 3 | Bigger laser bank (LA) that recharges faster |
+| Twin cannons → spread shot | 2 | Two parallel shots, then a three-way spread |
+| Rapid fire | 2 | Shorter delay between shots |
+| Shield capacity | 3 | Bigger shield (SH) |
+| Shield regen | 2 | Shields refill on their own after a few seconds without a hit |
+| Hull armour | 2 | Less damage from collisions and asteroids |
+| Nova pulse | 3 | Charges per stage (refilled at every dock): **Q** / pad **Y** clears every enemy shot and blasts ships and asteroids near you; a boss takes a few points |
+| Thrusters | 2 | Faster sideways movement |
+| Evasive roll | 2 | **E** / pad **X**: a quick sideways dash (the way you're steering) that nothing can hit; level 2 cools down faster |
+| Tractor beam | 2 | Pulls power-ups toward the ship |
+| Fuel tank | 2 | Bigger fuel tank |
+| Hull repair | once per dock | Refill the shields (planet arrivals refill laser and fuel, not shields) |
+
+Every price, level and effect, and every credit amount, is in `assets/gamevalues.ini`, with the economy maths in its comments. `--scene dockN` opens the dock after stage N and `--credits N` starts with N credits, to try it out.
+
+**Dock background:** `assets/dock_bg.png`, a 320x240 PNG (the game's resolution; other sizes are scaled to fit), embedded at build time. Replace the file and rebuild to change it. The list sits on a see-through panel over the right two-thirds.
 
 ---
 
