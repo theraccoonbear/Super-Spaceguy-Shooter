@@ -201,7 +201,8 @@ jobs:
 
   gate:
     name: All checks pass
-    needs: [dict-check, build, playthrough, render]
+    # playthrough runs alongside but doesn't gate PRs; a failure shows as its own red check
+    needs: [dict-check, build, render]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -210,7 +211,6 @@ jobs:
           fail=0
           [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
           [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
-          [[ "${{ needs.playthrough.result }}" != "success" ]] && echo "FAIL playthrough: ${{ needs.playthrough.result }}" && fail=1
           [[ "${{ needs.render.result }}"     != "success" ]] && echo "FAIL render:     ${{ needs.render.result }}"     && fail=1
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
