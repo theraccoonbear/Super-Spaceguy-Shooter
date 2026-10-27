@@ -23,6 +23,7 @@
 '$INCLUDE:'2d/ui.bas'
 '$INCLUDE:'state/leadin.bas'
 '$INCLUDE:'state/consent.bas'
+'$INCLUDE:'2d/textedit.bas'
 '$INCLUDE:'state/username.bas'
 '$INCLUDE:'state/leaderboard.bas'
 '$INCLUDE:'state/titlenav.bas'

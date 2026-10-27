@@ -298,6 +298,7 @@ DIM SHARED unFromSettings  AS INTEGER  ' -1 = username screen entered from setti
 DIM SHARED unSavedName     AS STRING   ' name saved on entry from settings; restored on cancel
 DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before first char)
 DIM SHARED unScrollOff     AS INTEGER  ' raw-string scroll offset for input box display
+DIM SHARED unBlinkN        AS LONG     ' frames since the last edit; drives the input-box cursor blink
 
 ' --- boss phase tickables (populated by SEQ_Advance from sequence.txt mus=/speech=/maneuver=/attack=/seek= CSV) ---
 DIM SHARED bossMusList$(0 To 7)

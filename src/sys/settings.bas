@@ -267,6 +267,10 @@ Sub OPTS_Update ()
             ' callsign row: show current name (or prompt) instead of a slider
             Dim oCallName As String
             If Len(telemPlayerName) > 0 Then oCallName = telemPlayerName Else oCallName = "(NONE)"
+            ' callsigns run to UN_MAX_LEN; keep the row inside the panel (21 cols from OPT_BAR_X)
+            Dim oCallMax As Integer
+            If oI = optSel Then oCallMax = 13 Else oCallMax = 21
+            If Len(oCallName) > oCallMax Then oCallName = Left$(oCallName, oCallMax - 2) + ".."
             If oI = optSel Then
                 FONT_PrintAlpha fontPalette(15), backBuffer, oCallName + " [ENTER]", OPT_BAR_X, oY, 255
             Else
