@@ -244,6 +244,11 @@ UT_Assert UPG_CapNext!(UPG_FUEL) = 0 And UPG_CapNext!(UPG_THRUST) = 0, "no ghost
 upgLevel(UPG_FUEL) = utSvFuel : upgLevel(UPG_SHIELD) = utSvShield : upgLevel(UPG_LASER) = utSvLaser
 
 Print ""
+Print "--- bullet pool covers the fastest, widest fire upgrades.ini allows (#268) ---"
+UT_Assert UPG_PeakBullets% > 0, "worst case from the table: fastest rapid fire x widest volley x bullet life =" + Str$(UPG_PeakBullets%) + " live bullets"
+UT_Assert MAX_BULLETS >= UPG_PeakBullets%, "MAX_BULLETS (" + LTrim$(Str$(MAX_BULLETS)) + ") >= that worst case, so the gun never stalls"
+
+Print ""
 Print "--- shield recharge: once per dock ---"
 lives = 50
 utR = UPG_Buy%(UPG_RECHARGE)

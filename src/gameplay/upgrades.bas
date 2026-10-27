@@ -386,3 +386,21 @@ Function UPG_CapNext! (ucnId As Integer)
     If upgLevel(ucnId) >= upgMax(ucnId) Then Exit Function
     UPG_CapNext! = upgFxA(ucnId, upgLevel(ucnId) + 1)
 End Function
+
+' Most player bullets that can be alive at once with the table's fastest fire rate and
+' widest volley: shots per volley * volleys fired during one bullet's life. MAX_BULLETS
+' (dims.bas) must be at least this, or a full pool would cost shots (upgrade_test checks).
+Function UPG_PeakBullets%
+    Dim upkL As Integer, upkCool As Single, upkShots As Single, upkVolleyF As Integer, upkLifeF As Integer
+    upkCool = upgFxA(UPG_RAPID, 0) : upkShots = 1
+    For upkL = 0 To upgMax(UPG_RAPID)
+        If upgFxA(UPG_RAPID, upkL) < upkCool Then upkCool = upgFxA(UPG_RAPID, upkL)
+    Next upkL
+    For upkL = 0 To upgMax(UPG_CANNON)
+        If upgFxA(UPG_CANNON, upkL) > upkShots Then upkShots = upgFxA(UPG_CANNON, upkL)
+    Next upkL
+    upkVolleyF = Int(upkCool / FIRE_TICK + 0.0001)   ' rounding down = more volleys: the safe side
+    If upkVolleyF < 1 Then upkVolleyF = 1
+    upkLifeF = -Int(-(BULLET_RANGE / BULLET_SPEED))
+    UPG_PeakBullets% = upkShots * -Int(-(upkLifeF / upkVolleyF))
+End Function

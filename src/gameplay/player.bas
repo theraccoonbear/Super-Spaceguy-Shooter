@@ -12,12 +12,10 @@
 Const PLAYER_ACCEL     = 0.14    ' velocity lerp rate (controls both accel and drag)
 Const PLAYER_MAX_VEL   = 0.12    ' max lateral velocity per frame at level 0 (thrusters raise shipMaxVel)
 Const ATTITUDE_LERP    = 0.09    ' ship tilt/roll settle rate
-Const BULLET_SPEED     = 0.35    ' player bullet X velocity
 Const LASER_COST       = 5.0     ' laser energy drained per shot (%)
 Const AIM_ASSIST       = 0.30    ' fraction of aim error corrected toward nearest enemy in cone
 Const FUEL_DRAIN       = 0.0185  ' base drain per frame (~90 sec at 60fps)
 Const FUEL_DRAIN_BOOST = 0.006   ' extra drain per frame when thrusting
-Const BULLET_RANGE     = 110     ' cull player bullet beyond player.px + this
 Const BULLET_TRAIL_LEN = 2.0     ' world-unit length of bolt body (rear to tip along nose)
 Const TWIN_GAP         = 0.35    ' sideways offset of the outer shots (twin cannons / spread shot)
 Const DMG_COLLISION    = 17      ' shield damage from collision
@@ -161,23 +159,19 @@ Sub PLAYER_Fire
         plfOff = plfSide * TWIN_GAP
         plfSp = 0
         If gunShots >= 3 Then plfSp = plfSide * gunSpread
-        For plfI = 1 To MAX_BULLETS
-            If bullets(plfI).active = 0 Then
-                bullets(plfI).active  = -1
-                bullets(plfI).meshIdx = MESH_BULLET
-                bullets(plfI).px = plfPX
-                bullets(plfI).py = plfPY
-                bullets(plfI).pz = plfPZ + plfOff
-                bullets(plfI).vx   = plfNx * BULLET_SPEED
-                bullets(plfI).vy   = plfNy * BULLET_SPEED
-                bullets(plfI).vz   = (plfNz + plfSp) * BULLET_SPEED
-                bullets(plfI).life = BULLET_RANGE / BULLET_SPEED
-                bullets(plfI).scl  = 1.0
-                telemShotsFired = telemShotsFired + 1
-                plfFired = -1
-                Exit For
-            End If
-        Next plfI
+        plfI = PLAYER_BulletSlot%
+        bullets(plfI).active  = -1
+        bullets(plfI).meshIdx = MESH_BULLET
+        bullets(plfI).px = plfPX
+        bullets(plfI).py = plfPY
+        bullets(plfI).pz = plfPZ + plfOff
+        bullets(plfI).vx   = plfNx * BULLET_SPEED
+        bullets(plfI).vy   = plfNy * BULLET_SPEED
+        bullets(plfI).vz   = (plfNz + plfSp) * BULLET_SPEED
+        bullets(plfI).life = BULLET_RANGE / BULLET_SPEED
+        bullets(plfI).scl  = 1.0
+        telemShotsFired = telemShotsFired + 1
+        plfFired = -1
     Next plfK
     If plfFired Then
         fireTimer   = fireCool
@@ -185,6 +179,19 @@ Sub PLAYER_Fire
         SND_Shoot
     End If
 End Sub
+
+' A bullet slot for a new shot: the first free one, else the one with the least life left,
+' so a full pool recycles the oldest shot instead of the gun going silent.
+Function PLAYER_BulletSlot%
+    Dim plbI As Integer, plbBest As Integer
+    plbBest = 1
+    For plbI = 1 To MAX_BULLETS
+        If bullets(plbI).active = 0 Then PLAYER_BulletSlot% = plbI : Exit Function
+        If bullets(plbI).life < bullets(plbBest).life Then plbBest = plbI
+    Next plbI
+    PLAYER_BulletSlot% = plbBest
+End Function
+
 
 Sub PLAYER_CamUpdate
     Dim plcFwdTgtY As Single, plcFwdTgtZ As Single

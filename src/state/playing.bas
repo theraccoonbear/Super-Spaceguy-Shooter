@@ -102,7 +102,7 @@ Sub GS_PLAYING_Update ()
     IF gspSkipPhysics = 0 THEN
         tt = tt + 0.025
         spawnTimer = spawnTimer + 0.025
-        IF fireTimer > 0 THEN fireTimer = fireTimer - 0.025
+        IF fireTimer > 0 THEN fireTimer = fireTimer - FIRE_TICK
         IF invTimer > 0 THEN invTimer = invTimer - 1
         IF planetTransitionTimer > 0 THEN
             planetTransitionTimer = planetTransitionTimer - 1

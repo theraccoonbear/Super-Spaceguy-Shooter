@@ -18,7 +18,10 @@ Const VERSION$ = "0.0.0-test"
 Const GS_PLAYING   = 1
 Const GS_CINEMATIC = 4
 Const MAX_ENEMIES  = 35
-Const MAX_BULLETS  = 30
+Const MAX_BULLETS  = 256
+Const BULLET_SPEED = 0.35
+Const BULLET_RANGE = 110
+Const FIRE_TICK    = 0.025
 Const MESH_BULLET  = 4
 Const E3D_KEY_SPACE = 32
 Const CAM_LAG_RATE  = 0.1
@@ -210,6 +213,29 @@ TC_Assert crBonusPts = 300 And crBonusCredits = 300,   "6.02  the game-over tall
 TC_Assert dtScorePosts = 1 And InStr(dtPostBody, "score:800") > 0, "6.03  the leaderboard post carries the bonus (score:800)"
 CR_CashOut
 TC_Assert score = 800,                                 "6.04  a later cash-out call adds nothing"
+Print ""
+
+Print "--- 7. a full bullet pool recycles the oldest shots instead of going silent (#268) ---"
+Dim dtBI As Integer, dtBNew As Integer, dtBOld As Integer
+For dtBI = 1 To MAX_BULLETS
+    bullets(dtBI).active = -1 : bullets(dtBI).life = 100 + (dtBI Mod 100)
+Next dtBI
+bullets(40).life = 3 : bullets(77).life = 1 : bullets(200).life = 2
+TC_Assert PLAYER_BulletSlot% = 77, "7.01  full pool: the slot with the least life left (77)"
+bullets(150).active = 0
+TC_Assert PLAYER_BulletSlot% = 150, "7.02  a free slot wins over recycling"
+bullets(150).active = -1 : bullets(150).life = 250
+gameState = GS_PLAYING : held(E3D_KEY_SPACE) = -1 : fireTimer = 0 : laserEnergy = 100
+gunShots = 3 : gunSpread = 0.08 : telemShotsFired = 0
+PLAYER_Fire
+held(E3D_KEY_SPACE) = 0
+For dtBI = 1 To MAX_BULLETS
+    If bullets(dtBI).life > BULLET_RANGE / BULLET_SPEED - 0.01 Then dtBNew = dtBNew + 1
+    If bullets(dtBI).active = 0 Then dtBOld = dtBOld + 1
+Next dtBI
+TC_Assert telemShotsFired = 3 And fireTimer > 0 And laserEnergy < 100, "7.03  a 3-shot volley fires with every slot taken"
+TC_Assert dtBNew = 3 And dtBOld = 0, "7.04  it took 3 slots, all still active"
+TC_Assert bullets(77).life > 300 And bullets(200).life > 300 And bullets(40).life > 300, "7.05  the three oldest (77, 200, 40) were the ones reused"
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _

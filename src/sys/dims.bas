@@ -21,7 +21,10 @@ CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
-CONST MAX_BULLETS   = 30
+CONST MAX_BULLETS   = 256   ' >= UPG_PeakBullets%, the worst case upgrades.ini allows (upgrade_test checks)
+CONST BULLET_SPEED  = 0.35  ' player bullet X velocity
+CONST BULLET_RANGE  = 110   ' cull player bullet beyond player.px + this
+CONST FIRE_TICK     = 0.025 ' fireTimer drop per frame (fireCool is in these units)
 CONST MAX_ASTEROIDS = 25
 CONST MAX_POWERUPS  = 5
 CONST MAX_EBULLETS  = 24
