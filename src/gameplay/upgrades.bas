@@ -41,6 +41,9 @@ Const UPG_FULL    = 3   ' hull repair with the shields already full
 
 Dim Shared upgKey$(1 To UPG_COUNT)
 Dim Shared upgNames$(1 To UPG_COUNT)    ' "NAME" or "NAME LV1,NAME LV2,..."
+Dim Shared upgDesc$(1 To UPG_COUNT)     ' what it does (upgdesc_<key>), for the dock and the SHIP SYSTEMS page
+Dim Shared upgHintPending As String   ' "ROLL READY ..." lines (Chr$(10)-separated) to show on the next launch
+Dim Shared upgHintNova As String, upgHintRoll As String
 Dim Shared upgMax(1 To UPG_COUNT) As Integer
 Dim Shared upgLevel(1 To UPG_COUNT) As Integer
 Dim Shared upgPrice(1 To UPG_COUNT, 1 To UPG_MAX_LV) As Long
@@ -110,6 +113,8 @@ Function UPG_Load%
         If Len(upglLine) = 0 Then upgLoadErr = "gamevalues.ini has no upg_" + upglKey : Exit Function
         upglOk = UPG_ParseLine%(upglI, upglKey, upglLine)
         If upglOk = 0 Then Exit Function
+        upgDesc$(upglI) = GTEXT_Var$("upgdesc_" + upglKey)
+        If Len(upgDesc$(upglI)) = 0 Then upgLoadErr = "gamevalues.ini has no upgdesc_" + upglKey : Exit Function
     Next upglI
     crKill = Val(GTEXT_Var$("cr_kill"))
     crBoss = Val(GTEXT_Var$("cr_boss"))
@@ -121,6 +126,8 @@ Function UPG_Load%
     novaBossDmg = Val(GTEXT_Var$("nova_boss_dmg"))
     rollFrames = Val(GTEXT_Var$("roll_frames"))
     rollSpeed = Val(GTEXT_Var$("roll_speed"))
+    upgHintNova = GTEXT_Var$("hint_nova")
+    upgHintRoll = GTEXT_Var$("hint_roll")
     If rollFrames < 1 Then rollFrames = 1
     UPG_Load% = -1
 End Function
@@ -132,6 +139,7 @@ Sub UPG_Reset
     novaCharges = 0 : novaFxTimer = 0
     rollTimer = 0 : rollCool = 0 : rollDir = 1
     regenTick = 0 : noHitFrames = 0
+    upgHintPending = ""
     UPG_Apply
 End Sub
 
@@ -186,6 +194,11 @@ Function UPG_Buy% (upgbId As Integer)
         Case UPG_LASER : laserEnergy = laserMax
         Case UPG_FUEL : fuelLevel = fuelMax
     End Select
+    ' first time an active ability is bought this run: tell the player its key on launch
+    If upgLevel(upgbId) = 1 Then
+        If upgbId = UPG_NOVA Then UPG_AddHint upgHintNova
+        If upgbId = UPG_ROLL Then UPG_AddHint upgHintRoll
+    End If
     TELEM_UpgradeBought upgKey$(upgbId), upgLevel(upgbId), upgbPrice
     UPG_Buy% = UPG_OK
 End Function
@@ -244,29 +257,44 @@ Function UPG_ArmourDmg% (uadDmg As Integer)
     UPG_ArmourDmg% = CInt(uadDmg * armourMul)
 End Function
 
-' One-line description of what the next level does (the dock shows it under the list).
-Function UPG_Desc$ (udId As Integer)
-    Dim udL As Integer, udA0 As Single, udA1 As Single, udB1 As Single
+' What upgrade udId does, from gamevalues.ini's upgdesc_<key> (the dock's first info line
+' and the SHIP SYSTEMS help page).
+Function UPG_Info$ (uiId As Integer)
+    UPG_Info$ = upgDesc$(uiId)
+End Function
+
+' The concrete change the next level makes, computed from the table (the dock's second
+' info line); "MAXED" once there's nothing left to buy. At most 25 characters.
+Function UPG_Next$ (udId As Integer)
+    Dim udL As Integer, udA0 As Single, udA1 As Single, udB0 As Single, udB1 As Single
     udL = upgLevel(udId)
-    If udL >= upgMax(udId) And udId <> UPG_REPAIR Then UPG_Desc$ = "FULLY UPGRADED" : Exit Function
-    udA0 = upgFxA(udId, udL)
-    If udL < upgMax(udId) Then udA1 = upgFxA(udId, udL + 1) : udB1 = upgFxB(udId, udL + 1)
+    If udId = UPG_REPAIR Then
+        If udL >= upgMax(udId) Then
+            UPG_Next$ = "DONE THIS VISIT"
+        ElseIf lives >= shieldMax Then
+            UPG_Next$ = "SHIELDS ALREADY FULL"
+        Else
+            UPG_Next$ = "SHIELDS " + UPG_Num$(lives) + ">" + UPG_Num$(shieldMax)
+        End If
+        Exit Function
+    End If
+    If udL >= upgMax(udId) Then UPG_Next$ = "MAXED" : Exit Function
+    udA0 = upgFxA(udId, udL) : udA1 = upgFxA(udId, udL + 1)
+    udB0 = upgFxB(udId, udL) : udB1 = upgFxB(udId, udL + 1)
     Select Case udId
-        Case UPG_LASER : UPG_Desc$ = "LASER " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + ", FASTER"
+        Case UPG_LASER : UPG_Next$ = "MAX " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + ", REGEN +" + UPG_Num$(Int((udB1 / udB0 - 1) * 100 + 0.5)) + "%"
         Case UPG_CANNON
-            If udA1 >= 3 Then UPG_Desc$ = "3-WAY SPREAD SHOT" Else UPG_Desc$ = "2 PARALLEL SHOTS"
-        Case UPG_RAPID : UPG_Desc$ = "SHOT DELAY " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + "S"
-        Case UPG_SHIELD : UPG_Desc$ = "SHIELD MAX " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
-        Case UPG_REGEN : UPG_Desc$ = "REGEN " + UPG_Num$(Int(60 / udA1)) + "/S AFTER " + UPG_Num$(udB1 / 60) + "S UNHIT"
-        Case UPG_ARMOUR : UPG_Desc$ = "CRASH DAMAGE -" + UPG_Num$(Int((1 - udA1) * 100 + 0.5)) + "%"
-        Case UPG_NOVA : UPG_Desc$ = "NOVA " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + " CHARGES/STAGE"
-        Case UPG_THRUST : UPG_Desc$ = "SIDE SPEED +" + UPG_Num$(Int((udA1 / upgFxA(UPG_THRUST, 0) - 1) * 100 + 0.5)) + "%"
+            If udA1 >= 3 Then UPG_Next$ = "NEXT: 3-WAY SPREAD" Else UPG_Next$ = "NEXT: 2 PARALLEL SHOTS"
+        Case UPG_RAPID : UPG_Next$ = "SHOT DELAY " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + "S"
+        Case UPG_SHIELD : UPG_Next$ = "SHIELD MAX " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
+        Case UPG_REGEN : UPG_Next$ = UPG_Num$(Int(60 / udA1)) + " SH/S AFTER " + UPG_Num$(udB1 / 60) + "S UNHIT"
+        Case UPG_ARMOUR : UPG_Next$ = "CRASH DAMAGE " + UPG_Num$(Int(udA0 * 100 + 0.5)) + ">" + UPG_Num$(Int(udA1 * 100 + 0.5)) + "%"
+        Case UPG_NOVA : UPG_Next$ = "CHARGES/STAGE " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
+        Case UPG_THRUST : UPG_Next$ = "SIDE SPEED +" + UPG_Num$(Int((udA1 / udA0 - 1) * 100 + 0.5)) + "%"
         Case UPG_ROLL
-            If udL = 0 Then UPG_Desc$ = "UNLOCK DODGE ROLL" Else UPG_Desc$ = "ROLL COOLDOWN " + UPG_Num$(udA0 / 60) + ">" + UPG_Num$(udA1 / 60) + "S"
-        Case UPG_TRACTOR : UPG_Desc$ = "PULL PICKUPS, RANGE " + UPG_Num$(udA1)
-        Case UPG_FUEL : UPG_Desc$ = "FUEL TANK " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
-        Case UPG_REPAIR
-            If udL >= upgMax(udId) Then UPG_Desc$ = "REPAIRED THIS VISIT" Else UPG_Desc$ = "REFILL SHIELDS NOW"
+            If udL = 0 Then UPG_Next$ = "UNLOCKS THE ROLL" Else UPG_Next$ = "COOLDOWN " + UPG_Num$(udA0 / 60) + ">" + UPG_Num$(udA1 / 60) + "S"
+        Case UPG_TRACTOR : UPG_Next$ = "PULL RANGE " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
+        Case UPG_FUEL : UPG_Next$ = "FUEL TANK " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
     End Select
 End Function
 
@@ -307,3 +335,9 @@ Function CR_ParseArg% (crpS As String, crpN As Long)
     crpN = Val(crpS)
     CR_ParseArg% = -1
 End Function
+
+Sub UPG_AddHint (uahText As String)
+    If Len(uahText) = 0 Then Exit Sub
+    If Len(upgHintPending) > 0 Then upgHintPending = upgHintPending + Chr$(10)
+    upgHintPending = upgHintPending + uahText
+End Sub

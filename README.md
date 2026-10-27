@@ -331,20 +331,24 @@ On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsig
 
 Credits (`$`, shown next to the score) are a second currency, separate from score: spending them never lowers your score or rank. Kills, bosses, stage clears and the asteroid field (near misses, asteroids a nova pulse destroys, and getting through) earn them. After each planet arrival except the last, the **upgrade dock** opens: buy upgrades for the rest of the run, or leave with one press. Credits and upgrades reset on a new game.
 
-| Upgrade | Levels | Effect |
+### Upgrades
+
+| Upgrade | What it does | Levels |
 |---|---|---|
-| Laser capacitor | 3 | Bigger laser bank (LA) that recharges faster |
-| Twin cannons → spread shot | 2 | Two parallel shots, then a three-way spread |
-| Rapid fire | 2 | Shorter delay between shots |
-| Shield capacity | 3 | Bigger shield (SH) |
-| Shield regen | 2 | Shields refill on their own after a few seconds without a hit |
-| Hull armour | 2 | Less damage from collisions and asteroids |
-| Nova pulse | 3 | Charges per stage (refilled at every dock): **Q** / pad **Y** clears every enemy shot and blasts ships and asteroids near you; a boss takes a few points |
-| Thrusters | 2 | Faster sideways movement |
-| Evasive roll | 2 | **E** / pad **X**: a quick sideways dash (the way you're steering) that nothing can hit; level 2 cools down faster |
-| Tractor beam | 2 | Pulls power-ups toward the ship |
-| Fuel tank | 2 | Bigger fuel tank |
-| Hull repair | once per dock | Refill the shields (planet arrivals refill laser and fuel, not shields) |
+| Laser capacitor | Bigger laser bank (LA) that recharges faster | 3 |
+| Twin cannons → spread shot | Two parallel shots per trigger pull, then a three-way spread | 2 |
+| Rapid fire | Shorter delay between shots | 2 |
+| Shield capacity | Bigger shield (SH) | 3 |
+| Shield regen | Shields refill on their own after a few seconds without a hit | 2 |
+| Hull armour | Less damage from collisions and asteroids | 2 |
+| Nova pulse | **Q** / pad **Y**: clears every enemy shot and blasts ships and asteroids near you; a boss loses a few points. Charges per stage refill at every dock | 3 |
+| Thrusters | Faster sideways movement | 2 |
+| Evasive roll | **E** / pad **X**: a quick sideways dash (the way you're steering) that nothing can hit; level 2 cools down faster | 2 |
+| Tractor beam | Pulls power-ups toward the ship | 2 |
+| Fuel tank | Bigger fuel tank | 2 |
+| Hull repair | Refills the shields (planet arrivals refill laser and fuel, not shields) | once per dock |
+
+In the dock, the two lines under the list say what the highlighted upgrade does and exactly what its next level changes (for example `MAX 100>125, REGEN +20%`), or `MAXED`. The same list is in game on the Controls screen's **SHIP SYSTEMS** pages (pages 3 and 4: ← → or the stick). The first launch after buying the roll or the nova shows its key (`NOVA READY - Q / PAD Y`) for a few seconds. The descriptions and that hint are in `assets/gamevalues.ini` (`upgdesc_*`, `hint_*`).
 
 Every price, level and effect, and every credit amount, is in `assets/gamevalues.ini`, with the economy maths in its comments. `--scene dockN` opens the dock after stage N and `--credits N` starts with N credits, to try it out.
 

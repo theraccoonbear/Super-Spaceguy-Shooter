@@ -115,20 +115,27 @@ Sub DOCK_Draw
             DOCK_Text dkdPal, dkdPrice, dkdX, dkdY, 255
         End If
     Next dkdRow
-    ' scroll hints
-    If dockTop > 1 Then DOCK_Text 11, "^", DOCK_PX2 - 12, DOCK_ROW_Y - 14, 200
-    If dockTop + DOCK_VISIBLE - 1 < DOCK_LAUNCH Then DOCK_Text 11, "v", DOCK_PX2 - 12, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H - 3, 200
+    ' scroll hints: small triangles in the gaps above and below the list, clear of the text
+    For dkdI = 0 To 3
+        If dockTop > 1 Then Line (DOCK_PX2 - 12 - dkdI, DOCK_ROW_Y - 6 + dkdI)-(DOCK_PX2 - 12 + dkdI, DOCK_ROW_Y - 6 + dkdI), dkdCC
+        If dockTop + DOCK_VISIBLE - 1 < DOCK_LAUNCH Then Line (DOCK_PX2 - 12 - dkdI, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 1 - dkdI)-(DOCK_PX2 - 12 + dkdI, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 1 - dkdI), dkdCC
+    Next dkdI
 
     dkdY = DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 2
     Line (DOCK_PX1 + 4, dkdY - 2)-(DOCK_PX2 - 4, dkdY - 2), _RGB(0, 100, 180)
     If dockSel = DOCK_LAUNCH Then
-        DOCK_Text 9, "ON TO THE NEXT STAGE", DOCK_PX1 + 8, dkdY, 255
+        DOCK_Text 15, "LEAVE THE DOCK", DOCK_PX1 + 8, dkdY, 255
+        DOCK_Text 14, "ON TO THE NEXT STAGE", DOCK_PX1 + 8, dkdY + 16, 255
     Else
-        DOCK_Text 9, UPG_Desc$(dockSel), DOCK_PX1 + 8, dkdY, 255
+        ' what it does, then what the next level changes
+        DOCK_Text 15, UPG_Info$(dockSel), DOCK_PX1 + 8, dkdY, 255
+        dkdName = UPG_Next$(dockSel)
+        If dkdName = "MAXED" Then dkdPal = 8 Else dkdPal = 14
+        DOCK_Text dkdPal, dkdName, DOCK_PX1 + 8, dkdY + 16, 255
     End If
     If dockMsgTimer > 0 Then
         If dockMsgBad Then dkdPal = 12 Else dkdPal = 10
-        DOCK_Text dkdPal, dockMsg, DOCK_PX1 + 8, dkdY + 16, 255
+        DOCK_Text dkdPal, dockMsg, DOCK_PX1 + 8, dkdY + 32, 255
     End If
     DOCK_Text 8, "ENTER/A BUY  ESC/B GO", DOCK_PX1 + 8, DOCK_PY2 - 18, 255
 

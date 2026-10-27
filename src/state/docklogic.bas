@@ -11,7 +11,7 @@
 ' Local variable prefix: dk*
 
 Const DOCK_LAUNCH  = UPG_COUNT + 1
-Const DOCK_VISIBLE = 8     ' list rows on screen; the list scrolls to keep the cursor in view
+Const DOCK_VISIBLE = 7     ' list rows on screen; the list scrolls to keep the cursor in view
 Const DOCK_NONE    = 0
 Const DOCK_MOVED   = 1
 Const DOCK_BOUGHT  = 2

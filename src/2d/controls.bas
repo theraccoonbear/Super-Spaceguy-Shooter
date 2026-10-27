@@ -3,7 +3,7 @@
 ' CONTROLS_Prep    remember where to return to; snapshot keys so the opening press isn't re-read
 ' CONTROLS_Update  render current page; left/right flips page, ESC returns
 
-Const CTL_PAGES  = 2
+Const CTL_PAGES  = 4   ' keyboard, gamepad, then SHIP SYSTEMS over two pages (#268)
 Const CTL_KEY_X  = 28
 Const CTL_ACT_X  = 124
 Const CTL_ROW_Y  = 46
@@ -30,6 +30,22 @@ Sub CONTROLS_Row (ctlrRow As Integer, ctlrKey As String, ctlrAct As String)
     FONT_PrintAlpha fontPalette(9),  backBuffer, ctlrAct, CTL_ACT_X, ctlrY, 255
 End Sub
 
+' SHIP SYSTEMS page csPart (0 or 1): six dock upgrades each, name and levels, then what it does.
+Sub CONTROLS_Systems (csPart As Integer)
+    Dim csI As Integer, csId As Integer, csY As Integer, csNm As String, csLv As String
+    FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "SHIP SYSTEMS  " + LTrim$(Str$(csPart + 3)) + "/4", 30, scrW, 255
+    For csI = 1 To 6
+        csId = csPart * 6 + csI
+        csY = 48 + (csI - 1) * 28
+        csNm = upgNames$(csId)
+        If InStr(csNm, ",") > 0 Then csNm = Left$(csNm, InStr(csNm, ",") - 1) + " / " + Mid$(csNm, InStr(csNm, ",") + 1)
+        If csId = UPG_REPAIR Then csLv = "PER DOCK" Else csLv = LTrim$(Str$(upgMax(csId))) + " LV"
+        FONT_PrintAlpha fontPalette(15), backBuffer, csNm, CTL_KEY_X, csY, 255
+        FONT_PrintAlpha fontPalette(8), backBuffer, csLv, scrW - 28 - Len(csLv) * FONT_CHAR_W, csY, 255
+        FONT_PrintAlpha fontPalette(9), backBuffer, UPG_Info$(csId), CTL_KEY_X + 16, csY + 12, 255
+    Next csI
+End Sub
+
 Sub CONTROLS_Update ()
     Dim ctlEsc As Integer, ctlLf As Integer, ctlRt As Integer, ctlSy As Integer
 
@@ -47,7 +63,7 @@ Sub CONTROLS_Update ()
     UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "CONTROLS"
 
     If ctlPage = 0 Then
-        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "KEYBOARD  1/2", 30, scrW, 255
+        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "KEYBOARD  1/4", 30, scrW, 255
         CONTROLS_Row 0, "ARROWS/WASD", "MOVE SHIP"
         CONTROLS_Row 1, "SPACE",       "FIRE"
         CONTROLS_Row 2, "E",           "EVASIVE ROLL (DOCK)"
@@ -60,8 +76,8 @@ Sub CONTROLS_Update ()
         CONTROLS_Row 9, "F11",         "FULLSCREEN"
         CONTROLS_Row 10, "HOLD SPACE", "FAST-FWD STORY"
         CONTROLS_Row 11, "SPACE+ESC",  "SKIP STORY"
-    Else
-        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "GAMEPAD  2/2", 30, scrW, 255
+    ElseIf ctlPage = 1 Then
+        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "GAMEPAD  2/4", 30, scrW, 255
         CONTROLS_Row 0, "LEFT STICK",  "MOVE / MENU SELECT"
         CONTROLS_Row 1, "A",           "FIRE / MENU OK"
         CONTROLS_Row 2, "B",           "FIRE / MENU BACK"
@@ -74,6 +90,8 @@ Sub CONTROLS_Update ()
         CONTROLS_Row 9, " STICK U/D",  "TILT CAMERA"
         CONTROLS_Row 10, "HOLD A/B",    "FAST-FWD STORY"
         CONTROLS_Row 11, "A+START",     "SKIP STORY"
+    Else
+        CONTROLS_Systems ctlPage - 2
     End If
 
     FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "<- -> page   ESC/B back", scrH - 14, scrW, 255

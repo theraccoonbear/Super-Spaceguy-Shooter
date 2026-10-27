@@ -11,6 +11,7 @@ Sub GAME_ResetState
 
     UPG_Reset
     credits = cliCredits
+    ablHintTimer = 0
     score = 0 : IF settingNerf THEN stageScore = BOSS_TRIGGER_NERF ELSE stageScore = BOSS_TRIGGER
     lives = shieldMax : shipLives = 3 : laserEnergy = laserMax : gameOver = 0 : diffTime = 0 : diffScale = 0 : levelNum = 0
     fuelLevel = fuelMax : fuelStranded = 0

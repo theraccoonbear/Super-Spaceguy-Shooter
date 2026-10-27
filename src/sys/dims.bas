@@ -253,6 +253,7 @@ DIM SHARED tractorR    AS SINGLE, tractorPull AS SINGLE
 DIM SHARED novaCharges AS INTEGER, novaMax AS INTEGER
 DIM SHARED novaRadius  AS SINGLE, novaBossDmg AS INTEGER
 DIM SHARED novaFxTimer AS INTEGER
+DIM SHARED ablHintText AS STRING, ablHintTimer AS INTEGER   ' launch hint for a newly bought ability (abilities.bas)
 DIM SHARED rollTimer   AS INTEGER, rollCool AS INTEGER, rollCoolMax AS INTEGER, rollDir AS INTEGER
 DIM SHARED rollFrames  AS INTEGER : rollFrames = 20
 DIM SHARED rollSpeed   AS SINGLE  : rollSpeed  = 0.32

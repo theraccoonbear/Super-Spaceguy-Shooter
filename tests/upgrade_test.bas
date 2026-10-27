@@ -107,6 +107,38 @@ CR_Add crBoss
 UT_Assert credits = 825, "a boss earns 600"
 
 Print ""
+Print "--- dock info lines: what it does, what the next level changes ---"
+UPG_Reset
+UT_Assert UPG_Info$(UPG_LASER) = "BIGGER, FASTER LASER BANK", "laser info comes from upgdesc_laser"
+UT_Assert UPG_Next$(UPG_LASER) = "MAX 100>125, REGEN +20%", "laser next: MAX 100>125, REGEN +20% (" + UPG_Next$(UPG_LASER) + ")"
+UT_Assert UPG_Next$(UPG_CANNON) = "NEXT: 2 PARALLEL SHOTS", "cannon next: 2 parallel shots"
+UT_Assert UPG_Next$(UPG_RAPID) = "SHOT DELAY .18>.14S", "rapid next: SHOT DELAY .18>.14S (" + UPG_Next$(UPG_RAPID) + ")"
+UT_Assert UPG_Next$(UPG_NOVA) = "CHARGES/STAGE 0>1" And Left$(UPG_Info$(UPG_NOVA), 4) = "Q/Y:", "nova: charges 0>1, and its info names the keys"
+UT_Assert UPG_Next$(UPG_ROLL) = "UNLOCKS THE ROLL" And Left$(UPG_Info$(UPG_ROLL), 4) = "E/X:", "roll: unlocks, and its info names the keys"
+UT_Assert UPG_Next$(UPG_ARMOUR) = "CRASH DAMAGE 100>75%", "armour next: CRASH DAMAGE 100>75% (" + UPG_Next$(UPG_ARMOUR) + ")"
+credits = 10000
+utR = UPG_Buy%(UPG_CANNON)
+UT_Assert UPG_Next$(UPG_CANNON) = "NEXT: 3-WAY SPREAD", "after twin: next is the 3-way spread"
+utR = UPG_Buy%(UPG_CANNON)
+UT_Assert UPG_Next$(UPG_CANNON) = "MAXED", "after spread: MAXED"
+lives = 60
+UT_Assert UPG_Next$(UPG_REPAIR) = "SHIELDS 60>100", "repair shows the refill (" + UPG_Next$(UPG_REPAIR) + ")"
+
+Print ""
+Print "--- launch hint for a newly bought ability ---"
+UPG_Reset : credits = 10000
+utR = UPG_Buy%(UPG_NOVA)
+UT_Assert upgHintPending = GTEXT_Var$("hint_nova"), "first nova queues NOVA READY - Q / PAD Y"
+utR = UPG_Buy%(UPG_NOVA)
+UT_Assert upgHintPending = GTEXT_Var$("hint_nova"), "nova level 2 adds no second hint"
+utR = UPG_Buy%(UPG_ROLL)
+UT_Assert upgHintPending = GTEXT_Var$("hint_nova") + Chr$(10) + GTEXT_Var$("hint_roll"), "first roll adds its own line"
+utR = UPG_Buy%(UPG_THRUST)
+UT_Assert InStr(upgHintPending, "THRUST") = 0, "passive upgrades give no hint"
+UPG_Reset
+UT_Assert upgHintPending = "", "a new run clears pending hints"
+
+Print ""
 Print "--- buying ---"
 UPG_Reset : credits = 100 : utBuys = 0
 utR = UPG_Buy%(UPG_LASER)
@@ -121,7 +153,7 @@ UT_Assert UT_Near%(fireCool, 0.1), "rapid fire 2: 0.10 s between shots"
 utCr = credits
 utR = UPG_Buy%(UPG_RAPID)
 UT_Assert utR = UPG_MAXED And credits = utCr, "rapid fire past max: refused, no charge"
-UT_Assert UPG_Price&(UPG_RAPID) = 0 And UPG_Desc$(UPG_RAPID) = "FULLY UPGRADED", "maxed: no price, FULLY UPGRADED"
+UT_Assert UPG_Price&(UPG_RAPID) = 0 And UPG_Next$(UPG_RAPID) = "MAXED", "maxed: no price, info line says MAXED"
 
 Print ""
 Print "--- effects ---"
@@ -144,9 +176,10 @@ UT_Assert UT_Near%(tractorR, 10) And UT_Near%(tractorPull, 0.05), "tractor beam 
 UT_Assert UT_ArmourCheck% = -1, "hull armour: 100 -> 75 -> 50, 17 -> 13 at 75%"
 utOk = -1
 For utI = 1 To UPG_COUNT
-    If Len(UPG_Desc$(utI)) = 0 Or Len(UPG_Desc$(utI)) > 25 Then utOk = 0 : Print "  desc: "; UPG_Desc$(utI)
+    If Len(UPG_Next$(utI)) = 0 Or Len(UPG_Next$(utI)) > 25 Then utOk = 0 : Print "  next: "; UPG_Next$(utI)
+    If Len(UPG_Info$(utI)) = 0 Or Len(UPG_Info$(utI)) > 25 Then utOk = 0 : Print "  info: "; UPG_Info$(utI)
 Next utI
-UT_Assert utOk <> 0, "every row has a description that fits the dock panel (25 chars)"
+UT_Assert utOk <> 0, "every row has an info line and a next-level line that fit the dock panel (25 chars)"
 
 Print ""
 Print "--- hull repair: once per dock ---"

@@ -114,7 +114,7 @@ Print ""
 Print "--- scrolling ---"
 DT_Script 0, "2 2 S/4 4 S/6 6 S/8 8 S/10 10 S/12 12 S/14 14 S/16 16 S/18 18 S"
 dtLeft = DT_Run%(20)
-DT_Assert dockSel = 10 And dockTop = 3, "9 downs: cursor on row 10, list scrolled to keep it in view"
+DT_Assert dockSel = 10 And dockTop = 10 - DOCK_VISIBLE + 1, "9 downs: cursor on row 10, list scrolled to keep it in view"
 
 Print ""
 Print "--- skip in one press ---"

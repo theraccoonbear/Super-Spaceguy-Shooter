@@ -9,13 +9,21 @@
 ' Local variable prefix: ab*
 
 Const NOVA_FX_FRAMES = 32
+Const ABL_HINT_FRAMES = 180   ' how long "NOVA READY - Q / PAD Y" stays up after launch
+
 
 Sub ABL_Update
     Dim abuDir As Integer, abuNova As Integer, abuRoll As Integer
     UPG_RollTick
     UPG_RegenTick
     If novaFxTimer > 0 Then novaFxTimer = novaFxTimer - 1
+    If ablHintTimer > 0 Then ablHintTimer = ablHintTimer - 1
     If gameState <> GS_PLAYING Or deathTimer > 0 Then Exit Sub
+    ' first launch after buying an active ability: say which key fires it
+    If Len(upgHintPending) > 0 Then
+        ablHintText = upgHintPending : upgHintPending = ""
+        ablHintTimer = ABL_HINT_FRAMES
+    End If
 
     abuRoll = KEY_Pressed%(E3D_KEY_E) Or KEY_Pressed%(E3D_KEY_PAD_X)
     If abuRoll Then
@@ -97,6 +105,7 @@ Sub ABL_Draw
     Dim abdSX As Single, abdSY As Single, abdEX As Single, abdEY As Single
     Dim abdOk As Integer, abdOk2 As Integer, abdR As Single, abdF As Single, abdK As Integer, abdI As Integer
     _Dest backBuffer
+    If ablHintTimer > 0 Then ABL_DrawHint
     ' nova: a ring racing out to the blast radius, fading as it goes
     If novaFxTimer > 0 Then
         abdF = 1 - novaFxTimer / NOVA_FX_FRAMES
@@ -127,4 +136,21 @@ Sub ABL_Draw
             End If
         Next abdI
     End If
+End Sub
+
+' The launch hint: one centred line per newly bought ability, fading out at the end.
+Sub ABL_DrawHint
+    Dim abhA As Integer, abhLine As String, abhP As Integer, abhQ As Integer, abhY As Integer
+    abhA = 255
+    If ablHintTimer < 40 Then abhA = Int(255 * ablHintTimer / 40)
+    abhY = 44 : abhP = 1
+    Do While abhP <= Len(ablHintText)
+        abhQ = InStr(abhP, ablHintText, Chr$(10))
+        If abhQ = 0 Then abhQ = Len(ablHintText) + 1
+        abhLine = Mid$(ablHintText, abhP, abhQ - abhP)
+        Line (scrW \ 2 - Len(abhLine) * 4 - 5, abhY - 2)-(scrW \ 2 + Len(abhLine) * 4 + 4, abhY + 16), _RGBA(0, 10, 30, abhA * 3 \ 4), BF
+        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, abhLine, abhY, scrW, abhA
+        abhY = abhY + 20
+        abhP = abhQ + 1
+    Loop
 End Sub
