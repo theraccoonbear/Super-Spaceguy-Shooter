@@ -70,26 +70,6 @@ jobs:
           echo "vCPUs: $CPUS"
           QB64_TEST_JOBS="$CPUS" QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
 
-      # Full-playthrough smoke test (#100), Linux only (it needs Xvfb). It builds its own
-      # sss with no telemetry credentials: the scripted run OKs the data notice, so a
-      # build with them would send telemetry and a leaderboard score. "Build sss.bas"
-      # below rebuilds with the credentials.
-      - name: Playthrough smoke test (tests/playthrough)
-        if: runner.os == 'Linux'
-        timeout-minutes: 20
-        shell: bash
-        run: |
-          DB_URL= DB_KEY= QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
-          tests/playthrough/run.sh
-
-      - name: Upload playthrough logs on failure
-        if: failure() && runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: playthrough-logs
-          path: builds/playthrough/
-          if-no-files-found: ignore
-
       - name: Build sss.bas
         shell: bash
         env:
@@ -137,9 +117,48 @@ jobs:
           name: release-${{ matrix.artifact-name }}
           path: ${{ matrix.release-asset-name }}
 
+  # Full-playthrough smoke test (#100). Its own job so it runs alongside the build matrix
+  # instead of adding minutes to Build Linux; Linux only, as it needs Xvfb. The sss it
+  # tests is built with no telemetry credentials: the scripted run OKs the data notice,
+  # so a build with them would send telemetry and a leaderboard score.
+  playthrough:
+    needs: dict-check
+    name: Playthrough smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QB64-PE
+        uses: ./.github/actions/setup-qb64pe
+        with:
+          qb64pe-version: ${{ env.QB64PE_VERSION }}
+
+      - name: Build sss.bas (no telemetry credentials)
+        shell: bash
+        run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+
+      - name: Playthrough smoke test (tests/playthrough)
+        timeout-minutes: 20
+        shell: bash
+        run: tests/playthrough/run.sh
+
+      - name: Dump compile log on failure
+        if: failure()
+        shell: bash
+        run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
+
+      - name: Upload playthrough logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playthrough-logs
+          path: builds/playthrough/
+          if-no-files-found: ignore
+
   gate:
     name: All checks pass
-    needs: [dict-check, build]
+    needs: [dict-check, build, playthrough]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -148,6 +167,7 @@ jobs:
           fail=0
           [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
           [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
+          [[ "${{ needs.playthrough.result }}" != "success" ]] && echo "FAIL playthrough: ${{ needs.playthrough.result }}" && fail=1
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
   release:
