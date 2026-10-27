@@ -161,9 +161,94 @@ jobs:
           path: builds/playthrough/
           if-no-files-found: ignore
 
+  server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Cache server/node_modules
+        id: cache_server_modules
+        uses: actions/cache@v4
+        with:
+          path: server/node_modules
+          key: server-node-modules-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+      - name: Install
+        if: steps.cache_server_modules.outputs.cache-hit != 'true'
+        working-directory: server
+        run: npm ci
+      - name: Test
+        working-directory: server
+        run: npm test
+
+  deploy-server:
+    name: Deploy server
+    needs: server
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    concurrency:
+      group: deploy-server
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect server/ changes
+        id: changes
+        run: |
+          before="${{ github.event.before }}"
+          if [[ "$before" =~ ^0+$ ]] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$(git diff --name-only "$before" "${{ github.sha }}" -- server/)" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes under server/; skipping deploy."
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.changed == 'true'
+        with:
+          node-version: 24
+      - name: Cache server/node_modules
+        if: steps.changes.outputs.changed == 'true'
+        id: cache_server_modules
+        uses: actions/cache@v4
+        with:
+          path: server/node_modules
+          key: server-node-modules-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+      - name: Install
+        if: steps.changes.outputs.changed == 'true' && steps.cache_server_modules.outputs.cache-hit != 'true'
+        working-directory: server
+        run: npm ci
+      - name: Check Cloudflare secret
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret is not set"
+            exit 1
+          fi
+      - name: Apply D1 migrations
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 migrations apply sss --remote
+      - name: Deploy Worker
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
   gate:
     name: All checks pass
-    needs: [dict-check, build, playthrough]
+    needs: [dict-check, build, playthrough, server]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -173,6 +258,7 @@ jobs:
           [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
           [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
           [[ "${{ needs.playthrough.result }}" != "success" ]] && echo "FAIL playthrough: ${{ needs.playthrough.result }}" && fail=1
+          [[ "${{ needs.server.result }}"     != "success" ]] && echo "FAIL server:     ${{ needs.server.result }}"     && fail=1
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
   release:

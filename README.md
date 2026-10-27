@@ -137,17 +137,47 @@ Each subsystem doc below has its own "test in isolation" section with more detai
 
 ## Telemetry and leaderboards
 
-The game can optionally send anonymous gameplay events and score submissions to a [Supabase](https://supabase.com) backend. This is entirely off unless you configure it:
+The game can optionally send anonymous gameplay events and score submissions to a small backend we own: a [Cloudflare Worker](https://developers.cloudflare.com/workers/) backed by a [D1](https://developers.cloudflare.com/d1/) (SQLite) database, in [`server/`](server/). This is entirely off unless you configure it:
 
 1. Create `assets/.env` (gitignored) at the repo root:
    ```
-   DB_URL=https://your-project.supabase.co/rest/v1
-   DB_KEY=your-supabase-anon-key
+   DB_URL=https://sss-api.<your-account>.workers.dev
+   DB_KEY=<the API_KEY you set on the Worker>
    ```
 2. Leave it empty or absent to disable network telemetry entirely. The game still writes a local `sss_telemetry.csv`, and no network requests are made.
 3. Players are asked for one-time consent in-game before anything is sent; `--no-telem` skips telemetry (and the consent prompt) for a single session.
 
-See [`src/sys/README-telemetry.md`](src/sys/README-telemetry.md) for the event schema and Supabase table layout, and [`src/sys/README-http.md`](src/sys/README-http.md) for the underlying HTTP layer.
+Builds released before the switch have the old Supabase URL embedded and keep calling it; only builds made after `DB_URL`/`DB_KEY` point at the Worker use it.
+
+See [`src/sys/README-telemetry.md`](src/sys/README-telemetry.md) for the event schema and [`src/sys/README-http.md`](src/sys/README-http.md) for the underlying HTTP layer.
+
+### Deploying the backend
+
+The Worker serves the three calls the game makes: `POST /sss_telemetry`, `POST /scores` (both need the key), and the public `GET /top_scores`. The schema is in `server/migrations/`. One-time setup, from `server/`:
+
+1. Create a free [Cloudflare account](https://dash.cloudflare.com/sign-up).
+2. `npm ci`, then `npx wrangler login`.
+3. `npx wrangler d1 create sss` and paste the printed `database_id` into `server/wrangler.toml`.
+4. `npm run migrate` to create the tables in the remote database.
+5. `npx wrangler secret put API_KEY` and enter a long random string (e.g. `openssl rand -hex 32`). This is the game's `DB_KEY`.
+6. `npm run deploy`. Wrangler prints the Worker URL (`https://sss-api.<your-account>.workers.dev`).
+7. In the GitHub repo settings, set the Actions secrets `DB_URL` to the Worker URL and `DB_KEY` to the `API_KEY`, then rebuild. CI writes them into `assets/.env`.
+
+Run `npm test` in `server/` to test the Worker locally (Vitest in the Workers runtime with D1 migrations applied); CI runs it too. Later schema changes go in a new `server/migrations/NNNN_*.sql` file, applied with `npm run migrate`.
+
+**Automatic deploys.** Pushes to `master` that change anything under `server/` deploy automatically: CI's "Deploy server" job applies the D1 migrations, then runs `wrangler deploy`, after the server tests pass. It needs two repo Actions secrets: `CLOUDFLARE_API_TOKEN` (Cloudflare dashboard → My Profile → API Tokens → the "Edit Cloudflare Workers" template, plus D1 Edit permission) and `CLOUDFLARE_ACCOUNT_ID`. The manual `npm run migrate` / `npm run deploy` steps above remain for first-time setup and emergencies.
+
+**Local testing.** To run the Worker on your machine with a local D1, from `server/`:
+
+```bash
+echo "API_KEY=localkey" > .dev.vars            # the local DB_KEY; .dev.vars is gitignored
+npx wrangler d1 migrations apply sss --local
+npx wrangler dev --ip 0.0.0.0                  # serves http://localhost:8787
+```
+
+Then point the game at it in `assets/.env` with `DB_KEY=localkey` and a `DB_URL` that depends on where the game runs. A native build uses `DB_URL=http://localhost:8787`. A game run with `tools/dev run` uses `DB_URL=http://host.containers.internal:8787`, because inside the container `localhost` is the container, not your machine. `DB_URL` and `DB_KEY` are embedded at build time, so rebuild after editing `assets/.env`.
+
+The free plan allows 100,000 Worker requests and 100,000 D1 rows written per day; past that, requests fail until the 00:00 UTC reset. Cloudflare's [Workers](https://developers.cloudflare.com/workers/platform/limits/) and [D1](https://developers.cloudflare.com/d1/platform/pricing/) limits pages list no inactivity pause.
 
 ---
 
@@ -177,7 +207,7 @@ The renderer lives under `src/3d/` (`mesh.bas`, `poly.bas`, `matrix.bas`, `obj.b
 
 ### HTTP and telemetry
 
-`src/sys/http.bas` is a small non-blocking HTTP client built on libcurl via QB64-PE's `DECLARE LIBRARY` C interop (`src/sys/curl_qb64.h`), used to POST/GET against a Supabase backend without blocking the game loop. `src/sys/telemetry.bas` logs gameplay events locally and, if configured, batches and POSTs them at session end; `src/sys/lbrd.bas` polls and parses the top-scores leaderboard. See [`src/sys/README-http.md`](src/sys/README-http.md) and [`src/sys/README-telemetry.md`](src/sys/README-telemetry.md).
+`src/sys/http.bas` is a small non-blocking HTTP client built on libcurl via QB64-PE's `DECLARE LIBRARY` C interop (`src/sys/curl_qb64.h`), used to POST/GET against the [Cloudflare Worker backend](server/) without blocking the game loop. `src/sys/telemetry.bas` logs gameplay events locally and, if configured, batches and POSTs them at session end; `src/sys/lbrd.bas` polls and parses the top-scores leaderboard. See [`src/sys/README-http.md`](src/sys/README-http.md) and [`src/sys/README-telemetry.md`](src/sys/README-telemetry.md).
 
 ### Architecture
 
