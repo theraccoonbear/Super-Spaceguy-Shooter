@@ -115,6 +115,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"
     CLI_Emit guFH, "  --no-telem             Disable gameplay telemetry for this session"
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
+    CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"

@@ -77,6 +77,7 @@ TESTS=(
   rng_test
   titlenav_test
   textedit_test
+  lbrd_test
 )
 
 # Dev tools at the repo root: compiled only (they're interactive), so an engine change

@@ -2,11 +2,16 @@
 '
 ' LBRD_Poll              enqueue a GET for the top-N scores (call once per title entry)
 ' LBRD_Parse body$       parse Supabase JSON array into lbrdName$/lbrdScore arrays
+' LBRD_JsonStr$(s$, q, e)  decode the JSON string whose opening quote is at q; e = closing quote (0 = unterminated)
+' LBRD_DisplayName$(rank, name$)  name as the board draws it: rank color token + name cut to LBRD_NAME_COLS visible chars
 '
 ' Reads DB_URL, DB_KEY from sss.bas (empty = feature disabled)
 ' Writes lbrdName$(), lbrdScore(), lbrdCount, lbrdPollDone
 '
 ' Local variable prefix: lb*
+
+' 13 columns leave a gap before the score column (name at scrW\2-96, score at scrW\2+20)
+Const LBRD_NAME_COLS = 13
 
 Sub LBRD_Poll ()
     If Len(DB_URL) = 0 Then Exit Sub
@@ -16,81 +21,89 @@ Sub LBRD_Poll ()
     lbrdPollDone = -1
 End Sub
 
+Function LBRD_JsonStr$ (lbjS As String, lbjQ As Long, lbjEnd As Long)
+    Dim lbjI As Long, lbjC As String, lbjOut As String, lbjU As Long
+    lbjEnd = 0
+    lbjI = lbjQ + 1
+    Do While lbjI <= Len(lbjS)
+        lbjC = Mid$(lbjS, lbjI, 1)
+        If lbjC = Chr$(34) Then
+            lbjEnd = lbjI
+            LBRD_JsonStr$ = lbjOut
+            Exit Function
+        ElseIf lbjC = "\" Then
+            lbjI = lbjI + 1
+            Select Case Mid$(lbjS, lbjI, 1)
+                Case "n" : lbjOut = lbjOut + Chr$(10)
+                Case "r" : lbjOut = lbjOut + Chr$(13)
+                Case "t" : lbjOut = lbjOut + Chr$(9)
+                Case "b", "f"
+                Case "u"
+                    lbjU = Val("&H" + Mid$(lbjS, lbjI + 1, 4))
+                    If lbjU >= 32 And lbjU <= 126 Then lbjOut = lbjOut + Chr$(lbjU) Else lbjOut = lbjOut + "?"
+                    lbjI = lbjI + 4
+                Case Else : lbjOut = lbjOut + Mid$(lbjS, lbjI, 1)  ' \" \\ \/
+            End Select
+        Else
+            lbjOut = lbjOut + lbjC
+        End If
+        lbjI = lbjI + 1
+    Loop
+    LBRD_JsonStr$ = ""
+End Function
+
 ' Parse a Supabase JSON array like:
 '   [{"player_name":"ACE","score":1234},{"player_name":"BOB","score":500},...]
-' Extraction is a linear scan -- no full parser needed for this fixed shape.
+' Scans key/value pairs in order, so quotes and braces inside a name don't end it early.
+' Stops at the first malformed object, keeping the entries before it.
 Sub LBRD_Parse (lbBody As String)
-    Dim lbI    As Integer
-    Dim lbPos  As Integer
-    Dim lbEnd  As Integer
-    Dim lbName As String
-    Dim lbScr  As Long
+    Dim lbPos As Long, lbEnd As Long
+    Dim lbKey As String, lbStr As String, lbLit As String, lbCh As String
+    Dim lbName As String, lbScr As Long
     Dim lbHasN As Integer, lbHasS As Integer
 
     lbrdCount = 0
     lbPos = 1
-    lbI   = 0
-
-    Do While lbPos <= Len(lbBody) And lbrdCount < LBRD_MAX
-        ' find next object open-brace
+    Do While lbrdCount < LBRD_MAX
         lbPos = InStr(lbPos, lbBody, "{")
-        If lbPos = 0 Then Exit Do
-
-        ' find matching close-brace (objects are flat -- no nested braces in this response)
-        lbEnd = InStr(lbPos, lbBody, "}")
-        If lbEnd = 0 Then Exit Do
-
-        Dim lbObj As String
-        lbObj = Mid$(lbBody, lbPos, lbEnd - lbPos + 1)
-        lbPos = lbEnd + 1
-
+        If lbPos = 0 Then Exit Sub
+        lbPos = lbPos + 1
         lbName = "" : lbScr = 0 : lbHasN = 0 : lbHasS = 0
-
-        ' extract "player_name":"VALUE"
-        Dim lbNP As Integer
-        lbNP = InStr(lbObj, Chr$(34) + "player_name" + Chr$(34))
-        If lbNP > 0 Then
-            lbNP = InStr(lbNP, lbObj, ":")
-            If lbNP > 0 Then
-                Dim lbNQ1 As Integer, lbNQ2 As Integer
-                lbNQ1 = InStr(lbNP, lbObj, Chr$(34))
-                If lbNQ1 > 0 Then
-                    lbNQ2 = InStr(lbNQ1 + 1, lbObj, Chr$(34))
-                    If lbNQ2 > 0 Then
-                        lbName = Mid$(lbObj, lbNQ1 + 1, lbNQ2 - lbNQ1 - 1)
-                        lbHasN = -1
-                    End If
+        Do
+            Do While lbPos <= Len(lbBody)
+                lbCh = Mid$(lbBody, lbPos, 1)
+                If lbCh <> " " And lbCh <> "," And lbCh <> Chr$(9) And lbCh <> Chr$(10) And lbCh <> Chr$(13) Then Exit Do
+                lbPos = lbPos + 1
+            Loop
+            If lbPos > Len(lbBody) Then Exit Sub
+            If lbCh = "}" Then lbPos = lbPos + 1 : Exit Do
+            If lbCh <> Chr$(34) Then Exit Sub
+            lbKey = LBRD_JsonStr$(lbBody, lbPos, lbEnd)
+            If lbEnd = 0 Then Exit Sub
+            lbPos = InStr(lbEnd + 1, lbBody, ":")
+            If lbPos = 0 Then Exit Sub
+            lbPos = lbPos + 1
+            Do While Mid$(lbBody, lbPos, 1) = " "
+                lbPos = lbPos + 1
+            Loop
+            If Mid$(lbBody, lbPos, 1) = Chr$(34) Then
+                lbStr = LBRD_JsonStr$(lbBody, lbPos, lbEnd)
+                If lbEnd = 0 Then Exit Sub
+                lbPos = lbEnd + 1
+                If lbKey = "player_name" Then lbName = lbStr : lbHasN = -1
+            Else
+                lbLit = ""
+                Do While lbPos <= Len(lbBody)
+                    lbCh = Mid$(lbBody, lbPos, 1)
+                    If lbCh = "," Or lbCh = "}" Or lbCh = " " Or lbCh = Chr$(10) Or lbCh = Chr$(13) Then Exit Do
+                    lbLit = lbLit + lbCh
+                    lbPos = lbPos + 1
+                Loop
+                If lbKey = "score" And Left$(lbLit, 1) >= "0" And Left$(lbLit, 1) <= "9" Then
+                    lbScr = Val(lbLit) : lbHasS = -1
                 End If
             End If
-        End If
-
-        ' extract "score":NUMBER
-        Dim lbSP As Integer
-        lbSP = InStr(lbObj, Chr$(34) + "score" + Chr$(34))
-        If lbSP > 0 Then
-            lbSP = InStr(lbSP, lbObj, ":")
-            If lbSP > 0 Then
-                Dim lbSStart As Integer, lbSEnd As Integer, lbSC As String
-                lbSStart = lbSP + 1
-                Do While lbSStart <= Len(lbObj) And Mid$(lbObj, lbSStart, 1) = " "
-                    lbSStart = lbSStart + 1
-                Loop
-                lbSEnd = lbSStart
-                Do While lbSEnd <= Len(lbObj)
-                    lbSC = Mid$(lbObj, lbSEnd, 1)
-                    If lbSC >= "0" And lbSC <= "9" Then
-                        lbSEnd = lbSEnd + 1
-                    Else
-                        Exit Do
-                    End If
-                Loop
-                If lbSEnd > lbSStart Then
-                    lbScr = Val(Mid$(lbObj, lbSStart, lbSEnd - lbSStart))
-                    lbHasS = -1
-                End If
-            End If
-        End If
-
+        Loop
         If lbHasN And lbHasS Then
             lbrdCount = lbrdCount + 1
             lbrdName(lbrdCount)  = lbName
@@ -98,6 +111,19 @@ Sub LBRD_Parse (lbBody As String)
         End If
     Loop
 End Sub
+
+' Rank 1 gold, 2-3 bright white, the rest blue-gray; tokens in the name override it.
+Function LBRD_DisplayName$ (lbdnRank As Integer, lbdnName As String)
+    Dim lbdnPfx As String
+    If lbdnRank = 1 Then
+        lbdnPfx = "~E"
+    ElseIf lbdnRank <= 3 Then
+        lbdnPfx = "~F"
+    Else
+        lbdnPfx = "~9"
+    End If
+    LBRD_DisplayName$ = lbdnPfx + FONT_RichTrunc$(lbdnName, LBRD_NAME_COLS)
+End Function
 
 ' Return 1-based rank of score$ in lbrdScore(), or 0 if not in the list.
 ' Uses lbrdCount + 1 (just off the board) when score beats some entries.

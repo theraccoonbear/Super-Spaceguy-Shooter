@@ -21,23 +21,23 @@ Sub GS_LEADERBOARD_Update ()
     If lbrdCount = 0 Then
         FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "NO SCORES YET.", lbdY + 60, scrW, 255
     Else
-        Dim lbdRankX  As Integer : lbdRankX  = scrW \ 2 - 118
+        Dim lbdRank   As String
         Dim lbdNameX  As Integer : lbdNameX  = scrW \ 2 - 96
         Dim lbdScoreX As Integer : lbdScoreX = scrW \ 2 + 20
         Dim lbdClr    As Long
         Dim lbdRowY   As Integer
-        Dim lbdPfx    As String
         For lbdI = 1 To lbrdCount
             lbdRowY = lbdY + (lbdI - 1) * 16
             If lbdI = 1 Then
-                lbdClr = fontPalette(14) : lbdPfx = "~E"  ' gold
+                lbdClr = fontPalette(14)  ' gold
             ElseIf lbdI <= 3 Then
-                lbdClr = fontPalette(15) : lbdPfx = "~F"  ' bright white
+                lbdClr = fontPalette(15)  ' bright white
             Else
-                lbdClr = fontPalette(9)  : lbdPfx = "~9"  ' blue-gray
+                lbdClr = fontPalette(9)   ' blue-gray
             End If
-            FONT_PrintAlpha    fontPalette(8), backBuffer, LTrim$(Str$(lbdI)) + ".", lbdRankX, lbdRowY, 200
-            FONT_PrintRichAlpha fontPalette(), backBuffer, lbdPfx + FONT_RichTrunc$(lbrdName(lbdI), 14), lbdNameX, lbdRowY, 255
+            lbdRank = LTrim$(Str$(lbdI)) + "."  ' right-aligned so "10." clears the name column
+            FONT_PrintAlpha    fontPalette(8), backBuffer, lbdRank, lbdNameX - 2 - Len(lbdRank) * FONT_CHAR_W, lbdRowY, 200
+            FONT_PrintRichAlpha fontPalette(), backBuffer, LBRD_DisplayName$(lbdI, lbrdName(lbdI)), lbdNameX, lbdRowY, 255
             FONT_PrintAlpha    lbdClr,         backBuffer, LTrim$(Str$(lbrdScore(lbdI))), lbdScoreX, lbdRowY, 255
         Next lbdI
     End If

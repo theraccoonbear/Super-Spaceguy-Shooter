@@ -1,0 +1,4 @@
+# Title -> COMMAND CONSOLE (ESC) -> LEADERBOARD (L). Pair with --scene title and
+# --leaderboard-file tests/input/leaderboard.json (README "Scripted playtests").
+30 32 ESC
+60 62 L
