@@ -165,6 +165,8 @@ The Worker serves the three calls the game makes: `POST /sss_telemetry`, `POST /
 
 Run `npm test` in `server/` to test the Worker locally (Vitest in the Workers runtime with D1 migrations applied); CI runs it too. Later schema changes go in a new `server/migrations/NNNN_*.sql` file, applied with `npm run migrate`.
 
+**Automatic deploys.** Pushes to `master` that change anything under `server/` deploy automatically: CI's "Deploy server" job applies the D1 migrations, then runs `wrangler deploy`, after the server tests pass. It needs two repo Actions secrets: `CLOUDFLARE_API_TOKEN` (Cloudflare dashboard → My Profile → API Tokens → the "Edit Cloudflare Workers" template, plus D1 Edit permission) and `CLOUDFLARE_ACCOUNT_ID`. The manual `npm run migrate` / `npm run deploy` steps above remain for first-time setup and emergencies.
+
 **Local testing.** To run the Worker on your machine with a local D1, from `server/`:
 
 ```bash
