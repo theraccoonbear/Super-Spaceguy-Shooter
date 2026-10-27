@@ -25,7 +25,7 @@
 '   ISC_Clear
 ' Local variable prefix: isc*
 
-Const ISC_MAX = 256
+Const ISC_MAX = 1024
 
 Dim Shared iscCount As Integer, iscActive As Integer, iscError As String
 Dim Shared iscFrom(1 To ISC_MAX) As Long, iscTo(1 To ISC_MAX) As Long, iscKey(1 To ISC_MAX) As Long

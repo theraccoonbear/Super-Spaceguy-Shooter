@@ -316,6 +316,8 @@ DIM SHARED bsmTurnDir      AS INTEGER  ' flyover dramatic turn direction: +1=rig
 DIM SHARED dbgOverlay  AS INTEGER
 DIM SHARED dbgGraveWas AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
+DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
+DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
 
 ' --- engine / render ---
 DIM SHARED vpMat AS E3D_Matrix4
