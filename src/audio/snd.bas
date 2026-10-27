@@ -8,6 +8,12 @@ Const SND_KICK_LEN   = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN  = 4410   ' 100ms snare
 Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
 Const SND_DEATH_LEN  = 32760  ' 742ms ship-death: three impacts then a deep BOOM
+Const SND_UIMOVE_LEN = 1764   ' 40ms dock / menu cursor tick
+Const SND_UIDENY_LEN = 5292   ' 120ms "can't do that" double buzz
+Const SND_UI_XFADE   = 96     ' a retriggered one-shot fades the old one out over this many samples (~2ms)
+Const SND_UI_MOVE = 1
+Const SND_UI_DENY = 2
+Const SND_UI_PUP  = 3
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -23,7 +29,6 @@ Dim Shared sndWhooshLg(0 To SND_WHOOSH_LEN - 1) As Single  ' large asteroid
 Dim Shared sndShootPos    As Integer : sndShootPos    = -1
 Dim Shared sndBoomPos     As Integer : sndBoomPos     = -1
 Dim Shared sndHitPos      As Integer : sndHitPos      = -1
-Dim Shared sndPupPos      As Integer : sndPupPos      = -1
 Dim Shared sndWhooshPos   As Integer : sndWhooshPos   = -1
 Dim Shared sndWhooshMdPos As Integer : sndWhooshMdPos = -1
 Dim Shared sndWhooshLgPos As Integer : sndWhooshLgPos = -1
@@ -37,6 +42,14 @@ Dim Shared sndDeathPos As Integer : sndDeathPos = -1
 Dim Shared sndKickPos  As Integer : sndKickPos  = -1
 Dim Shared sndSnarePos As Integer : sndSnarePos = -1
 Dim Shared sndHihatPos As Integer : sndHihatPos = -1
+
+' one-shot UI voice (#268): the playing sound, plus the one it replaced fading out, so a
+' retrigger never cuts a waveform off mid-cycle (the click). See SND_UiPlay / SND_UiNext!.
+Dim Shared sndUiMove(0 To SND_UIMOVE_LEN - 1) As Single
+Dim Shared sndUiDeny(0 To SND_UIDENY_LEN - 1) As Single
+Dim Shared sndUiCur As Integer, sndUiCurPos As Long : sndUiCurPos = -1
+Dim Shared sndUiOld As Integer, sndUiOldPos As Long : sndUiOldPos = -1
+Dim Shared sndUiOldGain As Single
 
 Dim Shared sndBlipPhase   As Single
 Dim Shared sndBlipFreq    As Single
@@ -71,6 +84,26 @@ Sub SND_Init()
         sndFade = 1.0 - (sndK / SND_PUP_LEN) ^ 2
         sndPup(sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) + Sin(6.2832 * sndF * 2.0 * sndK / SAMPLE_RATE) * 0.3) * sndFade * 0.25
     Next sndK
+    ' UI one-shots (#268): every one starts and ends at exactly 0 (raised-cosine attack and release)
+    For sndK = 0 To SND_UIMOVE_LEN - 1
+        sndUiMove(sndK) = (Sin(6.2832 * 760.0 * sndK / SAMPLE_RATE) + Sin(6.2832 * 1520.0 * sndK / SAMPLE_RATE) * 0.25) * SND_UiEnv!(sndK, SND_UIMOVE_LEN, 88, 660) * 0.22
+    Next sndK
+    For sndK = 0 To SND_UIDENY_LEN - 1
+        If sndK < 2205 Then
+            sndF = SND_UiEnv!(sndK, 2205, 88, 660)
+        ElseIf sndK >= 3087 Then
+            sndF = SND_UiEnv!(sndK - 3087, SND_UIDENY_LEN - 3087, 88, 660)
+        Else
+            sndF = 0
+        End If
+        sndUiDeny(sndK) = (Sin(6.2832 * 196.0 * sndK / SAMPLE_RATE) + Sin(6.2832 * 392.0 * sndK / SAMPLE_RATE) * 0.4) * sndF * 0.22
+    Next sndK
+    ' the power-up chime gets the same short attack, so it starts from silence even mid-mix
+    For sndK = 0 To 87
+        sndPup(sndK) = sndPup(sndK) * SND_UiEnv!(sndK, SND_PUP_LEN, 88, 88)
+    Next sndK
+    sndPup(SND_PUP_LEN - 1) = 0
+
     ' small asteroid: bright, sharp Doppler drop 400→160 Hz
     For sndK = 0 To SND_WHOOSH_LEN - 1
         sndGenT = sndK / SND_WHOOSH_LEN
@@ -220,7 +253,9 @@ End Sub
 Sub SND_Shoot() : sndShootPos  = 0 : End Sub
 Sub SND_Boom()  : sndBoomPos   = 0 : End Sub
 Sub SND_Hit()   : sndHitPos    = 0 : End Sub
-Sub SND_Pup()   : sndPupPos    = 0 : End Sub
+Sub SND_Pup()   : SND_UiPlay SND_UI_PUP : End Sub
+Sub SND_UiMove() : SND_UiPlay SND_UI_MOVE : End Sub
+Sub SND_UiDeny() : SND_UiPlay SND_UI_DENY : End Sub
 Sub SND_Whoosh(wscl As Single)
     If wscl > 2.5 Then
         sndWhooshLgPos = 0
@@ -243,3 +278,57 @@ Sub SND_Blip(blipFreq As Single)
     IF RNG!(RNG_AUDIO) > 0.45 THEN sndBlipPlosLen = 441 + INT(RNG!(RNG_AUDIO) * 441)  ' ~55% chance of 10–20ms noise burst
     sndBlipTimer   = sndBlipLen
 End Sub
+
+' Raised-cosine envelope at sample ueK of a ueLen-sample sound: 0 -> 1 over ueAtk samples,
+' 1 -> exactly 0 at the last sample over ueRel samples.
+Function SND_UiEnv! (ueK As Long, ueLen As Long, ueAtk As Long, ueRel As Long)
+    Dim ueE As Single
+    ueE = 1
+    If ueK < ueAtk Then ueE = 0.5 - 0.5 * Cos(3.14159265 * ueK / ueAtk)
+    If ueK > ueLen - 1 - ueRel Then ueE = ueE * (0.5 - 0.5 * Cos(3.14159265 * (ueLen - 1 - ueK) / ueRel))
+    If ueK >= ueLen - 1 Or ueK <= 0 Then ueE = 0
+    SND_UiEnv! = ueE
+End Function
+
+Function SND_UiLen& (ulId As Integer)
+    Select Case ulId
+        Case SND_UI_MOVE : SND_UiLen& = SND_UIMOVE_LEN
+        Case SND_UI_DENY : SND_UiLen& = SND_UIDENY_LEN
+        Case SND_UI_PUP  : SND_UiLen& = SND_PUP_LEN
+        Case Else        : SND_UiLen& = 0
+    End Select
+End Function
+
+Function SND_UiSample! (usId As Integer, usPos As Long)
+    Select Case usId
+        Case SND_UI_MOVE : SND_UiSample! = sndUiMove(usPos)
+        Case SND_UI_DENY : SND_UiSample! = sndUiDeny(usPos)
+        Case SND_UI_PUP  : SND_UiSample! = sndPup(usPos)
+        Case Else        : SND_UiSample! = 0
+    End Select
+End Function
+
+' Start a UI one-shot. One still playing isn't cut: it fades out over SND_UI_XFADE samples.
+Sub SND_UiPlay (upId As Integer)
+    If sndUiCurPos >= 0 Then
+        sndUiOld = sndUiCur : sndUiOldPos = sndUiCurPos : sndUiOldGain = 1
+    End If
+    sndUiCur = upId : sndUiCurPos = 0
+End Sub
+
+' The UI voice's next output sample (the mixer calls it once per sample; tests step it).
+Function SND_UiNext!
+    Dim unS As Single
+    If sndUiCurPos >= 0 Then
+        unS = SND_UiSample!(sndUiCur, sndUiCurPos)
+        sndUiCurPos = sndUiCurPos + 1
+        If sndUiCurPos >= SND_UiLen&(sndUiCur) Then sndUiCurPos = -1
+    End If
+    If sndUiOldPos >= 0 Then
+        sndUiOldGain = sndUiOldGain - 1 / SND_UI_XFADE
+        If sndUiOldGain > 0 Then unS = unS + SND_UiSample!(sndUiOld, sndUiOldPos) * sndUiOldGain
+        sndUiOldPos = sndUiOldPos + 1
+        If sndUiOldGain <= 0 Or sndUiOldPos >= SND_UiLen&(sndUiOld) Then sndUiOldPos = -1
+    End If
+    SND_UiNext! = unS
+End Function

@@ -25,9 +25,9 @@ Sub DOCK_Update
     Dim dkdRes As Integer
     dkdRes = DOCK_Input%
     Select Case dkdRes
-        Case DOCK_MOVED : SND_Blip 660
+        Case DOCK_MOVED : SND_UiMove
         Case DOCK_BOUGHT : SND_Pup
-        Case DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL : SND_Hit
+        Case DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL : SND_UiDeny
     End Select
     DOCK_Draw
     If dkdRes = DOCK_LEAVE Then

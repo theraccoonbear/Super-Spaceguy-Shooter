@@ -74,6 +74,15 @@ Function DT_Run% (dtrLast As Integer)
     Next dtrF
 End Function
 
+' How many frames of the last run gave result dcRes (each one plays one sound in DOCK_Update).
+Function DT_Count% (dcRes As Integer)
+    Dim dcF As Integer, dcN As Integer
+    For dcF = 0 To 199
+        If dtRes(dcF) = dcRes Then dcN = dcN + 1
+    Next dcF
+    DT_Count% = dcN
+End Function
+
 Dim dtLeft As Integer, dtI As Integer, dtN As Integer
 
 Print "=== dock_test ==="
@@ -121,6 +130,21 @@ Print "--- scrolling ---"
 DT_Script 0, "2 2 S/4 4 S/6 6 S/8 8 S/10 10 S/12 12 S/14 14 S/16 16 S/18 18 S"
 dtLeft = DT_Run%(20)
 DT_Assert dockSel = 10 And dockTop = 10 - DOCK_VISIBLE + 1, "9 downs: cursor on row 10, list scrolled to keep it in view"
+
+Print ""
+Print "--- one sound per press (no double trigger) ---"
+DT_Script 1000, "2 31 DOWN"
+dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_MOVED) = 1, "DOWN held 30 frames: one move"
+DT_Script 1000, "2 31 S"
+dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_MOVED) = 1, "S held 30 frames: one move"
+DT_Script 1000, "2 31 PAD_DPAD_DOWN"
+dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_MOVED) = 1, "d-pad held 30 frames: one move"
+DT_Script 1000, "2 31 PAD_DOWN"
+dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_MOVED) = 1, "stick held 30 frames: one move"
+DT_Script 1000, "2 31 DOWN PAD_DOWN S"
+dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_MOVED) = 1 And dockSel = 2, "arrow + stick + S together: still one move, one row"
+DT_Script 1000, "2 31 ENTER PAD_A"
+dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_BOUGHT) = 1 And DT_Count%(DOCK_NOFUNDS) + DT_Count%(DOCK_MAXED) = 0, "ENTER + pad A held: one purchase, one sound"
 
 Print ""
 Print "--- skip in one press ---"

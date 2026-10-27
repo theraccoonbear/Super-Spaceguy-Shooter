@@ -89,6 +89,57 @@ sndTAfterBounds:
 ON ERROR GOTO 0
 ST_Assert sndTRtErr = 0, "sndWhoosh index 0 and SND_WHOOSH_LEN-1 are valid"
 
+' ── UI one-shots (#268): the dock's cursor tick, its "can't" buzz and the power-up chime
+' (dock purchase, Settings' SFX slider) must start and end at 0, with no DC left at the
+' end, and a retrigger must not step the waveform (the click / hiss the dock had).
+Print ""
+Print "--- UI one-shots end cleanly (#268) ---"
+Dim sndTId As Integer, sndTLen As Long, sndTK As Long, sndTEdge As Single, sndTDC As Single
+For sndTId = SND_UI_MOVE To SND_UI_PUP
+    sndTLen = SND_UiLen&(sndTId)
+    sndTEdge = 0 : sndTDC = 0
+    For sndTK = 0 To 2
+        If Abs(SND_UiSample!(sndTId, sndTK)) > sndTEdge Then sndTEdge = Abs(SND_UiSample!(sndTId, sndTK))
+        If Abs(SND_UiSample!(sndTId, sndTLen - 1 - sndTK)) > sndTEdge Then sndTEdge = Abs(SND_UiSample!(sndTId, sndTLen - 1 - sndTK))
+    Next sndTK
+    For sndTK = sndTLen - 64 To sndTLen - 1 : sndTDC = sndTDC + SND_UiSample!(sndTId, sndTK) : Next sndTK
+    ST_Assert sndTEdge < 0.01, "UI sound" + Str$(sndTId) + ": first and last 3 samples within 0.01 of zero (max" + Str$(sndTEdge) + ")"
+    ST_Assert Abs(sndTDC / 64) < 0.005, "UI sound" + Str$(sndTId) + ": no DC offset over the last 64 samples"
+Next sndTId
+ST_Assert SND_UiSample!(SND_UI_PUP, SND_PUP_LEN - 1) = 0, "power-up chime's last sample is exactly 0"
+
+' worst step between consecutive output samples, retriggering each sound mid-play at
+' varying phases, against the sound's own steepest step played once
+Dim sndTStep As Single, sndTPrev As Single, sndTCur As Single, sndTN As Integer, sndTBase As Single
+For sndTId = SND_UI_MOVE To SND_UI_PUP
+    ' baseline: the sound's own steepest step, played once
+    sndUiCurPos = -1 : sndUiOldPos = -1 : sndTPrev = 0 : sndTBase = 0
+    SND_UiPlay sndTId
+    For sndTK = 0 To SND_UiLen&(sndTId) + 10
+        sndTCur = SND_UiNext!
+        If Abs(sndTCur - sndTPrev) > sndTBase Then sndTBase = Abs(sndTCur - sndTPrev)
+        sndTPrev = sndTCur
+    Next sndTK
+    ' retriggered every frame, and every 10 ms (faster than any key), at every phase
+    sndUiCurPos = -1 : sndUiOldPos = -1 : sndTPrev = 0 : sndTStep = 0
+    For sndTN = 1 To 12
+        SND_UiPlay sndTId
+        For sndTK = 1 To 441 + sndTN * 29
+            sndTCur = SND_UiNext!
+            If Abs(sndTCur - sndTPrev) > sndTStep Then sndTStep = Abs(sndTCur - sndTPrev)
+            sndTPrev = sndTCur
+        Next sndTK
+    Next sndTN
+    ST_Assert sndTStep <= sndTBase * 1.5 + 0.01, "UI sound" + Str$(sndTId) + ": retriggering mid-sound adds no step (worst" + Str$(sndTStep) + " vs own" + Str$(sndTBase) + ")"
+    ST_Assert sndUiCurPos >= 0 Or sndUiOldPos = -1, "UI sound" + Str$(sndTId) + ": the replaced voice is gone after its fade"
+Next sndTId
+' and a hard restart would have failed: the sound's level mid-way is far above that bound
+Dim sndTPeak As Single
+For sndTK = 0 To SND_UIMOVE_LEN - 1
+    If Abs(sndUiMove(sndTK)) > sndTPeak Then sndTPeak = Abs(sndUiMove(sndTK))
+Next sndTK
+ST_Assert sndTPeak > 0.15, "the check means something: a hard cut at the tick's peak would step by" + Str$(sndTPeak)
+
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
 If stFailed > 0 Then System 1 Else System 0

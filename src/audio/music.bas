@@ -401,11 +401,7 @@ Sub MUS_Fill(musFdoSfx As Integer)
         End If
 
         musFefx = 0 : musFnarBlip = 0
-        If sndPupPos >= 0 Then
-            musFefx = musFefx + sndPup(sndPupPos)
-            sndPupPos = sndPupPos + 1
-            If sndPupPos >= SND_PUP_LEN Then sndPupPos = -1
-        End If
+        musFefx = musFefx + SND_UiNext!   ' UI one-shots and the power-up chime (snd.bas)
         If sndDeathPos >= 0 Then
             musFefx = musFefx + sndDeath(sndDeathPos)
             sndDeathPos = sndDeathPos + 1
