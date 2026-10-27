@@ -9,6 +9,7 @@
 '   ./tools/buildqb tests/mnv_load_test.bas
 ' Run:   builds/mnv_load_test   (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 ' MNV_Load (pulled in via maneuvers.bas below) references these $EMBED handles;
 ' QB64-PE validates them at compile time even though this test only exercises

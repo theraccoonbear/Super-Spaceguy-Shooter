@@ -25,6 +25,7 @@
 '   ./tools/buildqb tests/mnv_conformance_test.bas
 ' Run:   builds/mnv_conformance_test   (exit 0 = pass, exit 1 = fail)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 Print "=== mnv_conformance_test ==="
@@ -32,6 +33,7 @@ Print "=== mnv_conformance_test ==="
 Sub DBG_Print(dbgMsg As String)
 End Sub
 
+'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/gameplay/spline_path.bi'

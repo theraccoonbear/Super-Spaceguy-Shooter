@@ -3,8 +3,10 @@
 ' Each sphere has a unique randomized color palette.
 ' Controls: = add sphere   - remove sphere   arrows orbit camera   ESC/Q quit
 
+'$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 
+Option _Explicit
 Const SCR_W    = 320
 Const SCR_H    = 240
 Const BALL_MAX = 300  ' 300 × ~16 visible faces pushes well past 4000

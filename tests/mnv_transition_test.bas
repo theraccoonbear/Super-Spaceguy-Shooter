@@ -14,6 +14,7 @@
 '   ./tools/buildqb tests/mnv_transition_test.bas
 ' Run:   builds/mnv_transition_test   (exit 0 = pass, exit 1 = fail)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 Print "=== mnv_transition_test ==="
@@ -25,6 +26,7 @@ $EMBED:'assets/maneuvers/boss-x-flight.mvr':'MNVBOSSXFLIGHT'
 Sub DBG_Print(dbgMsg As String)
 End Sub
 
+'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/gameplay/spline_path.bi'

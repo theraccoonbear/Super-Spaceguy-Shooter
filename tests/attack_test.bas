@@ -13,6 +13,7 @@
 ' Build: ./tools/buildqb tests/attack_test.bas
 ' Run:   ./tests/attack_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 '$INCLUDE:'../src/gameplay/impact.bas'
