@@ -182,6 +182,9 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
     SND_Hit
     TELEM_PlayerDamaged
+    ' --god refills shields once per frame in playing.bas, which a big hit (an asteroid)
+    ' or a burst of hits within one frame could still outrun
+    If godMode Then lives = 100
     If lives <= 0 Then
         shipLives = shipLives - 1
         SND_Death
