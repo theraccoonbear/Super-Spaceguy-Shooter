@@ -4,9 +4,11 @@
 ' PgUp/PgDn: cycle meshes   R: reset rotation
 ' L: toggle light mode       ESC/Q: quit
 
+Option _Explicit
 $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
 
+'$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 
 CONST SCR_W      = 640
@@ -94,7 +96,7 @@ IF LEN(cmdPath) > 0 THEN
         E3D_BakeMeshNormals meshLib(totalMeshes)
         objStatus = "OBJ: " + meshNames(totalMeshes) + " [" + LTRIM$(STR$(meshLib(totalMeshes).vCount)) + "v " + LTRIM$(STR$(meshLib(totalMeshes).fCount)) + "f]"
     ELSE
-        objStatus = "NOT FOUND: " + cmdPath + "  (cwd=" + CURDIR$ + ")"
+        objStatus = "NOT FOUND: " + cmdPath + "  (cwd=" + _CWD$ + ")"
     END IF
 END IF
 

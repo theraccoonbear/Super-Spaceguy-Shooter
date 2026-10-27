@@ -10,7 +10,7 @@
 #   shell [cmd]    interactive shell in the container, or run one command
 #   run [args]     play the game: builds/sss (rebuilt first if missing or older
 #                  than any source) on your display and audio (X11/XWayland,
-#                  PulseAudio/PipeWire, /dev/dri)
+#                  PulseAudio/PipeWire, /dev/dri, controllers via /dev/input)
 #   headless [args]  builds/sss on an off-screen X server (Xvfb), no display or
 #                  audio needed; pair with --input-script/--frames/--seed for
 #                  scripted playtests
@@ -21,6 +21,8 @@
 # Env overrides:
 #   SSS_ENGINE=podman|docker   force an engine (default: podman if found, else docker)
 #   SSS_IMAGE=<name>           image tag (default: localhost/sss-dev:latest)
+#   SSS_DEV_DRYRUN=1           print the engine command line instead of running
+#                              it, without probing the engine or (re)building
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,10 +30,16 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
 }
 
+DRYRUN="${SSS_DEV_DRYRUN:-}"
+
 pick_engine() {
+    if [ "$DRYRUN" = 1 ]; then
+        ENGINE="${SSS_ENGINE:-podman}"
+        return
+    fi
     if [ -n "${SSS_ENGINE:-}" ]; then
         ENGINE="$SSS_ENGINE"
     elif command -v podman > /dev/null 2>&1; then
@@ -54,7 +62,8 @@ build_image() {
 }
 
 ensure_image() {
-    if ! "$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
+    [ "$DRYRUN" = 1 ] && return
+    if !"$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
         build_image
     fi
 }
@@ -64,6 +73,7 @@ ensure_image() {
 # Also rebuild a binary built natively on the host: it can need a newer glibc
 # than the container has ("GLIBC_2.xx not found").
 rebuild_if_stale() {
+    [ "$DRYRUN" = 1 ] && return
     if [ ! -x "$REPO/builds/sss" ] || [ -n "$(cd "$REPO" && find sss.bas src assets VERSION -newer builds/sss -print -quit)" ]; then
         echo ">>> sources changed since the last build; rebuilding builds/sss..."
         run_in bash -c "./tools/buildqb sss.bas"
@@ -105,10 +115,15 @@ run_in() {
         esac
     fi
 
+    if [ "$DRYRUN" = 1 ]; then
+        printf '%q ' "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
+        echo
+        return
+    fi
     "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
 }
 
-# Pass the host display, audio and GPU through for `run`. The sockets are
+# Pass the host display, audio, GPU and controllers through for `run`. The sockets are
 # shared rather than relabeled, so SELinux labeling is off for this container.
 # --ipc=host lets X11 MIT-SHM work.
 gui_args() {
@@ -129,6 +144,10 @@ gui_args() {
     fi
     if [ -e /dev/dri ]; then
         RUN_EXTRA+=(--device /dev/dri)
+    fi
+    # A bind mount, not --device, so a controller plugged in after launch shows up too.
+    if [ -d /dev/input ]; then
+        RUN_EXTRA+=(-v /dev/input:/dev/input)
     fi
 }
 

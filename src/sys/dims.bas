@@ -277,6 +277,7 @@ DIM SHARED spaceWas        AS INTEGER
 DIM SHARED pWas            AS INTEGER  ' title screen's own "start game" key debounce -- see GS_TITLE_Update
 DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
+DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 5 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER
@@ -316,6 +317,8 @@ DIM SHARED bsmTurnDir      AS INTEGER  ' flyover dramatic turn direction: +1=rig
 DIM SHARED dbgOverlay  AS INTEGER
 DIM SHARED dbgGraveWas AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
+DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
+DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
 
 ' --- engine / render ---
 DIM SHARED vpMat AS E3D_Matrix4

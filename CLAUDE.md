@@ -19,6 +19,7 @@
 - `_COMMAND$(n)` subscript form is not supported in QB64-PE v4.5.0 — use `COMMAND$` (full string)
 - All `Dim` inside Subs are module-scope in QB64-PE; variable names must be unique across all Subs in a compilation unit
 - Short names like `pos`, `val` are built-in keywords — prefix vars with context (e.g. `objPos`, `sndVal`)
+- Without `Option _Explicit`, an undefined function or array compiles silently: `RNG!(RNG_FX)` with `rng.bas` missing becomes an implicit array read with `RNG_FX` an implicit 0, and a missing `Dim Shared` or `Const` becomes a 0-valued local. The game, every test and every CI-compiled tool start with `Option _Explicit` (it covers `$INCLUDE`d files too) — keep it in any new program, and include every module a file depends on (e.g. `src/sys/rng.bas` before `src/engine3d.bi`)
 - `Not` is bitwise, not logical: `Not 1 = -2` (truthy), so `If Not flag` misbehaves when `flag` is `1` instead of `-1`. Use `If flag = 0` to guard a disabled feature, or define boolean consts as `0`/`-1`
 
 ## Scope of work
@@ -48,6 +49,7 @@
    - **Adding a test:** add its name to `TESTS` in `.github/scripts/qb64test.sh` and make it print `=== <name> ===` first. The runner rejects a binary that doesn't print its own banner, which is how it catches parallel-build mix-ups.
    - **Never run two native QB64-PE builds at once on one install** (e.g. two agents, or `tools/buildqb` in two terminals). On Linux and macOS qb64pe claims its temp folder without a lock, so concurrent compiles can silently produce each other's binaries (#239). `qb64test.sh` gives each worker its own QB64-PE copy; parallel agents should build through `tools/dev`, which runs each build in its own container.
 4. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
+5. **Full playthrough**: runs in CI as its own job (`playthrough`). Don't run it locally before committing. Run it locally (`tools/dev build && tools/dev shell tests/playthrough/run.sh`, needs an empty `assets/.env`) only to debug a playthrough failure. If the game flow changes on purpose (`assets/sequence.txt`, game states, stages, bosses, crawls, input, the boot screens), update `tests/playthrough/expected.txt` (see README "Testing").
 
 > Adding a new `$INCLUDE` to sequence.bas, dims.bas, or any file that test stubs replicate
 > means updating every test file that declares shared vars. Grep for the variable name in
