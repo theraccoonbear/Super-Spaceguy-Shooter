@@ -33,6 +33,7 @@ builds/
 tests/*_test
 tools/telem_batch_test
 shot-*.png
+tests/render/out/
 
 # Local playtest telemetry runs -- not source
 sss_telemetry.csv

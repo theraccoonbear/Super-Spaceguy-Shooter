@@ -135,6 +135,31 @@ The game writes a milestone log when the `SSS_MILESTONE_LOG` env var names a fil
 
 Each subsystem doc below has its own "test in isolation" section with more detail.
 
+### Render tests
+
+Golden-screenshot tests catch rendering regressions (blend state, font alpha, overlays) that the headless tests can't see. Each scene in `tests/render/scenes/` is a short seeded [scripted playtest](#cli-options): an input script whose `#!` lines give its `sss` options, the frames to screenshot, and any rectangles to leave out of the comparison. The runner plays each one under Xvfb with `--god --no-telem --seed 1` and compares every screenshot with `tests/render/golden/<scene>-<frame>.png` using `tools/imgdiff.bas`, a small QB64 compare tool. The font compositing rules themselves (glyph holes stay transparent, font calls leave blending on, partial opacity, rich colour codes) are pixel-checked off-screen by `tests/font_render_test.bas` in the regular suite, on every OS.
+
+| Scene | Shows |
+|---|---|
+| `title` | title screen (the version string is masked: it changes every commit), then the ESC command console |
+| `about` | About screen scrolled to the credits: panel UI, bitmap font, rich colour codes |
+| `playing2` | level 2 combat: enemies, lock-on bracket, enemy bolts and impact rings, HUD |
+| `boss3` | lead-aimed bolts with closing impact rings, then spore clouds |
+| `boss5` | a cut's warning lines, then its beam |
+| `boss6` | devour's pull streaks and chevrons |
+
+```bash
+tools/dev render                # in the container: build sss, run every scene, compare (~2 min, mostly the build)
+tools/dev render boss5 title    # just these scenes
+tools/dev render --no-build     # reuse builds/sss
+tools/dev render --update       # re-bless: run each scene 3 times, check the runs are byte-identical, save as goldens
+tests/render/run.sh             # natively on Linux (needs qb64pe on PATH and xvfb-run)
+```
+
+The comparison is exact by default (`RENDER_TOL=N` allows a per-channel difference of N, `RENDER_MAX_FRAC=F` lets a fraction F of pixels differ beyond it). Seeded scripted runs are byte-repeatable and the container matches CI's Linux runner, so nothing needs a tolerance today. On a mismatch the actual screenshots and a `diff-<frame>.png` (red = differs, yellow = within tolerance, blue = masked) are left in `tests/render/out/<scene>/`; CI uploads that folder as the `render-test-results` artifact. CI runs the suite on the Linux job only.
+
+**When to update goldens:** only when a change is meant to change what's on screen (a new effect, a HUD tweak, different fonts or colours, changed gameplay timing that moves things). Run `tools/dev render --update`, look at every changed PNG in `git diff` before committing it, and say in the PR which goldens changed and why. If a golden changes and you didn't mean to change rendering, that's the bug the suite is for. Re-bless from the container, not a native build on another distro, so the goldens keep matching CI. To add a scene, write `tests/render/scenes/<name>.txt` (copy an existing one) and run `tools/dev render --update <name>`.
+
 ## Telemetry and leaderboards
 
 The game can optionally send anonymous gameplay events and score submissions to a small backend we own: a [Cloudflare Worker](https://developers.cloudflare.com/workers/) backed by a [D1](https://developers.cloudflare.com/d1/) (SQLite) database, in [`server/`](server/). This is entirely off unless you configure it:

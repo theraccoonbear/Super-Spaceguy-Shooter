@@ -1,0 +1,6 @@
+# Boss 5: a cut's warning lines (340), then its beam (360).
+#! args: --scene boss5
+#! shots: 340,360
+0 360 FIRE
+100 160 LEFT
+300 340 UP
