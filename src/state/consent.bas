@@ -1,8 +1,8 @@
 ' consent.bas -- one-time telemetry disclosure screen (GS_CONSENT)
 '
-' SPACE  -- OK this session; will ask again next launch
-' S      -- OK, save telem_consent=1 to sss_settings.ini; never asks again
-' ESC    -- No thanks; disables telemetry for this session
+' SPACE / ENTER / pad A  -- OK this session; will ask again next launch
+' S / pad X              -- OK, save telem_consent=1 to sss_settings.ini; never asks again
+' ESC / pad B            -- No thanks; disables telemetry for this session
 
 Sub GS_CONSENT_Update()
     Dim cnPX1 As Integer : cnPX1 = scrW \ 2 - 122
@@ -33,21 +33,24 @@ Sub GS_CONSENT_Update()
     Dim cnAY3 As Integer : cnAY3 = scrH \ 2 + 54
 
     ' SPACE  OK
-    FONT_PrintAlpha fontPalette(15), backBuffer, "SPACE", cnDX - 7 * FONT_CHAR_W, cnAY1, 255
-    FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",    cnDX,                    cnAY1, 255
+    FONT_PrintAlpha fontPalette(15), backBuffer, "SPACE/A", cnDX - 9 * FONT_CHAR_W, cnAY1, 255
+    FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",      cnDX,                    cnAY1, 255
 
     ' S  DON'T ASK AGAIN
-    FONT_PrintAlpha fontPalette(15), backBuffer, "S",               cnDX - 3 * FONT_CHAR_W, cnAY2, 255
+    FONT_PrintAlpha fontPalette(15), backBuffer, "S/X",             cnDX - 5 * FONT_CHAR_W, cnAY2, 255
     FONT_PrintAlpha fontPalette(9),  backBuffer, "DON'T ASK AGAIN", cnDX,                   cnAY2, 255
 
     ' ESC  NO THANKS
-    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",       cnDX - 5 * FONT_CHAR_W, cnAY3, 200
+    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC/B",     cnDX - 7 * FONT_CHAR_W, cnAY3, 200
     FONT_PrintAlpha fontPalette(8),  backBuffer, "NO THANKS", cnDX,                   cnAY3, 200
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
 
     Dim cnKey As Long : cnKey = KEY_Hit&
+    If KEY_Confirm% Then cnKey = 32
+    If KEY_Pressed%(E3D_KEY_PAD_X) Then cnKey = 83
+    If KEY_Pressed%(E3D_KEY_PAD_B) Then cnKey = 27
     Select Case cnKey
         Case 32          ' SPACE -- OK this session
             telemConsent = -1

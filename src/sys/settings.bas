@@ -102,11 +102,12 @@ Sub OPTS_Update ()
     oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration * settingNarrSpeed / 3 : oVols(4) = settingFullscreen
 
     ' ---- input ----
-    oUp  = KEY_Down%(18432)   ' up arrow
-    oDn  = KEY_Down%(20480)   ' down arrow
-    oLf  = KEY_Down%(19200)   ' left arrow
-    oRt  = KEY_Down%(19712)   ' right arrow
-    oEsc = KEY_Down%(27)
+    ' held() slots carry the keyboard arrows and the pad stick; ESC's slot also carries pad Start
+    oUp  = (held(E3D_KEY_UP) <> 0)
+    oDn  = (held(E3D_KEY_DOWN) <> 0)
+    oLf  = (held(E3D_KEY_LEFT) <> 0)
+    oRt  = (held(E3D_KEY_RIGHT) <> 0)
+    oEsc = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0)
 
     ' navigate: edge-detect on up/down
     If oUp And Not optUpWas Then
@@ -172,9 +173,9 @@ Sub OPTS_Update ()
         TITLE_ReturnTo GS_TITLE
     End If
 
-    Static oEnterWas As Integer
-    Dim oEnter As Integer : oEnter = KEY_Down%(13) Or KEY_Down%(32)
-    If oEnter And oEnterWas = 0 And optSel = 5 Then
+    ' a press, not a hold: the A that picked SETTINGS on the console is still down here
+    Dim oEnter As Integer : oEnter = KEY_Confirm% Or KEY_Pressed%(E3D_KEY_SPACE)
+    If oEnter And optSel = 5 Then
         SETTINGS_Save
         unSavedName    = telemPlayerName
         unFromSettings = -1
@@ -182,7 +183,6 @@ Sub OPTS_Update ()
         GS_USERNAME_Init
         gameState      = GS_USERNAME
     End If
-    oEnterWas = oEnter
 
     Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
     If oAbout And Not optAboutWas Then

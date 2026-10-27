@@ -94,7 +94,7 @@ sss [options]
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
 
-**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE` (or `SPACE`) `ESC TAB ENTER BACKSPACE BACKTICK F1`-`F12`, any letter `A`-`Z` (either case counts), any digit `0`-`9`, and `#<code>` for any other `_KEYDOWN` code (e.g. `#21248` for Delete). Every screen and dialog sees them, so menus can be scripted too: a key press registers once, on the first frame of its range. A line starting with `#` is a comment. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
+**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE` (or `SPACE`) `ESC TAB ENTER BACKSPACE BACKTICK F1`-`F12`, any letter `A`-`Z` (either case counts), any digit `0`-`9`, and `#<code>` for any other `_KEYDOWN` code (e.g. `#21248` for Delete). The gamepad is `PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT` and the left stick `PAD_LEFT PAD_RIGHT PAD_UP PAD_DOWN`; these go through the same mapping as a real controller (so `PAD_A` fires but is not the SPACE key to a menu that reads the keyboard). Every screen and dialog sees them, so menus can be scripted too: a key press registers once, on the first frame of its range. A line starting with `#` is a comment. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
 
 ```bash
 tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
@@ -200,7 +200,7 @@ Implemented algorithms: Catmull-Rom position/tangent weights, Gram-Schmidt frame
 
 ## Controls
 
-To see the controls in game, open the pause dialog (ESC) and press **C**, or press **C** in the title screen's command console.
+To see the controls in game, open the pause dialog (ESC / Start) and press **C** (X on a gamepad), or pick CONTROLS in the title screen's command console.
 
 ### In flight
 
@@ -208,7 +208,7 @@ To see the controls in game, open the pause dialog (ESC) and press **C**, or pre
 |---|---|---|
 | Arrow keys / WASD | Left stick | Move ship |
 | Space (hold) | A | Fire |
-| ESC | Start | Pause / abort-mission dialog (Y confirms the abort, C shows controls, ESC cancels) |
+| ESC | Start | Pause / abort-mission dialog (Y / A confirms the abort, C / X shows controls, ESC / B cancels) |
 | TAB | Back / Select | Camera mode on/off. The game freezes while you adjust; pressing it again locks the angle and saves it |
 | ↑ / ↓ (camera mode) | Stick up/down | Tilt the camera |
 | R (camera mode) | — | Reset to the default chase camera |
@@ -219,9 +219,12 @@ To see the controls in game, open the pause dialog (ESC) and press **C**, or pre
 | Key | Gamepad | Action |
 |---|---|---|
 | P | Start | Start a new game |
-| ESC | — | Open/close the command console |
-| A / C / S / L / Q | — | Console: About / Controls / Settings / Leaderboard / Quit |
-| ↑ ↓ ← → | — | Navigate and adjust Settings; scroll About; page through Controls |
+| ESC | Back / Select | Open/close the command console |
+| A / C / S / L / Q / N | — | Console: About / Controls / Settings / Leaderboard / Quit / Cancel |
+| ↑ ↓ then ENTER | Stick up/down then A | Console: move the highlight and pick it |
+| ↑ ↓ ← → | Left stick | Navigate and adjust Settings; scroll About; page through Controls |
+| ENTER | A | Confirm (Settings callsign, data notice, callsign entry) |
+| ESC | B (or Start) | Back / cancel (Settings, About, Leaderboard, Controls, data notice, callsign entry) |
 | F11 | — | Toggle fullscreen (any screen) |
 
 ### Story screens
@@ -231,9 +234,9 @@ To see the controls in game, open the pause dialog (ESC) and press **C**, or pre
 | Space (hold) | A (hold) | Fast-forward the narrative crawl |
 | Space + ESC | A + Start | Skip the crawl |
 | Space | A | Continue (intro card, game over) |
-| Any key | — | Skip the logo cards |
+| Any key | A / Start | Skip the logo cards |
 
-Menus other than the title and Controls screens are keyboard-only.
+On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsign needs the keyboard; with a gamepad, A keeps the shown name (or picks a random one) and B skips.
 
 ### Debug
 

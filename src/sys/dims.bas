@@ -277,6 +277,7 @@ DIM SHARED spaceWas        AS INTEGER
 DIM SHARED pWas            AS INTEGER  ' title screen's own "start game" key debounce -- see GS_TITLE_Update
 DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
+DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 5 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER

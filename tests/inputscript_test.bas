@@ -4,12 +4,16 @@
 ' rejecting malformed lines, ISC_Apply holding exactly the scripted keys on the
 ' scripted frames (inclusive ends, overlapping ranges, everything else up), any-key
 ' names (letters in both cases, digits, F-keys, #code), KEY_Down% on/off frames
-' (including codes above 32767), KEY_Hit& press order, and a missing file.
+' (including codes above 32767), KEY_Hit& press order, a missing file, the PAD_* gamepad
+' names (same held() slots as a real controller, invisible to KEY_Down%/KEY_Hit&), and
+' the menu actions KEY_Pressed% / KEY_Confirm% / KEY_Back% (one press, not a hold).
 '
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
 
 $CONSOLE:ONLY
+
+Dim Shared held(0 To 32767) As Integer  ' the game's held() (dims.bas); KEY_Pressed% reads it
 
 '$INCLUDE:'../src/3d/input.bas'
 '$INCLUDE:'../src/sys/inputscript.bas'
@@ -146,6 +150,76 @@ isHit2 = KEY_Hit&
 isHit3 = KEY_Hit&
 isHit4 = KEY_Hit&
 IS_Assert isHit1 = 113 And isHit2 = 27 And isHit3 = 0 And isHit4 = 0, "unread presses stay queued across frames, in order"
+
+Print "--- gamepad ---"
+ISC_Clear
+isOk = ISC_ParseLine%("0 0 PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT pad_left PAD_RIGHT PAD_UP PAD_DOWN")
+IS_Assert isOk And iscCount = 10, "PAD_ buttons and stick directions parse, any case"
+isOk = ISC_ParseLine%("0 0 PAD_Z")
+IS_Assert isOk = 0 And InStr(iscError, "PAD_Z") > 0, "unknown pad name rejected"
+ISC_Clear
+IS_Assert ISC_ParseLine%("10 12 PAD_A"), "load: 10-12 PAD_A"
+IS_Assert ISC_ParseLine%("20 20 PAD_START"), "load: 20 PAD_START"
+IS_Assert ISC_ParseLine%("30 30 PAD_SELECT PAD_B PAD_X PAD_Y"), "load: 30 PAD_SELECT PAD_B PAD_X PAD_Y"
+IS_Assert ISC_ParseLine%("40 40 PAD_LEFT PAD_DOWN"), "load: 40 PAD_LEFT PAD_DOWN"
+iscActive = -1
+ISC_Apply 10, isHeld()
+isHit1 = KEY_Hit&
+IS_Assert isHeld(E3D_KEY_SPACE) And isHeld(E3D_KEY_PAD_A) And IS_Down% = 2, "PAD_A holds SPACE (fire) and the PAD_A slot, like the real pad"
+IS_Assert KEY_Down%(32) = 0 And isHit1 = 0, "PAD_A is not a keyboard key: no KEY_Down, no KEY_Hit"
+ISC_Apply 20, isHeld()
+IS_Assert isHeld(E3D_KEY_ESCAPE) And isHeld(E3D_KEY_PAD_START) And IS_Down% = 2, "PAD_START holds ESCAPE and PAD_START"
+IS_Assert KEY_Down%(27) = 0, "PAD_START is not the ESC key"
+ISC_Apply 30, isHeld()
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_PAD_SELECT) And isHeld(E3D_KEY_PAD_B) And isHeld(E3D_KEY_PAD_X) And isHeld(E3D_KEY_PAD_Y) And IS_Down% = 5, "PAD_SELECT holds TAB + its slot; B X Y their own slots"
+ISC_Apply 40, isHeld()
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_DOWN) And IS_Down% = 2, "stick fills the arrow slots"
+IS_Assert KEY_Down%(19200) = 0 And KEY_Down%(20480) = 0, "stick is not the arrow keys"
+ISC_Apply 41, isHeld()
+IS_Assert IS_Down% = 0, "pad state clears when its range ends"
+
+Print "--- menu actions ---"
+Dim isP1 As Integer, isP2 As Integer, isP3 As Integer
+ISC_Clear
+IS_Assert ISC_ParseLine%("5 7 PAD_A"), "load: 5-7 PAD_A"
+IS_Assert ISC_ParseLine%("10 10 ENTER"), "load: 10 ENTER"
+IS_Assert ISC_ParseLine%("15 16 PAD_B"), "load: 15-16 PAD_B"
+IS_Assert ISC_ParseLine%("20 20 ESC"), "load: 20 ESC"
+IS_Assert ISC_ParseLine%("25 25 PAD_START"), "load: 25 PAD_START"
+IS_Assert ISC_ParseLine%("30 31 PAD_DOWN"), "load: 30-31 PAD_DOWN"
+iscActive = -1
+KEY_FrameBegin : ISC_Apply 4, held()
+isP1 = KEY_Confirm% : isP2 = KEY_Back%
+IS_Assert isP1 = 0 And isP2 = 0, "nothing pressed: no confirm, no back"
+KEY_FrameBegin : ISC_Apply 5, held()
+isP1 = KEY_Confirm% : isP2 = KEY_Pressed%(E3D_KEY_PAD_A)
+IS_Assert isP1 = -1 And isP2 = -1, "pad A press is a confirm (-1)"
+KEY_FrameBegin : ISC_Apply 6, held()
+isP1 = KEY_Confirm%
+IS_Assert isP1 = 0, "holding A is not another confirm"
+KEY_FrameBegin : ISC_Apply 10, held()
+isP1 = KEY_Confirm%
+IS_Assert isP1 = -1, "ENTER press is a confirm"
+KEY_FrameBegin : ISC_Apply 15, held()
+isP1 = KEY_Back% : isP2 = KEY_Confirm%
+IS_Assert isP1 = -1 And isP2 = 0, "pad B press is a back, not a confirm"
+KEY_FrameBegin : ISC_Apply 16, held()
+isP1 = KEY_Back%
+IS_Assert isP1 = 0, "holding B is not another back"
+KEY_FrameBegin : ISC_Apply 20, held()
+isP1 = KEY_Back%
+IS_Assert isP1 = -1, "ESC press is a back"
+KEY_FrameBegin : ISC_Apply 24, held()
+KEY_FrameBegin : ISC_Apply 25, held()
+isP1 = KEY_Back% : isP2 = KEY_Pressed%(E3D_KEY_PAD_START)
+IS_Assert isP1 = -1 And isP2 = -1, "pad Start press is a back"
+KEY_FrameBegin : ISC_Apply 30, held()
+isP1 = KEY_Pressed%(E3D_KEY_DOWN)
+KEY_FrameBegin : ISC_Apply 31, held()
+isP2 = KEY_Pressed%(E3D_KEY_DOWN)
+KEY_FrameBegin : ISC_Apply 32, held()
+isP3 = KEY_Pressed%(E3D_KEY_DOWN)
+IS_Assert isP1 = -1 And isP2 = 0 And isP3 = 0, "stick down: one press, then held, then released"
 
 Print "--- files ---"
 isOk = ISC_Load%("no/such/script.txt")

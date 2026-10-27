@@ -169,6 +169,7 @@ DO
     dbgT0 = TIMER
     IF cliFrames > 0 AND gameFrame >= cliFrames THEN SYSTEM
     ' --- input ---
+    KEY_FrameBegin
     IF iscActive THEN ISC_Apply gameFrame, held() ELSE E3D_InputUpdate held()
     IF KEY_Down%(34048) AND NOT fsKeyWas THEN
         settingFullscreen = 1 - settingFullscreen

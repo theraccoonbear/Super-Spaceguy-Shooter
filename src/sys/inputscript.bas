@@ -12,9 +12,23 @@
 ' (tests/input/boss-hold-left.txt):
 '   0 1500 LEFT FIRE
 '
+' Gamepad: PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT, and the left stick pushed fully
+' PAD_LEFT PAD_RIGHT PAD_UP PAD_DOWN. These go through E3D_PadApply, the same mapping
+' as a real controller (PAD_A holds SPACE and the PAD_A slot, PAD_START holds ESCAPE and
+' PAD_START, the stick holds the arrow slots), and like a real pad they never show up
+' in KEY_Down% or KEY_Hit&.
+'
 ' Game code reads keys through KEY_Down% / KEY_Hit& (never _KEYDOWN / _KEYHIT directly),
 ' so every key in a script reaches every screen. KEY_Hit& reports one press per range,
 ' on its first frame, as _KEYHIT would (letters as unshifted lower case).
+'
+' Menus read logical actions, so the keyboard and the pad drive them alike:
+'   KEY_FrameBegin                  once per frame, before held() is refilled
+'   hit = KEY_Pressed%(slot)        held(slot) went down this frame
+'   hit = KEY_Confirm%              ENTER or pad A pressed this frame
+'   hit = KEY_Back%                 ESC, pad B or pad Start pressed this frame
+' A press is seen on the one frame it goes down, so the button that opens a screen is
+' never re-read by the screen it opens.
 '
 ' No rendering or game state here, so tests can drive it:
 '   ok = ISC_ParseLine%(line$)      add one script line; 0 if it's malformed (see iscError)
@@ -26,8 +40,14 @@
 ' Local variable prefix: isc*
 
 Const ISC_MAX = 256
+' script codes for the pad: -slot for a button, these for the stick (never a real key code)
+Const ISC_PAD_LEFT  = -11
+Const ISC_PAD_RIGHT = -12
+Const ISC_PAD_UP    = -13
+Const ISC_PAD_DOWN  = -14
 
 Dim Shared iscCount As Integer, iscActive As Integer, iscError As String
+Dim Shared keyPrevHeld(0 To 32767) As Integer
 Dim Shared iscFrom(1 To ISC_MAX) As Long, iscTo(1 To ISC_MAX) As Long, iscKey(1 To ISC_MAX) As Long
 Dim Shared iscAlt(1 To ISC_MAX) As Long
 Dim Shared iscFrame As Long
@@ -57,6 +77,16 @@ Function ISC_KeyInfo%(iscName As String, iscCode As Long, iscAltCode As Long)
     Case "BACKTICK"  : iscCode = 96
     Case "F11"       : iscCode = 34048
     Case "F12"       : iscCode = 34304
+    Case "PAD_A"      : iscCode = -E3D_KEY_PAD_A
+    Case "PAD_B"      : iscCode = -E3D_KEY_PAD_B
+    Case "PAD_X"      : iscCode = -E3D_KEY_PAD_X
+    Case "PAD_Y"      : iscCode = -E3D_KEY_PAD_Y
+    Case "PAD_START"  : iscCode = -E3D_KEY_PAD_START
+    Case "PAD_SELECT" : iscCode = -E3D_KEY_PAD_SELECT
+    Case "PAD_LEFT"   : iscCode = ISC_PAD_LEFT
+    Case "PAD_RIGHT"  : iscCode = ISC_PAD_RIGHT
+    Case "PAD_UP"     : iscCode = ISC_PAD_UP
+    Case "PAD_DOWN"   : iscCode = ISC_PAD_DOWN
     Case Else
         If Len(iscU) = 1 And iscU >= "A" And iscU <= "Z" Then
             iscCode = Asc(LCase$(iscU)) : iscAltCode = Asc(iscU)
@@ -69,7 +99,7 @@ Function ISC_KeyInfo%(iscName As String, iscCode As Long, iscAltCode As Long)
             iscCode = Val(Mid$(iscU, 2))
         End If
     End Select
-    ISC_KeyInfo% = (iscCode > 0)
+    ISC_KeyInfo% = (iscCode <> 0)
 End Function
 
 ' Next space-separated token of iscLine$ from position iscP (advanced past it).
@@ -143,18 +173,47 @@ Function ISC_Load%(iscPath As String)
 End Function
 
 Sub ISC_Apply(iscFrameNo As Long, iscHeld() As Integer)
-    Dim iscA As Long
+    Dim iscA As Long, iscPad(1 To 6) As Integer, iscAxX As Single, iscAxY As Single
     iscFrame = iscFrameNo
     For iscA = LBound(iscHeld) To UBound(iscHeld) : iscHeld(iscA) = 0 : Next iscA
+    For iscA = 1 To 6 : iscPad(iscA) = 0 : Next iscA
+    iscAxX = 0 : iscAxY = 0
     For iscA = 1 To iscCount
         If iscFrameNo >= iscFrom(iscA) And iscFrameNo <= iscTo(iscA) Then
-            If iscKey(iscA) <= UBound(iscHeld) Then iscHeld(iscKey(iscA)) = -1
+            Select Case iscKey(iscA)
+            Case ISC_PAD_LEFT  : iscAxX = -1
+            Case ISC_PAD_RIGHT : iscAxX = 1
+            Case ISC_PAD_UP    : iscAxY = -1
+            Case ISC_PAD_DOWN  : iscAxY = 1
+            Case -6 To -1      : iscPad(-iscKey(iscA)) = 1
+            Case Else
+                If iscKey(iscA) <= UBound(iscHeld) Then iscHeld(iscKey(iscA)) = -1
+            End Select
         End If
-        If iscFrameNo = iscFrom(iscA) And iscHitTail < ISC_MAX Then
+        If iscFrameNo = iscFrom(iscA) And iscKey(iscA) > 0 And iscHitTail < ISC_MAX Then
             iscHitTail = iscHitTail + 1 : iscHitQ(iscHitTail) = iscKey(iscA)
         End If
     Next iscA
+    E3D_PadApply iscHeld(), iscAxX, iscAxY, iscPad(E3D_KEY_PAD_A), iscPad(E3D_KEY_PAD_B), iscPad(E3D_KEY_PAD_X), iscPad(E3D_KEY_PAD_Y), iscPad(E3D_KEY_PAD_START), iscPad(E3D_KEY_PAD_SELECT)
 End Sub
+
+Sub KEY_FrameBegin
+    Dim keyFbI As Long
+    For keyFbI = 0 To 32767 : keyPrevHeld(keyFbI) = held(keyFbI) : Next keyFbI
+End Sub
+
+Function KEY_Pressed%(keyPSlot As Long)
+    KEY_Pressed% = (held(keyPSlot) <> 0 And keyPrevHeld(keyPSlot) = 0)
+End Function
+
+Function KEY_Confirm%
+    KEY_Confirm% = KEY_Pressed%(E3D_KEY_ENTER) Or KEY_Pressed%(E3D_KEY_PAD_A)
+End Function
+
+' ESC's slot is also set by pad Start
+Function KEY_Back%
+    KEY_Back% = KEY_Pressed%(E3D_KEY_ESCAPE) Or KEY_Pressed%(E3D_KEY_PAD_B)
+End Function
 
 Function KEY_Down%(iscDCode As Long)
     Dim iscDA As Integer

@@ -12,13 +12,25 @@ Const E3D_KEY_ESCAPE = 27
 Const E3D_KEY_TAB    = 9
 Const E3D_KEY_R      = 114
 Const E3D_KEY_P      = 112
-Const E3D_KEY_PAD_START = 1    ' virtual slot: gamepad Start only (Start also sets ESCAPE); lets the title tell it apart from keyboard ESC
+Const E3D_KEY_ENTER  = 13
+' Virtual slots, one per gamepad button (no keyboard key uses codes 1-6), so menus can
+' tell a pad button from the key it doubles as: Start also sets ESCAPE, A sets SPACE,
+' Back sets TAB.
+Const E3D_KEY_PAD_START  = 1
+Const E3D_KEY_PAD_A      = 2
+Const E3D_KEY_PAD_B      = 3
+Const E3D_KEY_PAD_X      = 4
+Const E3D_KEY_PAD_Y      = 5
+Const E3D_KEY_PAD_SELECT = 6
 
 ' Controller mapping constants — adjust if your gamepad layout differs
 Const E3D_AXIS_DEADZONE    = 0.25  ' ignore stick deflection below this threshold
 Const E3D_CTRL_AXIS_X      = 1     ' left stick horizontal
 Const E3D_CTRL_AXIS_Y      = 2     ' left stick vertical
 Const E3D_CTRL_BTN_FIRE    = 1     ' A / Cross
+Const E3D_CTRL_BTN_B       = 2     ' B / Circle
+Const E3D_CTRL_BTN_X       = 3     ' X / Square
+Const E3D_CTRL_BTN_Y       = 4     ' Y / Triangle
 Const E3D_CTRL_BTN_SELECT  = 7     ' Back / Select
 Const E3D_CTRL_BTN_START   = 8     ' Start / Options
 
@@ -59,13 +71,18 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_TAB)    = Abs(_KeyDown(9))
     held(E3D_KEY_R)      = Abs(_KeyDown(82)) OR Abs(_KeyDown(114))
     held(E3D_KEY_P)      = Abs(_KeyDown(80)) OR Abs(_KeyDown(112))
-    held(E3D_KEY_PAD_START) = 0
+    held(E3D_KEY_ENTER)  = Abs(_KeyDown(13))
+    held(E3D_KEY_PAD_START) = 0 : held(E3D_KEY_PAD_A) = 0 : held(E3D_KEY_PAD_B) = 0
+    held(E3D_KEY_PAD_X) = 0 : held(E3D_KEY_PAD_Y) = 0 : held(E3D_KEY_PAD_SELECT) = 0
 
     If ctrlDev = 0 Then Exit Sub
 
     Static ctrlAxX    As Single
     Static ctrlAxY    As Single
     Static ctrlFire   As Integer
+    Static ctrlB      As Integer
+    Static ctrlX      As Integer
+    Static ctrlY      As Integer
     Static ctrlStart  As Integer
     Static ctrlSel    As Integer
 
@@ -76,16 +93,29 @@ Sub E3D_InputUpdate (held() As Integer)
             If _LASTAXIS(ctrlDev)   >= E3D_CTRL_AXIS_X     Then ctrlAxX   = _AXIS(E3D_CTRL_AXIS_X)
             If _LASTAXIS(ctrlDev)   >= E3D_CTRL_AXIS_Y     Then ctrlAxY   = _AXIS(E3D_CTRL_AXIS_Y)
             If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_FIRE   Then ctrlFire  = Abs(_BUTTON(E3D_CTRL_BTN_FIRE))
+            If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_B      Then ctrlB     = Abs(_BUTTON(E3D_CTRL_BTN_B))
+            If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_X      Then ctrlX     = Abs(_BUTTON(E3D_CTRL_BTN_X))
+            If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_Y      Then ctrlY     = Abs(_BUTTON(E3D_CTRL_BTN_Y))
             If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_START  Then ctrlStart = Abs(_BUTTON(E3D_CTRL_BTN_START))
             If _LASTBUTTON(ctrlDev) >= E3D_CTRL_BTN_SELECT Then ctrlSel   = Abs(_BUTTON(E3D_CTRL_BTN_SELECT))
         End If
     Loop While ctrlD <> 0
 
-    If ctrlAxX < -E3D_AXIS_DEADZONE Then held(E3D_KEY_LEFT)  = 1
-    If ctrlAxX >  E3D_AXIS_DEADZONE Then held(E3D_KEY_RIGHT) = 1
-    If ctrlAxY < -E3D_AXIS_DEADZONE Then held(E3D_KEY_UP)    = 1
-    If ctrlAxY >  E3D_AXIS_DEADZONE Then held(E3D_KEY_DOWN)  = 1
-    If ctrlFire  <> 0 Then held(E3D_KEY_SPACE)  = 1
-    If ctrlStart <> 0 Then held(E3D_KEY_ESCAPE) = 1 : held(E3D_KEY_PAD_START) = 1
-    If ctrlSel   <> 0 Then held(E3D_KEY_TAB)    = 1
+    E3D_PadApply held(), ctrlAxX, ctrlAxY, ctrlFire, ctrlB, ctrlX, ctrlY, ctrlStart, ctrlSel
+End Sub
+
+' The one gamepad -> held() mapping, shared by the real pad (E3D_InputUpdate) and
+' scripted pad input (ISC_Apply), so a script presses exactly what a controller would.
+' Only sets slots; the caller clears held() first.
+Sub E3D_PadApply (held() As Integer, padAxX As Single, padAxY As Single, padA As Integer, padB As Integer, padX As Integer, padY As Integer, padStart As Integer, padSel As Integer)
+    If padAxX < -E3D_AXIS_DEADZONE Then held(E3D_KEY_LEFT)  = 1
+    If padAxX >  E3D_AXIS_DEADZONE Then held(E3D_KEY_RIGHT) = 1
+    If padAxY < -E3D_AXIS_DEADZONE Then held(E3D_KEY_UP)    = 1
+    If padAxY >  E3D_AXIS_DEADZONE Then held(E3D_KEY_DOWN)  = 1
+    If padA     <> 0 Then held(E3D_KEY_SPACE)  = 1 : held(E3D_KEY_PAD_A) = 1
+    If padB     <> 0 Then held(E3D_KEY_PAD_B)  = 1
+    If padX     <> 0 Then held(E3D_KEY_PAD_X)  = 1
+    If padY     <> 0 Then held(E3D_KEY_PAD_Y)  = 1
+    If padStart <> 0 Then held(E3D_KEY_ESCAPE) = 1 : held(E3D_KEY_PAD_START) = 1
+    If padSel   <> 0 Then held(E3D_KEY_TAB)    = 1 : held(E3D_KEY_PAD_SELECT) = 1
 End Sub

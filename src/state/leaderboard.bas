@@ -43,18 +43,18 @@ Sub GS_LEADERBOARD_Update ()
     End If
 
     Dim lbdThrobBright As Integer : lbdThrobBright = Int(170 + 85 * Sin(tt * 5))
-    FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO RETURN", lbdPY2 - 18, scrW, lbdThrobBright
+    If ctrlDev > 0 Then
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE OR A TO RETURN", lbdPY2 - 18, scrW, lbdThrobBright
+    Else
+        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO RETURN", lbdPY2 - 18, scrW, lbdThrobBright
+    End If
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
 
-    Static lbdSpaceWas As Integer
-    Static lbdEscWas   As Integer
-    Dim lbdSpc As Integer : lbdSpc = KEY_Down%(32)
-    Dim lbdEsc As Integer : lbdEsc = KEY_Down%(27)
-    If (lbdSpc And lbdSpaceWas = 0) Or (lbdEsc And lbdEscWas = 0) Then TITLE_ReturnTo GS_TITLE
-    lbdSpaceWas = lbdSpc
-    lbdEscWas   = lbdEsc
+    ' presses, not holds: the A that picked LEADERBOARD on the console is still down here.
+    ' SPACE's slot also carries pad A, ESC's pad Start.
+    If KEY_Pressed%(E3D_KEY_SPACE) Or KEY_Back% Then TITLE_ReturnTo GS_TITLE
 
     MUS_Fill 0
 End Sub
