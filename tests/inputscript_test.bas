@@ -13,6 +13,7 @@
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 Dim Shared held(0 To 32767) As Integer  ' the game's held() (dims.bas); KEY_Pressed% reads it

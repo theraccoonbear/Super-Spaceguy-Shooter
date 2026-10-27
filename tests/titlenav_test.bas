@@ -7,6 +7,7 @@
 ' Build: ./tools/buildqb tests/titlenav_test.bas
 ' Run:   builds/titlenav_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 ' ── game-state constants (must match dims.bas) ──────────────────────────────

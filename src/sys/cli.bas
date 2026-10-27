@@ -41,6 +41,13 @@ Sub CLI_Parse()
         If Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then cliVal = _StartDir$ + "/" + cliVal
         If ISC_Load%(cliVal) = 0 Then GAME_Usage(iscError)
     End If
+    ' --leaderboard-file <file>: a canned top_scores response, parsed as if the poll returned it
+    cliVal = CLI_Value$(cliLine, "--leaderboard-file ")
+    If cliVal <> "" Then
+        If Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then cliVal = _StartDir$ + "/" + cliVal
+        If _FileExists(cliVal) = 0 Then GAME_Usage("leaderboard file not found: " + cliVal)
+        LBRD_Parse _ReadFile$(cliVal)
+    End If
     cliVal = CLI_Value$(cliLine, "--frames ")
     If cliVal <> "" Then
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--frames needs a whole number, got '" + cliVal + "'")

@@ -19,6 +19,7 @@
 - `_COMMAND$(n)` subscript form is not supported in QB64-PE v4.5.0 — use `COMMAND$` (full string)
 - All `Dim` inside Subs are module-scope in QB64-PE; variable names must be unique across all Subs in a compilation unit
 - Short names like `pos`, `val` are built-in keywords — prefix vars with context (e.g. `objPos`, `sndVal`)
+- Without `Option _Explicit`, an undefined function or array compiles silently: `RNG!(RNG_FX)` with `rng.bas` missing becomes an implicit array read with `RNG_FX` an implicit 0, and a missing `Dim Shared` or `Const` becomes a 0-valued local. The game, every test and every CI-compiled tool start with `Option _Explicit` (it covers `$INCLUDE`d files too) — keep it in any new program, and include every module a file depends on (e.g. `src/sys/rng.bas` before `src/engine3d.bi`)
 - `Not` is bitwise, not logical: `Not 1 = -2` (truthy), so `If Not flag` misbehaves when `flag` is `1` instead of `-1`. Use `If flag = 0` to guard a disabled feature, or define boolean consts as `0`/`-1`
 
 ## Scope of work

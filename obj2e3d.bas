@@ -5,9 +5,11 @@
 '   slot_name: e.g. PLAYER
 ' Output: <slot_name>.e3d in the same directory as the binary.
 
+Option _Explicit
 ' Defer GL window until _ScreenShow — lets the tool run without a display
 $SCREENHIDE
 
+'$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 
 DIM cmdStr   AS STRING  : cmdStr   = LTRIM$(RTRIM$(COMMAND$))

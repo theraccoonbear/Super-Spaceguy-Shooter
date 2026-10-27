@@ -8,6 +8,7 @@
 ' Build: ./tools/buildqb tests/rng_test.bas
 ' Run:   ./tests/rng_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 '$INCLUDE:'../src/sys/rng.bas'

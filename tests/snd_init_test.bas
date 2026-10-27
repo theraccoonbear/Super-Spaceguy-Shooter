@@ -8,6 +8,7 @@
 ' Build: ./tools/buildqb tests/snd_init_test.bas
 ' Run:   ./tests/snd_init_test    (exit 0 = pass, exit 1 = any failure)
 
+Option _Explicit
 $CONSOLE:ONLY
 
 Const SAMPLE_RATE = 44100

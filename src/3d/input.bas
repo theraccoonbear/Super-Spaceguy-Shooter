@@ -45,6 +45,8 @@ Const E3D_PAD_MAX_BTNS = 32
 Dim Shared padRawAxis(1 To E3D_PAD_MAX_AXES) As Single
 Dim Shared padRawBtn(1 To E3D_PAD_MAX_BTNS) As Integer
 
+Dim Shared ctrlDev As Integer
+
 ' Scan for a connected gamepad/joystick; call once at startup after SCREEN is open.
 Sub E3D_CtrlInit
     Dim ctrlN As Integer, ctrlI As Integer
