@@ -6,5 +6,5 @@ compatibility_date = "2026-09-01"
 binding = "DB"
 database_name = "sss"
 # Fill in from the output of `npx wrangler d1 create sss`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a36fcb44-d688-4e19-8a38-141faae0667f"
 migrations_dir = "migrations"
