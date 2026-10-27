@@ -31,33 +31,33 @@ level:1
     PLAY type=combat mus=game trigger=10
     ;PLAY type=boss maneuver=latest_greatest mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015
     ARRIVE mus=planet
-    DOCK
+    DOCK mus=dock
 
 level:2
     CRAWL txt=stage2 mus=crawl
     PLAY type=combat mus=game trigger=15
     ARRIVE mus=planet
-    DOCK
+    DOCK mus=dock
 
 level:3
     CRAWL txt=stage3 mus=crawl
     PLAY type=combat mus=game trigger=10
     PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore
     ARRIVE mus=planet
-    DOCK
+    DOCK mus=dock
 
 level:4
     CRAWL txt=stage4 mus=crawl
     PLAY type=asteroid mus=asteroid trigger=350 
     ARRIVE mus=planet
-    DOCK
+    DOCK mus=dock
 
 level:5
     CRAWL txt=stage5 mus=crawl
     PLAY type=combat mus=game trigger=15
     PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut
     ARRIVE mus=planet
-    DOCK
+    DOCK mus=dock
 
 level:6
     CRAWL txt=stage6 mus=crawl

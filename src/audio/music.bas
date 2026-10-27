@@ -1,14 +1,14 @@
 ' music.bas — data-driven BGM engine; data from embedded MUSICDATA
 
 Const MUS_VOICE_MAX  = 10
-Const MUS_CUE_MAX    = 10
+Const MUS_CUE_MAX    = 16
 Const MUS_CUE_VMAX   = 8
-Const MUS_SEQ_MAX    = 18
-Const MUS_NOTE_MAX   = 256
-Const MUS_PAD_MAX    = 8
-Const MUS_DRUM_MAX   = 4
+Const MUS_SEQ_MAX    = 32
+Const MUS_NOTE_MAX   = 512
+Const MUS_PAD_MAX    = 16
+Const MUS_DRUM_MAX   = 8
 Const MUS_DRUM_STEPS = 32
-Const MUS_INST_MAX   = 10
+Const MUS_INST_MAX   = 16
 
 Type MUS_Voice
     vol     As Single
@@ -246,6 +246,7 @@ Sub MUS_Load()
                 musDrumCnt = musDrumCnt + 1
 
             Case "CUE"
+                If musCueCnt >= MUS_CUE_MAX Then musLcur = -1 : GoTo musNextLine
                 musLcur = musCueCnt
                 musCueN$(musLcur)   = MUS_Tok$
                 musCueBPM(musLcur)  = Val(MUS_Tok$)
@@ -325,80 +326,85 @@ Sub MUS_SetCue(musSCn$)
     End If
 End Sub
 
+' One sample of the current cue: its voices, pads and drum pattern, before volume.
+Function MUS_MusicSample!
+    Dim musMSs As Single, musMSvi As Integer, musMSph As Single
+    Dim musMSnIdx As Integer, musMSdbits As Integer
+    musMSs = 0
+    For musMSvi = 0 To musVoiceCnt - 1
+        If musVoice(musMSvi).isPad Then
+            musVoice(musMSvi).amp   = musVoice(musMSvi).amp + (musVoice(musMSvi).vol - musVoice(musMSvi).amp) * musVoice(musMSvi).atk
+            musVoice(musMSvi).phase = musVoice(musMSvi).phase + 6.2832 * musVoice(musMSvi).freq / SAMPLE_RATE
+            If musVoice(musMSvi).phase > 6.2832 Then musVoice(musMSvi).phase = musVoice(musMSvi).phase - 6.2832
+            musMSs = musMSs + Sin(musVoice(musMSvi).phase) * musVoice(musMSvi).amp
+        Else
+            musVoice(musMSvi).count = musVoice(musMSvi).count - 1
+            If musVoice(musMSvi).count <= 0 Then
+                musVoice(musMSvi).noteIdx = (musVoice(musMSvi).noteIdx + 1) Mod musVoice(musMSvi).seqLen
+                musMSnIdx = musVoice(musMSvi).seqBase + musVoice(musMSvi).noteIdx
+                musVoice(musMSvi).noteDur = CLng(musND(musMSnIdx)) * musStepDur
+                musVoice(musMSvi).count   = musVoice(musMSvi).noteDur
+                musVoice(musMSvi).gateOff = CLng(musVoice(musMSvi).noteDur * (1.0 - musVoice(musMSvi).gate))
+                musVoice(musMSvi).freq    = musNF(musMSnIdx)
+                musVoice(musMSvi).phase   = 0
+            End If
+            If musVoice(musMSvi).count > musVoice(musMSvi).gateOff And musVoice(musMSvi).freq > 0 Then
+                musVoice(musMSvi).phase = musVoice(musMSvi).phase + 6.2832 * musVoice(musMSvi).freq / SAMPLE_RATE
+                If musVoice(musMSvi).phase > 6.2832 Then musVoice(musMSvi).phase = musVoice(musMSvi).phase - 6.2832
+                musMSph = musVoice(musMSvi).phase
+                If musVoice(musMSvi).isDet Then
+                    musMSs = musMSs + (Sin(musMSph) + Sin(musMSph * (1.0 + musVoice(musMSvi).h3)) * musVoice(musMSvi).h2) * musVoice(musMSvi).vol
+                Else
+                    musMSs = musMSs + (Sin(musMSph) + Sin(musMSph * 2) * musVoice(musMSvi).h2 + Sin(musMSph * 3) * musVoice(musMSvi).h3) * musVoice(musMSvi).vol
+                End If
+            End If
+        End If
+    Next musMSvi
+
+    If musDrumIdx >= 0 Then
+        musDrumTick = musDrumTick - 1
+        If musDrumTick <= 0 Then
+            musDrumStep = (musDrumStep + 1) Mod musDrumLen(musDrumIdx)
+            musDrumTick = musStepDur
+            musMSdbits = musDrumPat(musDrumIdx, musDrumStep)
+            If musMSdbits And 1 Then sndKickPos  = 0
+            If musMSdbits And 2 Then sndSnarePos = 0
+            If musMSdbits And 4 Then sndHihatPos = 0
+        End If
+    End If
+
+    If sndKickPos >= 0 Then
+        musMSs = musMSs + sndKick(sndKickPos)
+        sndKickPos = sndKickPos + 1
+        If sndKickPos >= SND_KICK_LEN Then sndKickPos = -1
+    End If
+    If sndSnarePos >= 0 Then
+        musMSs = musMSs + sndSnare(sndSnarePos)
+        sndSnarePos = sndSnarePos + 1
+        If sndSnarePos >= SND_SNARE_LEN Then sndSnarePos = -1
+    End If
+    If sndHihatPos >= 0 Then
+        musMSs = musMSs + sndHihat(sndHihatPos)
+        sndHihatPos = sndHihatPos + 1
+        If sndHihatPos >= SND_HIHAT_LEN Then sndHihatPos = -1
+    End If
+    MUS_MusicSample! = musMSs
+End Function
+
 Sub MUS_Fill(musFdoSfx As Integer)
     Dim musFillCnt As Integer, musFk As Integer
     Dim musFsample As Single, musFefx As Single, musFnarBlip As Single
-    Dim musFvi As Integer, musFph As Single
-    Dim musFnIdx As Integer, musFdbits As Integer
 
     musFillCnt = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
     If musFillCnt <= 0 Then Exit Sub
 
     For musFk = 0 To musFillCnt - 1
-        musFsample = 0
-
         If musFdoSfx Then
             sndEnginePhase = sndEnginePhase + 6.2832 * sndEngineFreq / SAMPLE_RATE
             If sndEnginePhase > 6.2832 Then sndEnginePhase = sndEnginePhase - 6.2832
         End If
 
-        For musFvi = 0 To musVoiceCnt - 1
-            If musVoice(musFvi).isPad Then
-                musVoice(musFvi).amp   = musVoice(musFvi).amp + (musVoice(musFvi).vol - musVoice(musFvi).amp) * musVoice(musFvi).atk
-                musVoice(musFvi).phase = musVoice(musFvi).phase + 6.2832 * musVoice(musFvi).freq / SAMPLE_RATE
-                If musVoice(musFvi).phase > 6.2832 Then musVoice(musFvi).phase = musVoice(musFvi).phase - 6.2832
-                musFsample = musFsample + Sin(musVoice(musFvi).phase) * musVoice(musFvi).amp
-            Else
-                musVoice(musFvi).count = musVoice(musFvi).count - 1
-                If musVoice(musFvi).count <= 0 Then
-                    musVoice(musFvi).noteIdx = (musVoice(musFvi).noteIdx + 1) Mod musVoice(musFvi).seqLen
-                    musFnIdx = musVoice(musFvi).seqBase + musVoice(musFvi).noteIdx
-                    musVoice(musFvi).noteDur = CLng(musND(musFnIdx)) * musStepDur
-                    musVoice(musFvi).count   = musVoice(musFvi).noteDur
-                    musVoice(musFvi).gateOff = CLng(musVoice(musFvi).noteDur * (1.0 - musVoice(musFvi).gate))
-                    musVoice(musFvi).freq    = musNF(musFnIdx)
-                    musVoice(musFvi).phase   = 0
-                End If
-                If musVoice(musFvi).count > musVoice(musFvi).gateOff And musVoice(musFvi).freq > 0 Then
-                    musVoice(musFvi).phase = musVoice(musFvi).phase + 6.2832 * musVoice(musFvi).freq / SAMPLE_RATE
-                    If musVoice(musFvi).phase > 6.2832 Then musVoice(musFvi).phase = musVoice(musFvi).phase - 6.2832
-                    musFph = musVoice(musFvi).phase
-                    If musVoice(musFvi).isDet Then
-                        musFsample = musFsample + (Sin(musFph) + Sin(musFph * (1.0 + musVoice(musFvi).h3)) * musVoice(musFvi).h2) * musVoice(musFvi).vol
-                    Else
-                        musFsample = musFsample + (Sin(musFph) + Sin(musFph * 2) * musVoice(musFvi).h2 + Sin(musFph * 3) * musVoice(musFvi).h3) * musVoice(musFvi).vol
-                    End If
-                End If
-            End If
-        Next musFvi
-
-        If musDrumIdx >= 0 Then
-            musDrumTick = musDrumTick - 1
-            If musDrumTick <= 0 Then
-                musDrumStep = (musDrumStep + 1) Mod musDrumLen(musDrumIdx)
-                musDrumTick = musStepDur
-                musFdbits = musDrumPat(musDrumIdx, musDrumStep)
-                If musFdbits And 1 Then sndKickPos  = 0
-                If musFdbits And 2 Then sndSnarePos = 0
-                If musFdbits And 4 Then sndHihatPos = 0
-            End If
-        End If
-
-        If sndKickPos >= 0 Then
-            musFsample = musFsample + sndKick(sndKickPos)
-            sndKickPos = sndKickPos + 1
-            If sndKickPos >= SND_KICK_LEN Then sndKickPos = -1
-        End If
-        If sndSnarePos >= 0 Then
-            musFsample = musFsample + sndSnare(sndSnarePos)
-            sndSnarePos = sndSnarePos + 1
-            If sndSnarePos >= SND_SNARE_LEN Then sndSnarePos = -1
-        End If
-        If sndHihatPos >= 0 Then
-            musFsample = musFsample + sndHihat(sndHihatPos)
-            sndHihatPos = sndHihatPos + 1
-            If sndHihatPos >= SND_HIHAT_LEN Then sndHihatPos = -1
-        End If
+        musFsample = MUS_MusicSample!
 
         musFefx = 0 : musFnarBlip = 0
         musFefx = musFefx + SND_UiNext!   ' UI one-shots and the power-up chime (snd.bas)

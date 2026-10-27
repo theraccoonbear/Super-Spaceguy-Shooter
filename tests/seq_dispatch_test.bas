@@ -104,7 +104,8 @@ End Type
 Dim Shared player       As GameObj
 
 ' ── stubs ────────────────────────────────────────────────────────────────────
-Sub MUS_SetCue(c As String)         : End Sub
+Dim Shared stLastCue As String
+Sub MUS_SetCue(c As String)         : stLastCue = c : End Sub
 Sub StarfieldReset(x As Single, y As Single, z As Single) : End Sub
 Sub CRAWL_Prep(k As String, h As Single) : End Sub
 Sub SETTINGS_Save()                 : End Sub
@@ -368,8 +369,10 @@ ST_Assert seqIdx = 14,                                   "7.08  at idx 14 (ARRIV
 ST_Assert gameState = GS_PLANET,                         "7.09  gameState=GS_PLANET after boss"
 SEQ_Advance   ' DOCK
 ST_Assert seqIdx = 15 And gameState = 15,                "7.10  ARRIVE -> DOCK (idx 15, GS_DOCK)"
+ST_Assert stLastCue = "dock",                            "7.10b entering the dock switches to the dock cue"
 SEQ_Advance   ' leaving the dock
 ST_Assert gameState = GS_CRAWL And seqLabel$(seqIdx) = "level4", "7.11  DOCK -> next chapter crawl"
+ST_Assert stLastCue = "crawl",                           "7.11b leaving the dock switches the music to the crawl cue"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 8. stageScore: normal vs nerf

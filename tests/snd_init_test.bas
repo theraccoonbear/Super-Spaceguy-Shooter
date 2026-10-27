@@ -10,14 +10,18 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+$EMBED:'assets/music.mus':'MUSICDATA'
+$EMBED:'assets/sequence.txt':'SEQTXT'
 
 Const SAMPLE_RATE = 44100
 
-Sub MUS_Load() : End Sub
-Sub MUS_Fill(n As Integer) : End Sub
+' music.bas's mixer reads these (dims.bas / speech.bas in the game)
+Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single, spkSampleOut As Single
+Sub SPK_Advance () : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/snd.bas'
+'$INCLUDE:'../src/audio/music.bas'
 
 Dim Shared stPassed As Integer, stFailed As Integer
 
@@ -30,6 +34,44 @@ Sub ST_Assert(condition As Integer, testName As String)
         stFailed = stFailed + 1
     End If
 End Sub
+
+Function ST_CueIdx% (stCIn As String)
+    Dim stCIi As Integer
+    ST_CueIdx% = -1
+    For stCIi = 0 To musCueCnt - 1
+        If musCueN$(stCIi) = stCIn Then ST_CueIdx% = stCIi
+    Next stCIi
+End Function
+
+' Lines of a text asset whose first token is stCDdir (case-insensitive).
+Function ST_CountDirective% (stCDdat As String, stCDdir As String)
+    Dim stCDrest As String, stCDln As String, stCDp As Integer, stCDn As Integer
+    stCDrest = stCDdat
+    Do While Len(stCDrest) > 0
+        stCDp = InStr(stCDrest, Chr$(10))
+        If stCDp > 0 Then stCDln = Left$(stCDrest, stCDp - 1) : stCDrest = Mid$(stCDrest, stCDp + 1) Else stCDln = stCDrest : stCDrest = ""
+        stCDln = UCase$(LTrim$(RTrim$(stCDln))) + " "
+        If Left$(stCDln, Len(stCDdir) + 1) = UCase$(stCDdir) + " " Then stCDn = stCDn + 1
+    Loop
+    ST_CountDirective% = stCDn
+End Function
+
+' Renders stCRsec seconds of a cue through the real mixer (music only, before volMusic)
+' and returns its RMS, skipping the first 2 s while the pads fade in.
+Function ST_CueRms! (stCRn As String, stCRsec As Single, stCRpeak As Single)
+    Dim stCRk As Long, stCRs As Single, stCRsum As Double, stCRcnt As Long
+    sndKickPos = -1 : sndSnarePos = -1 : sndHihatPos = -1
+    MUS_SetCue stCRn
+    stCRpeak = 0
+    For stCRk = 0 To CLng(stCRsec * SAMPLE_RATE) - 1
+        stCRs = MUS_MusicSample!
+        If stCRk >= 2 * SAMPLE_RATE Then
+            stCRsum = stCRsum + CDbl(stCRs) * stCRs : stCRcnt = stCRcnt + 1
+            If Abs(stCRs) > stCRpeak Then stCRpeak = Abs(stCRs)
+        End If
+    Next stCRk
+    ST_CueRms! = Sqr(stCRsum / stCRcnt)
+End Function
 
 Print "=== snd_init_test ==="
 Print ""
@@ -139,6 +181,72 @@ For sndTK = 0 To SND_UIMOVE_LEN - 1
     If Abs(sndUiMove(sndTK)) > sndTPeak Then sndTPeak = Abs(sndUiMove(sndTK))
 Next sndTK
 ST_Assert sndTPeak > 0.15, "the check means something: a hard cut at the tick's peak would step by" + Str$(sndTPeak)
+
+' ── music data (#268): SND_Init above ran the real MUS_Load on assets/music.mus ──
+Print ""
+Print "--- music.mus loads whole; the dock cue (#268) ---"
+Dim stMusDat As String : stMusDat = _EMBEDDED$("MUSICDATA")
+ST_Assert musCueCnt = ST_CountDirective%(stMusDat, "CUE"), "every CUE in music.mus loaded (" + LTrim$(Str$(musCueCnt)) + " of max" + Str$(MUS_CUE_MAX) + ")"
+ST_Assert musInstCnt = ST_CountDirective%(stMusDat, "INST"), "every INST loaded (" + LTrim$(Str$(musInstCnt)) + " of max" + Str$(MUS_INST_MAX) + ")"
+ST_Assert musSeqCnt = ST_CountDirective%(stMusDat, "SEQ"), "every SEQ loaded (" + LTrim$(Str$(musSeqCnt)) + " of max" + Str$(MUS_SEQ_MAX) + ")"
+ST_Assert musPadTotal = ST_CountDirective%(stMusDat, "PAD"), "every PAD loaded (" + LTrim$(Str$(musPadTotal)) + " of max" + Str$(MUS_PAD_MAX) + ")"
+ST_Assert musDrumCnt = ST_CountDirective%(stMusDat, "DRUM"), "every DRUM loaded (" + LTrim$(Str$(musDrumCnt)) + " of max" + Str$(MUS_DRUM_MAX) + ")"
+ST_Assert musNCount < MUS_NOTE_MAX, "note pool not full (" + LTrim$(Str$(musNCount)) + " of" + Str$(MUS_NOTE_MAX) + ")"
+
+Dim stDockCue As Integer : stDockCue = ST_CueIdx%("dock")
+ST_Assert stDockCue >= 0, "cue 'dock' exists"
+If stDockCue >= 0 Then
+    ST_Assert musCueVCnt(stDockCue) >= 3, "dock has voices (" + LTrim$(Str$(musCueVCnt(stDockCue))) + ")"
+    ST_Assert musCueBPM(stDockCue) >= 80 And musCueBPM(stDockCue) <= 110, "dock BPM is relaxed mid-tempo (" + LTrim$(Str$(musCueBPM(stDockCue))) + ")"
+    ST_Assert musCueDrum(stDockCue) >= 0, "dock has its drum pattern"
+    ' loop seam: every sequenced voice spans the same number of steps, a whole number of drum bars
+    Dim stDV As Integer, stDN As Integer, stDSteps As Integer, stDFirst As Integer, stDSeam As Integer
+    stDFirst = -1 : stDSeam = -1
+    For stDV = 0 To musCueVCnt(stDockCue) - 1
+        If musCueTmpl(stDockCue, stDV).isPad = 0 Then
+            stDSteps = 0
+            For stDN = 0 To musCueTmpl(stDockCue, stDV).seqLen - 1
+                stDSteps = stDSteps + musND(musCueTmpl(stDockCue, stDV).seqBase + stDN)
+            Next stDN
+            If stDFirst < 0 Then stDFirst = stDSteps
+            If stDSteps <> stDFirst Or stDSteps Mod musDrumLen(musCueDrum(stDockCue)) <> 0 Then stDSeam = 0
+        End If
+    Next stDV
+    ST_Assert stDFirst > 0 And stDSeam, "dock voices loop together (" + LTrim$(Str$(stDFirst)) + " steps each, whole drum bars)"
+End If
+
+' every DOCK step in sequence.txt names a cue that exists
+Dim stSeqRest As String, stSeqLn As String, stSeqP As Integer, stSeqMus As String, stSeqDocks As Integer, stSeqBad As Integer
+stSeqRest = _EMBEDDED$("SEQTXT")
+Do While Len(stSeqRest) > 0
+    stSeqP = InStr(stSeqRest, Chr$(10))
+    If stSeqP > 0 Then stSeqLn = Left$(stSeqRest, stSeqP - 1) : stSeqRest = Mid$(stSeqRest, stSeqP + 1) Else stSeqLn = stSeqRest : stSeqRest = ""
+    stSeqLn = LTrim$(RTrim$(stSeqLn))
+    If Len(stSeqLn) > 0 And Right$(stSeqLn, 1) = Chr$(13) Then stSeqLn = RTrim$(Left$(stSeqLn, Len(stSeqLn) - 1))
+    If UCase$(stSeqLn) = "DOCK" Or UCase$(Left$(stSeqLn, 5)) = "DOCK " Then
+        stSeqDocks = stSeqDocks + 1
+        stSeqP = InStr(stSeqLn, "mus=")
+        stSeqMus = ""
+        If stSeqP > 0 Then
+            stSeqMus = Mid$(stSeqLn, stSeqP + 4)
+            If InStr(stSeqMus, " ") > 0 Then stSeqMus = Left$(stSeqMus, InStr(stSeqMus, " ") - 1)
+        End If
+        If Len(stSeqMus) = 0 Or ST_CueIdx%(stSeqMus) < 0 Then
+            stSeqBad = stSeqBad + 1 : Print "      DOCK step with missing/unknown cue: " + stSeqLn
+        End If
+    End If
+Loop
+ST_Assert stSeqDocks > 0, "sequence.txt has DOCK steps (" + LTrim$(Str$(stSeqDocks)) + ")"
+ST_Assert stSeqBad = 0, "every DOCK step sets mus= to a cue in music.mus"
+
+' loudness: the dock sits about where the planet cue does, under the dock's UI beeps
+Dim stDockPk As Single, stPlnPk As Single, stDockRms As Single, stPlnRms As Single
+stDockRms = ST_CueRms!("dock", 12, stDockPk)
+stPlnRms = ST_CueRms!("planet", 12, stPlnPk)
+Print "      dock   peak" + Str$(stDockPk) + "  rms" + Str$(stDockRms)
+Print "      planet peak" + Str$(stPlnPk) + "  rms" + Str$(stPlnRms)
+ST_Assert stDockRms > stPlnRms * 0.5 And stDockRms < stPlnRms * 1.5, "dock RMS within 0.5x-1.5x of planet's"
+ST_Assert stDockPk < 1.0, "dock peak stays under full scale before volMusic"
 
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
