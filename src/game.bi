@@ -25,6 +25,7 @@
 '$INCLUDE:'state/consent.bas'
 '$INCLUDE:'state/username.bas'
 '$INCLUDE:'state/leaderboard.bas'
+'$INCLUDE:'state/titlenav.bas'
 '$INCLUDE:'gameplay/impact.bas'
 '$INCLUDE:'gameplay/attacks.bas'
 '$INCLUDE:'gameplay/spores.bas'

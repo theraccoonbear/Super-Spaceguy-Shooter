@@ -169,7 +169,7 @@ Sub OPTS_Update ()
 
     If oEsc And Not optEscWas Then
         SETTINGS_Save
-        gameState = GS_TITLE
+        TITLE_ReturnTo GS_TITLE
     End If
 
     Static oEnterWas As Integer
@@ -186,7 +186,7 @@ Sub OPTS_Update ()
 
     Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
     If oAbout And Not optAboutWas Then
-        ABOUT_Prep : gameState = GS_ABOUT
+        ABOUT_Prep GS_OPTIONS : gameState = GS_ABOUT
     End If
     optAboutWas = oAbout
 

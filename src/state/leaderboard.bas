@@ -52,7 +52,7 @@ Sub GS_LEADERBOARD_Update ()
     Static lbdEscWas   As Integer
     Dim lbdSpc As Integer : lbdSpc = KEY_Down%(32)
     Dim lbdEsc As Integer : lbdEsc = KEY_Down%(27)
-    If (lbdSpc And lbdSpaceWas = 0) Or (lbdEsc And lbdEscWas = 0) Then gameState = GS_TITLE
+    If (lbdSpc And lbdSpaceWas = 0) Or (lbdEsc And lbdEscWas = 0) Then TITLE_ReturnTo GS_TITLE
     lbdSpaceWas = lbdSpc
     lbdEscWas   = lbdEsc
 

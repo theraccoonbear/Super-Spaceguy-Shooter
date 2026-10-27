@@ -56,6 +56,7 @@ TESTS=(
   attack_test
   inputscript_test
   rng_test
+  titlenav_test
 )
 
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"

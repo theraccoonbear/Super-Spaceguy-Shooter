@@ -178,7 +178,7 @@ DO
     fsKeyWas = KEY_Down%(34048)
 
     ' Detect state transitions for speech triggers
-    IF gameState = GS_TITLE AND prevGameState <> GS_TITLE AND prevGameState <> GS_OPTIONS AND prevGameState <> GS_CONTROLS THEN
+    IF gameState = GS_TITLE AND TITLE_SpeakOnEntry%(prevGameState) THEN
         SPK_Say sSpkTitle
         If lbrdPollDone = 0 Then LBRD_Poll
     END IF
