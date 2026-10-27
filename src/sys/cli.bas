@@ -2,6 +2,7 @@ Sub CLI_Parse()
     Dim cliLine As String : cliLine = Command$
     Dim cliFH As Integer
     Dim cliPos As Integer, cliI As Integer, cliVal As String
+    Dim cliNumOk As Integer
 
     If InStr(cliLine, "--version") > 0 Or cliLine = "-v" Or Left$(cliLine, 3) = "-v " Then
         cliFH = FreeFile
@@ -56,6 +57,16 @@ Sub CLI_Parse()
     cliVal = CLI_Value$(cliLine, "--credits ")
     If cliVal <> "" Then
         If CR_ParseArg%(cliVal, cliCredits) = 0 Then GAME_Usage("--credits needs a whole number 0 or more, got '" + cliVal + "'")
+    End If
+    cliVal = CLI_Value$(cliLine, "--ships ")
+    If cliVal <> "" Then
+        cliNumOk = CR_ParseArg%(cliVal, cliShips)
+        If cliNumOk = 0 Or cliShips < 1 Then GAME_Usage("--ships needs a whole number 1 or more, got '" + cliVal + "'")
+    End If
+    cliVal = CLI_Value$(cliLine, "--shields ")
+    If cliVal <> "" Then
+        cliNumOk = CR_ParseArg%(cliVal, cliShields)
+        If cliNumOk = 0 Or cliShields < 1 Then GAME_Usage("--shields needs a whole number 1 or more, got '" + cliVal + "'")
     End If
     cliVal = CLI_Value$(cliLine, "--seed ")
     If cliVal <> "" Then

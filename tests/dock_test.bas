@@ -147,6 +147,17 @@ DT_Script 1000, "2 31 ENTER PAD_A"
 dtLeft = DT_Run%(40) : DT_Assert DT_Count%(DOCK_BOUGHT) = 1 And DT_Count%(DOCK_NOFUNDS) + DT_Count%(DOCK_MAXED) = 0, "ENTER + pad A held: one purchase, one sound"
 
 Print ""
+Print "--- shield recharge in the dock ---"
+DT_Script 500, "2 2 UP/4 4 UP/6 6 ENTER"
+dtLeft = DT_Run%(10)
+DT_Assert dockSel = UPG_RECHARGE And dtRes(6) = DOCK_FULL And credits = 500, "full shields: recharge refused, nothing charged"
+DT_Assert dockMsg = "SHIELDS ALREADY FULL", "the dock says the shields are full"
+DT_Script 500, "2 2 UP/4 4 UP/6 6 ENTER"
+lives = 30
+dtLeft = DT_Run%(10)
+DT_Assert dtRes(6) = DOCK_BOUGHT And lives = shieldMax And credits = 450, "damaged shields: recharge refills them for 50"
+
+Print ""
 Print "--- skip in one press ---"
 DT_Script 500, "5 5 ESC"
 DT_Assert DT_Run%(20) = 5 And credits = 500, "ESC leaves at once, nothing bought"

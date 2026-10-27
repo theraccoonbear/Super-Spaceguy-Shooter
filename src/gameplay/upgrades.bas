@@ -12,7 +12,7 @@
 '   (earning and the end-of-run bonus are in credits.bas)
 '   r = UPG_Buy%(id)               buy the next level: UPG_OK / UPG_NOFUNDS / UPG_MAXED / UPG_FULL
 '   UPG_Apply                      recompute the effect values in dims.bas from the levels
-'   UPG_DockVisit                  per dock: refill nova charges, allow one hull repair
+'   UPG_DockVisit                  per dock: refill nova charges, allow one shield recharge
 '   ok = UPG_RollTry%(dir)         start an evasive roll if unlocked and cooled down
 '   UPG_RollTick                   once per frame in play
 '   ok = UPG_NovaTry%              spend a nova charge
@@ -33,12 +33,12 @@ Const UPG_THRUST  = 8
 Const UPG_ROLL    = 9
 Const UPG_TRACTOR = 10
 Const UPG_FUEL    = 11
-Const UPG_REPAIR  = 12
+Const UPG_RECHARGE  = 12
 
 Const UPG_OK      = 0
 Const UPG_NOFUNDS = 1
 Const UPG_MAXED   = 2
-Const UPG_FULL    = 3   ' hull repair with the shields already full
+Const UPG_FULL    = 3   ' shield recharge with the shields already full
 
 Dim Shared upgKey$(1 To UPG_COUNT)
 Dim Shared upgNames$(1 To UPG_COUNT)    ' "NAME" or "NAME LV1,NAME LV2,..."
@@ -197,7 +197,7 @@ End Function
 Function UPG_Buy% (upgbId As Integer)
     Dim upgbPrice As Long
     If upgLevel(upgbId) >= upgMax(upgbId) Then UPG_Buy% = UPG_MAXED : Exit Function
-    If upgbId = UPG_REPAIR And lives >= shieldMax Then UPG_Buy% = UPG_FULL : Exit Function
+    If upgbId = UPG_RECHARGE And lives >= shieldMax Then UPG_Buy% = UPG_FULL : Exit Function
     upgbPrice = UPG_Price&(upgbId)
     If upgbPrice > credits Then UPG_Buy% = UPG_NOFUNDS : Exit Function
     credits = credits - upgbPrice
@@ -206,7 +206,7 @@ Function UPG_Buy% (upgbId As Integer)
     UPG_Apply
     Select Case upgbId
         Case UPG_NOVA : novaCharges = novaMax
-        Case UPG_REPAIR : lives = shieldMax
+        Case UPG_RECHARGE : lives = shieldMax
         Case UPG_LASER : laserEnergy = laserMax
         Case UPG_FUEL : fuelLevel = fuelMax
     End Select
@@ -219,10 +219,10 @@ Function UPG_Buy% (upgbId As Integer)
     UPG_Buy% = UPG_OK
 End Function
 
-' Every dock visit: nova charges refill, and hull repair can be bought once more.
+' Every dock visit: nova charges refill, and shield recharge can be bought once more.
 Sub UPG_DockVisit
     novaCharges = novaMax
-    upgLevel(UPG_REPAIR) = 0
+    upgLevel(UPG_RECHARGE) = 0
 End Sub
 
 ' Starts a roll toward urDir (-1 / +1). Needs the upgrade, no roll running, no cooldown.
@@ -275,13 +275,13 @@ End Function
 Function UPG_Next$ (udId As Integer)
     Dim udL As Integer, udA0 As Single, udA1 As Single, udB0 As Single, udB1 As Single
     udL = upgLevel(udId)
-    If udId = UPG_REPAIR Then
-        If udL >= upgMax(udId) Then
+    If udId = UPG_RECHARGE Then
+        If lives >= shieldMax Then
+            UPG_Next$ = "SHIELDS FULL"
+        ElseIf udL >= upgMax(udId) Then
             UPG_Next$ = "DONE THIS VISIT"
-        ElseIf lives >= shieldMax Then
-            UPG_Next$ = "SHIELDS ALREADY FULL"
         Else
-            UPG_Next$ = "SHIELDS " + UPG_Num$(lives) + ">" + UPG_Num$(shieldMax)
+            UPG_Next$ = "SHIELDS " + UPG_Num$(UPG_ShieldPct%) + "% > 100%"
         End If
         Exit Function
     End If
@@ -326,7 +326,7 @@ Function UPG_KeyOf$ (ukId As Integer)
         Case UPG_ROLL    : UPG_KeyOf$ = "roll"
         Case UPG_TRACTOR : UPG_KeyOf$ = "tractor"
         Case UPG_FUEL    : UPG_KeyOf$ = "fuel"
-        Case UPG_REPAIR  : UPG_KeyOf$ = "repair"
+        Case UPG_RECHARGE : UPG_KeyOf$ = "recharge"
         Case Else        : UPG_KeyOf$ = ""
     End Select
 End Function
@@ -337,3 +337,9 @@ Sub UPG_AddHint (uahText As String)
     If Len(upgHintPending) > 0 Then upgHintPending = upgHintPending + Chr$(10)
     upgHintPending = upgHintPending + uahText
 End Sub
+
+' Shields as a whole percentage of the current maximum, rounded down (the dock's status).
+Function UPG_ShieldPct%
+    If shieldMax <= 0 Then UPG_ShieldPct% = 0 : Exit Function
+    UPG_ShieldPct% = Int(lives * 100 / shieldMax)
+End Function

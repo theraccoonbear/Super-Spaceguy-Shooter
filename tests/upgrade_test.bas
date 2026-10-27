@@ -3,7 +3,7 @@
 ' Drives the real module against the real assets/config/*.ini (read through the shared
 ' CFG_Parse$ in src/sys/config.bas): parsing the upgrade
 ' table and credit amounts (and rejecting a malformed line), the economy target, earning,
-' buying (affordable, too expensive, maxed), each upgrade's effect values, hull repair
+' buying (affordable, too expensive, maxed), each upgrade's effect values, shield recharge
 ' once per dock, nova charges refilled at every dock, the roll's immunity window and
 ' cooldown, shield regen after the no-hit delay, hull armour, and the new-game reset.
 '
@@ -64,7 +64,7 @@ cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
 cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 utOk = UPG_Load%
 UT_Assert utOk <> 0, "UPG_Load% reads every upg_ line (" + upgLoadErr + ")"
-UT_Assert upgMax(UPG_LASER) = 3 And upgMax(UPG_CANNON) = 2 And upgMax(UPG_NOVA) = 3 And upgMax(UPG_REPAIR) = 1, "levels: laser 3, cannon 2, nova 3, repair 1"
+UT_Assert upgMax(UPG_LASER) = 3 And upgMax(UPG_CANNON) = 2 And upgMax(UPG_NOVA) = 3 And upgMax(UPG_RECHARGE) = 1, "levels: laser 3, cannon 2, nova 3, repair 1"
 UT_Assert upgPrice(UPG_LASER, 1) = 80 And upgPrice(UPG_LASER, 2) = 150 And upgPrice(UPG_LASER, 3) = 250, "laser prices 80, 150, 250"
 UT_Assert UT_Near%(upgFxA(UPG_LASER, 0), 100) And UT_Near%(upgFxA(UPG_LASER, 3), 180), "laser max 100 at level 0, 180 at level 3"
 UT_Assert UT_Near%(upgFxB(UPG_LASER, 0), 0.3) And UT_Near%(upgFxB(UPG_LASER, 3), 0.5), "laser regen 0.30 at level 0, 0.50 at level 3"
@@ -79,10 +79,10 @@ For utI = 1 To UPG_COUNT
 Next utI
 UT_Assert utOk <> 0, "all 12 upgrades have a key and a name"
 
-' economy: every level of everything (repairs aside) is 90-100% of what stages 1-5 pay
+' economy: every level of everything (recharges aside) is 90-100% of what stages 1-5 pay
 utTotal = 0
 For utI = 1 To UPG_COUNT
-    If utI <> UPG_REPAIR Then
+    If utI <> UPG_RECHARGE Then
         For utJ = 1 To upgMax(utI) : utTotal = utTotal + upgPrice(utI, utJ) : Next utJ
     End If
 Next utI
@@ -149,7 +149,12 @@ UT_Assert UPG_Next$(UPG_CANNON) = "NEXT: 3-WAY SPREAD", "after twin: next is the
 utR = UPG_Buy%(UPG_CANNON)
 UT_Assert UPG_Next$(UPG_CANNON) = "MAXED", "after spread: MAXED"
 lives = 60
-UT_Assert UPG_Next$(UPG_REPAIR) = "SHIELDS 60>100", "repair shows the refill (" + UPG_Next$(UPG_REPAIR) + ")"
+UT_Assert UPG_Next$(UPG_RECHARGE) = "SHIELDS 60% > 100%", "recharge shows the refill as percentages (" + UPG_Next$(UPG_RECHARGE) + ")"
+shieldMax = 125 : lives = 44
+UT_Assert UPG_ShieldPct% = 35 And UPG_Next$(UPG_RECHARGE) = "SHIELDS 35% > 100%", "with a bigger shield the percentage is of the max (44/125 -> 35%)"
+lives = 125
+UT_Assert UPG_Next$(UPG_RECHARGE) = "SHIELDS FULL", "full shields: SHIELDS FULL"
+UPG_Apply
 
 Print ""
 Print "--- launch hint for a newly bought ability ---"
@@ -209,19 +214,19 @@ Next utI
 UT_Assert utOk <> 0, "every row has an info line and a next-level line that fit the dock panel (25 chars)"
 
 Print ""
-Print "--- hull repair: once per dock ---"
+Print "--- shield recharge: once per dock ---"
 lives = 50
-utR = UPG_Buy%(UPG_REPAIR)
-UT_Assert utR = UPG_OK And lives = shieldMax, "repair refills the shields to max"
+utR = UPG_Buy%(UPG_RECHARGE)
+UT_Assert utR = UPG_OK And lives = shieldMax, "recharge refills the shields to max"
 lives = 40
-utR = UPG_Buy%(UPG_REPAIR)
-UT_Assert utR = UPG_MAXED And lives = 40, "a second repair at the same dock is refused"
+utR = UPG_Buy%(UPG_RECHARGE)
+UT_Assert utR = UPG_MAXED And lives = 40, "a second recharge at the same dock is refused"
 UPG_DockVisit
-utR = UPG_Buy%(UPG_REPAIR)
+utR = UPG_Buy%(UPG_RECHARGE)
 UT_Assert utR = UPG_OK And lives = shieldMax, "the next dock sells it again"
 UPG_DockVisit
 utCr = credits
-utR = UPG_Buy%(UPG_REPAIR)
+utR = UPG_Buy%(UPG_RECHARGE)
 UT_Assert utR = UPG_FULL And credits = utCr, "full shields: refused, no charge"
 
 Print ""

@@ -88,7 +88,7 @@ Sub STAGE_Update
         End If
         ' fully faded — reset arena and advance to next crawl
         If cinematicFade >= 255 Then
-            ' shields are not refilled here: that is the dock's hull repair (#268)
+            ' shields are not refilled here: that is the dock's shield recharge (#268)
             invTimer = 180
             laserEnergy = laserMax
             fuelLevel = fuelMax : fuelStranded = 0

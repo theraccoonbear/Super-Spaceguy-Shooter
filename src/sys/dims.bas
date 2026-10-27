@@ -322,6 +322,8 @@ DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = ne
 DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
 DIM SHARED cliSeedSet      AS INTEGER
 DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N credits (testing the dock)
+DIM SHARED cliShips        AS LONG     ' --ships N: start with N ships (testing: quick game over)
+DIM SHARED cliShields      AS LONG     ' --shields N: start with N shield points (testing: damaged shields at the dock)
 DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
 DIM SHARED cliShotN        AS INTEGER

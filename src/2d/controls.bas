@@ -39,7 +39,7 @@ Sub CONTROLS_Systems (csPart As Integer)
         csY = 48 + (csI - 1) * 28
         csNm = upgNames$(csId)
         If InStr(csNm, ",") > 0 Then csNm = Left$(csNm, InStr(csNm, ",") - 1) + " / " + Mid$(csNm, InStr(csNm, ",") + 1)
-        If csId = UPG_REPAIR Then csLv = "PER DOCK" Else csLv = LTrim$(Str$(upgMax(csId))) + " LV"
+        If csId = UPG_RECHARGE Then csLv = "PER DOCK" Else csLv = LTrim$(Str$(upgMax(csId))) + " LV"
         FONT_PrintAlpha fontPalette(15), backBuffer, csNm, CTL_KEY_X, csY, 255
         FONT_PrintAlpha fontPalette(8), backBuffer, csLv, scrW - 28 - Len(csLv) * FONT_CHAR_W, csY, 255
         FONT_PrintAlpha fontPalette(9), backBuffer, UPG_Info$(csId), CTL_KEY_X + 16, csY + 12, 255

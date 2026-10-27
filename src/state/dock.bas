@@ -59,6 +59,8 @@ Sub DOCK_Draw
         Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 12), BF
     End If
 
+    DOCK_DrawStatus
+
     ' see-through panel: dark enough to read white text over the busy art
     Line (DOCK_PX1, DOCK_PY1)-(DOCK_PX2, DOCK_PY2), _RGBA(2, 4, 18, DOCK_PANEL_ALPHA), BF
     Line (DOCK_PX1, DOCK_PY1)-(DOCK_PX2, DOCK_PY2), _RGB(0, 55, 110), B
@@ -91,22 +93,30 @@ Sub DOCK_Draw
         Else
             dkdName = UPG_Name$(dkdI)
             dkdPriceN = UPG_Price&(dkdI)
-            If dkdI = UPG_REPAIR Then
-                If upgLevel(dkdI) >= upgMax(dkdI) Then dkdLv = "DONE" Else dkdLv = ""
+            If dkdI = UPG_RECHARGE Then
+                If lives >= shieldMax Then
+                    dkdLv = "FULL"
+                ElseIf upgLevel(dkdI) >= upgMax(dkdI) Then
+                    dkdLv = "DONE"
+                Else
+                    dkdLv = LTrim$(Str$(UPG_ShieldPct%)) + "%"
+                End If
             Else
                 dkdLv = LTrim$(Str$(upgLevel(dkdI))) + "/" + LTrim$(Str$(upgMax(dkdI)))
             End If
             If dkdPriceN = 0 Then dkdPrice = "MAX" Else dkdPrice = "$" + LTrim$(Str$(dkdPriceN))
             If dkdI = dockSel Then
                 dkdPal = 15
-            ElseIf dkdPriceN = 0 Then
+            ElseIf dkdPriceN = 0 Or dkdLv = "FULL" Then
                 dkdPal = 8
             Else
                 dkdPal = 9
             End If
             DOCK_Text dkdPal, dkdName, DOCK_PX1 + 8, dkdY, 255
             DOCK_Text dkdPal, dkdLv, DOCK_PX1 + 136, dkdY, 255
-            If dkdPriceN > credits Then
+            If dkdLv = "FULL" Then
+                If dkdI <> dockSel Then dkdPal = 8
+            ElseIf dkdPriceN > credits Then
                 dkdPal = 12
             ElseIf dkdPriceN > 0 Then
                 dkdPal = 14
@@ -141,4 +151,44 @@ Sub DOCK_Draw
 
     _Dest 0
     _PutImage , backBuffer, 0
+End Sub
+
+' Ship status over the art, bottom left (#268): shields, laser and fuel as the HUD's bars
+' plus a percentage, so the shield recharge row can be judged.
+Sub DOCK_DrawStatus
+    Const DKS_X = 4
+    Const DKS_Y = 182
+    Line (DKS_X, DKS_Y)-(DKS_X + 94, DKS_Y + 52), _RGBA(2, 4, 18, DOCK_PANEL_ALPHA + 60), BF
+    Line (DKS_X, DKS_Y)-(DKS_X + 94, DKS_Y + 52), _RGB(0, 130, 210), B
+    DOCK_StatusRow "SH", lives, shieldMax, DKS_X + 4, DKS_Y + 2, 1
+    DOCK_StatusRow "LA", laserEnergy, laserMax, DKS_X + 4, DKS_Y + 18, 2
+    DOCK_StatusRow "FU", fuelLevel, fuelMax, DKS_X + 4, DKS_Y + 34, 3
+End Sub
+
+' One status row: label, a 30px bar in the HUD's colours (dksKind 1 shield, 2 laser, 3 fuel), percentage.
+Sub DOCK_StatusRow (dksLbl As String, dksVal As Single, dksMax As Single, dksX As Integer, dksY As Integer, dksKind As Integer)
+    Dim dksPct As Integer, dksFill As Integer, dksClr As Long
+    If dksMax > 0 Then dksPct = Int(dksVal * 100 / dksMax)
+    If dksPct < 0 Then dksPct = 0
+    If dksPct > 100 Then dksPct = 100
+    dksFill = Int(dksPct * 28 / 100)
+    Select Case dksKind
+        Case 1
+            If dksPct > 60 Then
+                dksClr = _RGB(50, 210, 60)
+            ElseIf dksPct > 30 Then
+                dksClr = _RGB(235, 190, 15)
+            Else
+                dksClr = _RGB(240, 50, 35)
+            End If
+        Case 2
+            If dksPct > 30 Then dksClr = _RGB(60, 180, 255) Else dksClr = _RGB(255, 140, 20)
+        Case Else
+            If dksPct > 40 Then dksClr = _RGB(230, 180, 30) Else dksClr = _RGB(255, 80, 20)
+    End Select
+    DOCK_Text 9, dksLbl, dksX, dksY, 255
+    Line (dksX + 18, dksY + 4)-(dksX + 48, dksY + 10), _RGB(15, 20, 30), BF
+    If dksFill > 0 Then Line (dksX + 19, dksY + 5)-(dksX + 19 + dksFill, dksY + 9), dksClr, BF
+    Line (dksX + 18, dksY + 4)-(dksX + 48, dksY + 10), _RGB(70, 90, 100), B
+    DOCK_Text 15, LTrim$(Str$(dksPct)) + "%", dksX + 54, dksY, 255
 End Sub

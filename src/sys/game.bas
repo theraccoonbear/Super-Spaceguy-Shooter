@@ -15,6 +15,9 @@ Sub GAME_ResetState
     ablHintTimer = 0
     score = 0 : IF settingNerf THEN stageScore = BOSS_TRIGGER_NERF ELSE stageScore = BOSS_TRIGGER
     lives = shieldMax : shipLives = 3 : laserEnergy = laserMax : gameOver = 0 : diffTime = 0 : diffScale = 0 : levelNum = 0
+    If cliShips > 0 Then shipLives = cliShips
+    If cliShields > 0 Then lives = cliShields
+    If lives > shieldMax Then lives = shieldMax
     fuelLevel = fuelMax : fuelStranded = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
@@ -123,6 +126,8 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
+    CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"
+    CLI_Emit guFH, "  --shields N            Start every run with N shield points (testing)"
     CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"

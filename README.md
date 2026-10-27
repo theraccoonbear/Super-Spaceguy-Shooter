@@ -91,6 +91,8 @@ sss [options]
   --frames N             Quit after N frames (60 per second)
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
+  --ships N              Start every run with N ships (testing)
+  --shields N            Start every run with N shield points (testing, e.g. damaged shields at the dock)
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 
@@ -346,9 +348,9 @@ Credits (`$`, shown next to the score) are a second currency, separate from scor
 | Evasive roll | **E** / pad **X**: a quick sideways dash (the way you're steering) that nothing can hit; level 2 cools down faster | 2 |
 | Tractor beam | Pulls power-ups toward the ship | 2 |
 | Fuel tank | Bigger fuel tank | 2 |
-| Hull repair | Refills the shields (planet arrivals refill laser and fuel, not shields) | once per dock |
+| Shield recharge | Refills the shields (planet arrivals refill laser and fuel, not shields) | once per dock |
 
-In the dock, the two lines under the list say what the highlighted upgrade does and exactly what its next level changes (for example `MAX 100>125, REGEN +20%`), or `MAXED`. The same list is in game on the Controls screen's **SHIP SYSTEMS** pages (pages 3 and 4: ← → or the stick). The first launch after buying the roll or the nova shows its key (`NOVA READY - Q / PAD Y`) for a few seconds. The descriptions sit next to each upgrade in `assets/config/upgrades.ini` (`upgdesc_*`); the hints are in `assets/config/abilities.ini` (`hint_*`).
+A status box at the bottom left shows the ship's shields (SH), laser (LA) and fuel (FU) as bars and percentages, so you can judge the shield recharge, which shows `SHIELDS 35% > 100%` (or `SHIELDS FULL`: buying it then does nothing and costs nothing). In the dock, the two lines under the list say what the highlighted upgrade does and exactly what its next level changes (for example `MAX 100>125, REGEN +20%`), or `MAXED`. The same list is in game on the Controls screen's **SHIP SYSTEMS** pages (pages 3 and 4: ← → or the stick). The first launch after buying the roll or the nova shows its key (`NOVA READY - Q / PAD Y`) for a few seconds. The descriptions sit next to each upgrade in `assets/config/upgrades.ini` (`upgdesc_*`); the hints are in `assets/config/abilities.ini` (`hint_*`).
 
 Tuning lives in purpose-named config files under `assets/config/` (see [Config files](#config-files)): credit amounts and the economy maths in `economy.ini`, prices, levels, effects and descriptions in `upgrades.ini`, and nova / roll behaviour in `abilities.ini`. `--scene dockN` opens the dock after stage N and `--credits N` starts with N credits, to try it out.
 
