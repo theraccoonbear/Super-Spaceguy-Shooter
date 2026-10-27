@@ -28,24 +28,8 @@ sss_speech.log
 .env
 assets/.env
 builds/
-tests/seq_trace_test
-tests/seq_dispatch_test
-tests/scene_jump_planet_test
-tests/snd_init_test
-tests/telem_creds_test
-tests/http_queue_test
-tests/mnv_transition_test
-tests/crawl_plan_test
-tests/crawl_step_test
-tests/dbg_output_test
-tests/mnv_conformance_test
-tests/mnv_load_test
-tests/spk_timing_test
-tests/spore_test
-tests/attack_test
-tests/inputscript_test
-tests/rng_test
-tests/titlenav_test
+# Test binaries (sources are tests/*_test.bas, which this does not match)
+tests/*_test
 tools/telem_batch_test
 shot-*.png
 
