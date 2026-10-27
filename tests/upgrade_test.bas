@@ -1,6 +1,7 @@
 ' upgrade_test.bas -- credits and the upgrade table (src/gameplay/upgrades.bas, #268)
 '
-' Drives the real module against the real assets/gamevalues.ini: parsing the upgrade
+' Drives the real module against the real assets/config/*.ini (read through the shared
+' CFG_Parse$ in src/sys/config.bas): parsing the upgrade
 ' table and credit amounts (and rejecting a malformed line), the economy target, earning,
 ' buying (affordable, too expensive, maxed), each upgrade's effect values, hull repair
 ' once per dock, nova charges refilled at every dock, the roll's immunity window and
@@ -12,6 +13,9 @@
 Option _Explicit
 $CONSOLE:ONLY
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'assets/config/economy.ini':'CFGECONOMY'
+$EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
+$EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 
 Sub DBG_Print (upgtDbg As String) : End Sub
 
@@ -24,7 +28,7 @@ End Sub
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
-'$INCLUDE:'../src/sys/gametext.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 
 Dim Shared utPassed As Integer, utFailed As Integer
@@ -49,8 +53,10 @@ Dim utTotal As Long, utEarn As Long, utCr As Long
 Print "=== upgrade_test ==="
 Print ""
 
-Print "--- gamevalues.ini: the upgrade table ---"
-GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
+Print "--- config files: the upgrade table, economy and abilities ---"
+cfgEconomy = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
+cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
+cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 utOk = UPG_Load%
 UT_Assert utOk <> 0, "UPG_Load% reads every upg_ line (" + upgLoadErr + ")"
 UT_Assert upgMax(UPG_LASER) = 3 And upgMax(UPG_CANNON) = 2 And upgMax(UPG_NOVA) = 3 And upgMax(UPG_REPAIR) = 1, "levels: laser 3, cannon 2, nova 3, repair 1"
@@ -80,11 +86,27 @@ UT_Assert utTotal = 3960, "all upgrades cost 3960 (" + LTrim$(Str$(utTotal)) + "
 UT_Assert utTotal * 100 >= utEarn * 90 And utTotal <= utEarn, "total cost is 90-100% of a strong run's spendable credits (" + LTrim$(Str$(utEarn)) + ")"
 
 Print ""
+Print "--- the shared parser ---"
+Dim utStore As String
+utStore = CFG_Parse$("; comment" + Chr$(13) + Chr$(10) + "  a=1  " + Chr$(10) + Chr$(10) + "b=x|y,z" + Chr$(13) + Chr$(10) + "=nokey" + Chr$(10) + "c=")
+UT_Assert CFG_Get$(utStore, "a") = "1" And CFG_Get$(utStore, "b") = "x|y,z", "key=value lines, CRLF, comments and blank lines"
+UT_Assert CFG_Get$(utStore, "missing") = "" And CFG_Count%(utStore) = 3, "a missing key is empty; =nokey is skipped"
+utStore = CFG_Parse$(_EMBEDDED$("GAMEVALUES"))
+UT_Assert CFG_Get$(utStore, "emperor") <> "" And CFG_Get$(utStore, "upg_laser") = "" And CFG_Get$(utStore, "cr_kill") = "", "gamevalues.ini keeps only text tokens: no upgrade or credit keys"
+UT_Assert CFG_Get$(cfgUpgrades, "cr_kill") = "" And CFG_Get$(cfgEconomy, "upg_laser") = "", "each config file holds its own keys"
+
+Print ""
 Print "--- a malformed line is rejected ---"
 utOk = UPG_ParseLine%(UPG_RAPID, "rapid", "RAPID FIRE|100,200|0.18,0.14")
 UT_Assert utOk = 0 And InStr(upgLoadErr, "rapid") > 0, "effect list one short: rejected, error names it"
 utOk = UPG_ParseLine%(UPG_RAPID, "rapid", "RAPID FIRE")
 UT_Assert utOk = 0, "no prices: rejected"
+Dim utAbSave As String
+utAbSave = cfgAbilities
+cfgAbilities = CFG_Parse$("nova_charges=0,1" + Chr$(10) + "roll_cooldown=0,150,90")
+utOk = UPG_Load%
+UT_Assert utOk = 0 And InStr(upgLoadErr, "abilities.ini nova_charges") > 0, "nova_charges with too few levels: rejected, error names abilities.ini (" + upgLoadErr + ")"
+cfgAbilities = utAbSave
 utOk = UPG_Load%   ' put the real table back
 
 Print ""
@@ -128,11 +150,11 @@ Print ""
 Print "--- launch hint for a newly bought ability ---"
 UPG_Reset : credits = 10000
 utR = UPG_Buy%(UPG_NOVA)
-UT_Assert upgHintPending = GTEXT_Var$("hint_nova"), "first nova queues NOVA READY - Q / PAD Y"
+UT_Assert upgHintPending = CFG_Get$(cfgAbilities, "hint_nova"), "first nova queues NOVA READY - Q / PAD Y"
 utR = UPG_Buy%(UPG_NOVA)
-UT_Assert upgHintPending = GTEXT_Var$("hint_nova"), "nova level 2 adds no second hint"
+UT_Assert upgHintPending = CFG_Get$(cfgAbilities, "hint_nova"), "nova level 2 adds no second hint"
 utR = UPG_Buy%(UPG_ROLL)
-UT_Assert upgHintPending = GTEXT_Var$("hint_nova") + Chr$(10) + GTEXT_Var$("hint_roll"), "first roll adds its own line"
+UT_Assert upgHintPending = CFG_Get$(cfgAbilities, "hint_nova") + Chr$(10) + CFG_Get$(cfgAbilities, "hint_roll"), "first roll adds its own line"
 utR = UPG_Buy%(UPG_THRUST)
 UT_Assert InStr(upgHintPending, "THRUST") = 0, "passive upgrades give no hint"
 UPG_Reset

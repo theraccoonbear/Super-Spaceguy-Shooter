@@ -21,6 +21,7 @@ Sub DBG_Print(stDbgMsg As String) : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 
 Dim Shared stPassed As Integer, stFailed As Integer

@@ -105,6 +105,7 @@ Sub TELEM_SessionEnd()              : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 '$INCLUDE:'../src/2d/crawllayout.bas'
 '$INCLUDE:'../src/sys/sequence.bas'

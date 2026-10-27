@@ -29,6 +29,9 @@ $EMBED:'assets/dock_bg.png':'DOCKBG'
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'assets/config/economy.ini':'CFGECONOMY'
+$EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
+$EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
@@ -89,7 +92,10 @@ emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 dockBgImg       = _LOADIMAGE(_EMBEDDED$("DOCKBG"),     32, "memory")
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
-IF UPG_Load% = 0 THEN GAME_Usage "assets/gamevalues.ini: " + upgLoadErr
+cfgEconomy   = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
+cfgUpgrades  = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
+cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
+IF UPG_Load% = 0 THEN GAME_Usage upgLoadErr
 UPG_Reset
 bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
 bossManeuverList$(0) = "flyover"

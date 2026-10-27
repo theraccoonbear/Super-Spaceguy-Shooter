@@ -4,9 +4,10 @@
 ' the asteroid field earn them, the dock (src/state/dock.bas) spends them, and spending
 ' never touches score. Credits and upgrades last one run (UPG_Reset on a new game).
 '
-' Every amount, price and effect comes from assets/gamevalues.ini (see the comments
-' there for the line format). No rendering or input here, so tests drive it directly:
-'   UPG_Load                       read the table and credit amounts (after GTEXT_LoadVars)
+' Every amount, price and effect comes from assets/config/economy.ini, upgrades.ini and
+' abilities.ini (see the comments there for the line format; CFG_Parse$ in config.bas
+' parses them). No rendering or input here, so tests drive it directly:
+'   UPG_Load                       read the table and amounts (after CFG_Parse$ of each file)
 '   UPG_Reset                      new run: no credits, every upgrade at level 0
 '   CR_Add n                       earn n credits (amounts: crKill, crBoss, crStage, ...)
 '   r = UPG_Buy%(id)               buy the next level: UPG_OK / UPG_NOFUNDS / UPG_MAXED / UPG_FULL
@@ -102,34 +103,50 @@ Function UPG_ParseLine% (upgpId As Integer, upgpKey As String, upgpLine As Strin
     UPG_ParseLine% = -1
 End Function
 
-' Reads the table from the gamevalues tokens (GTEXT_LoadVars first). 0 + upgLoadErr on error.
+' Reads the table and amounts from the parsed config files (sss.bas fills cfgUpgrades,
+' cfgEconomy and cfgAbilities with CFG_Parse$ first). 0 + upgLoadErr on error.
 Function UPG_Load%
     Dim upglI As Integer, upglKey As String, upglLine As String, upglOk As Integer
     UPG_Load% = 0
     upgLoadErr = ""
     For upglI = 1 To UPG_COUNT
         upglKey = UPG_KeyOf$(upglI)
-        upglLine = GTEXT_Var$("upg_" + upglKey)
-        If Len(upglLine) = 0 Then upgLoadErr = "gamevalues.ini has no upg_" + upglKey : Exit Function
+        upglLine = CFG_Get$(cfgUpgrades, "upg_" + upglKey)
+        If Len(upglLine) = 0 Then upgLoadErr = "config/upgrades.ini has no upg_" + upglKey : Exit Function
         upglOk = UPG_ParseLine%(upglI, upglKey, upglLine)
         If upglOk = 0 Then Exit Function
-        upgDesc$(upglI) = GTEXT_Var$("upgdesc_" + upglKey)
-        If Len(upgDesc$(upglI)) = 0 Then upgLoadErr = "gamevalues.ini has no upgdesc_" + upglKey : Exit Function
+        upgDesc$(upglI) = CFG_Get$(cfgUpgrades, "upgdesc_" + upglKey)
+        If Len(upgDesc$(upglI)) = 0 Then upgLoadErr = "config/upgrades.ini has no upgdesc_" + upglKey : Exit Function
     Next upglI
-    crKill = Val(GTEXT_Var$("cr_kill"))
-    crBoss = Val(GTEXT_Var$("cr_boss"))
-    crStage = Val(GTEXT_Var$("cr_stage"))
-    crAstNear = Val(GTEXT_Var$("cr_ast_near"))
-    crAstKill = Val(GTEXT_Var$("cr_ast_kill"))
-    crAstSurvive = Val(GTEXT_Var$("cr_ast_survive"))
-    novaRadius = Val(GTEXT_Var$("nova_radius"))
-    novaBossDmg = Val(GTEXT_Var$("nova_boss_dmg"))
-    rollFrames = Val(GTEXT_Var$("roll_frames"))
-    rollSpeed = Val(GTEXT_Var$("roll_speed"))
-    upgHintNova = GTEXT_Var$("hint_nova")
-    upgHintRoll = GTEXT_Var$("hint_roll")
+    ' ability behaviour per level lives in abilities.ini
+    upglOk = UPG_FillFxA%(UPG_NOVA, "nova_charges")
+    If upglOk = 0 Then Exit Function
+    upglOk = UPG_FillFxA%(UPG_ROLL, "roll_cooldown")
+    If upglOk = 0 Then Exit Function
+    crKill = Val(CFG_Get$(cfgEconomy, "cr_kill"))
+    crBoss = Val(CFG_Get$(cfgEconomy, "cr_boss"))
+    crStage = Val(CFG_Get$(cfgEconomy, "cr_stage"))
+    crAstNear = Val(CFG_Get$(cfgEconomy, "cr_ast_near"))
+    crAstKill = Val(CFG_Get$(cfgEconomy, "cr_ast_kill"))
+    crAstSurvive = Val(CFG_Get$(cfgEconomy, "cr_ast_survive"))
+    novaRadius = Val(CFG_Get$(cfgAbilities, "nova_radius"))
+    novaBossDmg = Val(CFG_Get$(cfgAbilities, "nova_boss_dmg"))
+    rollFrames = Val(CFG_Get$(cfgAbilities, "roll_frames"))
+    rollSpeed = Val(CFG_Get$(cfgAbilities, "roll_speed"))
+    upgHintNova = CFG_Get$(cfgAbilities, "hint_nova")
+    upgHintRoll = CFG_Get$(cfgAbilities, "hint_roll")
     If rollFrames < 1 Then rollFrames = 1
     UPG_Load% = -1
+End Function
+
+' Effect A for upgrade ufId, level 0..max, from the abilities.ini list ufKey.
+Function UPG_FillFxA% (ufId As Integer, ufKey As String)
+    Dim ufVal(1 To UPG_MAX_LV + 1) As String, ufCnt As Integer, ufI As Integer
+    UPG_FillFxA% = 0
+    UPG_Split CFG_Get$(cfgAbilities, ufKey), ",", ufVal(), ufCnt
+    If ufCnt <> upgMax(ufId) + 1 Then upgLoadErr = "config/abilities.ini " + ufKey + ": needs one value per level, 0 to" + Str$(upgMax(ufId)) : Exit Function
+    For ufI = 1 To ufCnt : upgFxA(ufId, ufI - 1) = Val(ufVal(ufI)) : Next ufI
+    UPG_FillFxA% = -1
 End Function
 
 Sub UPG_Reset
@@ -257,7 +274,7 @@ Function UPG_ArmourDmg% (uadDmg As Integer)
     UPG_ArmourDmg% = CInt(uadDmg * armourMul)
 End Function
 
-' What upgrade udId does, from gamevalues.ini's upgdesc_<key> (the dock's first info line
+' What upgrade udId does, from upgrades.ini's upgdesc_<key> (the dock's first info line
 ' and the SHIP SYSTEMS help page).
 Function UPG_Info$ (uiId As Integer)
     UPG_Info$ = upgDesc$(uiId)
@@ -305,7 +322,7 @@ Function UPG_Num$ (unV As Single)
     UPG_Num$ = unS
 End Function
 
-' gamevalues.ini key suffix (upg_<key>) and telemetry item name for upgrade ukId
+' upgrades.ini key suffix (upg_<key>) and telemetry item name for upgrade ukId
 Function UPG_KeyOf$ (ukId As Integer)
     Select Case ukId
         Case UPG_LASER   : UPG_KeyOf$ = "laser"

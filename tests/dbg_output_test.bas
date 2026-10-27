@@ -83,6 +83,7 @@ Dim Shared dbgMlogPath As String
 Dim Shared dbgMlogState As Integer, dbgMlogSeq As Integer
 
 '$INCLUDE:'../src/sys/debug.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
 
 Dim Shared stPassed As Integer, stFailed As Integer

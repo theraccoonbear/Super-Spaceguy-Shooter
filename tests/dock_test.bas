@@ -2,7 +2,7 @@
 '
 ' Plays input scripts through the real input path (ISC_Apply -> held() -> KEY_Pressed% /
 ' KEY_Confirm% / KEY_Back%) into the real DOCK_Input% each frame, as the game does, with
-' the real upgrade table from assets/gamevalues.ini: navigating (keys, W/S, stick, d-pad,
+' the real upgrade table from assets/config/: navigating (keys, W/S, stick, d-pad,
 ' wrap-around, scrolling), buying, a purchase it can't afford, a held ENTER buying once,
 ' LAUNCH, and leaving in one press with ESC, pad B or pad Start.
 '
@@ -11,7 +11,9 @@
 
 Option _Explicit
 $CONSOLE:ONLY
-$EMBED:'assets/gamevalues.ini':'GAMEVALUES'
+$EMBED:'assets/config/economy.ini':'CFGECONOMY'
+$EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
+$EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 
 Sub DBG_Print (dktDbg As String) : End Sub
 Sub TELEM_UpgradeBought (dtuItem As String, dtuLevel As Integer, dtuPrice As Long) : End Sub
@@ -20,7 +22,7 @@ Sub TELEM_UpgradeBought (dtuItem As String, dtuLevel As Integer, dtuPrice As Lon
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/sys/inputscript.bas'
-'$INCLUDE:'../src/sys/gametext.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 '$INCLUDE:'../src/state/docklogic.bas'
 
@@ -74,7 +76,9 @@ Dim dtLeft As Integer, dtI As Integer, dtN As Integer
 
 Print "=== dock_test ==="
 Print ""
-GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
+cfgEconomy = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
+cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
+cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 DT_Assert UPG_Load% <> 0, "upgrade table loads"
 
 Print ""
