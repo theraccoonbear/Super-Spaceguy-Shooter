@@ -64,7 +64,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `GS_*` | `src/state/*.bas` | Per-screen game states (title, crawl, combat, asteroid, game over, consent, username, leaderboard, lead-in, upgrade dock) |
 | `HUD_` | `src/2d/hud.bas` | In-game heads-up display |
 | `FONT_` | `src/2d/font.bas` | Bitmap font renderer with color palettes |
-| `UI_` | `src/2d/ui.bas` | Sci-fi panel UI components |
+| `UI_` | `src/2d/ui.bas` | Sci-fi panel UI components. Panels drawn over art (the dock, the win tally) go through `UI_Panel` / `UI_PanelFade` and their text through `UI_Text` (see-through fill `UI_SEE_ALPHA`, shared borders, 1px text shadow) -- never a raw `Line ..., BF` box; full-screen menus use the opaque `UI_DrawPanel` |
 | `CRAWL_` | `src/2d/crawl.bas` | Scrolling narrative crawl renderer |
 | `FX_` | `src/2d/effects.bas` | Particle and visual effects |
 | `UPG_` / `CR_` | `src/gameplay/upgrades.bas` | Credits and the upgrade table (from `assets/config/*.ini`) |

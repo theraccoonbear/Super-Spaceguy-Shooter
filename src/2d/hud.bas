@@ -226,11 +226,10 @@ Sub HUD_RunTally
     hdtA = 255
     If crTallyTimer < 40 Then hdtA = Int(255 * crTallyTimer / 40)
     _Dest backBuffer
-    Line (scrW \ 2 - 90, 132)-(scrW \ 2 + 90, 190), _RGBA(2, 4, 18, hdtA * 4 \ 5), BF
-    Line (scrW \ 2 - 90, 132)-(scrW \ 2 + 90, 190), _RGBA(0, 130, 210, hdtA), B
-    FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "MISSION COMPLETE", 136, scrW, hdtA
-    FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTrim$(Str$(hdtBonus)), 153, scrW, hdtA
-    FONT_PrintCenteredAlpha fontPalette(9), backBuffer, "FINAL SCORE " + LTrim$(Str$(score - crBonusPts + hdtBonus)), 170, scrW, hdtA
+    UI_PanelFade scrW \ 2 - 90, 132, scrW \ 2 + 90, 190, hdtA
+    UI_TextCentered 11, "MISSION COMPLETE", 136, hdtA
+    UI_TextCentered 14, "CREDITS BONUS +" + LTrim$(Str$(hdtBonus)), 153, hdtA
+    UI_TextCentered 9, "FINAL SCORE " + LTrim$(Str$(score - crBonusPts + hdtBonus)), 170, hdtA
 End Sub
 
 ' Gauge colour by kind (1 shield, 2 laser, 3 fuel) and how full it is; hgcHi = the 1px top highlight.
