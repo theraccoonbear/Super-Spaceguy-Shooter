@@ -98,22 +98,6 @@ jobs:
             exit 1
           }
 
-      # Golden-screenshot render tests (tests/render/). Linux only: only this job has Xvfb,
-      # and the goldens come from the same Ubuntu toolchain (tools/dev); another OS's
-      # compiler and libm can round the rasterizer's float math differently.
-      - name: Render tests
-        if: runner.os == 'Linux'
-        shell: bash
-        run: QB64_BIN_DIR=qb64pe-bin bash tests/render/run.sh --no-build
-
-      - name: Upload render test screenshots and diffs
-        if: failure() && runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: render-test-results
-          path: tests/render/out/
-          if-no-files-found: ignore
-
       - name: Dump compile log on failure
         if: failure()
         shell: bash
@@ -177,9 +161,47 @@ jobs:
           path: builds/playthrough/
           if-no-files-found: ignore
 
+  # Golden-screenshot render tests (tests/render/). Its own job so it runs alongside the
+  # build matrix instead of adding minutes to Build Linux. Linux only: it needs Xvfb, and
+  # the goldens come from the same Ubuntu toolchain (tools/dev); another OS's compiler
+  # and libm can round the rasterizer's float math differently.
+  render:
+    needs: dict-check
+    name: Render tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QB64-PE
+        uses: ./.github/actions/setup-qb64pe
+        with:
+          qb64pe-version: ${{ env.QB64PE_VERSION }}
+
+      - name: Build sss.bas
+        shell: bash
+        run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+
+      - name: Render tests
+        shell: bash
+        run: QB64_BIN_DIR=qb64pe-bin bash tests/render/run.sh --no-build
+
+      - name: Dump compile log on failure
+        if: failure()
+        shell: bash
+        run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
+
+      - name: Upload render test screenshots and diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-test-results
+          path: tests/render/out/
+          if-no-files-found: ignore
+
   gate:
     name: All checks pass
-    needs: [dict-check, build, playthrough]
+    needs: [dict-check, build, playthrough, render]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -189,6 +211,7 @@ jobs:
           [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
           [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
           [[ "${{ needs.playthrough.result }}" != "success" ]] && echo "FAIL playthrough: ${{ needs.playthrough.result }}" && fail=1
+          [[ "${{ needs.render.result }}"     != "success" ]] && echo "FAIL render:     ${{ needs.render.result }}"     && fail=1
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
   release:
