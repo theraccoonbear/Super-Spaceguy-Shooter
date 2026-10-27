@@ -137,7 +137,7 @@ Each subsystem doc below has its own "test in isolation" section with more detai
 
 ### Render tests
 
-Golden-screenshot tests catch rendering regressions (blend state, font alpha, overlays) that the headless tests can't see. Each scene in `tests/render/scenes/` is a short seeded [scripted playtest](#cli-options): an input script whose `#!` lines give its `sss` options, the frames to screenshot, and any rectangles to leave out of the comparison. The runner plays each one under Xvfb with `--god --no-telem --seed 1` and compares every screenshot with `tests/render/golden/<scene>-<frame>.png` using `tools/imgdiff.bas`, a small QB64 compare tool.
+Golden-screenshot tests catch rendering regressions (blend state, font alpha, overlays) that the headless tests can't see. Each scene in `tests/render/scenes/` is a short seeded [scripted playtest](#cli-options): an input script whose `#!` lines give its `sss` options, the frames to screenshot, and any rectangles to leave out of the comparison. The runner plays each one under Xvfb with `--god --no-telem --seed 1` and compares every screenshot with `tests/render/golden/<scene>-<frame>.png` using `tools/imgdiff.bas`, a small QB64 compare tool. The font compositing rules themselves (glyph holes stay transparent, font calls leave blending on, partial opacity, rich colour codes) are pixel-checked off-screen by `tests/font_render_test.bas` in the regular suite, on every OS.
 
 | Scene | Shows |
 |---|---|
