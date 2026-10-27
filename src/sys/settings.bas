@@ -174,7 +174,7 @@ Sub OPTS_Update ()
     End If
 
     ' a press, not a hold: the A that picked SETTINGS on the console is still down here
-    Dim oEnter As Integer : oEnter = KEY_Confirm% Or KEY_Pressed%(E3D_KEY_SPACE)
+    Dim oEnter As Integer : oEnter = (KEY_Confirm% Or KEY_Pressed%(E3D_KEY_SPACE)) And KEY_Pressed%(E3D_KEY_PAD_B) = 0
     If oEnter And optSel = 5 Then
         SETTINGS_Save
         unSavedName    = telemPlayerName

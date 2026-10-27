@@ -151,7 +151,7 @@ Sub E3D_PadApply (held() As Integer, padAxX As Single, padAxY As Single, padA As
     If padAxY < -E3D_AXIS_DEADZONE Then held(E3D_KEY_UP)    = 1
     If padAxY >  E3D_AXIS_DEADZONE Then held(E3D_KEY_DOWN)  = 1
     If padA     <> 0 Then held(E3D_KEY_SPACE)  = 1 : held(E3D_KEY_PAD_A) = 1
-    If padB     <> 0 Then held(E3D_KEY_PAD_B)  = 1
+    If padB     <> 0 Then held(E3D_KEY_SPACE)  = 1 : held(E3D_KEY_PAD_B) = 1
     If padX     <> 0 Then held(E3D_KEY_PAD_X)  = 1
     If padY     <> 0 Then held(E3D_KEY_PAD_Y)  = 1
     If padStart <> 0 Then held(E3D_KEY_ESCAPE) = 1 : held(E3D_KEY_PAD_START) = 1

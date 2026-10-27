@@ -162,6 +162,7 @@ IS_Assert ISC_ParseLine%("10 12 PAD_A"), "load: 10-12 PAD_A"
 IS_Assert ISC_ParseLine%("20 20 PAD_START"), "load: 20 PAD_START"
 IS_Assert ISC_ParseLine%("30 30 PAD_SELECT PAD_B PAD_X PAD_Y"), "load: 30 PAD_SELECT PAD_B PAD_X PAD_Y"
 IS_Assert ISC_ParseLine%("40 40 PAD_LEFT PAD_DOWN"), "load: 40 PAD_LEFT PAD_DOWN"
+IS_Assert ISC_ParseLine%("50 50 PAD_B"), "load: 50 PAD_B"
 iscActive = -1
 ISC_Apply 10, isHeld()
 isHit1 = KEY_Hit&
@@ -171,12 +172,14 @@ ISC_Apply 20, isHeld()
 IS_Assert isHeld(E3D_KEY_ESCAPE) And isHeld(E3D_KEY_PAD_START) And IS_Down% = 2, "PAD_START holds ESCAPE and PAD_START"
 IS_Assert KEY_Down%(27) = 0, "PAD_START is not the ESC key"
 ISC_Apply 30, isHeld()
-IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_PAD_SELECT) And isHeld(E3D_KEY_PAD_B) And isHeld(E3D_KEY_PAD_X) And isHeld(E3D_KEY_PAD_Y) And IS_Down% = 5, "PAD_SELECT holds TAB + its slot; B X Y their own slots"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_PAD_SELECT) And isHeld(E3D_KEY_PAD_B) And isHeld(E3D_KEY_PAD_X) And isHeld(E3D_KEY_PAD_Y) And isHeld(E3D_KEY_SPACE) And IS_Down% = 6, "PAD_SELECT holds TAB + its slot; B also holds SPACE; X Y their own slots"
 ISC_Apply 40, isHeld()
 IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_DOWN) And IS_Down% = 2, "stick fills the arrow slots"
 IS_Assert KEY_Down%(19200) = 0 And KEY_Down%(20480) = 0, "stick is not the arrow keys"
 ISC_Apply 41, isHeld()
 IS_Assert IS_Down% = 0, "pad state clears when its range ends"
+ISC_Apply 50, isHeld()
+IS_Assert isHeld(E3D_KEY_SPACE) And isHeld(E3D_KEY_PAD_B) And isHeld(E3D_KEY_PAD_A) = 0 And IS_Down% = 2, "PAD_B holds SPACE (fire, for Nintendo-layout pads) and its own PAD_B slot, not PAD_A"
 
 Print "--- menu actions ---"
 Dim isP1 As Integer, isP2 As Integer, isP3 As Integer
@@ -202,7 +205,8 @@ isP1 = KEY_Confirm%
 IS_Assert isP1 = -1, "ENTER press is a confirm"
 KEY_FrameBegin : ISC_Apply 15, held()
 isP1 = KEY_Back% : isP2 = KEY_Confirm%
-IS_Assert isP1 = -1 And isP2 = 0, "pad B press is a back, not a confirm"
+isP3 = KEY_Pressed%(E3D_KEY_SPACE)
+IS_Assert isP1 = -1 And isP2 = 0 And isP3 = -1, "pad B press is a back, not a confirm (it also presses SPACE, to fire)"
 KEY_FrameBegin : ISC_Apply 16, held()
 isP1 = KEY_Back%
 IS_Assert isP1 = 0, "holding B is not another back"

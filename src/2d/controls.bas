@@ -62,13 +62,13 @@ Sub CONTROLS_Update ()
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "GAMEPAD  2/2", 30, scrW, 255
         CONTROLS_Row 0, "LEFT STICK",  "MOVE / MENU SELECT"
         CONTROLS_Row 1, "A",           "FIRE / MENU OK"
-        CONTROLS_Row 2, "B",           "MENU BACK / CANCEL"
+        CONTROLS_Row 2, "B",           "FIRE / MENU BACK"
         CONTROLS_Row 3, "START",       "PAUSE / ABORT"
         CONTROLS_Row 4, "START",       "START GAME (TITLE)"
         CONTROLS_Row 5, "BACK",        "OPTIONS (TITLE)"
         CONTROLS_Row 6, "BACK",        "CAMERA MODE ON/OFF"
         CONTROLS_Row 7, " STICK U/D",  "TILT CAMERA"
-        CONTROLS_Row 8, "HOLD A",      "FAST-FWD STORY"
+        CONTROLS_Row 8, "HOLD A/B",    "FAST-FWD STORY"
         CONTROLS_Row 9, "A+START",     "SKIP STORY"
     End If
 

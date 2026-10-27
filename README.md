@@ -94,7 +94,7 @@ sss [options]
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
 
-**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE` (or `SPACE`) `ESC TAB ENTER BACKSPACE BACKTICK F1`-`F12`, any letter `A`-`Z` (either case counts), any digit `0`-`9`, and `#<code>` for any other `_KEYDOWN` code (e.g. `#21248` for Delete). The gamepad is `PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT` and the left stick `PAD_LEFT PAD_RIGHT PAD_UP PAD_DOWN`; these go through the same mapping as a real controller (so `PAD_A` fires but is not the SPACE key to a menu that reads the keyboard). Every screen and dialog sees them, so menus can be scripted too: a key press registers once, on the first frame of its range. A line starting with `#` is a comment. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
+**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE` (or `SPACE`) `ESC TAB ENTER BACKSPACE BACKTICK F1`-`F12`, any letter `A`-`Z` (either case counts), any digit `0`-`9`, and `#<code>` for any other `_KEYDOWN` code (e.g. `#21248` for Delete). The gamepad is `PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT` and the left stick `PAD_LEFT PAD_RIGHT PAD_UP PAD_DOWN`; these go through the same mapping as a real controller (so `PAD_A` and `PAD_B` fire but are not the SPACE key to a menu that reads the keyboard). Every screen and dialog sees them, so menus can be scripted too: a key press registers once, on the first frame of its range. A line starting with `#` is a comment. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
 
 ```bash
 tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
@@ -208,7 +208,7 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 | Key | Gamepad | Action |
 |---|---|---|
 | Arrow keys / WASD | Left stick | Move ship |
-| Space (hold) | A | Fire |
+| Space (hold) | A or B | Fire (both bottom face buttons, so a Nintendo-labeled pad fires from either) |
 | ESC | Start | Pause / abort-mission dialog (Y / A confirms the abort, C / X shows controls, ESC / B cancels) |
 | TAB | Back / Select | Camera mode on/off. The game freezes while you adjust; pressing it again locks the angle and saves it |
 | ↑ / ↓ (camera mode) | Stick up/down | Tilt the camera |
@@ -232,8 +232,8 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 
 | Key | Gamepad | Action |
 |---|---|---|
-| Space (hold) | A (hold) | Fast-forward the narrative crawl |
-| Space + ESC | A + Start | Skip the crawl |
+| Space (hold) | A or B (hold) | Fast-forward the narrative crawl |
+| Space + ESC | A or B + Start | Skip the crawl |
 | Space | A | Continue (intro card, game over) |
 | Any key | A / Start | Skip the logo cards |
 
