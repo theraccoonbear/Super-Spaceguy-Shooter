@@ -289,11 +289,11 @@ Function UPG_Next$ (udId As Integer)
     udA0 = upgFxA(udId, udL) : udA1 = upgFxA(udId, udL + 1)
     udB0 = upgFxB(udId, udL) : udB1 = upgFxB(udId, udL + 1)
     Select Case udId
-        Case UPG_LASER : UPG_Next$ = "MAX " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + ", REGEN +" + UPG_Num$(Int((udB1 / udB0 - 1) * 100 + 0.5)) + "%"
+        Case UPG_LASER : UPG_Next$ = "BANK " + UPG_Num$(udA0) + " > " + UPG_Num$(udA1) + " REGEN +" + UPG_Num$(Int((udB1 / udB0 - 1) * 100 + 0.5)) + "%"
         Case UPG_CANNON
             If udA1 >= 3 Then UPG_Next$ = "NEXT: 3-WAY SPREAD" Else UPG_Next$ = "NEXT: 2 PARALLEL SHOTS"
         Case UPG_RAPID : UPG_Next$ = "SHOT DELAY " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1) + "S"
-        Case UPG_SHIELD : UPG_Next$ = "SHIELD MAX " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
+        Case UPG_SHIELD : UPG_Next$ = "SHIELD " + UPG_Num$(udA0) + " > " + UPG_Num$(udA1)
         Case UPG_REGEN : UPG_Next$ = UPG_Num$(Int(60 / udA1)) + " SH/S AFTER " + UPG_Num$(udB1 / 60) + "S UNHIT"
         Case UPG_ARMOUR : UPG_Next$ = "CRASH DAMAGE " + UPG_Num$(Int(udA0 * 100 + 0.5)) + ">" + UPG_Num$(Int(udA1 * 100 + 0.5)) + "%"
         Case UPG_NOVA : UPG_Next$ = "CHARGES/STAGE " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
@@ -301,7 +301,7 @@ Function UPG_Next$ (udId As Integer)
         Case UPG_ROLL
             If udL = 0 Then UPG_Next$ = "UNLOCKS THE ROLL" Else UPG_Next$ = "COOLDOWN " + UPG_Num$(udA0 / 60) + ">" + UPG_Num$(udA1 / 60) + "S"
         Case UPG_TRACTOR : UPG_Next$ = "PULL RANGE " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
-        Case UPG_FUEL : UPG_Next$ = "FUEL TANK " + UPG_Num$(udA0) + ">" + UPG_Num$(udA1)
+        Case UPG_FUEL : UPG_Next$ = "TANK " + UPG_Num$(udA0) + " > " + UPG_Num$(udA1)
     End Select
 End Function
 
@@ -342,4 +342,47 @@ End Sub
 Function UPG_ShieldPct%
     If shieldMax <= 0 Then UPG_ShieldPct% = 0 : Exit Function
     UPG_ShieldPct% = Int(lives * 100 / shieldMax)
+End Function
+
+' ── capacity bars (#268): the HUD's and the dock's SH / LA / FU bars are as long as the
+' capacity, so an upgrade visibly grows them. Base capacity draws today's 28px bar.
+Const UPG_CAP_BASE = 100   ' capacity drawn at the base length
+Const UPG_BAR_BASE = 28    ' bar fill length (px) at UPG_CAP_BASE
+Const UPG_BAR_MAX  = 56    ' longest bar (2x base); the HUD layout reserves this much
+
+' Fill length of a full bar for capacity ublCap, clamped to 1..UPG_BAR_MAX.
+Function UPG_BarLen% (ublCap As Single)
+    Dim ublL As Integer
+    ublL = Int(UPG_BAR_BASE * ublCap / UPG_CAP_BASE + 0.5)
+    If ublL < 1 Then ublL = 1
+    If ublL > UPG_BAR_MAX Then ublL = UPG_BAR_MAX
+    UPG_BarLen% = ublL
+End Function
+
+' Filled part of that bar for ubfVal out of ubfCap.
+Function UPG_BarFill% (ubfVal As Single, ubfCap As Single)
+    Dim ubfLen As Integer, ubfF As Integer
+    ubfLen = UPG_BarLen%(ubfCap)
+    If ubfCap <= 0 Then UPG_BarFill% = 0 : Exit Function
+    ubfF = Int(ubfVal / ubfCap * ubfLen)
+    If ubfF < 0 Then ubfF = 0
+    If ubfF > ubfLen Then ubfF = ubfLen
+    UPG_BarFill% = ubfF
+End Function
+
+' "SH 72/125": a status row's absolute value over its capacity.
+Function UPG_StatusStr$ (ussLbl As String, ussVal As Single, ussCap As Single)
+    Dim ussV As Long
+    ussV = Int(ussVal)
+    If ussV < 0 Then ussV = 0
+    UPG_StatusStr$ = ussLbl + " " + LTrim$(Str$(ussV)) + "/" + LTrim$(Str$(Int(ussCap)))
+End Function
+
+' Capacity the next level of a capacity upgrade (laser, shield, fuel) would give; 0 for
+' other upgrades or once maxed. The dock previews it as a ghost on the status bar.
+Function UPG_CapNext! (ucnId As Integer)
+    UPG_CapNext! = 0
+    If ucnId <> UPG_LASER And ucnId <> UPG_SHIELD And ucnId <> UPG_FUEL Then Exit Function
+    If upgLevel(ucnId) >= upgMax(ucnId) Then Exit Function
+    UPG_CapNext! = upgFxA(ucnId, upgLevel(ucnId) + 1)
 End Function

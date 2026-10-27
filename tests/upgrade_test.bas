@@ -137,7 +137,7 @@ Print ""
 Print "--- dock info lines: what it does, what the next level changes ---"
 UPG_Reset
 UT_Assert UPG_Info$(UPG_LASER) = "BIGGER, FASTER LASER BANK", "laser info comes from upgdesc_laser"
-UT_Assert UPG_Next$(UPG_LASER) = "MAX 100>125, REGEN +20%", "laser next: MAX 100>125, REGEN +20% (" + UPG_Next$(UPG_LASER) + ")"
+UT_Assert UPG_Next$(UPG_LASER) = "BANK 100 > 125 REGEN +20%", "laser next: BANK 100 > 125 REGEN +20% (" + UPG_Next$(UPG_LASER) + ")"
 UT_Assert UPG_Next$(UPG_CANNON) = "NEXT: 2 PARALLEL SHOTS", "cannon next: 2 parallel shots"
 UT_Assert UPG_Next$(UPG_RAPID) = "SHOT DELAY .18>.14S", "rapid next: SHOT DELAY .18>.14S (" + UPG_Next$(UPG_RAPID) + ")"
 UT_Assert UPG_Next$(UPG_NOVA) = "CHARGES/STAGE 0>1" And Left$(UPG_Info$(UPG_NOVA), 4) = "Q/Y:", "nova: charges 0>1, and its info names the keys"
@@ -212,6 +212,36 @@ For utI = 1 To UPG_COUNT
     If Len(UPG_Info$(utI)) = 0 Or Len(UPG_Info$(utI)) > 25 Then utOk = 0 : Print "  info: "; UPG_Info$(utI)
 Next utI
 UT_Assert utOk <> 0, "every row has an info line and a next-level line that fit the dock panel (25 chars)"
+
+Print ""
+Print "--- capacity bars: length follows capacity, absolute values (#268) ---"
+UT_Assert UPG_BarLen%(100) = 28, "base capacity 100 draws today's 28px bar"
+UT_Assert UPG_BarLen%(125) = 35 And UPG_BarLen%(150) = 42 And UPG_BarLen%(180) = 50, "shield/laser levels: 125 -> 35, 150 -> 42, 180 -> 50"
+UT_Assert UPG_BarLen%(130) = 36 And UPG_BarLen%(160) = 45, "fuel tank levels: 130 -> 36, 160 -> 45"
+UT_Assert UPG_BarLen%(1000) = UPG_BAR_MAX And UPG_BarLen%(0) = 1, "clamped to 1.." + LTrim$(Str$(UPG_BAR_MAX))
+utOk = -1
+For utI = 1 To UPG_COUNT
+    If utI = UPG_LASER Or utI = UPG_SHIELD Or utI = UPG_FUEL Then
+        If UPG_BarLen%(upgFxA(utI, 0)) <> UPG_BAR_BASE Then utOk = 0
+        For utR = 1 To upgMax(utI)
+            If UPG_BarLen%(upgFxA(utI, utR)) >= UPG_BAR_MAX Or UPG_BarLen%(upgFxA(utI, utR)) <= UPG_BarLen%(upgFxA(utI, utR - 1)) Then utOk = 0
+        Next utR
+    End If
+Next utI
+UT_Assert utOk <> 0, "every capacity level in upgrades.ini draws a longer bar, under the HUD's reserved max"
+UT_Assert UPG_BarFill%(72, 125) = 20 And UPG_BarFill%(125, 125) = 35 And UPG_BarFill%(0, 125) = 0, "fill: 72/125 -> 20 of 35, full -> 35, empty -> 0"
+UT_Assert UPG_BarFill%(-5, 100) = 0 And UPG_BarFill%(300, 100) = 28, "fill clamped to the bar"
+UT_Assert UPG_StatusStr$("SH", 72, 125) = "SH 72/125", "status: SH 72/125 (" + UPG_StatusStr$("SH", 72, 125) + ")"
+UT_Assert UPG_StatusStr$("FU", 71.9, 130) = "FU 71/130" And UPG_StatusStr$("LA", -1, 100) = "LA 0/100", "status: fuel rounds down, never negative"
+Dim utSvFuel As Integer, utSvShield As Integer, utSvLaser As Integer
+utSvFuel = upgLevel(UPG_FUEL) : utSvShield = upgLevel(UPG_SHIELD) : utSvLaser = upgLevel(UPG_LASER)
+upgLevel(UPG_FUEL) = 1 : upgLevel(UPG_SHIELD) = 0 : upgLevel(UPG_LASER) = 0
+UT_Assert UT_Near%(UPG_CapNext!(UPG_FUEL), 160) And UPG_Next$(UPG_FUEL) = "TANK 130 > 160", "fuel tank 1: next is TANK 130 > 160, ghost to 160 (" + UPG_Next$(UPG_FUEL) + ")"
+UT_Assert UPG_Next$(UPG_SHIELD) = "SHIELD 100 > 125" And UT_Near%(UPG_CapNext!(UPG_SHIELD), 125), "shield: SHIELD 100 > 125, ghost to 125"
+UT_Assert UT_Near%(UPG_CapNext!(UPG_LASER), 125), "laser: ghost to 125"
+upgLevel(UPG_FUEL) = upgMax(UPG_FUEL)
+UT_Assert UPG_CapNext!(UPG_FUEL) = 0 And UPG_CapNext!(UPG_THRUST) = 0, "no ghost once maxed, nor for a non-capacity upgrade"
+upgLevel(UPG_FUEL) = utSvFuel : upgLevel(UPG_SHIELD) = utSvShield : upgLevel(UPG_LASER) = utSvLaser
 
 Print ""
 Print "--- shield recharge: once per dock ---"
