@@ -77,7 +77,7 @@ Sub ABL_Nova
     End If
     FX_SpawnBurst player.px, player.py, player.pz, 40, 0.5, 22, 8, _RGB(170, 240, 255)
     novaFxTimer = NOVA_FX_FRAMES
-    fxShakeTimer = 10 : fxFlashTimer = 4
+    fxShakeTimer = 10   ' no fxFlashTimer: that red flash means "you were hit"
     SND_Boom
 End Sub
 
@@ -100,6 +100,9 @@ Sub ABL_Draw
     ' nova: a ring racing out to the blast radius, fading as it goes
     If novaFxTimer > 0 Then
         abdF = 1 - novaFxTimer / NOVA_FX_FRAMES
+        If novaFxTimer > NOVA_FX_FRAMES - 5 Then
+            Line (0, 0)-(scrW - 1, scrH - 1), _RGBA(170, 240, 255, (novaFxTimer - NOVA_FX_FRAMES + 5) * 30), BF
+        End If
         COMBAT_Project player.px, player.py, player.pz, abdSX, abdSY, abdOk
         COMBAT_Project player.px, player.py + novaRadius * abdF, player.pz, abdEX, abdEY, abdOk2
         If abdOk And abdOk2 Then
