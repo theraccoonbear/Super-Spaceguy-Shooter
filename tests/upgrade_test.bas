@@ -225,6 +225,20 @@ For utI = 1 To 100 : UPG_RegenTick : Next utI
 UT_Assert lives = 100, "stops at the shield max"
 
 Print ""
+Print "--- --credits <n> ---"
+Dim utArg As Long
+utArg = 7
+utOk = CR_ParseArg%("2500", utArg)
+UT_Assert utOk <> 0 And utArg = 2500, "--credits 2500 sets 2500"
+utOk = CR_ParseArg%("0", utArg)
+UT_Assert utOk <> 0 And utArg = 0, "--credits 0 is fine"
+utArg = 7
+utOk = CR_ParseArg%("-5", utArg)
+UT_Assert utOk = 0 And utArg = 7, "--credits -5 is a usage error"
+UT_Assert CR_ParseArg%("12x", utArg) = 0 And CR_ParseArg%("1.5", utArg) = 0, "--credits 12x / 1.5 are usage errors"
+UT_Assert CR_ParseArg%("", utArg) = 0 And CR_ParseArg%("9999999999", utArg) = 0, "--credits needs a value that fits"
+
+Print ""
 Print "--- new game resets the run ---"
 UPG_Reset
 UT_Assert credits = 0 And upgLevel(UPG_ROLL) = 0 And upgLevel(UPG_REGEN) = 0 And rollCoolMax = 0 And regenEvery = 0, "credits and upgrades cleared"

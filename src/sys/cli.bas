@@ -55,8 +55,7 @@ Sub CLI_Parse()
     End If
     cliVal = CLI_Value$(cliLine, "--credits ")
     If cliVal <> "" Then
-        If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--credits needs a whole number, got '" + cliVal + "'")
-        cliCredits = Val(cliVal)
+        If CR_ParseArg%(cliVal, cliCredits) = 0 Then GAME_Usage("--credits needs a whole number 0 or more, got '" + cliVal + "'")
     End If
     cliVal = CLI_Value$(cliLine, "--seed ")
     If cliVal <> "" Then

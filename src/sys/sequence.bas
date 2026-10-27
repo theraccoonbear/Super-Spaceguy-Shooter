@@ -286,6 +286,8 @@ Function SEQ_JumpToScene%(seqjSpec As String)
     ' build specific error
     If seqjTargetLabel <> "" And seqjLabelFound = 0 Then
         seqLastError = "--scene '" + seqjSpec + "': label '" + seqjTargetLabel + "' not found in sequence.txt"
+    ElseIf seqjTaskKind = SEQ_DOCK Then
+        seqLastError = "--scene '" + seqjSpec + "': label '" + seqjTargetLabel + "' has no DOCK task (there is no dock after the last stage)"
     ElseIf Len(seqjPlaySub) > 0 Then
         Dim seqjSubName As String
         If seqjPlaySub = "playing" Then seqjSubName = "combat or asteroid" Else seqjSubName = seqjPlaySub

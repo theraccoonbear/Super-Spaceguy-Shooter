@@ -67,7 +67,7 @@ tools/dev run --scene boss3 --god   # rebuilds first if any source changed, then
 tools/dev test                      # full suite before you commit (pre-commit checklist in CLAUDE.md)
 ```
 
-`run` takes any [CLI option](#cli-options). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
+`run` takes any [CLI option](#cli-options). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--scene dock2 --credits 2000` opens the upgrade dock after stage 2 (docks follow stages 1-5) with 2000 credits to spend, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
 
 The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
 
@@ -90,7 +90,7 @@ sss [options]
   --leaderboard-file <file>  Show a saved top_scores JSON response on the leaderboard instead of polling (offline testing)
   --frames N             Quit after N frames (60 per second)
   --seed N               Fixed random seed, so a scripted run repeats exactly
-  --credits N            Start every run with N credits (for trying the upgrade dock)
+  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 

@@ -295,3 +295,15 @@ Function UPG_KeyOf$ (ukId As Integer)
         Case Else        : UPG_KeyOf$ = ""
     End Select
 End Function
+
+' --credits <n>: a whole number 0..999999999. 0 (and crpN untouched) if it isn't one.
+Function CR_ParseArg% (crpS As String, crpN As Long)
+    Dim crpI As Integer
+    CR_ParseArg% = 0
+    If Len(crpS) = 0 Or Len(crpS) > 9 Then Exit Function
+    For crpI = 1 To Len(crpS)
+        If Mid$(crpS, crpI, 1) < "0" Or Mid$(crpS, crpI, 1) > "9" Then Exit Function
+    Next crpI
+    crpN = Val(crpS)
+    CR_ParseArg% = -1
+End Function

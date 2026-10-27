@@ -120,7 +120,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
-    CLI_Emit guFH, "  --credits N            Start every run with N credits (for trying the upgrade dock)"
+    CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
     CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"
