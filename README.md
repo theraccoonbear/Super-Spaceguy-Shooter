@@ -71,7 +71,7 @@ tools/dev test                      # full suite before you commit (pre-commit c
 
 The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
 
-`tools/dev run` and `tools/dev headless` rebuild `builds/sss` if it is missing, older than any file in `sss.bas`, `src/`, `assets/` or `VERSION` (so a `git pull` or a branch switch never plays a stale build), or was built natively on a host with a newer glibc than the container, then runs it with your desktop passed through: the X11 socket and `DISPLAY`/`XAUTHORITY` (XWayland on Wayland desktops), the PulseAudio/PipeWire socket from `$XDG_RUNTIME_DIR`, and `/dev/dri` for GPU rendering. For that container only, SELinux labeling is turned off (`--security-opt label=disable`) so it can share the sockets, and `--ipc=host` lets X11 shared memory work. If no audio socket is found it warns and runs silently. Every other command stays headless. You can also run a container-built `builds/sss` directly on the host if it has the GL/X11/ALSA runtime libraries.
+`tools/dev run` and `tools/dev headless` rebuild `builds/sss` if it is missing, older than any file in `sss.bas`, `src/`, `assets/` or `VERSION` (so a `git pull` or a branch switch never plays a stale build), or was built natively on a host with a newer glibc than the container, then runs it with your desktop passed through: the X11 socket and `DISPLAY`/`XAUTHORITY` (XWayland on Wayland desktops), the PulseAudio/PipeWire socket from `$XDG_RUNTIME_DIR`, `/dev/dri` for GPU rendering, and `/dev/input` so the game sees your controllers (bind-mounted, so a pad plugged in after launch works too). For that container only, SELinux labeling is turned off (`--security-opt label=disable`) so it can share the sockets, and `--ipc=host` lets X11 shared memory work. If no audio socket is found it warns and runs silently. Every other command stays headless. You can also run a container-built `builds/sss` directly on the host if it has the GL/X11/ALSA runtime libraries.
 
 ### CLI options
 
@@ -114,6 +114,7 @@ QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical 
 #   tools/dev shell bash -c "tools/buildqb tests/spore_test.bas && builds/spore_test")
 tools/buildqb tests/spore_test.bas && builds/spore_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
+bash tests/tools_dev_test.sh  # checks the container command `tools/dev run` builds (display, GPU, controllers)
 ```
 
 The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name in `TESTS` in `.github/scripts/qb64test.sh`.
