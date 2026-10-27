@@ -111,16 +111,17 @@ Sub ABOUT_Prep (abpReturn As Integer)
     End If
 
     aboutScroll = scrH - 40    ' first line enters bottom fade zone immediately
-    aboutUpWas = KEY_Down%(18432) : aboutDnWas = KEY_Down%(20480) : aboutEscWas = KEY_Down%(27)
+    aboutUpWas = held(E3D_KEY_UP) : aboutDnWas = held(E3D_KEY_DOWN) : aboutEscWas = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0)
 End Sub
 
 Sub ABOUT_Update()
     Dim abI As Integer, abY As Integer
     Dim abUp As Integer, abDn As Integer, abEsc As Integer, abSy As Integer
 
-    abUp  = KEY_Down%(18432)   ' up arrow
-    abDn  = KEY_Down%(20480)   ' down arrow
-    abEsc = KEY_Down%(27)
+    ' held() slots carry the keyboard arrows and the pad stick; ESC's slot also carries pad Start
+    abUp  = (held(E3D_KEY_UP) <> 0)
+    abDn  = (held(E3D_KEY_DOWN) <> 0)
+    abEsc = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0)
 
     ' manual scroll (4 px/frame while held)
     If abUp Then aboutScroll = aboutScroll + 4
@@ -165,7 +166,7 @@ Sub ABOUT_Update()
     Line (17, scrH - 36)-(scrW - 18, scrH - 28), _RGBA(2, 4, 18, 100), BF
     Line (17, scrH - 28)-(scrW - 18, scrH - 20), _RGBA(2, 4, 18, 220), BF
 
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "up/dn scroll   ESC back", scrH - 14, scrW, 255
+    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "up/dn scroll   ESC/B back", scrH - 14, scrW, 255
 
     _Dest 0
     _PutImage , backBuffer, 0

@@ -23,7 +23,7 @@ Sub GS_INTRO_Update ()
         gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
     END IF
     escWas = held(E3D_KEY_ESCAPE)
-    IF held(E3D_KEY_SPACE) AND spaceWas = 0 AND introTimer > 45 THEN
+    IF held(E3D_KEY_SPACE) AND spaceWas = 0 AND held(E3D_KEY_PAD_B) = 0 AND introTimer > 45 THEN
         introTimer = 0 : SEQ_Advance
     END IF
     spaceWas = held(E3D_KEY_SPACE)

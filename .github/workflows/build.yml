@@ -61,6 +61,11 @@ jobs:
         with:
           qb64pe-version: ${{ env.QB64PE_VERSION }}
 
+      # tools/dev run must hand the container the display, GPU and controllers (#223).
+      - name: Check tools/dev run passes devices into the container
+        if: runner.os == 'Linux'
+        run: bash tests/tools_dev_test.sh
+
       # One worker per vCPU: CI runners' vCPUs aren't desktop hyperthreads, so the
       # script's half-the-CPUs default would leave them idle.
       - name: Build and run all tests

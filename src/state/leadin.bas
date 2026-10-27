@@ -60,6 +60,7 @@ Sub LEADIN_Update()
     _PutImage , backBuffer, 0
 
     liKey = KEY_Hit&
+    If KEY_Pressed%(E3D_KEY_PAD_A) Or KEY_Pressed%(E3D_KEY_PAD_START) Then liKey = 1
     If liTimer >= LI_HOLD Or liKey > 0 Then
         liCard = liCard + 1
         If liCard > 3 Then

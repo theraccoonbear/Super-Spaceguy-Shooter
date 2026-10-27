@@ -74,18 +74,20 @@ TESTS=(
   spore_test
   attack_test
   inputscript_test
+  pad_map_test
   rng_test
   titlenav_test
   textedit_test
   lbrd_test
 )
 
-# Dev tools at the repo root: compiled only (they're interactive), so an engine change
+# Dev tools (path from the repo root, no .bas): compiled only (they're interactive), so an engine change
 # that breaks them fails CI instead of going unnoticed (#224).
 TOOLS=(
   viewer
   stress
   obj2e3d
+  tools/padrecord
 )
 
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
@@ -161,6 +163,7 @@ build_test() {
 test_job() {
   local name="$1" slot qbdir bin t0 t1 t2 log="$WORK/$1.log" src out is_tool=0
   case " $TOOL_NAMES " in *" $name "*) is_tool=1 ;; esac
+  mkdir -p "$(dirname "$log")"  # a tool under tools/ keeps its log, result and binary in $WORK/tools/
   if [ "$is_tool" = 1 ]; then
     src="$REPODIR/${name}.bas"; out="$WORK/${name}"
   else

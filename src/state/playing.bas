@@ -15,6 +15,7 @@ Sub GS_PLAYING_Update ()
     ' ESC confirm dialog: in play and during the planet arrival / cinematic, which it
     ' pauses the same way (nothing below runs while it's open)
     IF gameState = GS_PLAYING OR gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
+        Dim gspWasOpen As Integer : gspWasOpen = escConfirm
         IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
             escConfirm = 1 - escConfirm
             IF escConfirm THEN
@@ -25,7 +26,12 @@ Sub GS_PLAYING_Update ()
         END IF
         escWas = held(E3D_KEY_ESCAPE)
         IF escConfirm THEN
-            IF (KEY_Down%(89) OR KEY_Down%(121)) AND escYWas = 0 THEN
+            ' pad: A confirms, B cancels, X opens Controls (Start toggles the dialog, as ESC does)
+            Dim gspPadYes As Integer, gspPadNo As Integer, gspPadCtl As Integer
+            gspPadYes = gspWasOpen AND KEY_Confirm%
+            gspPadNo = gspWasOpen AND KEY_Pressed%(E3D_KEY_PAD_B)
+            gspPadCtl = gspWasOpen AND KEY_Pressed%(E3D_KEY_PAD_X)
+            IF ((KEY_Down%(89) OR KEY_Down%(121)) AND escYWas = 0) OR gspPadYes THEN
                 escConfirm = 0
                 telemExitReason = "quit"
                 TELEM_SessionEnd
@@ -35,17 +41,17 @@ Sub GS_PLAYING_Update ()
                 MUS_SetCue "title"
             END IF
             escYWas = KEY_Down%(89) OR KEY_Down%(121)
-            IF (KEY_Down%(78) OR KEY_Down%(110)) AND escNWas = 0 THEN escConfirm = 0
+            IF ((KEY_Down%(78) OR KEY_Down%(110)) AND escNWas = 0) OR gspPadNo THEN escConfirm = 0
             escNWas = KEY_Down%(78) OR KEY_Down%(110)
-            IF (KEY_Down%(67) OR KEY_Down%(99)) AND escCWas = 0 THEN
+            IF ((KEY_Down%(67) OR KEY_Down%(99)) AND escCWas = 0) OR gspPadCtl THEN
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
             END IF
             escCWas = KEY_Down%(67) OR KEY_Down%(99)
             _DEST backBuffer
-            UI_DrawPanel scrW\2 - 84, scrH\2 - 30, scrW\2 + 84, scrH\2 + 52, "ABORT MISSION"
-            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y   CONFIRM RETREAT", scrH\2 - 4,  scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "C   CONTROLS       ", scrH\2 + 14, scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC CANCEL         ", scrH\2 + 32, scrW, 255
+            UI_DrawPanel scrW\2 - 96, scrH\2 - 30, scrW\2 + 96, scrH\2 + 52, "ABORT MISSION"
+            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y/A   CONFIRM RETREAT", scrH\2 - 4,  scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "C/X   CONTROLS       ", scrH\2 + 14, scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC/B CANCEL         ", scrH\2 + 32, scrW, 255
             _DEST 0
             _PUTIMAGE , backBuffer, 0
             EXIT SUB
