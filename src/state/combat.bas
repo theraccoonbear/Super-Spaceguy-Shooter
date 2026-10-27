@@ -3,6 +3,22 @@ Const EB_BOLT_R      = 0.14   ' world-unit glow radius (projected, so it grows a
 Const EB_HOT_DIST    = 3      ' at or nearer than this (X from player): full heat
 Const EB_COLD_DIST   = 30     ' at or beyond this: coolest, dimmest
 Const EB_COLD_BRIGHT = 0.35   ' brightness at EB_COLD_DIST, so far shots never outshine ships
+Const EB_MAX_R       = 9      ' glow radius clamp in pixels
+Const EB_GLOW_COLD   = _RGBA32(255, 60, 20, 25)    ' glow at brightness 0; ramps toward EB_GLOW_HOT
+Const EB_GLOW_HOT    = _RGBA32(255, 100, 20, 70)   ' glow at full brightness
+Const EB_BODY        = _RGB32(255, 150, 70)        ' streak line at full brightness
+Const EB_CORE        = _RGB32(255, 235, 190)       ' hot inner line (front half) at full brightness
+' player lasers: same construction, cyan, and they recede, so they start hot and cool off
+Const PB_BOLT_LEN    = 2.0    ' BULLET_TRAIL_LEN, the length the old line drew
+Const PB_BOLT_R      = 0.22
+Const PB_HOT_DIST    = 6      ' shots spawn ~3 ahead: full heat for the first ~10 frames
+Const PB_COLD_DIST   = 60     ' about half of BULLET_RANGE (110); coolest beyond
+Const PB_COLD_BRIGHT = 0.45
+Const PB_MAX_R       = 5      ' smaller than EB_MAX_R so a fresh shot doesn't hide the ship
+Const PB_GLOW_COLD   = _RGBA32(20, 170, 220, 25)
+Const PB_GLOW_HOT    = _RGBA32(30, 255, 230, 80)
+Const PB_BODY        = _RGB32(40, 230, 230)
+Const PB_CORE        = _RGB32(180, 255, 245)
 Const DEV_CHEV_NEAR  = 20     ' devour drag chevrons: pixels from the ship where they start (clear of its hull)
 Const DEV_CHEV_FAR   = 52     ' ... and where they fade out
 Const DEV_CHEV_SIZE  = 7      ' chevron half-width / depth in pixels
@@ -15,6 +31,60 @@ Sub COMBAT_Project(cpX As Single, cpY As Single, cpZ As Single, cpSX As Single, 
     If cpOk = 0 Then Exit Sub
     cpSX = ((cpX * vpMat.m(0,0) + cpY * vpMat.m(0,1) + cpZ * vpMat.m(0,2) + vpMat.m(0,3)) / cpW + 1.0) * scrW * 0.5
     cpSY = (1.0 - (cpX * vpMat.m(1,0) + cpY * vpMat.m(1,1) + cpZ * vpMat.m(1,2) + vpMat.m(1,3)) / cpW) * scrH * 0.5
+End Sub
+
+' Bolt brightness from its X distance to the player: 1 at bhHot or nearer, bhColdB at bhCold or beyond.
+' bhColdB is Double so a decimal Const arrives at the precision it had inline (keeps enemy bolts pixel-identical).
+Function COMBAT_BoltHeat!(bhD As Single, bhHot As Single, bhCold As Single, bhColdB As Double)
+    Dim bhF As Single
+    bhF = (bhD - bhHot) / (bhCold - bhHot)
+    If bhF < 0 Then bhF = 0
+    If bhF > 1 Then bhF = 1
+    COMBAT_BoltHeat! = 1 - bhF * (1 - bhColdB)
+End Function
+
+' Shot drawn as a glowing streak: tail bdLen back along the velocity, glow discs densest at the
+' head (radius = projected bdRad, clamped to 1..bdMaxR px), a body line and a hot core on the
+' front half. Glow ramps from bdGlowLo to bdGlowHi with brightness bdF; body and core scale by bdF.
+' bdLen/bdRad are Double for the same reason as bhColdB.
+Sub COMBAT_DrawBolt(bdX As Single, bdY As Single, bdZ As Single, bdVX As Single, bdVY As Single, bdVZ As Single, _
+                    bdLen As Double, bdRad As Double, bdMaxR As Integer, bdF As Single, _
+                    bdGlowLo As _Unsigned Long, bdGlowHi As _Unsigned Long, bdBody As _Unsigned Long, bdCore As _Unsigned Long)
+    Dim bdMag As Single, bdS As Single
+    Dim bdHX As Single, bdHY As Single, bdTX As Single, bdTY As Single, bdRX As Single, bdRY As Single
+    Dim bdOk As Integer, bdOk2 As Integer, bdOk3 As Integer
+    Dim bdGX As Single, bdGY As Single, bdK As Integer, bdR As Integer
+    Dim bdLoR As Long, bdLoG As Long, bdLoB As Long, bdLoA As Long
+    Dim bdDR As Long, bdDG As Long, bdDB As Long, bdDA As Long
+    Dim bdBR As Long, bdBG As Long, bdBB As Long, bdCR As Long, bdCG As Long, bdCB As Long
+
+    bdMag = Sqr(bdVX * bdVX + bdVY * bdVY + bdVZ * bdVZ)
+    If bdMag <= 0.0001 Then Exit Sub
+    COMBAT_Project bdX, bdY, bdZ, bdHX, bdHY, bdOk
+    COMBAT_Project bdX - bdVX / bdMag * bdLen, bdY - bdVY / bdMag * bdLen, bdZ - bdVZ / bdMag * bdLen, bdTX, bdTY, bdOk2
+    COMBAT_Project bdX, bdY + bdRad, bdZ, bdRX, bdRY, bdOk3
+    If bdOk = 0 Or bdOk2 = 0 Or bdOk3 = 0 Then Exit Sub
+    If bdHX < 0 Or bdHX >= scrW Or bdHY < 0 Or bdHY >= scrH Then Exit Sub
+
+    bdS = Abs(bdHY - bdRY)
+    If bdS < 1 Then bdS = 1
+    If bdS > bdMaxR Then bdS = bdMaxR
+
+    bdLoR = _Red32(bdGlowLo) : bdLoG = _Green32(bdGlowLo) : bdLoB = _Blue32(bdGlowLo) : bdLoA = _Alpha32(bdGlowLo)
+    bdDR = _Red32(bdGlowHi) - bdLoR : bdDG = _Green32(bdGlowHi) - bdLoG
+    bdDB = _Blue32(bdGlowHi) - bdLoB : bdDA = _Alpha32(bdGlowHi) - bdLoA
+    bdBR = _Red32(bdBody) : bdBG = _Green32(bdBody) : bdBB = _Blue32(bdBody)
+    bdCR = _Red32(bdCore) : bdCG = _Green32(bdCore) : bdCB = _Blue32(bdCore)
+
+    For bdK = 0 To 2
+        bdGX = bdHX + (bdTX - bdHX) * bdK * 0.5
+        bdGY = bdHY + (bdTY - bdHY) * bdK * 0.5
+        For bdR = Int(bdS * (1 - bdK * 0.3)) To 1 Step -1
+            Circle (bdGX, bdGY), bdR, _RGBA(Int(bdLoR + bdDR * bdF), Int(bdLoG + bdDG * bdF), Int(bdLoB + bdDB * bdF), Int(bdLoA + bdDA * bdF))
+        Next bdR
+    Next bdK
+    Line (bdTX, bdTY)-(bdHX, bdHY), _RGB(Int(bdBR * bdF), Int(bdBG * bdF), Int(bdBB * bdF))
+    Line (bdHX + (bdTX - bdHX) * 0.5, bdHY + (bdTY - bdHY) * 0.5)-(bdHX, bdHY), _RGB(Int(bdCR * bdF), Int(bdCG * bdF), Int(bdCB * bdF))
 End Sub
 
 ' Closing impact ring at world point (irX, irY, irZ), world radius irR. irFrac 1 = just
@@ -106,10 +176,7 @@ End Sub
 Sub COMBAT_OverlayDraw()
     Dim cbtOJ As Integer
     Dim cbtSpR As Single, cbtSpRing As Integer, cbtSpA As Integer
-    Dim cbtEbF As Single, cbtEbMag As Single, cbtEbS As Single
-    Dim cbtEbOk As Integer, cbtEbOk2 As Integer, cbtEbOk3 As Integer
-    Dim cbtEbRX As Single, cbtEbRY As Single, cbtEbGX As Single, cbtEbGY As Single
-    Dim cbtEbK As Integer, cbtEbR As Integer
+    Dim cbtEbF As Single, cbtPbF As Single
     Dim cbtEbFr As Single, cbtEbCY As Single, cbtEbCZ As Single, cbtEbRF As Single, cbtEbSeek As Single
     Dim cbtRgFr(1 To MAX_EBULLETS) As Single, cbtRgY(1 To MAX_EBULLETS) As Single, cbtRgZ(1 To MAX_EBULLETS) As Single
     Dim cbtRgN As Integer, cbtRgBest As Integer
@@ -125,9 +192,7 @@ Sub COMBAT_OverlayDraw()
     Dim cbtDvUX As Single, cbtDvUY As Single, cbtDvLen As Single, cbtDvD As Single, cbtDvT As Integer
 
     Dim cbtOPjX As Single, cbtOPjY As Single, cbtOPjW As Single
-    Dim cbtOPjX2 As Single, cbtOPjY2 As Single, cbtOPjW2 As Single
-    Dim cbtOPjBX As Single, cbtOPjBY As Single, cbtOPjBZ As Single
-    Dim cbtOPjFade As Single
+    Dim cbtOPjY2 As Single, cbtOPjW2 As Single
     Dim cbtOPartR As Integer
     Dim cbtOBdbVx As Single, cbtOBdbVy As Single, cbtOBdbVz As Single, cbtOBdbW As Single
     Dim cbtOBdbSx(1 To 8) As Single, cbtOBdbSy(1 To 8) As Single
@@ -170,30 +235,13 @@ Sub COMBAT_OverlayDraw()
 
     _Dest backBuffer
 
-    ' player bullets
+    ' player bullets: cyan bolts, hottest leaving the ship and cooling as they recede
     For cbtOJ = 1 To MAX_BULLETS
         If bullets(cbtOJ).active Then
-            cbtOPjX  = bullets(cbtOJ).px * vpMat.m(0,0) + bullets(cbtOJ).py * vpMat.m(0,1) + bullets(cbtOJ).pz * vpMat.m(0,2) + vpMat.m(0,3)
-            cbtOPjY  = bullets(cbtOJ).px * vpMat.m(1,0) + bullets(cbtOJ).py * vpMat.m(1,1) + bullets(cbtOJ).pz * vpMat.m(1,2) + vpMat.m(1,3)
-            cbtOPjW  = bullets(cbtOJ).px * vpMat.m(3,0) + bullets(cbtOJ).py * vpMat.m(3,1) + bullets(cbtOJ).pz * vpMat.m(3,2) + vpMat.m(3,3)
-            cbtOPjBX = bullets(cbtOJ).px - bullets(cbtOJ).vx * (BULLET_TRAIL_LEN / BULLET_SPEED)
-            cbtOPjBY = bullets(cbtOJ).py - bullets(cbtOJ).vy * (BULLET_TRAIL_LEN / BULLET_SPEED)
-            cbtOPjBZ = bullets(cbtOJ).pz - bullets(cbtOJ).vz * (BULLET_TRAIL_LEN / BULLET_SPEED)
-            cbtOPjX2 = cbtOPjBX * vpMat.m(0,0) + cbtOPjBY * vpMat.m(0,1) + cbtOPjBZ * vpMat.m(0,2) + vpMat.m(0,3)
-            cbtOPjY2 = cbtOPjBX * vpMat.m(1,0) + cbtOPjBY * vpMat.m(1,1) + cbtOPjBZ * vpMat.m(1,2) + vpMat.m(1,3)
-            cbtOPjW2 = cbtOPjBX * vpMat.m(3,0) + cbtOPjBY * vpMat.m(3,1) + cbtOPjBZ * vpMat.m(3,2) + vpMat.m(3,3)
-            If cbtOPjW > 0.0001 And cbtOPjW2 > 0.0001 Then
-                cbtOPjX  = (cbtOPjX  / cbtOPjW  + 1.0) * scrW * 0.5
-                cbtOPjY  = (1.0 - cbtOPjY  / cbtOPjW)  * scrH * 0.5
-                cbtOPjX2 = (cbtOPjX2 / cbtOPjW2 + 1.0) * scrW * 0.5
-                cbtOPjY2 = (1.0 - cbtOPjY2 / cbtOPjW2) * scrH * 0.5
-                If cbtOPjX >= 0 And cbtOPjX < scrW And cbtOPjY >= 0 And cbtOPjY < scrH Then
-                    cbtOPjFade = bullets(cbtOJ).life / (BULLET_RANGE / BULLET_SPEED)
-                    If cbtOPjFade > 1.0 Then cbtOPjFade = 1.0
-                    Line (Int(cbtOPjX2), Int(cbtOPjY2))-(Int(cbtOPjX), Int(cbtOPjY)), _RGB(Int(210*cbtOPjFade), Int(215*cbtOPjFade), Int(60*cbtOPjFade))
-                    PSet (Int(cbtOPjX), Int(cbtOPjY)), _RGB(Int(240*cbtOPjFade), Int(245*cbtOPjFade), Int(140*cbtOPjFade))
-                End If
-            End If
+            cbtPbF = COMBAT_BoltHeat!(bullets(cbtOJ).px - player.px, PB_HOT_DIST, PB_COLD_DIST, PB_COLD_BRIGHT)
+            COMBAT_DrawBolt bullets(cbtOJ).px, bullets(cbtOJ).py, bullets(cbtOJ).pz, _
+                            bullets(cbtOJ).vx, bullets(cbtOJ).vy, bullets(cbtOJ).vz, _
+                            PB_BOLT_LEN, PB_BOLT_R, PB_MAX_R, cbtPbF, PB_GLOW_COLD, PB_GLOW_HOT, PB_BODY, PB_CORE
         End If
     Next cbtOJ
 
@@ -202,35 +250,10 @@ Sub COMBAT_OverlayDraw()
     ' for shots that will pass close (impact.bas), so players can triage what to dodge
     For cbtOJ = 1 To MAX_EBULLETS
         If ebullets(cbtOJ).active Then
-            cbtEbF = (ebullets(cbtOJ).px - player.px - EB_HOT_DIST) / (EB_COLD_DIST - EB_HOT_DIST)
-            If cbtEbF < 0 Then cbtEbF = 0
-            If cbtEbF > 1 Then cbtEbF = 1
-            cbtEbF = 1 - cbtEbF * (1 - EB_COLD_BRIGHT)
-            cbtEbMag = Sqr(ebullets(cbtOJ).vx * ebullets(cbtOJ).vx + ebullets(cbtOJ).vy * ebullets(cbtOJ).vy + ebullets(cbtOJ).vz * ebullets(cbtOJ).vz)
-            If cbtEbMag > 0.0001 Then
-                COMBAT_Project ebullets(cbtOJ).px, ebullets(cbtOJ).py, ebullets(cbtOJ).pz, cbtOPjX, cbtOPjY, cbtEbOk
-                COMBAT_Project ebullets(cbtOJ).px - ebullets(cbtOJ).vx / cbtEbMag * EB_BOLT_LEN, _
-                               ebullets(cbtOJ).py - ebullets(cbtOJ).vy / cbtEbMag * EB_BOLT_LEN, _
-                               ebullets(cbtOJ).pz - ebullets(cbtOJ).vz / cbtEbMag * EB_BOLT_LEN, cbtOPjX2, cbtOPjY2, cbtEbOk2
-                COMBAT_Project ebullets(cbtOJ).px, ebullets(cbtOJ).py + EB_BOLT_R, ebullets(cbtOJ).pz, cbtEbRX, cbtEbRY, cbtEbOk3
-                If cbtEbOk And cbtEbOk2 And cbtEbOk3 Then
-                    If cbtOPjX >= 0 And cbtOPjX < scrW And cbtOPjY >= 0 And cbtOPjY < scrH Then
-                        cbtEbS = Abs(cbtOPjY - cbtEbRY)
-                        If cbtEbS < 1 Then cbtEbS = 1
-                        If cbtEbS > 9 Then cbtEbS = 9
-                        ' glow: stacked translucent discs along the bolt, densest at the head
-                        For cbtEbK = 0 To 2
-                            cbtEbGX = cbtOPjX + (cbtOPjX2 - cbtOPjX) * cbtEbK * 0.5
-                            cbtEbGY = cbtOPjY + (cbtOPjY2 - cbtOPjY) * cbtEbK * 0.5
-                            For cbtEbR = Int(cbtEbS * (1 - cbtEbK * 0.3)) To 1 Step -1
-                                Circle (cbtEbGX, cbtEbGY), cbtEbR, _RGBA(255, Int(60 + 40 * cbtEbF), 20, Int(25 + 45 * cbtEbF))
-                            Next cbtEbR
-                        Next cbtEbK
-                        Line (cbtOPjX2, cbtOPjY2)-(cbtOPjX, cbtOPjY), _RGB(Int(255 * cbtEbF), Int(150 * cbtEbF), Int(70 * cbtEbF))
-                        Line (cbtOPjX + (cbtOPjX2 - cbtOPjX) * 0.5, cbtOPjY + (cbtOPjY2 - cbtOPjY) * 0.5)-(cbtOPjX, cbtOPjY), _RGB(Int(255 * cbtEbF), Int(235 * cbtEbF), Int(190 * cbtEbF))
-                    End If
-                End If
-            End If
+            cbtEbF = COMBAT_BoltHeat!(ebullets(cbtOJ).px - player.px, EB_HOT_DIST, EB_COLD_DIST, EB_COLD_BRIGHT)
+            COMBAT_DrawBolt ebullets(cbtOJ).px, ebullets(cbtOJ).py, ebullets(cbtOJ).pz, _
+                            ebullets(cbtOJ).vx, ebullets(cbtOJ).vy, ebullets(cbtOJ).vz, _
+                            EB_BOLT_LEN, EB_BOLT_R, EB_MAX_R, cbtEbF, EB_GLOW_COLD, EB_GLOW_HOT, EB_BODY, EB_CORE
 
             If ebullets(cbtOJ).meshIdx = MESH_BOSS Then cbtEbSeek = bossSeekStr Else cbtEbSeek = 0
             IMP_Predict ebullets(cbtOJ).px, ebullets(cbtOJ).py, ebullets(cbtOJ).pz, _
