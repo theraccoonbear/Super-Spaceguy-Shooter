@@ -349,6 +349,7 @@ DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N cr
 DIM SHARED cliShips        AS LONG     ' --ships N: start with N ships (testing: quick game over)
 DIM SHARED cliShields      AS LONG     ' --shields N: start with N shield points (testing: damaged shields at the dock)
 DIM SHARED cliFuel         AS LONG     ' --fuel N: start with N fuel (testing: a stranded dock)
+DIM SHARED cliPup          AS STRING   ' --pup kinds: place these power-ups once play starts (screenshots, #183)
 DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
 DIM SHARED cliShotN        AS INTEGER
@@ -387,6 +388,7 @@ DIM SHARED objMat       AS E3D_Matrix4
 DIM SHARED pPos         AS E3D_Coord
 DIM SHARED pRot         AS E3D_Coord
 DIM SHARED thrusterLight AS E3D_Coord
+DIM SHARED pupLight     AS E3D_Coord   ' power-ups are lit from the camera side so each reads at a glance (#183)
 DIM SHARED eLitDir      AS E3D_Coord
 DIM SHARED lightDir     AS E3D_Coord
 DIM SHARED meshLib(1 TO MESH_COUNT) AS E3D_Mesh

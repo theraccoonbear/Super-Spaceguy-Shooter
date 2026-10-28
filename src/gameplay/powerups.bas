@@ -12,6 +12,7 @@
 '                                     Returns the amount applied; pupOverflowPts says what a full
 '                                     gauge paid in score instead (0 when it wasn't full)
 '   n$ = PUP_KindName$(kind)          "points" / "shield" / "fuel" (telemetry)
+'   k = PUP_KindOf%(name$)            the kind for one of those names, 0 for any other
 ' Local variable prefix: pup*
 
 Const PUP_POINTS = 1
@@ -142,6 +143,15 @@ Function PUP_Apply! (pupyKind As Integer, pupyCh As Integer)
         fuelLevel = fuelLevel + pupyAmt
     End If
     PUP_Apply! = pupyAmt
+End Function
+
+Function PUP_KindOf% (pupoName As String)
+    Select Case LCase$(pupoName)
+        Case "points" : PUP_KindOf% = PUP_POINTS
+        Case "shield" : PUP_KindOf% = PUP_SHIELD
+        Case "fuel" : PUP_KindOf% = PUP_FUEL
+        Case Else : PUP_KindOf% = 0
+    End Select
 End Function
 
 Function PUP_KindName$ (pupnKind As Integer)

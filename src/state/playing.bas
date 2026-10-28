@@ -184,6 +184,7 @@ Sub GS_PLAYING_Update ()
                 END IF
             END IF
             WAVE_Spawn
+            IF cliPup <> "" THEN GAME_DevPups
 
             FOR i = 1 TO MAX_BULLETS
                 IF bullets(i).active THEN
@@ -312,7 +313,7 @@ Sub GS_PLAYING_Update ()
                 pPos.x = powerups(j).px : pPos.y = powerups(j).py : pPos.z = powerups(j).pz
                 pRot.x = powerups(j).rx : pRot.y = powerups(j).ry : pRot.z = powerups(j).rz
                 E3D_BuildObjectMat pPos, pRot, powerups(j).scl, objMat
-                E3D_SceneAddMeshLit meshLib(powerups(j).meshIdx), objMat, cam.POS, tt, lightDir
+                E3D_SceneAddMeshLit meshLib(powerups(j).meshIdx), objMat, cam.POS, tt, pupLight
             END IF
         END IF
     NEXT j
@@ -386,7 +387,7 @@ End Function
 ' A pulsing glow behind each power-up, drawn before the scene so the model sits on top of it.
 Sub GS_PLAYING_PupHalos
     Dim gphI As Integer, gphK As Integer, gphKind As Integer, gphOk As Integer, gphOk2 As Integer
-    Dim gphSX As Single, gphSY As Single, gphEX As Single, gphEY As Single, gphR As Single, gphP As Single
+    Dim gphSX As Single, gphSY As Single, gphEX As Single, gphEY As Single, gphR As Single, gphP As Single, gphFade As Single
     _DEST backBuffer
     FOR gphI = 1 TO MAX_POWERUPS
         IF powerups(gphI).active THEN
@@ -397,10 +398,12 @@ Sub GS_PLAYING_PupHalos
                     gphKind = WAVE_PupKind%(powerups(gphI).meshIdx)
                     gphP = 0.5 + 0.5 * SIN(tt * 7 + gphI)
                     gphR = ABS(gphSY - gphEY) * (0.9 + 0.2 * gphP)
+                    gphFade = (powerups(gphI).px - player.px) / 10
+                    IF gphFade > 1 THEN gphFade = 1
                     IF gphR < 3 THEN gphR = 3
                     IF gphR < 150 THEN
-                        FOR gphK = 0 TO 3
-                            CIRCLE (gphSX, gphSY), gphR - gphK * gphR * 0.18, GS_PLAYING_PupClr&(gphKind, 30 + gphK * 18 + INT(gphP * 30))
+                        FOR gphK = 0 TO 2
+                            CIRCLE (gphSX, gphSY), gphR - gphK * gphR * 0.18, GS_PLAYING_PupClr&(gphKind, INT((30 + gphK * 20 + gphP * 30) * gphFade))
                         NEXT gphK
                     END IF
                 END IF
@@ -426,13 +429,13 @@ Sub GS_PLAYING_PupMarks
             IF gpmDX > -pupGrabDX AND gpmFr <= pupMarkerFrames AND pupMarkerFrames > 0 THEN
                 gpmF = gpmFr / pupMarkerFrames
                 IF gpmF < 0 THEN gpmF = 0
-                gpmR = pupGrabR * (1 + 0.6 * gpmF)
+                gpmR = pupGrabR * (1 + 0.3 * gpmF)
                 COMBAT_Project player.px, powerups(gpmI).py, powerups(gpmI).pz, gpmSX, gpmSY, gpmOk
                 COMBAT_Project player.px, powerups(gpmI).py + gpmR, powerups(gpmI).pz, gpmEX, gpmEY, gpmOk2
                 IF gpmOk AND gpmOk2 THEN
                     gpmPx = ABS(gpmSY - gpmEY)
                     IF gpmPx >= 2 AND gpmPx < 300 THEN
-                        gpmA = 90 + INT(150 * (1 - gpmF))
+                        gpmA = 60 + INT(160 * (1 - gpmF))
                         CIRCLE (gpmSX, gpmSY), gpmPx, GS_PLAYING_PupClr&(gpmKind, gpmA)
                         CIRCLE (gpmSX, gpmSY), gpmPx + 1, GS_PLAYING_PupClr&(gpmKind, gpmA \ 3)
                         LINE (gpmSX - gpmPx - 3, gpmSY)-(gpmSX - gpmPx + 2, gpmSY), GS_PLAYING_PupClr&(gpmKind, gpmA)

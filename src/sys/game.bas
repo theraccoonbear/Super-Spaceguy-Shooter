@@ -89,6 +89,7 @@ Sub GAME_InitMeshes
         boxLib(gmiI).hz = boxLib(gmiI).hz * HIT_SCALE
     Next gmiI
     lightDir.x = -0.4 : lightDir.y = 0.7 : lightDir.z = -0.5
+    pupLight.x = -0.8 : pupLight.y = 0.55 : pupLight.z = -0.2
     player.active  = -1
     player.meshIdx = MESH_PLAYER
     player.scl     = 1.0
@@ -138,6 +139,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"
     CLI_Emit guFH, "  --shields N            Start every run with N shield points (testing)"
     CLI_Emit guFH, "  --fuel N               Start every run with N fuel (testing: a stranded dock)"
+    CLI_Emit guFH, "  --pup K,K,K            Place power-ups (shield, fuel, points) when play starts: in your path, beside it, off-screen"
     CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"
@@ -159,4 +161,36 @@ Sub GAME_MaybeScreenshot
             Exit Sub
         End If
     Next gmsI
+End Sub
+
+' --pup (dev): on the first frame of play, place the listed kinds -- the first in the ship's
+' path, the second just beside it, the third far off to the left (off-screen) -- then forget them.
+Sub GAME_DevPups
+    $IF RELEASEBUILD = 1 THEN
+    $ELSE
+    Dim gdpV As String, gdpPos As Integer, gdpN As Integer, gdpK As Integer
+    Dim gdpX(1 To 3) As Single, gdpY(1 To 3) As Single, gdpZ(1 To 3) As Single
+    If cliPup = "" Or gameState <> GS_PLAYING Then Exit Sub
+    gdpX(1) = 6 : gdpY(1) = 0   : gdpZ(1) = 0
+    gdpX(2) = 8 : gdpY(2) = 2.5 : gdpZ(2) = -2.5
+    gdpX(3) = 20 : gdpY(3) = 2  : gdpZ(3) = 30
+    gdpV = cliPup : cliPup = ""
+    Do While gdpV <> "" And gdpN < 3
+        gdpPos = InStr(gdpV, ",")
+        If gdpPos = 0 Then gdpPos = Len(gdpV) + 1
+        gdpN = gdpN + 1
+        gdpK = gdpN
+        powerups(gdpK).active = -1
+        powerups(gdpK).meshIdx = WAVE_PupMesh%(PUP_KindOf%(Left$(gdpV, gdpPos - 1)))
+        powerups(gdpK).px = player.px + gdpX(gdpN)
+        powerups(gdpK).py = player.py + gdpY(gdpN)
+        powerups(gdpK).pz = player.pz + gdpZ(gdpN)
+        powerups(gdpK).vx = -pupSpeed
+        powerups(gdpK).rx = 0 : powerups(gdpK).ry = 0 : powerups(gdpK).rz = 0
+        powerups(gdpK).drx = 0 : powerups(gdpK).dry = 0 : powerups(gdpK).drz = 0
+        If powerups(gdpK).meshIdx = MESH_PUP_POINTS Then powerups(gdpK).drx = 3.0 Else powerups(gdpK).dry = 2.0 : powerups(gdpK).rz = 15
+        powerups(gdpK).scl = 1.0
+        gdpV = Mid$(gdpV, gdpPos + 1)
+    Loop
+    $END IF
 End Sub
