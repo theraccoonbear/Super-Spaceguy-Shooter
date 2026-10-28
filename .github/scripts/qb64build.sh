@@ -3,6 +3,11 @@ set -euo pipefail
 
 REPODIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
+# --release (or SSS_RELEASE=1): a release build, without the dev-only flags (#275)
+if [ "${1:-}" = "--release" ]; then
+  export SSS_RELEASE=1
+fi
+
 # OS-specific settings
 case "$(uname -s)" in
   Darwin*)

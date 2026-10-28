@@ -44,6 +44,8 @@ builds/sss --version
 
 Pre-built binaries for Linux, macOS, and Windows are produced by CI on every merge to `master` and attached to tagged releases.
 
+**Release builds.** A plain build is a dev build. `tools/buildqb --release sss.bas` (or `SSS_RELEASE=1`; `.github/scripts/qb64build.sh --release` in CI; `tools/dev build --release` in the container) makes a release build: `--version` prints the bare version, and the dev-only flags (everything below except `--version`, `--help`, `--no-telem` and `--debug`) are compiled out, so passing one is an `unknown option` error. `--debug` still works, for bug reports, but `--help` doesn't list it. `tools/make-version.sh` switches it with `$LET RELEASEBUILD` in the generated `src/sys/version.bas`. Tagged (`v*`) releases ship release builds; every other CI build is a dev build, plus one Linux release build checked by `tests/release_build_test.sh`. A release build overwrites `builds/sss`, so rebuild without `--release` before using the dev flags again.
+
 ### Building in a container
 
 If you'd rather not install QB64-PE natively, `tools/dev` runs everything inside an Ubuntu 24.04 container that mirrors CI's Linux job: the same apt packages, QB64-PE `v4.5.0` (pinned to match `QB64PE_VERSION` in `.github/workflows/build.yml`; bump `QB64PE_VERSION`/`QB64PE_ASSET` in `tools/container/Containerfile` together with it), and Node 22 for ExprForge. You only need Podman or Docker. The script uses Podman if it finds it, otherwise Docker; set `SSS_ENGINE=docker` to override.
