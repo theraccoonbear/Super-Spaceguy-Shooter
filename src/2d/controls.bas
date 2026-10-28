@@ -26,7 +26,7 @@ End Sub
 Sub CONTROLS_Row (ctlrRow As Integer, ctlrKey As String, ctlrAct As String)
     Dim ctlrY As Integer
     ctlrY = CTL_ROW_Y + ctlrRow * CTL_ROW_H
-    FONT_PrintAlpha fontPalette(15), backBuffer, ctlrKey, CTL_KEY_X, ctlrY, 255
+    UI_PromptsAt ctlrKey, INP_DEV_PAD, CTL_KEY_X, ctlrY, 15, 255, 0
     FONT_PrintAlpha fontPalette(9),  backBuffer, ctlrAct, CTL_ACT_X, ctlrY, 255
 End Sub
 
@@ -64,37 +64,37 @@ Sub CONTROLS_Update ()
 
     If ctlPage = 0 Then
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "KEYBOARD  1/4", 30, scrW, 255
-        CONTROLS_Row 0, "ARROWS/WASD", "MOVE SHIP"
-        CONTROLS_Row 1, "SPACE",       "FIRE"
-        CONTROLS_Row 2, "E",           "EVASIVE ROLL (DOCK)"
-        CONTROLS_Row 3, "Q",           "NOVA PULSE (DOCK)"
+        CONTROLS_Row 0, "ARROWS/" + CONTROLS_Key$(E3D_ACT_UP) + CONTROLS_Key$(E3D_ACT_LEFT) + CONTROLS_Key$(E3D_ACT_DOWN) + CONTROLS_Key$(E3D_ACT_RIGHT), "MOVE SHIP"
+        CONTROLS_Row 1, CONTROLS_Key$(E3D_ACT_FIRE),   "FIRE"
+        CONTROLS_Row 2, CONTROLS_Key$(E3D_ACT_ROLL),   "EVASIVE ROLL (DOCK)"
+        CONTROLS_Row 3, CONTROLS_Key$(E3D_ACT_NOVA),   "NOVA PULSE (DOCK)"
         CONTROLS_Row 4, "ESC",         "PAUSE / ABORT"
-        CONTROLS_Row 5, "TAB",         "CAMERA MODE ON/OFF"
+        CONTROLS_Row 5, CONTROLS_Key$(E3D_ACT_CAMERA), "CAMERA MODE ON/OFF"
         CONTROLS_Row 6, " UP/DOWN",    "TILT CAMERA"
         CONTROLS_Row 7, " R",          "RESET CAMERA"
         CONTROLS_Row 8, "P",           "START GAME (TITLE)"
         CONTROLS_Row 9, "F11",         "FULLSCREEN"
-        CONTROLS_Row 10, "HOLD SPACE", "FAST-FWD STORY"
-        CONTROLS_Row 11, "SPACE+ESC",  "SKIP STORY"
+        CONTROLS_Row 10, "HOLD " + CONTROLS_Key$(E3D_ACT_FIRE), "FAST-FWD STORY"
+        CONTROLS_Row 11, CONTROLS_Key$(E3D_ACT_FIRE) + "+ESC",  "SKIP STORY"
     ElseIf ctlPage = 1 Then
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "GAMEPAD  2/4", 30, scrW, 255
         CONTROLS_Row 0, "LEFT STICK",  "MOVE / MENU SELECT"
-        CONTROLS_Row 1, "A",           "FIRE / MENU OK"
-        CONTROLS_Row 2, "B",           "FIRE / MENU BACK"
-        CONTROLS_Row 3, "X",           "EVASIVE ROLL (DOCK)"
-        CONTROLS_Row 4, "Y",           "NOVA PULSE (DOCK)"
-        CONTROLS_Row 5, "START",       "PAUSE / ABORT"
-        CONTROLS_Row 6, "START",       "START GAME (TITLE)"
-        CONTROLS_Row 7, "BACK",        "OPTIONS (TITLE)"
-        CONTROLS_Row 8, "BACK",        "CAMERA MODE ON/OFF"
+        CONTROLS_Row 1, CONTROLS_Pad$(E3D_ACT_FIRE) + "/" + CONTROLS_Pad$(E3D_ACT_FIRE2), "FIRE"
+        CONTROLS_Row 2, CONTROLS_Pad$(E3D_ACT_CONFIRM) + "/" + CONTROLS_Pad$(E3D_ACT_BACK), "MENU OK / BACK"
+        CONTROLS_Row 3, CONTROLS_Pad$(E3D_ACT_ROLL),   "EVASIVE ROLL (DOCK)"
+        CONTROLS_Row 4, CONTROLS_Pad$(E3D_ACT_NOVA),   "NOVA PULSE (DOCK)"
+        CONTROLS_Row 5, CONTROLS_Pad$(E3D_ACT_PAUSE),  "PAUSE / ABORT"
+        CONTROLS_Row 6, CONTROLS_Pad$(E3D_ACT_PAUSE),  "START GAME (TITLE)"
+        CONTROLS_Row 7, CONTROLS_Pad$(E3D_ACT_CAMERA), "OPTIONS (TITLE)"
+        CONTROLS_Row 8, CONTROLS_Pad$(E3D_ACT_CAMERA), "CAMERA MODE ON/OFF"
         CONTROLS_Row 9, " STICK U/D",  "TILT CAMERA"
-        CONTROLS_Row 10, "HOLD A/B",    "FAST-FWD STORY"
-        CONTROLS_Row 11, "A+START",     "SKIP STORY"
+        CONTROLS_Row 10, "HOLD " + CONTROLS_Pad$(E3D_ACT_FIRE), "FAST-FWD STORY"
+        CONTROLS_Row 11, CONTROLS_Pad$(E3D_ACT_FIRE) + "+" + CONTROLS_Pad$(E3D_ACT_PAUSE), "SKIP STORY"
     Else
         CONTROLS_Systems ctlPage - 2
     End If
 
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "<- -> page   ESC/B back", scrH - 14, scrW, 255
+    UI_PromptsCentered "<- -> page   " + UI_Tok$("ESC", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
 
     _Dest 0
     _PutImage , backBuffer, 0
@@ -106,3 +106,13 @@ Sub CONTROLS_Update ()
     End If
     ctlEscWas = ctlEsc
 End Sub
+
+' Bound key names, and pad button badges as UI_Tok$ prompts, for the reference pages
+' (remapped in Settings > Controls, #266).
+Function CONTROLS_Key$ (ckAct As Integer)
+    CONTROLS_Key$ = E3D_KeyName$(keyBind(ckAct))
+End Function
+
+Function CONTROLS_Pad$ (cpAct As Integer)
+    CONTROLS_Pad$ = UI_Tok$("", cpAct)
+End Function

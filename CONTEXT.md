@@ -70,6 +70,8 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `UPG_` / `CR_` | `src/gameplay/upgrades.bas` | Credits and the upgrade table (from `assets/config/*.ini`) |
 | `DOCK_` | `src/state/docklogic.bas`, `src/state/dock.bas` | Upgrade dock: list logic and input, then drawing |
 | `ABL_` | `src/gameplay/abilities.bas` | In-flight upgrade effects: evasive roll, nova pulse, tractor beam |
+| `RMP_` | `src/state/remaplogic.bas`, `src/state/remap.bas` | Controls remap page (Settings > Controls, pause dialog K) and the pad setup wizard; the binding table itself (`keyBind` / `padBind`, `E3D_ACT_*`, built-in pad layouts, saved per pad name in `sss_settings.ini`) lives in `src/3d/input.bas` |
+| `PAUSE_` | `src/state/pauselogic.bas` | The in-flight ABORT MISSION (pause) dialog's input |
 
 ---
 

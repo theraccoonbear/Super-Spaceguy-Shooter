@@ -17,7 +17,22 @@ CONST GS_LEADERBOARD = 12
 CONST GS_CONTROLS    = 13
 CONST GS_CRAWLS      = 14   ' --crawls dev browser (src/2d/crawlbrowse.bas)
 CONST GS_DOCK        = 15   ' upgrade dock between stages (src/state/dock.bas)
+CONST GS_REMAP       = 16   ' Controls remap page + pad setup wizard (src/state/remap.bas, #266)
 CONST UN_MAX_LEN     = 32
+
+' --- UI one-shot sound ids (src/audio/snd.bas SND_UiPlay) ---
+' Menu and callsign logic asks for one by setting uiSfx; the main loop plays it and clears it.
+CONST SND_UI_MOVE   = 1
+CONST SND_UI_DENY   = 2
+CONST SND_UI_PUP    = 3
+CONST SND_UI_TYPE   = 4
+CONST SND_UI_DEL    = 5
+CONST SND_UI_COLOR  = 6
+CONST SND_UI_SPIN   = 7    ' + i: the callsign spinner's tick for UN_SPIN_SET character i (0-based)
+CONST SND_UI_SPIN_N = 39   ' = Len(UN_SPIN_SET); callsign_pad_test checks
+CONST SND_UI_OK     = SND_UI_PUP
+CONST SND_UI_BACK   = SND_UI_DEL
+DIM SHARED uiSfx AS INTEGER
 
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
@@ -311,6 +326,7 @@ DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
 DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 5 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
+DIM SHARED escKWas         AS INTEGER  ' ABORT MISSION dialog: K (remap controls) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER
 DIM SHARED escNWas         AS INTEGER

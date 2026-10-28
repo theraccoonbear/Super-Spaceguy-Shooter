@@ -190,8 +190,9 @@ End Function
 
 ' Scripted pad input sets the raw pad state, then runs the real pad mapping (E3D_PadMap).
 Sub ISC_Apply(iscFrameNo As Long, iscHeld() As Integer)
-    Dim iscA As Long, iscK As Long
+    Dim iscA As Long, iscK As Long, iscKAny As Integer
     iscFrame = iscFrameNo
+    iscKAny = 0
     For iscA = LBound(iscHeld) To UBound(iscHeld) : iscHeld(iscA) = 0 : Next iscA
     For iscA = 1 To E3D_PAD_MAX_AXES : padRawAxis(iscA) = 0 : Next iscA
     For iscA = 1 To E3D_PAD_MAX_BTNS : padRawBtn(iscA) = 0 : Next iscA
@@ -204,12 +205,14 @@ Sub ISC_Apply(iscFrameNo As Long, iscHeld() As Integer)
             Case ISC_PAD_AXPOS - E3D_PAD_MAX_AXES To ISC_PAD_AXPOS - 1 : padRawAxis(ISC_PAD_AXPOS - iscK) = 1
             Case Else
                 If iscK > 0 And iscK <= UBound(iscHeld) Then iscHeld(iscK) = -1
+                If iscK > 0 Then iscKAny = -1
             End Select
         End If
         If iscFrameNo = iscFrom(iscA) And iscKey(iscA) > 0 And iscHitTail < ISC_MAX Then
             iscHitTail = iscHitTail + 1 : iscHitQ(iscHitTail) = iscKey(iscA)
         End If
     Next iscA
+    INP_NoteKeys iscKAny
     E3D_PadMap iscHeld()
 End Sub
 

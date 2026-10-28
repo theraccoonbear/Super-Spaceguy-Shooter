@@ -1,0 +1,24 @@
+# Gamepad fixture: one real controller's raw input, read by tests/pad_map_test.bas.
+# Recorded with tools/padrecord.bas on 10-28-2026.
+#
+# Format: header lines, then one line per control:
+#   <CONTROL> btn=<pressed buttons, comma-separated, or empty> axes=<one value per axis>
+NAME bt_gamepad
+DEVICE [CONTROLLER][[NAME][Gamepad]][BUTTON][AXIS]
+BUTTONS 16
+AXES 8
+IDLE btn= axes=0 0 0 0 -1 -1 0 0
+STICK_UP btn= axes=0 -1 0 0 -1 -1 0 0
+STICK_DOWN btn= axes=0 1 0 0 -1 -1 0 0
+STICK_LEFT btn= axes=-1 0 0 0 -1 -1 0 0
+STICK_RIGHT btn= axes=1 0 0 0 -1 -1 0 0
+DPAD_UP btn= axes=0 0 0 0 -1 -1 0 -1
+DPAD_DOWN btn= axes=0 0 0 0 -1 -1 0 1
+DPAD_LEFT btn= axes=0 0 0 0 -1 -1 -1 0
+DPAD_RIGHT btn= axes=0 0 0 0 -1 -1 1 0
+A btn=1 axes=0 0 0 0 -1 -1 0 0
+B btn=2 axes=0 0 0 0 -1 -1 0 0
+X btn=4 axes=0 0 0 0 -1 -1 0 0
+Y btn=5 axes=0 0 0 0 -1 -1 0 0
+START btn=12 axes=0 0 0 0 -1 -1 0 0
+BACK btn=11 axes=0 0 0 0 -1 -1 0 0

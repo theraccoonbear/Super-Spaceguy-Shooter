@@ -24,6 +24,7 @@ Const GS_OPTIONS     = 7
 Const GS_ABOUT       = 8
 Const GS_LEADERBOARD = 12
 Const GS_CONTROLS    = 13
+Const GS_REMAP       = 16
 Dim Shared gameState As Integer, escWas As Integer, optEscWas As Integer
 
 '$INCLUDE:'../src/3d/input.bas'

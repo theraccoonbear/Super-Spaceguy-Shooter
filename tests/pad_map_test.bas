@@ -131,8 +131,10 @@ Sub PM_RunFixture (pmfPath As String, pmfFile As String)
     Dim pmfBP As Integer, pmfAP As Integer, pmfN As Integer, pmfI As Long
     Dim pmfWant As String, pmfGot As String, pmfP As Integer, pmfTok As String, pmfRest As String
     Dim pmfMissing As String, pmfExtra As String, pmfMsg As String
+    Dim pmfSel As Integer
 
     pmfName = pmfFile
+    pmfSel = 0
     pmfH = FreeFile
     Open pmfPath For Input As #pmfH
     Do While Not EOF(pmfH)
@@ -167,6 +169,8 @@ Sub PM_RunFixture (pmfPath As String, pmfFile As String)
                     PM_Assert 0, pmfName + ": " + pmfCtl + " has" + Str$(pmfN) + " axis values, header says" + Str$(pmfAxes)
                     _Continue
                 End If
+                ' the pad's built-in layout, chosen from its name and counts as the game does
+                If pmfSel = 0 Then padSavedN = 0 : E3D_PadSelect E3D_PadNameOf$(pmfDevice), pmfBtnCount, pmfAxes : pmfSel = -1
                 For pmfI = 0 To 32767 : pmHeld(pmfI) = 0 : Next pmfI
                 E3D_PadMap pmHeld()
                 pmfWant = PM_Expected$(pmfCtl)
@@ -303,6 +307,55 @@ If pmDue Then pmSeen = 3 : pmDev = E3D_CtrlPick%(pmNames(), 3)
 PM_Assert pmDev = 3, "the rescan picks up the new pad (3)"
 pmDue = E3D_CtrlRescanDue%(E3D_CTRL_RESCAN_TICKS, 4, pmSeen, pmDev)
 PM_Assert pmDue = 0, "with a pad in use, no more rescans"
+
+' ---- layouts and remapped buttons (#266) ----
+Print ""
+Print "--- layouts and bindings ---"
+PM_Assert E3D_PadNameOf$(pmPad) = "Microsoft X-Box 360 pad", "the pad name is the [NAME] part of _DEVICE$"
+PM_Assert E3D_PadLayoutFor%("Microsoft X-Box 360 pad", 11, 8) = E3D_LAYOUT_XPAD, "Xbox 360 pad, 11 buttons, 8 axes -> xpad layout"
+PM_Assert E3D_PadLayoutFor%("Gamepad", 16, 8) = E3D_LAYOUT_BT, "Bluetooth 'Gamepad', 16 buttons -> its built-in layout"
+PM_Assert E3D_PadLayoutFor%("Gamepad", 11, 8) = E3D_LAYOUT_UNKNOWN, "'Gamepad' with other counts -> unknown"
+PM_Assert E3D_PadLayoutFor%("Sony Interactive Entertainment Wireless Controller", 13, 8) = E3D_LAYOUT_UNKNOWN, "any other pad -> unknown"
+
+' the Bluetooth pad: right stick (axes 3/4) and triggers (5/6) press nothing
+padSavedN = 0
+E3D_PadSelect "Gamepad", 16, 8
+Dim pmGot As String
+pmI = PM_SetRaw%("", "0 0 1 -1 1 1 0 0")
+For pmI = 0 To 32767 : pmHeld(pmI) = 0 : Next pmI
+E3D_PadMap pmHeld()
+pmGot = PM_Pressed$
+PM_Assert pmGot = "", "Bluetooth pad: right stick and triggers press nothing (" + PM_Names$(pmGot) + ")"
+pmI = PM_SetRaw%("13", "0 0 0 0 0 0 0 0")
+For pmI = 0 To 32767 : pmHeld(pmI) = 0 : Next pmI
+E3D_PadMap pmHeld()
+PM_Assert PM_Pressed$ = "", "Bluetooth pad: Home presses nothing"
+
+' custom bindings: FIRE on RB (6), MENU BACK on LB (5); A (1) stays MENU OK only
+padSavedN = 0
+E3D_PadSelect "Microsoft X-Box 360 pad", 11, 8
+padBind(E3D_ACT_FIRE) = 6 : padBind(E3D_ACT_FIRE2) = 0 : padBind(E3D_ACT_BACK) = 5
+pmI = PM_SetRaw%("6", "0 0 0 0 0 0 0 0")
+For pmI = 0 To 32767 : pmHeld(pmI) = 0 : Next pmI
+E3D_PadMap pmHeld()
+pmGot = PM_Pressed$
+PM_Assert pmGot = Str$(E3D_KEY_SPACE) + " ", "custom: RB fires (" + PM_Names$(pmGot) + ")"
+pmI = PM_SetRaw%("1", "0 0 0 0 0 0 0 0")
+For pmI = 0 To 32767 : pmHeld(pmI) = 0 : Next pmI
+E3D_PadMap pmHeld()
+pmGot = PM_Pressed$
+PM_Assert pmGot = Str$(E3D_KEY_PAD_A) + " ", "custom: A only confirms (" + PM_Names$(pmGot) + ")"
+pmI = PM_SetRaw%("5", "0 0 0 0 0 0 0 0")
+For pmI = 0 To 32767 : pmHeld(pmI) = 0 : Next pmI
+E3D_PadMap pmHeld()
+pmGot = PM_Pressed$
+PM_Assert pmGot = Str$(E3D_KEY_PAD_B) + " ", "custom: LB backs out of menus (" + PM_Names$(pmGot) + ")"
+pmI = PM_SetRaw%("2", "0 0 0 0 0 0 0 0")
+For pmI = 0 To 32767 : pmHeld(pmI) = 0 : Next pmI
+E3D_PadMap pmHeld()
+PM_Assert PM_Pressed$ = "", "custom: B, now unbound, presses nothing"
+E3D_PadSelect "Microsoft X-Box 360 pad", 11, 8
+PM_Assert padBind(E3D_ACT_FIRE) = E3D_CTRL_BTN_FIRE, "re-selecting the pad restores its layout defaults"
 
 Print ""
 Print "=== " + LTrim$(Str$(pmPassed + pmFailed)) + " tests: " + LTrim$(Str$(pmPassed)) + " passed, " + LTrim$(Str$(pmFailed)) + " failed ==="

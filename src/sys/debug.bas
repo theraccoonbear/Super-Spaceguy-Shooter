@@ -39,6 +39,7 @@ Function DBG_StateName$(dbgSnState As Integer)
         Case GS_CONTROLS    : DBG_StateName$ = "GS_CONTROLS"
         Case GS_CRAWLS      : DBG_StateName$ = "GS_CRAWLS"
         Case GS_DOCK        : DBG_StateName$ = "GS_DOCK"
+        Case GS_REMAP       : DBG_StateName$ = "GS_REMAP"
         Case Else           : DBG_StateName$ = "GS_?" + LTrim$(Str$(dbgSnState))
     End Select
 End Function

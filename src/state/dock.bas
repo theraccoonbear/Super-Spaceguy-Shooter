@@ -64,8 +64,7 @@ Sub DOCK_Draw
         If dkdI > DOCK_LAUNCH Then Exit For
         dkdY = DOCK_ROW_Y + dkdRow * DOCK_ROW_H
         If dkdI = dockSel Then
-            Line (DOCK_PX1 + 4, dkdY - 1)-(DOCK_PX2 - 4, dkdY + 15), _RGBA(0, 60, 130, 220), BF
-            Line (DOCK_PX1 + 4, dkdY - 1)-(DOCK_PX2 - 4, dkdY + 15), dkdCC, B
+            UI_MenuHighlight DOCK_PX1 + 4, dkdY - 1, DOCK_PX2 - 4, dkdY + 15
         End If
         If dkdI = DOCK_LAUNCH Then
             If dkdI = dockSel Then dkdPal = 15 Else dkdPal = 10
@@ -127,7 +126,7 @@ Sub DOCK_Draw
         If dockMsgBad Then dkdPal = 12 Else dkdPal = 10
         UI_Text dkdPal, dockMsg, DOCK_PX1 + 8, dkdY + 32, 255
     End If
-    UI_Text 8, "ENTER/A BUY  ESC/B GO", DOCK_PX1 + 8, DOCK_PY2 - 18, 255
+    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("ESC", E3D_ACT_BACK) + " GO", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
 
     _Dest 0
     _PutImage , backBuffer, 0

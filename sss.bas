@@ -143,6 +143,10 @@ IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 IF cliCrawls THEN
     CRAWLBROWSE_Init
     gameState = GS_CRAWLS
+ELSEIF cliSceneType = "consent" THEN
+    gameState = GS_CONSENT
+ELSEIF cliSceneType = "username" THEN
+    GS_USERNAME_Init : gameState = GS_USERNAME
 ELSEIF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
     IF seqJumpCrawl$ <> "" THEN
@@ -239,6 +243,11 @@ DO
         DOCK_Update
         MUS_Fill 0
 
+    CASE GS_REMAP
+        RMP_Update
+        ' opened from the pause dialog: keep music starved (silent) like the dialog does
+        IF RMP_InGame% = 0 THEN MUS_Fill 0
+
     CASE GS_LEADIN
         LEADIN_Update
 
@@ -252,6 +261,7 @@ DO
         GS_LEADERBOARD_Update
 
     END SELECT
+    IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
 
     DBG_Overlay
 

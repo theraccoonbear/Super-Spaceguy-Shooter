@@ -22,12 +22,13 @@ Sub SETTINGS_Save ()
     Else
         If debugMode Then DBG_Print "[settings] saved"
     End If
+    E3D_BindsWrite sfH
     Close #sfH
 End Sub
 
 Sub SETTINGS_Load ()
     Dim sfH As Integer, sfLine As String, sfKey As String, sfVal As Single, sfEq As Integer
-    Dim sfRaw As String
+    Dim sfRaw As String, sfBound As Integer
     If _FILEEXISTS(_STARTDIR$ + "/sss_settings.ini") Then
         sfH = FreeFile
         Open _STARTDIR$ + "/sss_settings.ini" For Input As #sfH
@@ -39,6 +40,8 @@ Sub SETTINGS_Load ()
                 sfRaw = Mid$(sfLine, sfEq + 1)
                 sfVal = Val(sfRaw)
                 Select Case sfKey
+                    Case "keys", "padbind"
+                        sfBound = E3D_BindsLoadLine%(sfKey, sfRaw)
                     Case "player_id"
                         If Len(sfRaw) >= 32 Then telemPlayerID = sfRaw
                     Case "lb_player_id"
@@ -91,6 +94,7 @@ Sub SETTINGS_Load ()
         leaderboardPlayerID = TELEM_NewUUID$
         SETTINGS_Save
     End If
+    E3D_PadReselect
 End Sub
 
 Sub OPTS_Update ()
@@ -110,14 +114,10 @@ Sub OPTS_Update ()
     oEsc = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0)
 
     ' navigate: edge-detect on up/down
-    If oUp And Not optUpWas Then
-        optSel = (optSel + 5) Mod 6
-        optLfRpt = 0 : optRtRpt = 0
-    End If
-    If oDn And Not optDnWas Then
-        optSel = (optSel + 1) Mod 6
-        optLfRpt = 0 : optRtRpt = 0
-    End If
+    Dim oSel0 As Integer, oNav As Integer
+    oSel0 = optSel
+    oNav = MENU_Nav%(optSel, 7, oUp And optUpWas = 0, oDn And optDnWas = 0, 0)
+    If optSel <> oSel0 Then optLfRpt = 0 : optRtRpt = 0
 
     ' adjust: immediate press + hold repeat every 6 frames
     If oLf Then
@@ -134,6 +134,7 @@ Sub OPTS_Update ()
                 Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
+            If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
             If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
             If optSel = 3 And Not optLfWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
@@ -159,6 +160,7 @@ Sub OPTS_Update ()
                 Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
+            If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
             If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
             If optSel = 3 And Not optRtWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
@@ -170,7 +172,7 @@ Sub OPTS_Update ()
 
     If oEsc And Not optEscWas Then
         SETTINGS_Save
-        TITLE_ReturnTo GS_TITLE
+        TITLE_ReturnTo GS_TITLE : uiSfx = SND_UI_BACK
     End If
 
     ' a press, not a hold: the A that picked SETTINGS on the console is still down here
@@ -180,13 +182,17 @@ Sub OPTS_Update ()
         unSavedName    = telemPlayerName
         unFromSettings = -1
         Do While KEY_Hit& <> 0 : Loop  ' drain ENTER from the key-press buffer before username reads it
-        GS_USERNAME_Init
+        GS_USERNAME_Init : uiSfx = SND_UI_OK
         gameState      = GS_USERNAME
+    End If
+    If oEnter And optSel = 6 Then
+        SETTINGS_Save
+        RMP_Open GS_OPTIONS : uiSfx = SND_UI_OK
     End If
 
     Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
     If oAbout And Not optAboutWas Then
-        ABOUT_Prep GS_OPTIONS : gameState = GS_ABOUT
+        ABOUT_Prep GS_OPTIONS : gameState = GS_ABOUT : uiSfx = SND_UI_OK
     End If
     optAboutWas = oAbout
 
@@ -208,22 +214,15 @@ Sub OPTS_Update ()
     ' main content panel
     UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
 
-    Dim oLabels(0 To 5) As String
-    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "CALLSIGN"
+    Dim oLabels(0 To 6) As String
+    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "CALLSIGN" : oLabels(6) = "CONTROLS"
 
-    For oI = 0 To 5
-        oY = 40 + oI * 28
+    For oI = 0 To 6
+        oY = 36 + oI * 24
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
-            LINE (30, oY - 3)-(scrW - 31, oY + 17), _RGBA(0, 40, 100, 180), BF
-            LINE (30, oY - 3)-(scrW - 31, oY + 17), _RGB(0, 100, 180), B
-            ' corner accents on selection
-            Dim oCC As Long : oCC = _RGB(0, 210, 255)
-            LINE (30, oY - 3)-(34, oY - 3), oCC : LINE (30, oY - 3)-(30, oY + 1), oCC
-            LINE (scrW - 31, oY - 3)-(scrW - 35, oY - 3), oCC : LINE (scrW - 31, oY - 3)-(scrW - 31, oY + 1), oCC
-            LINE (30, oY + 17)-(34, oY + 17), oCC : LINE (30, oY + 17)-(30, oY + 13), oCC
-            LINE (scrW - 31, oY + 17)-(scrW - 35, oY + 17), oCC : LINE (scrW - 31, oY + 17)-(scrW - 31, oY + 13), oCC
+            UI_MenuHighlight 30, oY - 3, scrW - 31, oY + 17
             FONT_PrintAlpha fontPalette(14), backBuffer, oLabels(oI), 38, oY, 255
         Else
             FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oI), 38, oY, 255
@@ -263,6 +262,12 @@ Sub OPTS_Update ()
                 oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
             End If
             FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
+        ElseIf oI = 6 Then
+            If oI = optSel Then
+                UI_Prompts "REMAP " + UI_Tok$("[ENTER]", E3D_ACT_CONFIRM), OPT_BAR_X, oY, 15, 255
+            Else
+                FONT_PrintAlpha fontPalette(9),  backBuffer, "KEYS + GAMEPAD", OPT_BAR_X, oY, 200
+            End If
         Else
             ' callsign row: show current name (or prompt) instead of a slider
             Dim oCallName As String
@@ -272,7 +277,8 @@ Sub OPTS_Update ()
             If oI = optSel Then oCallMax = 13 Else oCallMax = 21
             If Len(oCallName) > oCallMax Then oCallName = Left$(oCallName, oCallMax - 2) + ".."
             If oI = optSel Then
-                FONT_PrintAlpha fontPalette(15), backBuffer, oCallName + " [ENTER]", OPT_BAR_X, oY, 255
+                FONT_PrintAlpha fontPalette(15), backBuffer, oCallName, OPT_BAR_X, oY, 255
+                UI_Prompts UI_Tok$("[ENTER]", E3D_ACT_CONFIRM), OPT_BAR_X + (Len(oCallName) + 1) * FONT_CHAR_W, oY, 15, 255
             Else
                 FONT_PrintAlpha fontPalette(9),  backBuffer, oCallName,             OPT_BAR_X, oY, 200
             End If
@@ -282,7 +288,11 @@ Sub OPTS_Update ()
     If highScore > 0 Then
         FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "HI SCORE:  " + LTRIM$(STR$(highScore)), 202, scrW, 255
     End If
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
+    If INP_LastDevice% = INP_DEV_PAD Then
+        UI_PromptsCentered "< > adjust  up/dn select  " + UI_Tok$("", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
+    Else
+        FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
+    End If
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0

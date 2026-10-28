@@ -13,45 +13,50 @@ Sub GS_PLAYING_Update ()
     Dim spDmg As Integer
 
     ' ESC confirm dialog: in play and during the planet arrival / cinematic, which it
-    ' pauses the same way (nothing below runs while it's open)
+    ' pauses the same way (nothing below runs while it's open). Input: src/state/pauselogic.bas
     IF gameState = GS_PLAYING OR gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
-        Dim gspWasOpen As Integer : gspWasOpen = escConfirm
-        IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
-            escConfirm = 1 - escConfirm
-            IF escConfirm THEN
-                escYWas = KEY_Down%(89) OR KEY_Down%(121)
-                escNWas = KEY_Down%(78) OR KEY_Down%(110)
-                escCWas = KEY_Down%(67) OR KEY_Down%(99)
-            END IF
-        END IF
-        escWas = held(E3D_KEY_ESCAPE)
-        IF escConfirm THEN
-            ' pad: A confirms, B cancels, X opens Controls (Start toggles the dialog, as ESC does)
-            Dim gspPadYes As Integer, gspPadNo As Integer, gspPadCtl As Integer
-            gspPadYes = gspWasOpen AND KEY_Confirm%
-            gspPadNo = gspWasOpen AND KEY_Pressed%(E3D_KEY_PAD_B)
-            gspPadCtl = gspWasOpen AND KEY_Pressed%(E3D_KEY_PAD_X)
-            IF ((KEY_Down%(89) OR KEY_Down%(121)) AND escYWas = 0) OR gspPadYes THEN
-                escConfirm = 0
+        SELECT CASE PAUSE_Input%
+            CASE PAUSE_QUIT
                 telemExitReason = "quit"
                 TELEM_SessionEnd
                 SEQ_RewindToTitle
                 gameState = GS_TITLE
                 planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
                 MUS_SetCue "title"
-            END IF
-            escYWas = KEY_Down%(89) OR KEY_Down%(121)
-            IF ((KEY_Down%(78) OR KEY_Down%(110)) AND escNWas = 0) OR gspPadNo THEN escConfirm = 0
-            escNWas = KEY_Down%(78) OR KEY_Down%(110)
-            IF ((KEY_Down%(67) OR KEY_Down%(99)) AND escCWas = 0) OR gspPadCtl THEN
+            CASE PAUSE_CONTROLS
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
-            END IF
-            escCWas = KEY_Down%(67) OR KEY_Down%(99)
+            CASE PAUSE_REMAP
+                RMP_Open gameState
+        END SELECT
+        IF pauseShown THEN
+            ' prompt column, sized to the widest prompt for the device last used
+            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer, gspDev As Integer, gspPal As Integer
+            Dim gspK(0 TO 3) As String, gspL(0 TO 3) As String, gspPals(0 TO 3) As Integer
+            gspK(0) = UI_Tok$("Y", 0)
+            gspK(1) = UI_Tok$("C", E3D_ACT_ROLL)
+            gspK(2) = UI_Tok$("K", E3D_ACT_NOVA)
+            gspK(3) = UI_Tok$("ESC", E3D_ACT_BACK)
+            gspL(0) = "CONFIRM RETREAT" : gspL(1) = "CONTROLS" : gspL(2) = "REMAP CONTROLS" : gspL(3) = "CANCEL"
+            gspPals(0) = 14 : gspPals(1) = 9 : gspPals(2) = 9 : gspPals(3) = 8
+            gspDev = INP_LastDevice%
+            gspKW = 0
+            FOR gspKi = 0 TO 3
+                IF UI_PromptsW%(gspK(gspKi), gspDev) > gspKW THEN gspKW = UI_PromptsW%(gspK(gspKi), gspDev)
+            NEXT gspKi
+            gspKW = gspKW + 2 * FONT_CHAR_W
+            gspPx = (scrW - gspKW - 15 * FONT_CHAR_W) \ 2
             _DEST backBuffer
-            UI_DrawPanel scrW\2 - 96, scrH\2 - 30, scrW\2 + 96, scrH\2 + 52, "ABORT MISSION"
-            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y/A   CONFIRM RETREAT", scrH\2 - 4,  scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "C/X   CONTROLS       ", scrH\2 + 14, scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC/B CANCEL         ", scrH\2 + 32, scrW, 255
+            UI_DrawPanel scrW\2 - 104, scrH\2 - 30, scrW\2 + 104, scrH\2 + 70, "ABORT MISSION"
+            FOR gspKi = 0 TO 3
+                gspRy = scrH\2 - 4 + gspKi * 18
+                gspPal = gspPals(gspKi)
+                IF gspKi = pauseSel THEN
+                    UI_MenuHighlight scrW\2 - 101, gspRy - 2, scrW\2 + 101, gspRy + 14
+                    gspPal = 15
+                END IF
+                UI_PromptsAt gspK(gspKi), gspDev, gspPx, gspRy, gspPal, 255, 0
+                FONT_PrintAlpha fontPalette(gspPal), backBuffer, gspL(gspKi), gspPx + gspKW, gspRy, 255
+            NEXT gspKi
             _DEST 0
             _PUTIMAGE , backBuffer, 0
             EXIT SUB

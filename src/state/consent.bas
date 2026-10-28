@@ -1,14 +1,17 @@
-' consent.bas -- one-time telemetry disclosure screen (GS_CONSENT)
+' consent.bas -- one-time telemetry disclosure screen (GS_CONSENT); input in consentlogic.bas
 '
-' SPACE / ENTER / pad A  -- OK this session; will ask again next launch
-' S / pad X              -- OK, save telem_consent=1 to sss_settings.ini; never asks again
-' ESC / pad B            -- No thanks; disables telemetry for this session
+' OK                -- OK this session; will ask again next launch
+' DON'T ASK AGAIN   -- OK, save telem_consent=1 to sss_settings.ini; never asks again
+' NO THANKS         -- disables telemetry for this session
+' Up / down pick a row and ENTER / pad A takes it; SPACE, S / pad X and ESC / pad B still
+' take OK, DON'T ASK AGAIN and NO THANKS directly.
 
 Sub GS_CONSENT_Update()
-    Dim cnPX1 As Integer : cnPX1 = scrW \ 2 - 122
-    Dim cnPX2 As Integer : cnPX2 = scrW \ 2 + 122
+    Dim cnPX1 As Integer : cnPX1 = scrW \ 2 - 132
+    Dim cnPX2 As Integer : cnPX2 = scrW \ 2 + 132
     Dim cnPY1 As Integer : cnPY1 = scrH \ 2 - 76
     Dim cnPY2 As Integer : cnPY2 = scrH \ 2 + 76
+    Dim cnPick As Integer : cnPick = CONSENT_Input%
 
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
@@ -26,39 +29,34 @@ Sub GS_CONSENT_Update()
     LINE (cnPX1 + 8, scrH \ 2 + 16)-(cnPX2 - 8, scrH \ 2 + 16), _RGB(0, 55, 110)
 
     ' two-column layout: keys right-aligned to cnDX-16, descs left-aligned at cnDX
-    ' all three key labels in fontPalette(15); right edges share X = cnDX - 2*FONT_CHAR_W
+    ' the prompts (key names or pad badges) right edges share X = cnDX - 2*FONT_CHAR_W
     Dim cnDX  As Integer : cnDX  = scrW \ 2          ' desc column left edge
-    Dim cnAY1 As Integer : cnAY1 = scrH \ 2 + 22
-    Dim cnAY2 As Integer : cnAY2 = scrH \ 2 + 38
-    Dim cnAY3 As Integer : cnAY3 = scrH \ 2 + 54
-
-    ' SPACE  OK
-    FONT_PrintAlpha fontPalette(15), backBuffer, "SPACE/A", cnDX - 9 * FONT_CHAR_W, cnAY1, 255
-    FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",      cnDX,                    cnAY1, 255
-
-    ' S  DON'T ASK AGAIN
-    FONT_PrintAlpha fontPalette(15), backBuffer, "S/X",             cnDX - 5 * FONT_CHAR_W, cnAY2, 255
-    FONT_PrintAlpha fontPalette(9),  backBuffer, "DON'T ASK AGAIN", cnDX,                   cnAY2, 255
-
-    ' ESC  NO THANKS
-    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC/B",     cnDX - 7 * FONT_CHAR_W, cnAY3, 200
-    FONT_PrintAlpha fontPalette(8),  backBuffer, "NO THANKS", cnDX,                   cnAY3, 200
+    Dim cnAY(0 To 2) As Integer, cnI As Integer
+    Dim cnKeyTxt(0 To 2) As String, cnDesc(0 To 2) As String, cnPal(0 To 2) As Integer, cnA(0 To 2) As Integer
+    cnKeyTxt(0) = UI_Tok$("SPACE", E3D_ACT_CONFIRM) : cnDesc(0) = "OK"              : cnPal(0) = 9 : cnA(0) = 255
+    cnKeyTxt(1) = UI_Tok$("S", E3D_ACT_ROLL) : cnDesc(1) = "DON'T ASK AGAIN" : cnPal(1) = 9 : cnA(1) = 255
+    cnKeyTxt(2) = UI_Tok$("ESC", E3D_ACT_BACK) : cnDesc(2) = "NO THANKS"       : cnPal(2) = 8 : cnA(2) = 200
+    For cnI = 0 To 2
+        cnAY(cnI) = scrH \ 2 + 22 + cnI * 16
+        If cnI = consentSel Then
+            UI_MenuHighlight cnPX1 + 6, cnAY(cnI) - 1, cnPX2 - 6, cnAY(cnI) + 14
+            cnPal(cnI) = 15 : cnA(cnI) = 255
+        End If
+        UI_PromptsAt cnKeyTxt(cnI), INP_LastDevice%, cnDX - 2 * FONT_CHAR_W - UI_PromptsW%(cnKeyTxt(cnI), INP_LastDevice%), cnAY(cnI), 15, cnA(cnI), 0
+        FONT_PrintAlpha fontPalette(cnPal(cnI)), backBuffer, cnDesc(cnI), cnDX, cnAY(cnI), cnA(cnI)
+    Next cnI
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
 
-    Dim cnKey As Long : cnKey = KEY_Hit&
-    If KEY_Confirm% Then cnKey = 32
-    If KEY_Pressed%(E3D_KEY_PAD_X) Then cnKey = 83
-    If KEY_Pressed%(E3D_KEY_PAD_B) Then cnKey = 27
-    Select Case cnKey
-        Case 32          ' SPACE -- OK this session
+    Select Case cnPick
+        Case CONSENT_OK
             telemConsent = -1
             If Len(telemPlayerName) = 0 Then gameState = GS_USERNAME Else LEADIN_Init : gameState = GS_LEADIN
-        Case 83, 115     ' S -- OK, save preference
+        Case CONSENT_SAVE
             telemConsent = -1 : SETTINGS_Save
             If Len(telemPlayerName) = 0 Then gameState = GS_USERNAME Else LEADIN_Init : gameState = GS_LEADIN
-        Case 27          ' ESC -- No thanks, disable telemetry this session
+        Case CONSENT_NO
             telemOn = 0 : LEADIN_Init : gameState = GS_LEADIN
     End Select
 
