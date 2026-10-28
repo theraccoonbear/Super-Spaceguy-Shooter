@@ -177,3 +177,18 @@ ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE
 ~6~4{{the_empire}}~6 does not pause for this. The convoys keep running, the blockades keep closing, and the pilots who were supposed to be brave keep finding reasons to stay docked.
 
 ~6This one flew.
+
+[BLOCK:dock_news1]
+{{emperor}} has ordered a blockade of the refinery world {{refinery_world}}. Fuel traders warn that prices will climb.
+
+[BLOCK:dock_news2]
+The blockade of {{refinery_world}} holds. Fuel is up forty percent. The imperial ministry calls it a market correction.
+
+[BLOCK:dock_news3]
+Tankers are turned back from {{refinery_world}} at gunpoint. Fuel is up eighty percent. The ministry blames the rebels.
+
+[BLOCK:dock_news4]
+Rationing spreads across the {{region_name}}. Fuel is up one hundred and twenty percent. {{emperor}} promises relief soon.
+
+[BLOCK:dock_news5]
+No relief came. Fuel is up one hundred and sixty percent. {{the_empire}} reports record profits from {{refinery_world}}.

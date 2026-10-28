@@ -12,14 +12,44 @@ Const DOCK_PX2 = 315
 Const DOCK_PY2 = 235
 Const DOCK_ROW_Y = 46
 Const DOCK_ROW_H = 17
+Const DOCK_NEWS_W = 24     ' characters the news ticker shows at once
+Const DOCK_NEWS_RATE = 7   ' frames per character it scrolls
 
+Dim Shared dockNews As String, dockNewsTick As Long
+
+' On arrival the dock reads the news once (#277): gametext.txt's dock_news<chapter>, the
+' Emperor's blockade of the refinery world and the fuel price it drives up.
 Sub DOCK_Enter
     DOCK_Open
+    dockNews = DOCK_NewsLine$(levelNum)
+    dockNewsTick = 0
+    If Len(dockNews) > 0 Then SPK_Say dockNews
     gameState = GS_DOCK
 End Sub
 
+' dock_news<n> as one line; "" when gametext.txt has none for this dock.
+Function DOCK_NewsLine$ (dnlN As Integer)
+    Dim dnlT As String, dnlI As Integer
+    dnlT = GTEXT_Get$("dock_news" + LTrim$(Str$(dnlN)))
+    For dnlI = 1 To Len(dnlT)
+        If Mid$(dnlT, dnlI, 1) = Chr$(10) Or Mid$(dnlT, dnlI, 1) = Chr$(13) Then Mid$(dnlT, dnlI, 1) = " "
+    Next dnlI
+    DOCK_NewsLine$ = UCase$(LTrim$(RTrim$(dnlT)))
+End Function
+
+' The window of the news the ticker shows now: the whole line when it fits, else a
+' character-stepped crawl round a loop of it.
+Function DOCK_NewsWindow$ (dnwTick As Long)
+    Dim dnwLoop As String, dnwAt As Long
+    If Len(dockNews) <= DOCK_NEWS_W Then DOCK_NewsWindow$ = dockNews : Exit Function
+    dnwLoop = dockNews + "  +++  "
+    dnwAt = (dnwTick \ DOCK_NEWS_RATE) Mod Len(dnwLoop)
+    DOCK_NewsWindow$ = Mid$(dnwLoop + dnwLoop, dnwAt + 1, DOCK_NEWS_W)
+End Function
+
 Sub DOCK_Update
     Dim dkdRes As Integer
+    dockNewsTick = dockNewsTick + 1
     dkdRes = DOCK_Input%
     Select Case dkdRes
         Case DOCK_MOVED : SND_UiMove
@@ -118,6 +148,8 @@ Sub DOCK_Draw
     If dockMsgTimer > 0 Then
         If dockMsgBad Then dkdPal = 12 Else dkdPal = 10
         UI_Text dkdPal, dockMsg, DOCK_PX1 + 8, dkdY + 32, 255
+    ElseIf Len(dockNews) > 0 Then
+        UI_Text 11, DOCK_NewsWindow$(dockNewsTick), DOCK_PX1 + 8, dkdY + 32, 255
     End If
     UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("ESC", E3D_ACT_BACK) + " GO", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
 
@@ -161,12 +193,23 @@ Sub DOCK_DrawSupplyRow (dsrRow As Integer, dsrY As Integer)
     UI_Text dsrPal, dsrTxt, DOCK_PX2 - 7 - Len(dsrTxt) * FONT_CHAR_W, dsrY, 255
 End Sub
 
-' The two info lines under the list for a supply row: the unit price, then for fuel what the
-' next jump needs (red while the amount shown wouldn't cover it) and for shields the result.
+' The two info lines under the list for a supply row: the unit price (fuel's with its rise
+' over the base price, e.g. "$2.80/U  ^+40%"), then for fuel what the next jump needs (red
+' while the amount shown wouldn't cover it) and for shields the result.
 Sub DOCK_DrawSupplyInfo (dsiK As Integer, dsiY As Integer)
     Dim dsiNeed As Single, dsiPal As Integer, dsiTxt As String, dsiAfter As Long
+    Dim dsiPct As Integer, dsiX As Integer, dsiI As Integer
     If dsiK = SUP_FUEL Then
-        UI_Text 15, DOCK_Money$(SUP_UnitPrice!(SUP_FUEL, levelNum)) + "/U", DOCK_PX1 + 8, dsiY, 255
+        dsiTxt = DOCK_Money$(SUP_UnitPrice!(SUP_FUEL, levelNum)) + "/U"
+        UI_Text 15, dsiTxt, DOCK_PX1 + 8, dsiY, 255
+        dsiPct = Int((SUP_Mult!(levelNum) - 1) * 100 + 0.5)
+        If dsiPct > 0 Then
+            dsiX = DOCK_PX1 + 8 + (Len(dsiTxt) + 2) * FONT_CHAR_W
+            For dsiI = 0 To 3
+                Line (dsiX + 3 - dsiI, dsiY + 5 + dsiI)-(dsiX + 3 + dsiI, dsiY + 5 + dsiI), _RGB(255, 85, 85)
+            Next dsiI
+            UI_Text 12, "+" + LTrim$(Str$(dsiPct)) + "%", dsiX + 9, dsiY, 255
+        End If
         dsiNeed = SUP_LegNeed!
         If dsiNeed <= 0 Then
             UI_Text 8, "NO JUMP AHEAD", DOCK_PX1 + 8, dsiY + 16, 255
