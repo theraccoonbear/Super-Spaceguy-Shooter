@@ -29,8 +29,6 @@ Const BOSS_WARN_FRAMES   = 120
 Const DIFF_RAMP_DURATION = 600.0
 Const DIFF_STAGE_COUNT   = 6.0
 Const ASTFIELD_DURATION      = 120.0
-Const ASTFIELD_FUEL_DRAIN_PT = 0.74
-Const ASTFIELD_FUEL_FRAC     = 0.563
 Const CAM_OFFSET_X = 6.5
 Const CAM_OFFSET_Y = 2.0
 
@@ -52,8 +50,6 @@ Dim Shared diffTime     As Single
 Dim Shared diffScale    As Single
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
-Dim Shared fuelLevel    As Single
-Dim Shared fuelMax      As Single : fuelMax = 100   ' asteroid stage fuel scales with the tank (#268)
 Dim Shared planetCurrent As Integer
 Dim Shared planetNameIdx As Integer
 Dim Shared planetTimer  As Integer
@@ -163,9 +159,10 @@ SEQ_ListCrawls
 For scCI = 0 To seqCount - 1
     If seqKind(scCI) = SEQ_CRAWL Then scSeqCrawls = scSeqCrawls + 1
 Next scCI
-ST_Assert seqCrawlCount = scSeqCrawls + 1, "list = every sequence CRAWL task + death_final (" + LTrim$(Str$(seqCrawlCount)) + ")"
-ST_Assert seqCrawlKey$(0) = "intro" And seqCrawlKey$(seqCrawlCount - 2) = "outro", "sequence crawls listed in play order (intro .. outro)"
-ST_Assert seqCrawlKey$(seqCrawlCount - 1) = SEQ_CRAWL_DEATH And seqCrawlAt(seqCrawlCount - 1) = -1, "death_final listed as code-started"
+ST_Assert seqCrawlCount = scSeqCrawls + 2, "list = every sequence CRAWL task + death_final + stranded_final (" + LTrim$(Str$(seqCrawlCount)) + ")"
+ST_Assert seqCrawlKey$(0) = "intro" And seqCrawlKey$(seqCrawlCount - 3) = "outro", "sequence crawls listed in play order (intro .. outro)"
+ST_Assert seqCrawlKey$(seqCrawlCount - 2) = SEQ_CRAWL_DEATH And seqCrawlAt(seqCrawlCount - 2) = -1, "death_final listed as code-started"
+ST_Assert seqCrawlKey$(seqCrawlCount - 1) = SEQ_CRAWL_STRANDED And seqCrawlAt(seqCrawlCount - 1) = -1, "stranded_final listed as code-started (#277)"
 
 scAt = SEQ_JumpToScene("crawl:stage3")
 ST_Assert scAt >= 0 And seqKind(scAt) = SEQ_CRAWL And SEQ_GetKV$(seqSval$(scAt), "txt") = "stage3", "crawl:stage3 lands on the stage3 CRAWL task"

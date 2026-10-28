@@ -18,7 +18,9 @@ Sub GAME_ResetState
     If cliShips > 0 Then shipLives = cliShips
     If cliShields > 0 Then lives = cliShields
     If lives > shieldMax Then lives = shieldMax
-    fuelLevel = fuelMax : fuelStranded = 0
+    fuelLevel = fuelMax : fuelStranded = 0 : runStranded = 0
+    If cliFuel > 0 And cliFuel < fuelMax Then fuelLevel = cliFuel
+    telemLegFuel = 0 : telemLegFrames = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
     thrusterScale = 0.30 : invTimer = 120 : deathTimer = 0 : escConfirm = 0 : titleEscConfirm = 0
@@ -132,6 +134,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
     CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"
     CLI_Emit guFH, "  --shields N            Start every run with N shield points (testing)"
+    CLI_Emit guFH, "  --fuel N               Start every run with N fuel (testing: a stranded dock)"
     CLI_Emit guFH, "  --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder"
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"

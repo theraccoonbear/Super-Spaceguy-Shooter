@@ -3,8 +3,9 @@
 ' Drives the real module against the real assets/config/*.ini (read through the shared
 ' CFG_Parse$ in src/sys/config.bas): parsing the upgrade
 ' table and credit amounts (and rejecting a malformed line), the economy target, earning,
-' buying (affordable, too expensive, maxed), each upgrade's effect values, shield recharge
-' once per dock, nova charges refilled at every dock, the roll's immunity window and
+' buying (affordable, too expensive, maxed), each upgrade's effect values, fuel and shields
+' bought by the amount (src/gameplay/supplies.bas: prices, the rising fuel surcharge, partial
+' and fill-what-you-can-afford buys, the next jump's fuel need, stranded), nova charges refilled at every dock, the roll's immunity window and
 ' cooldown, shield regen after the no-hit delay, hull armour, and the new-game reset.
 '
 ' Build: ./tools/buildqb tests/upgrade_test.bas
@@ -28,6 +29,19 @@ Dim Shared utBonusLogs As Integer
 Sub TELEM_CreditBonus (tcbC As Long, tcbR As Double, tcbP As Long)
     utBonusLogs = utBonusLogs + 1
 End Sub
+Dim Shared utFuelBuys As Integer, utFuelAmt As Integer, utFuelPrice As Long, utFuelUnit As Single, utFuelMult As Single, utFuelCh As Integer
+Sub TELEM_FuelBought (tfbA As Integer, tfbP As Long, tfbU As Single, tfbM As Single, tfbC As Integer)
+    utFuelBuys = utFuelBuys + 1 : utFuelAmt = tfbA : utFuelPrice = tfbP : utFuelUnit = tfbU : utFuelMult = tfbM : utFuelCh = tfbC
+End Sub
+Dim Shared utShieldBuys As Integer, utShieldAmt As Integer, utShieldPrice As Long, utShieldCh As Integer
+Sub TELEM_ShieldBought (tsbA As Integer, tsbP As Long, tsbC As Integer)
+    utShieldBuys = utShieldBuys + 1 : utShieldAmt = tsbA : utShieldPrice = tsbP : utShieldCh = tsbC
+End Sub
+' SEQ_NextLeg (sequence.bas) reports this stub leg
+Dim Shared utLegKills As Long, utLegBoss As Integer, utLegAst As Integer
+Sub SEQ_NextLeg (snlK As Long, snlB As Integer, snlA As Integer)
+    snlK = utLegKills : snlB = utLegBoss : snlA = utLegAst
+End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
@@ -35,6 +49,7 @@ End Sub
 '$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
+'$INCLUDE:'../src/gameplay/supplies.bas'
 
 Dim Shared utPassed As Integer, utFailed As Integer
 
@@ -64,7 +79,7 @@ cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
 cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 utOk = UPG_Load%
 UT_Assert utOk <> 0, "UPG_Load% reads every upg_ line (" + upgLoadErr + ")"
-UT_Assert upgMax(UPG_LASER) = 3 And upgMax(UPG_CANNON) = 2 And upgMax(UPG_NOVA) = 3 And upgMax(UPG_RECHARGE) = 1, "levels: laser 3, cannon 2, nova 3, repair 1"
+UT_Assert upgMax(UPG_LASER) = 3 And upgMax(UPG_CANNON) = 2 And upgMax(UPG_NOVA) = 3, "levels: laser 3, cannon 2, nova 3"
 UT_Assert upgPrice(UPG_LASER, 1) = 80 And upgPrice(UPG_LASER, 2) = 150 And upgPrice(UPG_LASER, 3) = 250, "laser prices 80, 150, 250"
 UT_Assert UT_Near%(upgFxA(UPG_LASER, 0), 100) And UT_Near%(upgFxA(UPG_LASER, 3), 180), "laser max 100 at level 0, 180 at level 3"
 UT_Assert UT_Near%(upgFxB(UPG_LASER, 0), 0.3) And UT_Near%(upgFxB(UPG_LASER, 3), 0.5), "laser regen 0.30 at level 0, 0.50 at level 3"
@@ -77,14 +92,12 @@ UT_Assert rollFrames = 20 And UT_Near%(rollSpeed, 0.32), "roll lasts 20 frames a
 For utI = 1 To UPG_COUNT
     If Len(UPG_KeyOf$(utI)) = 0 Or Len(upgNames$(utI)) = 0 Then utOk = 0
 Next utI
-UT_Assert utOk <> 0, "all 12 upgrades have a key and a name"
+UT_Assert utOk <> 0, "all 11 upgrades have a key and a name"
 
-' economy: every level of everything (recharges aside) is 90-100% of what stages 1-5 pay
+' economy: every level of everything is 90-100% of what stages 1-5 pay
 utTotal = 0
 For utI = 1 To UPG_COUNT
-    If utI <> UPG_RECHARGE Then
-        For utJ = 1 To upgMax(utI) : utTotal = utTotal + upgPrice(utI, utJ) : Next utJ
-    End If
+    For utJ = 1 To upgMax(utI) : utTotal = utTotal + upgPrice(utI, utJ) : Next utJ
 Next utI
 utEarn = 50 * crKill + 2 * crBoss + 5 * crStage + 15 * crAstNear + crAstSurvive
 UT_Assert utTotal = 3960, "all upgrades cost 3960 (" + LTrim$(Str$(utTotal)) + ")"
@@ -148,13 +161,6 @@ utR = UPG_Buy%(UPG_CANNON)
 UT_Assert UPG_Next$(UPG_CANNON) = "NEXT: 3-WAY SPREAD", "after twin: next is the 3-way spread"
 utR = UPG_Buy%(UPG_CANNON)
 UT_Assert UPG_Next$(UPG_CANNON) = "MAXED", "after spread: MAXED"
-lives = 60
-UT_Assert UPG_Next$(UPG_RECHARGE) = "SHIELDS 60% > 100%", "recharge shows the refill as percentages (" + UPG_Next$(UPG_RECHARGE) + ")"
-shieldMax = 125 : lives = 44
-UT_Assert UPG_ShieldPct% = 35 And UPG_Next$(UPG_RECHARGE) = "SHIELDS 35% > 100%", "with a bigger shield the percentage is of the max (44/125 -> 35%)"
-lives = 125
-UT_Assert UPG_Next$(UPG_RECHARGE) = "SHIELDS FULL", "full shields: SHIELDS FULL"
-UPG_Apply
 
 Print ""
 Print "--- launch hint for a newly bought ability ---"
@@ -201,8 +207,9 @@ utR = UPG_Buy%(UPG_THRUST)
 UT_Assert UT_Near%(shipMaxVel, 0.18), "thrusters 2: 0.18"
 utR = UPG_Buy%(UPG_SHIELD)
 UT_Assert shieldMax = 125, "shield capacity 1: 125"
+fuelLevel = 60
 utR = UPG_Buy%(UPG_FUEL)
-UT_Assert UT_Near%(fuelMax, 130) And UT_Near%(fuelLevel, 130), "fuel tank 1: 130, and filled"
+UT_Assert UT_Near%(fuelMax, 130) And UT_Near%(fuelLevel, 60), "fuel tank 1: 130; the new capacity arrives empty (fuel still 60)"
 utR = UPG_Buy%(UPG_TRACTOR)
 UT_Assert UT_Near%(tractorR, 10) And UT_Near%(tractorPull, 0.05), "tractor beam 1: range 10, pull 0.05"
 UT_Assert UT_ArmourCheck% = -1, "hull armour: 100 -> 75 -> 50, 17 -> 13 at 75%"
@@ -249,20 +256,85 @@ UT_Assert UPG_PeakBullets% > 0, "worst case from the table: fastest rapid fire x
 UT_Assert MAX_BULLETS >= UPG_PeakBullets%, "MAX_BULLETS (" + LTrim$(Str$(MAX_BULLETS)) + ") >= that worst case, so the gun never stalls"
 
 Print ""
-Print "--- shield recharge: once per dock ---"
-lives = 50
-utR = UPG_Buy%(UPG_RECHARGE)
-UT_Assert utR = UPG_OK And lives = shieldMax, "recharge refills the shields to max"
-lives = 40
-utR = UPG_Buy%(UPG_RECHARGE)
-UT_Assert utR = UPG_MAXED And lives = 40, "a second recharge at the same dock is refused"
-UPG_DockVisit
-utR = UPG_Buy%(UPG_RECHARGE)
-UT_Assert utR = UPG_OK And lives = shieldMax, "the next dock sells it again"
-UPG_DockVisit
-utCr = credits
-utR = UPG_Buy%(UPG_RECHARGE)
-UT_Assert utR = UPG_FULL And credits = utCr, "full shields: refused, no charge"
+Print "--- supplies: fuel and shields by the amount (#277) ---"
+utOk = SUP_Load%
+UT_Assert utOk <> 0, "SUP_Load% reads economy.ini (" + supLoadErr + ")"
+UT_Assert UT_Near%(supFuelPrice, 2) And UT_Near%(supShieldPrice, 1) And UT_Near%(supStepPct, 10), "fuel $2 a unit, shields $1 a point, steps of 10%"
+UT_Assert UT_Near%(SUP_Mult!(1), 1) And UT_Near%(SUP_Mult!(2), 1.4) And UT_Near%(SUP_Mult!(3), 1.8) And UT_Near%(SUP_Mult!(4), 2.2) And UT_Near%(SUP_Mult!(5), 2.6), "fuel surcharge per dock: 1.0, 1.4, 1.8, 2.2, 2.6"
+utOk = -1
+For utI = 2 To supMultCnt
+    If SUP_Mult!(utI) <= SUP_Mult!(utI - 1) Then utOk = 0
+Next utI
+UT_Assert utOk <> 0, "the blockade only tightens: every dock's fuel price is above the last"
+UT_Assert UT_Near%(SUP_Mult!(9), SUP_Mult!(supMultCnt)) And UT_Near%(SUP_Mult!(0), SUP_Mult!(1)), "past the list: its last value; before it: the first"
+UT_Assert UT_Near%(SUP_UnitPrice!(SUP_FUEL, 2), 2.8) And UT_Near%(SUP_UnitPrice!(SUP_SHIELD, 5), 1), "dock 2 fuel $2.80 a unit; shields flat $1 at any dock"
+UT_Assert SUP_Cost&(SUP_FUEL, 40, 2) = 112 And SUP_Cost&(SUP_FUEL, 40, 1) = 80 And SUP_Cost&(SUP_FUEL, 40, 5) = 208, "40 fuel: $80 at dock 1, $112 at dock 2, $208 at dock 5"
+UT_Assert SUP_Cost&(SUP_SHIELD, 35, 3) = 35 And SUP_Cost&(SUP_FUEL, 0, 2) = 0, "35 shield points $35; nothing costs nothing"
+UPG_Reset
+fuelLevel = 71.9
+UT_Assert SUP_Missing%(SUP_FUEL) = 29, "a tank at 71.9 of 100 is 29 units short (" + LTrim$(Str$(SUP_Missing%(SUP_FUEL))) + ")"
+UT_Assert SUP_Step%(SUP_FUEL) = 10 And SUP_Step%(SUP_SHIELD) = 10, "LEFT / RIGHT step: 10% of a 100 tank or shield"
+credits = 1000
+UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 29, "plenty of credits: fill what's missing, no more"
+credits = 50 : fuelLevel = 0
+UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 18, "$50 at $2.80: 18 units ($50.40 rounds to $50) (" + LTrim$(Str$(SUP_MaxAffordable%(SUP_FUEL, 2))) + ")"
+credits = 2
+UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 0, "$2 buys no $2.80 unit"
+
+credits = 500 : creditsSpent = 0 : fuelLevel = 40 : utFuelBuys = 0 : fuelStranded = -1
+utR = SUP_Buy%(SUP_FUEL, 30, 2)
+UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 70) And credits = 416 And creditsSpent = 84, "partial: 30 fuel at dock 2 for $84, tank 40 -> 70"
+UT_Assert fuelStranded = 0, "fuel in the tank: no longer drifting"
+UT_Assert utFuelBuys = 1 And utFuelAmt = 30 And utFuelPrice = 84 And UT_Near%(utFuelUnit, 2.8) And UT_Near%(utFuelMult, 1.4) And utFuelCh = 2, "telemetry: fuel_bought 30, $84, $2.80/u, x1.4, chapter 2"
+utR = SUP_Buy%(SUP_FUEL, 50, 2)
+UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 100) And credits = 332, "asking for more than's missing buys only the 30 missing"
+utR = SUP_Buy%(SUP_FUEL, 10, 2)
+UT_Assert utR = SUP_FULL And credits = 332 And utFuelBuys = 2, "a full tank: refused, no charge, nothing logged"
+fuelLevel = 0 : credits = 10
+utR = SUP_Buy%(SUP_FUEL, 50, 2)
+UT_Assert utR = SUP_NOFUNDS And credits = 10 And UT_Near%(fuelLevel, 0), "50 fuel for $140 with $10: refused, nothing changes"
+utR = SUP_Buy%(SUP_FUEL, 0, 2)
+UT_Assert utR = SUP_NOFUNDS And credits = 10, "an amount of 0 buys nothing"
+credits = 50
+utR = SUP_Buy%(SUP_FUEL, SUP_MaxAffordable%(SUP_FUEL, 2), 2)
+UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 18) And credits = 0, "fill what you can afford: 18 units, $50 spent, $0 left"
+lives = 40 : credits = 30 : utShieldBuys = 0
+UT_Assert SUP_Missing%(SUP_SHIELD) = 60 And SUP_MaxAffordable%(SUP_SHIELD, 4) = 30, "shields 40/100 with $30: 30 points affordable"
+utR = SUP_Buy%(SUP_SHIELD, 30, 4)
+UT_Assert utR = SUP_OK And lives = 70 And credits = 0, "30 shield points for $30: 40 -> 70"
+UT_Assert utShieldBuys = 1 And utShieldAmt = 30 And utShieldPrice = 30 And utShieldCh = 4, "telemetry: shield_bought 30, $30, chapter 4"
+lives = shieldMax
+UT_Assert SUP_Buy%(SUP_SHIELD, 5, 4) = SUP_FULL, "full shields: refused"
+
+Print ""
+Print "--- the next jump's fuel need, and stranded (#277) ---"
+UPG_Reset : settingNerf = 0 : godMode = 0
+utLegKills = 10 : utLegBoss = 1 : utLegAst = 0
+UT_Assert UT_Near%(SUP_LegNeed!, 55), "10-kill combat + a boss: 10 x 3 + 25 = 55"
+utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
+UT_Assert UT_Near%(SUP_LegNeed!, 90), "the asteroid field: 90 (it burns ~89)"
+utLegKills = 40 : utLegBoss = 1
+credits = 10000 : utR = UPG_Buy%(UPG_FUEL) : utR = UPG_Buy%(UPG_FUEL)
+UT_Assert UT_Near%(SUP_LegNeed!, 100), "a long leg is capped at the base tank (100), even with a bigger tank"
+UPG_Reset
+utLegKills = 10 : utLegBoss = 1 : utLegAst = 0 : settingNerf = -1
+UT_Assert UT_Near%(SUP_LegNeed!, 5.5), "--nerf: 55 x 0.1"
+settingNerf = 0
+utLegKills = 0 : utLegBoss = 0 : utLegAst = 0
+UT_Assert UT_Near%(SUP_LegNeed!, 0), "no leg ahead: needs nothing"
+fuelLevel = 0 : credits = 0
+UT_Assert SUP_Stranded% = 0, "the last dock (no leg ahead) never strands"
+utLegKills = 10 : utLegBoss = 1 : levelNum = 2
+fuelLevel = 30 : credits = 70
+UT_Assert SUP_Stranded% = 0, "30 in the tank + $70 = 25 units at $2.80: exactly 55, not stranded"
+credits = 69
+UT_Assert SUP_Stranded% <> 0, "$69 buys 24: 54 < 55, stranded"
+godMode = -1
+UT_Assert SUP_Stranded% = 0, "god mode is never stranded"
+godMode = 0
+fuelLevel = 55 : credits = 0
+UT_Assert SUP_Stranded% = 0, "enough in the tank already, broke: not stranded"
+fuelLevel = 100 : credits = 10000
 
 Print ""
 Print "--- nova pulse charges ---"
