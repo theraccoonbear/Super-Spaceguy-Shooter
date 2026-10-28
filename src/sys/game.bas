@@ -115,6 +115,10 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "Options:"
     CLI_Emit guFH, "  -v, --version          Print version and exit"
     CLI_Emit guFH, "  -h, --help             Show this help and exit"
+    ' --debug still works in a release build, for bug reports, but isn't advertised (#275)
+    $IF RELEASEBUILD = 1 THEN
+    CLI_Emit guFH, "  --no-telem             Disable gameplay telemetry for this session"
+    $ELSE
     CLI_Emit guFH, "  --scene <name>         Jump to a named scene (skips normal startup)"
     CLI_Emit guFH, "  --crawls               Crawl browser: list, play and time every named crawl"
     CLI_Emit guFH, "  --god                  God mode: shields, health, and laser never deplete"
@@ -134,6 +138,7 @@ Sub GAME_Usage(guErr As String)
     SEQ_PrintScenes guFH
     CLI_Emit guFH, "  consent"
     CLI_Emit guFH, "  username"
+    $END IF
     If InStr(_OS$, "WIN") = 0 Then Close #guFH
     If guErr <> "" Then System 1 Else System 0
 End Sub

@@ -52,7 +52,11 @@ End Function
 '   <frame> EXIT
 Sub DBG_MilestoneInit()
     Dim dbgMiF As Integer
-    dbgMlogPath = Environ$("SSS_MILESTONE_LOG")
+    $IF RELEASEBUILD = 1 THEN
+        dbgMlogPath = ""
+    $ELSE
+        dbgMlogPath = Environ$("SSS_MILESTONE_LOG")
+    $END IF
     If dbgMlogPath = "" Then Exit Sub
     If Left$(dbgMlogPath, 1) <> "/" And Mid$(dbgMlogPath, 2, 1) <> ":" Then dbgMlogPath = _StartDir$ + "/" + dbgMlogPath
     dbgMlogState = -1 : dbgMlogSeq = -2

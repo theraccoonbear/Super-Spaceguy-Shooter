@@ -4,6 +4,8 @@
 # Usage: tools/dev <command> [args]
 #   image          build (or rebuild) the dev image from tools/container/Containerfile
 #   build          tools/buildqb sss.bas, then the builds/sss --version smoke test
+#   build --release  a release build (no dev-only flags) into builds/sss, then
+#                  tests/release_build_test.sh
 #   test           the full test suite (.github/scripts/qb64test.sh, same as CI)
 #   render [args]  golden-screenshot render tests (tests/render/run.sh; --update
 #                  re-blesses the goldens)
@@ -32,7 +34,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -175,7 +177,11 @@ case "$cmd" in
         ;;
     build)
         pick_engine; ensure_image
-        run_in bash -c "./tools/buildqb sss.bas && $SMOKE"
+        if [ "${1:-}" = --release ]; then
+            run_in bash -c "./tools/buildqb --release sss.bas && bash tests/release_build_test.sh"
+        else
+            run_in bash -c "./tools/buildqb sss.bas && $SMOKE"
+        fi
         ;;
     test)
         pick_engine; ensure_image

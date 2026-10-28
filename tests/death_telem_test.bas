@@ -15,6 +15,7 @@ $CONSOLE:ONLY
 OPTION _EXPLICIT
 
 Const VERSION$ = "0.0.0-test"
+Const BUILD_KIND$ = "dev"
 Const GS_PLAYING   = 1
 Const GS_CINEMATIC = 4
 Const MAX_ENEMIES  = 35
