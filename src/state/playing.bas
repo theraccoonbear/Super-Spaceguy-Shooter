@@ -29,13 +29,25 @@ Sub GS_PLAYING_Update ()
                 RMP_Open gameState
         END SELECT
         IF pauseShown THEN
-            Dim gspPx As Integer : gspPx = scrW\2 - 96
+            ' key / pad-button column, sized to the bound buttons' names
+            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer
+            Dim gspK(1 TO 4) As String
+            gspK(1) = "Y/" + E3D_PadBtnName$(padBind(E3D_ACT_CONFIRM), ctrlLayout)
+            gspK(2) = "C/" + E3D_PadBtnName$(padBind(E3D_ACT_ROLL), ctrlLayout)
+            gspK(3) = "K/" + E3D_PadBtnName$(padBind(E3D_ACT_NOVA), ctrlLayout)
+            gspK(4) = "ESC/" + E3D_PadBtnName$(padBind(E3D_ACT_BACK), ctrlLayout)
+            gspKW = 0
+            FOR gspKi = 1 TO 4
+                IF LEN(gspK(gspKi)) > gspKW THEN gspKW = LEN(gspK(gspKi))
+            NEXT gspKi
+            gspKW = gspKW + 2
+            gspPx = (scrW - (gspKW + 15) * FONT_CHAR_W) \ 2
             _DEST backBuffer
             UI_DrawPanel scrW\2 - 104, scrH\2 - 30, scrW\2 + 104, scrH\2 + 70, "ABORT MISSION"
-            FONT_PrintAlpha fontPalette(14), backBuffer, LEFT$("Y/" + E3D_PadBtnName$(padBind(E3D_ACT_CONFIRM), ctrlLayout) + SPACE$(10), 10) + "CONFIRM RETREAT", gspPx, scrH\2 - 4, 255
-            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$("C/" + E3D_PadBtnName$(padBind(E3D_ACT_ROLL), ctrlLayout) + SPACE$(10), 10) + "CONTROLS", gspPx, scrH\2 + 14, 255
-            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$("K/" + E3D_PadBtnName$(padBind(E3D_ACT_NOVA), ctrlLayout) + SPACE$(10), 10) + "REMAP CONTROLS", gspPx, scrH\2 + 32, 255
-            FONT_PrintAlpha fontPalette(8),  backBuffer, LEFT$("ESC/" + E3D_PadBtnName$(padBind(E3D_ACT_BACK), ctrlLayout) + SPACE$(10), 10) + "CANCEL", gspPx, scrH\2 + 50, 255
+            FONT_PrintAlpha fontPalette(14), backBuffer, LEFT$(gspK(1) + SPACE$(gspKW), gspKW) + "CONFIRM RETREAT", gspPx, scrH\2 - 4, 255
+            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$(gspK(2) + SPACE$(gspKW), gspKW) + "CONTROLS", gspPx, scrH\2 + 14, 255
+            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$(gspK(3) + SPACE$(gspKW), gspKW) + "REMAP CONTROLS", gspPx, scrH\2 + 32, 255
+            FONT_PrintAlpha fontPalette(8),  backBuffer, LEFT$(gspK(4) + SPACE$(gspKW), gspKW) + "CANCEL", gspPx, scrH\2 + 50, 255
             _DEST 0
             _PUTIMAGE , backBuffer, 0
             EXIT SUB

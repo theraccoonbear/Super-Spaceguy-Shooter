@@ -87,6 +87,7 @@ Dim Shared padSavedName$(1 To E3D_PAD_SAVED_MAX), padSavedBinds$(1 To E3D_PAD_SA
 
 E3D_KeyDefaults
 E3D_PadDefaults E3D_LAYOUT_XPAD
+ctrlLayout = E3D_LAYOUT_XPAD   ' names buttons the xpad way until a pad is picked
 
 ' Scan for a connected gamepad/joystick; call once at startup after SCREEN is open.
 Sub E3D_CtrlInit

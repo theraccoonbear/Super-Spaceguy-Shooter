@@ -110,6 +110,7 @@ End Sub
 
 Sub RMP_DrawWizard
     Dim rmwCur As String, rmwLine As String, rmwN As Integer, rmwOf As Integer, rmwSecs As Integer
+    Line (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 5, 210), BF
     UI_Panel 28, 56, scrW - 29, 198
     If rmpWizKind = E3D_BIND_PAD Then
         UI_TextCentered 11, "GAMEPAD SETUP", 62, 255

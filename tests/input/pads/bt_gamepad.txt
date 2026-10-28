@@ -1,0 +1,32 @@
+# Gamepad fixture: one real controller's raw input, read by tests/pad_map_test.bas.
+# Record a new one with tools/padrecord.bas.
+#
+# A generic Bluetooth HID pad that Linux names just "Gamepad" (vendor 1949, 16 buttons,
+# kernel order SOUTH EAST C NORTH WEST Z TL TR TL2 TR2 SELECT START MODE THUMBL THUMBR).
+# Left stick axes 1/2, right stick 3/4, triggers 5/6, d-pad hat 7/8. Buttons: A=1 B=2
+# C=3 X=4 Y=5 Z=6 LB=7 RB=8 LT=9 RT=10 Back=11 Start=12 Home=13 LS=14 RS=15.
+#
+# Derived from that layout, not yet recorded (#266): replace with a padrecord capture
+# of the real pad (builds/padrecord bt_gamepad).
+#
+# Format: header lines, then one line per control:
+#   <CONTROL> btn=<pressed buttons, comma-separated, or empty> axes=<one value per axis>
+NAME bt_gamepad
+DEVICE [CONTROLLER][[NAME][Gamepad]][BUTTON][AXIS]
+BUTTONS 16
+AXES 8
+IDLE btn= axes=0 0 0 0 0 0 0 0
+STICK_UP btn= axes=0 -1 0 0 0 0 0 0
+STICK_DOWN btn= axes=0 1 0 0 0 0 0 0
+STICK_LEFT btn= axes=-1 0 0 0 0 0 0 0
+STICK_RIGHT btn= axes=1 0 0 0 0 0 0 0
+DPAD_UP btn= axes=0 0 0 0 0 0 0 -1
+DPAD_DOWN btn= axes=0 0 0 0 0 0 0 1
+DPAD_LEFT btn= axes=0 0 0 0 0 0 -1 0
+DPAD_RIGHT btn= axes=0 0 0 0 0 0 1 0
+A btn=1 axes=0 0 0 0 0 0 0 0
+B btn=2 axes=0 0 0 0 0 0 0 0
+X btn=4 axes=0 0 0 0 0 0 0 0
+Y btn=5 axes=0 0 0 0 0 0 0 0
+START btn=12 axes=0 0 0 0 0 0 0 0
+BACK btn=11 axes=0 0 0 0 0 0 0 0
