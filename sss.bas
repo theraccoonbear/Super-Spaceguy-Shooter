@@ -32,6 +32,7 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
+$EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
@@ -95,8 +96,10 @@ GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
 cfgEconomy   = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
 cfgUpgrades  = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
 cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
+cfgPowerups  = CFG_Parse$(_EMBEDDED$("CFGPOWERUPS"))
 IF UPG_Load% = 0 THEN GAME_Usage upgLoadErr
 IF SUP_Load% = 0 THEN GAME_Usage supLoadErr
+IF PUP_Load% = 0 THEN GAME_Usage pupLoadErr
 UPG_Reset
 bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
 bossManeuverList$(0) = "flyover"

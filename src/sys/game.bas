@@ -23,6 +23,7 @@ Sub GAME_ResetState
     telemLegFuel = 0 : telemLegFrames = 0
     tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
+    pupPopTimer = 0 : hudFlashTimer = 0
     thrusterScale = 0.30 : invTimer = 120 : deathTimer = 0 : escConfirm = 0 : titleEscConfirm = 0
     lbrdPollDone = 0
     camF.lagY = 0 : camF.lagZ = 0 : camF.fwdY = 0 : camF.fwdZ = 0
@@ -68,7 +69,7 @@ Sub GAME_InitMeshes
     E3D_LoadMesh gmiMdl, "ENEMY",        meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
     E3D_LoadMesh gmiMdl, "ASTEROID",     meshLib(MESH_ASTEROID),     boxLib(MESH_ASTEROID)
     E3D_LoadMesh gmiMdl, "BULLET",       meshLib(MESH_BULLET),       boxLib(MESH_BULLET)
-    E3D_LoadMesh gmiMdl, "POWERUP",      meshLib(MESH_POWERUP),      boxLib(MESH_POWERUP)
+    E3D_LoadMesh gmiMdl, "PUP_SHIELD",   meshLib(MESH_PUP_SHIELD),   boxLib(MESH_PUP_SHIELD)
     E3D_LoadMesh gmiMdl, "ENEMY_ARROW",  meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
     E3D_LoadMesh gmiMdl, "ENEMY_HLINE",  meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
     E3D_LoadMesh gmiMdl, "ENEMY_VCOL",   meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
@@ -77,6 +78,8 @@ Sub GAME_InitMeshes
     E3D_LoadMesh gmiMdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
     E3D_LoadMesh gmiMdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
     E3D_LoadMesh gmiMdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
+    E3D_LoadMesh gmiMdl, "PUP_FUEL",     meshLib(MESH_PUP_FUEL),     boxLib(MESH_PUP_FUEL)
+    E3D_LoadMesh gmiMdl, "PUP_POINTS",   meshLib(MESH_PUP_POINTS),   boxLib(MESH_PUP_POINTS)
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
     Next gmiI

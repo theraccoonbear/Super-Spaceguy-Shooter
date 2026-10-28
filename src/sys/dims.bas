@@ -49,7 +49,7 @@ CONST MESH_PLAYER       = 1
 CONST MESH_ENEMY        = 2
 CONST MESH_ASTEROID     = 3
 CONST MESH_BULLET       = 4
-CONST MESH_POWERUP      = 5
+CONST MESH_PUP_SHIELD   = 5
 CONST MESH_ENEMY_ARROW  = 6
 CONST MESH_ENEMY_HLINE  = 7
 CONST MESH_ENEMY_VCOL   = 8
@@ -58,7 +58,9 @@ CONST MESH_ENEMY_VWEDGE = 10
 CONST MESH_THRUSTER     = 11
 CONST MESH_EBULLET      = 12
 CONST MESH_BOSS         = 13
-CONST MESH_COUNT        = 13
+CONST MESH_PUP_FUEL     = 14
+CONST MESH_PUP_POINTS   = 15
+CONST MESH_COUNT        = 15
 
 ' --- boss / stage globals ---
 CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
@@ -186,6 +188,8 @@ DIM SHARED fuelLevel AS SINGLE : fuelLevel = 100.0
 DIM SHARED fuelStranded AS INTEGER
 DIM SHARED runStranded AS INTEGER   ' -1 = the run ended stranded at a dock (game over says STRANDED, #277)
 DIM SHARED scorePopTimer AS INTEGER, scorePopY AS SINGLE, scorePopVal AS LONG
+DIM SHARED pupPopTimer AS INTEGER, pupPopY AS SINGLE, pupPopTxt AS STRING, pupPopPal AS INTEGER   ' power-up pop, apart from the kill pops (#183)
+DIM SHARED hudFlashKind AS INTEGER, hudFlashTimer AS INTEGER   ' gauge (1 SH, 3 FU) a pickup just filled
 DIM SHARED spawnFlashTimer AS INTEGER
 DIM SHARED spawnFlashPX AS SINGLE, spawnFlashPY AS SINGLE, spawnFlashPZ AS SINGLE
 DIM SHARED planetTimer AS INTEGER

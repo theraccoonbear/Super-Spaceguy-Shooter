@@ -13,7 +13,7 @@ $EMBED:'assets/models.e3d':'MODELS'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
-CONST MESH_COUNT = 13
+CONST MESH_COUNT = 15
 CONST MESH_MAX   = 32
 
 DIM meshNames(1 TO MESH_MAX) AS STRING
@@ -21,7 +21,7 @@ meshNames(1)  = "PLAYER"
 meshNames(2)  = "ENEMY"
 meshNames(3)  = "ASTEROID"
 meshNames(4)  = "BULLET"
-meshNames(5)  = "POWERUP"
+meshNames(5)  = "PUP_SHIELD"
 meshNames(6)  = "ENEMY_ARROW"
 meshNames(7)  = "ENEMY_HLINE"
 meshNames(8)  = "ENEMY_VCOL"
@@ -30,6 +30,8 @@ meshNames(10) = "ENEMY_VWEDGE"
 meshNames(11) = "THRUSTER"
 meshNames(12) = "EBULLET"
 meshNames(13) = "BOSS"
+meshNames(14) = "PUP_FUEL"
+meshNames(15) = "PUP_POINTS"
 
 DIM meshLib(1 TO MESH_MAX) AS E3D_Mesh
 DIM boxLib(1 TO MESH_MAX)  AS E3D_AABB

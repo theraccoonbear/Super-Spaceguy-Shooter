@@ -204,18 +204,24 @@ Sub WAVE_Spawn
             End If
         Next wvI
 
-        ' powerup (rare)
-        If Int(RNG!(RNG_GAME) * 6) = 0 Then
+        ' power-up: pup_chance per wave, kind by pup_weights, in a lane the player can see and reach
+        If RNG!(RNG_GAME) < pupChance Then
             For wvI = 1 To MAX_POWERUPS
                 If powerups(wvI).active = 0 Then
                     powerups(wvI).active  = -1
-                    powerups(wvI).meshIdx = MESH_POWERUP
-                    powerups(wvI).px  =  26 + RNG!(RNG_GAME) * 6
-                    powerups(wvI).py  = player.py + (RNG!(RNG_GAME) * 80)  - 40
-                    powerups(wvI).pz  = player.pz + (RNG!(RNG_GAME) * 100) - 50
-                    powerups(wvI).vx  = -0.05
-                    powerups(wvI).dry = 2.0
-                    powerups(wvI).drz = 1.5
+                    powerups(wvI).meshIdx = WAVE_PupMesh%(PUP_PickKind%(RNG!(RNG_GAME)))
+                    powerups(wvI).px  = player.px + pupSpawnX + RNG!(RNG_GAME) * pupSpawnXVar
+                    powerups(wvI).py  = player.py + (RNG!(RNG_GAME) * 2 - 1) * pupSpreadY
+                    powerups(wvI).pz  = player.pz + (RNG!(RNG_GAME) * 2 - 1) * pupSpreadZ
+                    powerups(wvI).vx  = -pupSpeed
+                    powerups(wvI).rx  = 0 : powerups(wvI).ry = 0 : powerups(wvI).rz = 0
+                    powerups(wvI).drx = 0 : powerups(wvI).dry = 0 : powerups(wvI).drz = 0
+                    If powerups(wvI).meshIdx = MESH_PUP_POINTS Then
+                        powerups(wvI).drx = 3.0
+                    Else
+                        powerups(wvI).dry = 2.0
+                        powerups(wvI).rz  = 15
+                    End If
                     powerups(wvI).scl = 1.0
                     Exit For
                 End If
@@ -223,6 +229,22 @@ Sub WAVE_Spawn
         End If
     End If
 End Sub
+
+Function WAVE_PupMesh% (wvpmKind As Integer)
+    Select Case wvpmKind
+        Case PUP_SHIELD : WAVE_PupMesh% = MESH_PUP_SHIELD
+        Case PUP_FUEL   : WAVE_PupMesh% = MESH_PUP_FUEL
+        Case Else       : WAVE_PupMesh% = MESH_PUP_POINTS
+    End Select
+End Function
+
+Function WAVE_PupKind% (wvpkMesh As Integer)
+    Select Case wvpkMesh
+        Case MESH_PUP_SHIELD : WAVE_PupKind% = PUP_SHIELD
+        Case MESH_PUP_FUEL   : WAVE_PupKind% = PUP_FUEL
+        Case Else            : WAVE_PupKind% = PUP_POINTS
+    End Select
+End Function
 
 ' Spawn one asteroid field pattern (called every ASTFIELD_INTERVAL seconds).
 ' Cycles through 4 patterns: dense cloud, Y-corridor, staggered wave, cluster pack.

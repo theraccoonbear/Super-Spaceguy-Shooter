@@ -141,6 +141,20 @@ Sub HUD_Draw
     HUD_Gauge "SH", lives, shieldMax, 4, 1, 0
     HUD_Gauge "LA", laserEnergy, laserMax, 15, 2, 0
     HUD_Gauge "FU", fuelLevel, fuelMax, 26, 3, 0
+    ' a power-up just filled SH or FU: blink a frame round that bar
+    If hudFlashTimer > 0 Then
+        If (hudFlashTimer \ 6) Mod 2 = 0 Then
+            Dim hdFlY As Integer, hdFlLen As Integer, hdFlX As Integer
+            hdFlX = scrW - 6 - UPG_BAR_MAX
+            If hudFlashKind = 1 Then
+                hdFlY = 4 + 4 : hdFlLen = UPG_BarLen%((shieldMax))
+            Else
+                hdFlY = 26 + 4 : hdFlLen = UPG_BarLen%(fuelMax)
+            End If
+            LINE (hdFlX - 1, hdFlY - 1)-(hdFlX + hdFlLen + 3, hdFlY + 7), HUD_GaugeClr&(hudFlashKind, 1, 1, -1), B
+        End If
+        hudFlashTimer = hudFlashTimer - 1
+    End If
 
     ' boss HP bar
     If boss.active Then
@@ -171,6 +185,16 @@ Sub HUD_Draw
         FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "+" + LTRIM$(STR$(scorePopVal)), INT(scorePopY), scrW, hdPopAlpha
         scorePopY = scorePopY - 0.5
         scorePopTimer = scorePopTimer - 1
+    End If
+
+    ' power-up pop: its own line and colour, so kill pops don't overwrite it
+    If pupPopTimer > 0 Then
+        Dim hdPupA As Integer
+        hdPupA = INT(pupPopTimer / 30.0 * 255)
+        If hdPupA > 255 Then hdPupA = 255
+        FONT_PrintCenteredAlpha fontPalette(pupPopPal), backBuffer, pupPopTxt, INT(pupPopY), scrW, hdPupA
+        pupPopY = pupPopY - 0.4
+        pupPopTimer = pupPopTimer - 1
     End If
 
     ' hi score — lower-right, always visible during play

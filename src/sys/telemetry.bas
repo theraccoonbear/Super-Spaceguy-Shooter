@@ -100,9 +100,14 @@ Sub TELEM_EnemyKilled()
     TELEM_Row "enemy_killed", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|wave=" + LTrim$(Str$(waveType))
 End Sub
 
-Sub TELEM_PowerupCollected()
-    TELEM_Row "powerup_collected", "score=" + LTrim$(Str$(score)) + "|shield=" + LTrim$(Str$(lives)) _
-            + "|wave=" + LTrim$(Str$(waveType))
+Sub TELEM_PowerupCollected(tlpKind As String, tlpAmt As Single)
+    TELEM_Row "powerup_collected", "kind=" + tlpKind + "|amount=" + LTrim$(Str$(Int(tlpAmt + 0.5))) _
+            + "|score=" + LTrim$(Str$(score)) + "|shield=" + LTrim$(Str$(lives)) _
+            + "|fuel=" + LTrim$(Str$(Int(fuelLevel))) + "|wave=" + LTrim$(Str$(waveType))
+End Sub
+
+Sub TELEM_PowerupMissed(tlpmKind As String)
+    TELEM_Row "powerup_missed", "kind=" + tlpmKind + "|wave=" + LTrim$(Str$(waveType))
 End Sub
 
 Sub TELEM_EnemyEscaped()
