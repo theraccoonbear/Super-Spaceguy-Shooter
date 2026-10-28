@@ -95,7 +95,7 @@ Sub CLI_Parse()
             If Mid$(cliScene, cliI, 1) >= "0" And Mid$(cliScene, cliI, 1) <= "9" Then cliI = cliI - 1 Else Exit Do
         Loop
         cliSceneType = LCase$(Left$(cliScene, cliI))
-        If cliSceneType <> "title" And cliSceneType <> "crawl" And cliSceneType <> "playing" And cliSceneType <> "boss" And cliSceneType <> "dock" And cliSceneType <> "consent" Then
+        If cliSceneType <> "title" And cliSceneType <> "crawl" And cliSceneType <> "playing" And cliSceneType <> "boss" And cliSceneType <> "dock" And cliSceneType <> "consent" And cliSceneType <> "username" Then
             GAME_Usage("unknown scene type '" + cliSceneType + "'")
         End If
     End If

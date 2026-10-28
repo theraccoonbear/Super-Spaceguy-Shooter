@@ -145,6 +145,8 @@ IF cliCrawls THEN
     gameState = GS_CRAWLS
 ELSEIF cliSceneType = "consent" THEN
     gameState = GS_CONSENT
+ELSEIF cliSceneType = "username" THEN
+    GS_USERNAME_Init : gameState = GS_USERNAME
 ELSEIF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
     IF seqJumpCrawl$ <> "" THEN
