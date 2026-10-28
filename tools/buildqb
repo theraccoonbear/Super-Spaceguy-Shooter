@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# --release (or SSS_RELEASE=1): a release build of sss.bas, without the dev-only flags (#275)
+if [ "$1" == "--release" ]; then
+    export SSS_RELEASE=1
+    shift
+fi
+
 if [ ! -f "$1" ]; then
     echo "Error: source file '$1' not found" >&2
     exit 1

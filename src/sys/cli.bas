@@ -21,10 +21,25 @@ Sub CLI_Parse()
         GAME_Usage("")
     End If
 
-    godMode     = (InStr(cliLine, "--god")   > 0)
-    settingNerf = (InStr(cliLine, "--nerf")  > 0)
     debugMode   = (InStr(cliLine, "--debug") > 0)
     telemOn     = (InStr(cliLine, "--no-telem") = 0)
+
+    ' A release build has no dev-only flags at all, not just hidden ones (#275).
+    $IF RELEASEBUILD = 1 THEN
+        cliVal = LTrim$(cliLine)
+        Do While cliVal <> ""
+            cliPos = InStr(cliVal, " ")
+            If cliPos = 0 Then cliPos = Len(cliVal) + 1
+            Select Case Left$(cliVal, cliPos - 1)
+                Case "--debug", "--no-telem"
+                Case Else
+                    GAME_Usage("unknown option '" + Left$(cliVal, cliPos - 1) + "'")
+            End Select
+            cliVal = LTrim$(Mid$(cliVal, cliPos + 1))
+        Loop
+    $ELSE
+    godMode     = (InStr(cliLine, "--god")   > 0)
+    settingNerf = (InStr(cliLine, "--nerf")  > 0)
     cliCrawls   = (InStr(cliLine, "--crawls") > 0)
 
     cliPos = InStr(cliLine, "--scene ")
@@ -78,8 +93,6 @@ Sub CLI_Parse()
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--seed needs a whole number, got '" + cliVal + "'")
         cliSeed = Val(cliVal) : cliSeedSet = -1
     End If
-    ' seed every random stream before anything draws (sound tables, the player id)
-    If cliSeedSet Then RNG_Seed cliSeed Else RNG_Seed RNG_ClockSeed~&
 
     cliVal = CLI_Value$(cliLine, "--screenshot-at ")
     Do While cliVal <> ""
@@ -104,6 +117,10 @@ Sub CLI_Parse()
             GAME_Usage("unknown scene type '" + cliSceneType + "'")
         End If
     End If
+    $END IF
+
+    ' seed every random stream before anything draws (sound tables, the player id)
+    If cliSeedSet Then RNG_Seed cliSeed Else RNG_Seed RNG_ClockSeed~&
 End Sub
 
 ' The word after cvFlag$ (which includes its trailing space) in cvLine$, or "".

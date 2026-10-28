@@ -15,6 +15,7 @@ Dim Shared DB_URL As String
 Dim Shared DB_KEY As String
 
 Const VERSION$ = "0.0.0-test"
+Const BUILD_KIND$ = "dev"
 
 ' BossObj TYPE required by TELEM_BossPhase
 Type BossObj
