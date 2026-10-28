@@ -96,6 +96,7 @@ cfgEconomy   = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
 cfgUpgrades  = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
 cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 IF UPG_Load% = 0 THEN GAME_Usage upgLoadErr
+IF SUP_Load% = 0 THEN GAME_Usage supLoadErr
 UPG_Reset
 bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
 bossManeuverList$(0) = "flyover"

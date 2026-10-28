@@ -83,6 +83,25 @@ Sub SEQ_ListCrawls()
     SEQ_AddCrawl SEQ_CRAWL_DEATH, "game over", -1
 End Sub
 
+' The leg after the current task (the dock): its PLAY tasks up to the next ARRIVE, as the
+' combat kill triggers summed, boss fights and asteroid fields (SUP_LegNeed!'s fuel need).
+' All zero when no leg follows.
+Sub SEQ_NextLeg(seqnKills As Long, seqnBoss As Integer, seqnAst As Integer)
+    Dim seqnI As Integer, seqnType As String
+    seqnKills = 0 : seqnBoss = 0 : seqnAst = 0
+    For seqnI = seqIdx + 1 To seqCount - 1
+        If seqKind(seqnI) = SEQ_ARRIVE Or seqKind(seqnI) = SEQ_TITLE Then Exit For
+        If seqKind(seqnI) = SEQ_PLAY Then
+            seqnType = LCase$(SEQ_GetKV$(seqSval$(seqnI), "type"))
+            Select Case seqnType
+                Case "combat" : seqnKills = seqnKills + Val(SEQ_GetKV$(seqSval$(seqnI), "trigger"))
+                Case "boss" : seqnBoss = seqnBoss + 1
+                Case "asteroid" : seqnAst = seqnAst + 1
+            End Select
+        End If
+    Next seqnI
+End Sub
+
 Sub SEQ_Add(seqaKind As Integer, seqaSval As String, seqaLabel As String)
     If seqCount >= SEQ_MAX Then Exit Sub
     seqKind(seqCount)   = seqaKind
@@ -475,7 +494,6 @@ Sub SEQ_Advance()
                     astDestName   = planetNames(levelNum)
                     astParsecs    = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If astParsecs = 0 Then astParsecs = 340
-                    fuelLevel     = ASTFIELD_DURATION * ASTFIELD_FUEL_DRAIN_PT * ASTFIELD_FUEL_FRAC * fuelMax / 100
                     BELT_Init scrW, scrH
                     If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                         diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)

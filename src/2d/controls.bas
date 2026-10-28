@@ -32,17 +32,22 @@ End Sub
 
 ' SHIP SYSTEMS page csPart (0 or 1): six dock upgrades each, name and levels, then what it does.
 Sub CONTROLS_Systems (csPart As Integer)
-    Dim csI As Integer, csId As Integer, csY As Integer, csNm As String, csLv As String
+    Dim csI As Integer, csId As Integer, csY As Integer, csNm As String, csLv As String, csInfo As String
     FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "SHIP SYSTEMS  " + LTrim$(Str$(csPart + 3)) + "/4", 30, scrW, 255
     For csI = 1 To 6
         csId = csPart * 6 + csI
         csY = 48 + (csI - 1) * 28
-        csNm = upgNames$(csId)
-        If InStr(csNm, ",") > 0 Then csNm = Left$(csNm, InStr(csNm, ",") - 1) + " / " + Mid$(csNm, InStr(csNm, ",") + 1)
-        If csId = UPG_RECHARGE Then csLv = "PER DOCK" Else csLv = LTrim$(Str$(upgMax(csId))) + " LV"
+        If csId > UPG_COUNT Then
+            ' the last slot: the dock's supply rows (#277)
+            csNm = "FUEL / SHIELDS" : csLv = "PER DOCK" : csInfo = "BUY BY AMOUNT AT DOCKS"
+        Else
+            csNm = upgNames$(csId)
+            If InStr(csNm, ",") > 0 Then csNm = Left$(csNm, InStr(csNm, ",") - 1) + " / " + Mid$(csNm, InStr(csNm, ",") + 1)
+            csLv = LTrim$(Str$(upgMax(csId))) + " LV" : csInfo = UPG_Info$(csId)
+        End If
         FONT_PrintAlpha fontPalette(15), backBuffer, csNm, CTL_KEY_X, csY, 255
         FONT_PrintAlpha fontPalette(8), backBuffer, csLv, scrW - 28 - Len(csLv) * FONT_CHAR_W, csY, 255
-        FONT_PrintAlpha fontPalette(9), backBuffer, UPG_Info$(csId), CTL_KEY_X + 16, csY + 12, 255
+        FONT_PrintAlpha fontPalette(9), backBuffer, csInfo, CTL_KEY_X + 16, csY + 12, 255
     Next csI
 End Sub
 

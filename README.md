@@ -93,6 +93,7 @@ sss [options]
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
   --ships N              Start every run with N ships (testing)
   --shields N            Start every run with N shield points (testing, e.g. damaged shields at the dock)
+  --fuel N               Start every run with N fuel (testing, e.g. a nearly empty tank at the dock)
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 
@@ -317,8 +318,9 @@ On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsig
 
 | Key | Gamepad | Action |
 |---|---|---|
-| ↑ / ↓ (or W / S) | Stick or d-pad up/down | Pick an upgrade (the list scrolls) |
-| ENTER | A | Buy the next level (on LAUNCH: leave) |
+| ↑ / ↓ (or W / S) | Stick or d-pad up/down | Pick a row (the list scrolls) |
+| ← / → (or A / D) | Stick or d-pad left/right | On REFUEL / SHIELDS: buy less / more (steps of 10% of the tank or shield) |
+| ENTER | A | Buy the amount shown, or the next level (on LAUNCH: leave) |
 | ESC | B or Start | Leave for the next stage at once |
 
 ### Debug
@@ -347,12 +349,20 @@ Credits (`$`, shown next to the score) are a second currency, separate from scor
 | Thrusters | Faster sideways movement | 2 |
 | Evasive roll | **E** / pad **X**: a quick sideways dash (the way you're steering) that nothing can hit; level 2 cools down faster | 2 |
 | Tractor beam | Pulls power-ups toward the ship | 2 |
-| Fuel tank | Bigger fuel tank | 2 |
-| Shield recharge | Refills the shields (planet arrivals refill laser and fuel, not shields) | once per dock |
+| Fuel tank | Bigger fuel tank (the extra room arrives empty: fill it at REFUEL) | 2 |
 
-A status box at the bottom left shows the ship's shields (SH), laser (LA) and fuel (FU) as bars and percentages, so you can judge the shield recharge, which shows `SHIELDS 35% > 100%` (or `SHIELDS FULL`: buying it then does nothing and costs nothing). In the dock, the two lines under the list say what the highlighted upgrade does and exactly what its next level changes (for example `MAX 100>125, REGEN +20%`), or `MAXED`. The same list is in game on the Controls screen's **SHIP SYSTEMS** pages (pages 3 and 4: ← → or the stick). The first launch after buying the roll or the nova shows its key (`NOVA READY - Q / PAD Y`) for a few seconds. The descriptions sit next to each upgrade in `assets/config/upgrades.ini` (`upgdesc_*`); the hints are in `assets/config/abilities.ini` (`hint_*`).
+### Fuel and shields
 
-Tuning lives in purpose-named config files under `assets/config/` (see [Config files](#config-files)): credit amounts and the economy maths in `economy.ini`, prices, levels, effects and descriptions in `upgrades.ini`, and nova / roll behaviour in `abilities.ini`. `--scene dockN` opens the dock after stage N and `--credits N` starts with N credits, to try it out.
+The first two dock rows sell supplies by the amount. Nothing else refills them: a planet arrival tops up the laser only, and only losing a ship hands you a full tank and full shields.
+
+- **REFUEL**: fuel at `fuel_price` per unit times the dock's surcharge (`fuel_mult`, see below).
+- **SHIELDS**: shield points at a flat `shield_price` each.
+
+The highlighted row shows the amount between ◂ ▸ arrows and its cost (red when you can't afford it, `FULL` when nothing is missing). The amount starts at what your credits fill and goes back there after every purchase, so one ENTER means "fill what I can afford"; ← → change it in steps of 10% of the capacity. Under the list, REFUEL shows the price per unit and `NEXT JUMP NEEDS 55 FU`, worked out from the next leg's stages in `assets/sequence.txt` (`fuel_per_kill`, `fuel_boss`, `fuel_asteroid` in `economy.ini`); SHIELDS shows the price and the result (`SHIELD 40 > 100`).
+
+A status box at the bottom left shows the ship's shields (SH), laser (LA) and fuel (FU) as absolute values over bars: a highlighted supply row adds a see-through segment for the amount being bought, and the fuel bar has a white tick at what the next jump needs. In the dock, the two lines under the list say what the highlighted upgrade does and exactly what its next level changes (for example `MAX 100>125, REGEN +20%`), or `MAXED`. The same list is in game on the Controls screen's **SHIP SYSTEMS** pages (pages 3 and 4: ← → or the stick). The first launch after buying the roll or the nova shows its key (`NOVA READY - Q / PAD Y`) for a few seconds. The descriptions sit next to each upgrade in `assets/config/upgrades.ini` (`upgdesc_*`); the hints are in `assets/config/abilities.ini` (`hint_*`).
+
+Tuning lives in purpose-named config files under `assets/config/` (see [Config files](#config-files)): credit amounts, the economy maths and the fuel and shield prices in `economy.ini`, prices, levels, effects and descriptions in `upgrades.ini`, and nova / roll behaviour in `abilities.ini`. `--scene dockN` opens the dock after stage N, `--credits N` starts with N credits and `--fuel N` with N fuel, to try it out.
 
 ### Config files
 
@@ -361,7 +371,7 @@ Game data that isn't code lives in small `key=value` files (`;` starts a comment
 | File | Holds |
 |---|---|
 | `assets/gamevalues.ini` | Text substitution tokens for `assets/gametext.txt` (names of the emperor, planets, ships). Only text tokens: `tools/bake_speech_dict` and the unused-token check read it with `gametext.txt` |
-| `assets/config/economy.ini` | Credits earned per kill, boss, stage clear and asteroid event, with the economy maths |
+| `assets/config/economy.ini` | Credits earned per kill, boss, stage clear and asteroid event, with the economy maths; fuel and shield prices, the per-dock fuel surcharge and the next jump's fuel need |
 | `assets/config/upgrades.ini` | The dock's upgrade table: names, prices per level, effect values per level, and each upgrade's description |
 | `assets/config/abilities.ini` | Active ability behaviour: nova charges, radius and boss damage; roll cooldowns, length and speed; the first-purchase hints |
 

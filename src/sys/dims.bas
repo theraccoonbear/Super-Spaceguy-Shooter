@@ -184,6 +184,7 @@ DIM SHARED isManeuver AS INTEGER
 DIM SHARED laserEnergy AS SINGLE : laserEnergy = 100.0
 DIM SHARED fuelLevel AS SINGLE : fuelLevel = 100.0
 DIM SHARED fuelStranded AS INTEGER
+DIM SHARED runStranded AS INTEGER   ' -1 = the run ended stranded at a dock (game over says STRANDED, #277)
 DIM SHARED scorePopTimer AS INTEGER, scorePopY AS SINGLE, scorePopVal AS LONG
 DIM SHARED spawnFlashTimer AS INTEGER
 DIM SHARED spawnFlashPX AS SINGLE, spawnFlashPY AS SINGLE, spawnFlashPZ AS SINGLE
@@ -231,8 +232,6 @@ DIM SHARED levelNum      AS INTEGER
 DIM SHARED levelType     AS INTEGER
 DIM SHARED astParsecs        AS INTEGER                          ' parsec display total for the asteroid stage HUD gauge
 Const ASTFIELD_DURATION      = 120.0  ' tt-ticks to survive the asteroid stage (≈80s at 60fps)
-Const ASTFIELD_FUEL_DRAIN_PT = 0.74   ' fuel units per tt-tick (FUEL_DRAIN 0.0185/frame * 40 frames/tick)
-Const ASTFIELD_FUEL_FRAC     = 0.563  ' fraction of field's base-drain cost on arrival — calibrated to ~50 fuel units at start
 DIM SHARED astFieldStart AS SINGLE
 DIM SHARED astDestName   AS STRING
 DIM SHARED astNmSndCool   AS INTEGER
@@ -293,7 +292,9 @@ DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
 DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP POST
-DIM SHARED telemExitReason   AS STRING  ' "death", "quit", or "win" -- set before TELEM_SessionEnd
+DIM SHARED telemExitReason   AS STRING  ' "death", "quit", "win" or "stranded" -- set before TELEM_SessionEnd
+DIM SHARED telemLegFuel      AS SINGLE  ' fuel burned this leg (stage_clear telemetry, #277)
+DIM SHARED telemLegFrames    AS LONG    ' frames flown this leg
 
 ' --- HTTP response (populated by HTTP_Pump after each transfer) ---
 DIM SHARED httpLastResp    AS HttpResponse
@@ -343,6 +344,7 @@ DIM SHARED cliSeedSet      AS INTEGER
 DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N credits (testing the dock)
 DIM SHARED cliShips        AS LONG     ' --ships N: start with N ships (testing: quick game over)
 DIM SHARED cliShields      AS LONG     ' --shields N: start with N shield points (testing: damaged shields at the dock)
+DIM SHARED cliFuel         AS LONG     ' --fuel N: start with N fuel (testing: a stranded dock)
 DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
 DIM SHARED cliShotN        AS INTEGER

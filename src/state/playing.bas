@@ -139,7 +139,8 @@ Sub GS_PLAYING_Update ()
 
             IF gameState = GS_PLAYING THEN
                 fuelLevel = fuelLevel - FUEL_DRAIN
-                IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST
+                telemLegFuel = telemLegFuel + FUEL_DRAIN : telemLegFrames = telemLegFrames + 1
+                IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST : telemLegFuel = telemLegFuel + FUEL_DRAIN_BOOST
                 IF fuelLevel <= 0 THEN
                     fuelLevel = 0
                     IF fuelStranded = 0 THEN TELEM_FuelExhausted

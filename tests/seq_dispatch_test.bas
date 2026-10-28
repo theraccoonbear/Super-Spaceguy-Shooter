@@ -48,8 +48,6 @@ Const BOSS_WARN_FRAMES  = 120
 Const DIFF_RAMP_DURATION = 600.0
 Const DIFF_STAGE_COUNT   = 6.0
 Const ASTFIELD_DURATION      = 120.0
-Const ASTFIELD_FUEL_DRAIN_PT = 0.74
-Const ASTFIELD_FUEL_FRAC     = 0.563
 Const CAM_OFFSET_X = 6.5
 Const CAM_OFFSET_Y = 2.0
 
@@ -71,8 +69,6 @@ Dim Shared diffTime     As Single
 Dim Shared diffScale    As Single
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
-Dim Shared fuelLevel    As Single
-Dim Shared fuelMax      As Single : fuelMax = 100   ' asteroid stage fuel scales with the tank (#268)
 Dim Shared planetCurrent As Integer
 Dim Shared planetNameIdx As Integer
 Dim Shared planetTimer  As Integer
@@ -646,6 +642,25 @@ SEQ_Advance                      ' CRAWL stage5
 SEQ_Advance                      ' PLAY combat
 ST_Assert levelType = LEVEL_COMBAT And levelNum = 5, "20.05  combat stage, levelNum=5"
 ST_Assert planetTimer = 0,                        "20.06  combat PLAY clears stale planetTimer (no chapter 4 planet)"
+
+Print ""
+Print "--- 21. SEQ_NextLeg: the leg after each dock (fuel need, #277) ---"
+Dim st21K As Long, st21B As Integer, st21A As Integer, st21R As Integer
+ST_Reset
+st21R = ST_Jump%("dock1") : SEQ_NextLeg st21K, st21B, st21A
+ST_Assert st21K = 15 And st21B = 0 And st21A = 0, "21.01  after dock1: chapter 2, a 15-kill combat"
+ST_Reset
+st21R = ST_Jump%("dock2") : SEQ_NextLeg st21K, st21B, st21A
+ST_Assert st21K = 10 And st21B = 1 And st21A = 0, "21.02  after dock2: chapter 3, 10 kills and a boss"
+ST_Reset
+st21R = ST_Jump%("dock3") : SEQ_NextLeg st21K, st21B, st21A
+ST_Assert st21K = 0 And st21B = 0 And st21A = 1, "21.03  after dock3: chapter 4, the asteroid field"
+ST_Reset
+st21R = ST_Jump%("dock5") : SEQ_NextLeg st21K, st21B, st21A
+ST_Assert st21K = 20 And st21B = 1 And st21A = 0, "21.04  after dock5: chapter 6, 20 kills and a boss"
+ST_Reset
+st21R = ST_Jump%("boss6") : SEQ_Advance : SEQ_NextLeg st21K, st21B, st21A
+ST_Assert st21K = 0 And st21B = 0 And st21A = 0, "21.05  after the last arrival: no leg ahead"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="

@@ -148,6 +148,35 @@ Sub TELEM_UpgradeBought(tlubItem As String, tlubLevel As Integer, tlubPrice As L
             + "|price=" + LTrim$(Str$(tlubPrice)) + "|credits_left=" + LTrim$(Str$(credits))
 End Sub
 
+' Fuel bought at the dock by the amount (#277): units, total price, price per unit, the
+' blockade surcharge multiplier and the chapter it applied to.
+Sub TELEM_FuelBought(tlfbAmt As Integer, tlfbPrice As Long, tlfbUnit As Single, tlfbMult As Single, tlfbCh As Integer)
+    TELEM_Row "fuel_bought", "amount=" + LTrim$(Str$(tlfbAmt)) + "|price=" + LTrim$(Str$(tlfbPrice)) _
+            + "|unit=" + LTrim$(Str$(tlfbUnit)) + "|mult=" + LTrim$(Str$(tlfbMult)) _
+            + "|chapter=" + LTrim$(Str$(tlfbCh)) + "|credits_left=" + LTrim$(Str$(credits))
+End Sub
+
+Sub TELEM_ShieldBought(tlsbAmt As Integer, tlsbPrice As Long, tlsbCh As Integer)
+    TELEM_Row "shield_bought", "amount=" + LTrim$(Str$(tlsbAmt)) + "|price=" + LTrim$(Str$(tlsbPrice)) _
+            + "|chapter=" + LTrim$(Str$(tlsbCh)) + "|credits_left=" + LTrim$(Str$(credits))
+End Sub
+
+' The run ended at a dock without the fuel or the credits for the next jump (#277). Logged
+' before the cash-out, so credits is what was left unspent.
+Sub TELEM_RunStranded(tlrsCh As Integer, tlrsFuel As Single, tlrsNeed As Single, tlrsCredits As Long, tlrsUnit As Single)
+    TELEM_Row "run_stranded", "chapter=" + LTrim$(Str$(tlrsCh)) + "|fuel=" + LTrim$(Str$(Int(tlrsFuel))) _
+            + "|need=" + LTrim$(Str$(tlrsNeed)) + "|credits=" + LTrim$(Str$(tlrsCredits)) _
+            + "|fuel_price=" + LTrim$(Str$(tlrsUnit))
+End Sub
+
+' A leg flown (#277): from leaving the last dock (or the start) to the planet arrival, the
+' fuel burned and the seconds spent in play, so #274 can fit economy.ini's leg fuel need.
+Sub TELEM_StageClear(tlscCh As Integer, tlscFuelUsed As Single, tlscSecs As Single, tlscFuelLeft As Single)
+    TELEM_Row "stage_clear", "chapter=" + LTrim$(Str$(tlscCh)) + "|fuel_used=" + LTrim$(Str$(Int(tlscFuelUsed + 0.5))) _
+            + "|seconds=" + LTrim$(Str$(Int(tlscSecs + 0.5))) + "|fuel_left=" + LTrim$(Str$(Int(tlscFuelLeft))) _
+            + "|credits=" + LTrim$(Str$(credits))
+End Sub
+
 ' End of a run (#268): leftover credits cashed in for score, logged once per run.
 Sub TELEM_CreditBonus(tlcbCredits As Long, tlcbRate As Double, tlcbPts As Long)
     TELEM_Row "credit_bonus", "credits=" + LTrim$(Str$(tlcbCredits)) + "|rate=" + LTrim$(Str$(tlcbRate)) _

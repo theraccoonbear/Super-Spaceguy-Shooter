@@ -68,6 +68,11 @@ Sub CLI_Parse()
         cliNumOk = CR_ParseArg%(cliVal, cliShields)
         If cliNumOk = 0 Or cliShields < 1 Then GAME_Usage("--shields needs a whole number 1 or more, got '" + cliVal + "'")
     End If
+    cliVal = CLI_Value$(cliLine, "--fuel ")
+    If cliVal <> "" Then
+        cliNumOk = CR_ParseArg%(cliVal, cliFuel)
+        If cliNumOk = 0 Or cliFuel < 1 Then GAME_Usage("--fuel needs a whole number 1 or more, got '" + cliVal + "'")
+    End If
     cliVal = CLI_Value$(cliLine, "--seed ")
     If cliVal <> "" Then
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--seed needs a whole number, got '" + cliVal + "'")
