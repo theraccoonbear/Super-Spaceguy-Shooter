@@ -10,6 +10,8 @@
 '   UI_PanelFade x1, y1, x2, y2, a       the same, faded as a whole to opacity a (0-255)
 '   UI_Text pal, txt$, x, y, a           text with the 1px drop shadow that keeps it legible there
 '   UI_TextCentered pal, txt$, y, a
+'
+'   UI_MenuHighlight x1, y1, x2, y2      the selected menu row's box, the same in every menu
 
 Const UI_SEE_ALPHA = 100   ' see-through panel fill opacity (0-255): low so the art shows
 
@@ -42,6 +44,17 @@ End Sub
 
 Sub UI_TextCentered (utcPal As Integer, utcTxt As String, utcY As Integer, utcA As Integer)
     UI_Text utcPal, utcTxt, (scrW - Len(utcTxt) * FONT_CHAR_W) \ 2, utcY, utcA
+End Sub
+
+Sub UI_MenuHighlight (umhX1 As Integer, umhY1 As Integer, umhX2 As Integer, umhY2 As Integer)
+    Dim umhCC As Long
+    Line (umhX1, umhY1)-(umhX2, umhY2), _RGBA(0, 40, 100, 180), BF
+    Line (umhX1, umhY1)-(umhX2, umhY2), _RGB(0, 100, 180), B
+    umhCC = _RGB(0, 210, 255)
+    Line (umhX1, umhY1)-(umhX1 + 4, umhY1), umhCC : Line (umhX1, umhY1)-(umhX1, umhY1 + 4), umhCC
+    Line (umhX2, umhY1)-(umhX2 - 4, umhY1), umhCC : Line (umhX2, umhY1)-(umhX2, umhY1 + 4), umhCC
+    Line (umhX1, umhY2)-(umhX1 + 4, umhY2), umhCC : Line (umhX1, umhY2)-(umhX1, umhY2 - 4), umhCC
+    Line (umhX2, umhY2)-(umhX2 - 4, umhY2), umhCC : Line (umhX2, umhY2)-(umhX2, umhY2 - 4), umhCC
 End Sub
 
 

@@ -114,14 +114,10 @@ Sub OPTS_Update ()
     oEsc = (held(E3D_KEY_ESCAPE) <> 0) Or (held(E3D_KEY_PAD_B) <> 0)
 
     ' navigate: edge-detect on up/down
-    If oUp And Not optUpWas Then
-        optSel = (optSel + 6) Mod 7
-        optLfRpt = 0 : optRtRpt = 0
-    End If
-    If oDn And Not optDnWas Then
-        optSel = (optSel + 1) Mod 7
-        optLfRpt = 0 : optRtRpt = 0
-    End If
+    Dim oSel0 As Integer, oNav As Integer
+    oSel0 = optSel
+    oNav = MENU_Nav%(optSel, 7, oUp And optUpWas = 0, oDn And optDnWas = 0, 0)
+    If optSel <> oSel0 Then optLfRpt = 0 : optRtRpt = 0
 
     ' adjust: immediate press + hold repeat every 6 frames
     If oLf Then
@@ -224,14 +220,7 @@ Sub OPTS_Update ()
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
-            LINE (30, oY - 3)-(scrW - 31, oY + 17), _RGBA(0, 40, 100, 180), BF
-            LINE (30, oY - 3)-(scrW - 31, oY + 17), _RGB(0, 100, 180), B
-            ' corner accents on selection
-            Dim oCC As Long : oCC = _RGB(0, 210, 255)
-            LINE (30, oY - 3)-(34, oY - 3), oCC : LINE (30, oY - 3)-(30, oY + 1), oCC
-            LINE (scrW - 31, oY - 3)-(scrW - 35, oY - 3), oCC : LINE (scrW - 31, oY - 3)-(scrW - 31, oY + 1), oCC
-            LINE (30, oY + 17)-(34, oY + 17), oCC : LINE (30, oY + 17)-(30, oY + 13), oCC
-            LINE (scrW - 31, oY + 17)-(scrW - 35, oY + 17), oCC : LINE (scrW - 31, oY + 17)-(scrW - 31, oY + 13), oCC
+            UI_MenuHighlight 30, oY - 3, scrW - 31, oY + 17
             FONT_PrintAlpha fontPalette(14), backBuffer, oLabels(oI), 38, oY, 255
         Else
             FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oI), 38, oY, 255

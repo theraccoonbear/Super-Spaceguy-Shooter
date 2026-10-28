@@ -30,24 +30,31 @@ Sub GS_PLAYING_Update ()
         END SELECT
         IF pauseShown THEN
             ' key / pad-button column, sized to the bound buttons' names
-            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer
-            Dim gspK(1 TO 4) As String
-            gspK(1) = "Y/" + E3D_PadBtnName$(padBind(E3D_ACT_CONFIRM), ctrlLayout)
-            gspK(2) = "C/" + E3D_PadBtnName$(padBind(E3D_ACT_ROLL), ctrlLayout)
-            gspK(3) = "K/" + E3D_PadBtnName$(padBind(E3D_ACT_NOVA), ctrlLayout)
-            gspK(4) = "ESC/" + E3D_PadBtnName$(padBind(E3D_ACT_BACK), ctrlLayout)
+            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer
+            Dim gspK(0 TO 3) As String, gspL(0 TO 3) As String, gspPal(0 TO 3) As Integer
+            gspK(0) = "Y"
+            gspK(1) = "C/" + E3D_PadBtnName$(padBind(E3D_ACT_ROLL), ctrlLayout)
+            gspK(2) = "K/" + E3D_PadBtnName$(padBind(E3D_ACT_NOVA), ctrlLayout)
+            gspK(3) = "ESC/" + E3D_PadBtnName$(padBind(E3D_ACT_BACK), ctrlLayout)
+            gspL(0) = "CONFIRM RETREAT" : gspL(1) = "CONTROLS" : gspL(2) = "REMAP CONTROLS" : gspL(3) = "CANCEL"
+            gspPal(0) = 14 : gspPal(1) = 9 : gspPal(2) = 9 : gspPal(3) = 8
             gspKW = 0
-            FOR gspKi = 1 TO 4
+            FOR gspKi = 0 TO 3
                 IF LEN(gspK(gspKi)) > gspKW THEN gspKW = LEN(gspK(gspKi))
             NEXT gspKi
             gspKW = gspKW + 2
             gspPx = (scrW - (gspKW + 15) * FONT_CHAR_W) \ 2
             _DEST backBuffer
             UI_DrawPanel scrW\2 - 104, scrH\2 - 30, scrW\2 + 104, scrH\2 + 70, "ABORT MISSION"
-            FONT_PrintAlpha fontPalette(14), backBuffer, LEFT$(gspK(1) + SPACE$(gspKW), gspKW) + "CONFIRM RETREAT", gspPx, scrH\2 - 4, 255
-            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$(gspK(2) + SPACE$(gspKW), gspKW) + "CONTROLS", gspPx, scrH\2 + 14, 255
-            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$(gspK(3) + SPACE$(gspKW), gspKW) + "REMAP CONTROLS", gspPx, scrH\2 + 32, 255
-            FONT_PrintAlpha fontPalette(8),  backBuffer, LEFT$(gspK(4) + SPACE$(gspKW), gspKW) + "CANCEL", gspPx, scrH\2 + 50, 255
+            FOR gspKi = 0 TO 3
+                gspRy = scrH\2 - 4 + gspKi * 18
+                IF gspKi = pauseSel THEN
+                    UI_MenuHighlight scrW\2 - 101, gspRy - 2, scrW\2 + 101, gspRy + 14
+                    FONT_PrintAlpha fontPalette(15), backBuffer, LEFT$(gspK(gspKi) + SPACE$(gspKW), gspKW) + gspL(gspKi), gspPx, gspRy, 255
+                ELSE
+                    FONT_PrintAlpha fontPalette(gspPal(gspKi)), backBuffer, LEFT$(gspK(gspKi) + SPACE$(gspKW), gspKW) + gspL(gspKi), gspPx, gspRy, 255
+                END IF
+            NEXT gspKi
             _DEST 0
             _PUTIMAGE , backBuffer, 0
             EXIT SUB

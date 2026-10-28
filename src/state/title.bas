@@ -26,8 +26,7 @@ Sub GS_TITLE_Update ()
         Dim gstKX As Integer, gstSelY As Integer
         UI_DrawPanel scrW\2 - 76, scrH\2 - 72, scrW\2 + 76, scrH\2 + 66, "COMMAND CONSOLE"
         gstSelY = scrH\2 - 46 + titleConSel * 18
-        LINE (scrW\2 - 66, gstSelY - 3)-(scrW\2 + 66, gstSelY + 11), _RGBA(0, 40, 100, 180), BF
-        LINE (scrW\2 - 66, gstSelY - 3)-(scrW\2 + 66, gstSelY + 11), _RGB(0, 100, 180), B
+        UI_MenuHighlight scrW\2 - 66, gstSelY - 3, scrW\2 + 66, gstSelY + 11
         ' key column: dim full label first, then overwrite hotkey in bright
         gstKX = scrW\2 - 44
         FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",       gstKX, scrH\2 - 46, 255
@@ -54,10 +53,7 @@ Sub GS_TITLE_Update ()
     escWas = held(E3D_KEY_ESCAPE)
     IF titleEscConfirm THEN
         Dim gstPick As Integer
-        IF KEY_Pressed%(E3D_KEY_UP) THEN titleConSel = (titleConSel + 5) MOD 6
-        IF KEY_Pressed%(E3D_KEY_DOWN) THEN titleConSel = (titleConSel + 1) MOD 6
-        gstPick = -1
-        IF KEY_Confirm% THEN gstPick = titleConSel
+        gstPick = MENU_Input%(titleConSel, 6)
         IF KEY_Down%(65) OR KEY_Down%(97) THEN gstPick = 0
         IF KEY_Down%(67) OR KEY_Down%(99) THEN gstPick = 1
         IF KEY_Down%(83) OR KEY_Down%(115) THEN gstPick = 2

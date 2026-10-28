@@ -64,8 +64,7 @@ Sub DOCK_Draw
         If dkdI > DOCK_LAUNCH Then Exit For
         dkdY = DOCK_ROW_Y + dkdRow * DOCK_ROW_H
         If dkdI = dockSel Then
-            Line (DOCK_PX1 + 4, dkdY - 1)-(DOCK_PX2 - 4, dkdY + 15), _RGBA(0, 60, 130, 220), BF
-            Line (DOCK_PX1 + 4, dkdY - 1)-(DOCK_PX2 - 4, dkdY + 15), dkdCC, B
+            UI_MenuHighlight DOCK_PX1 + 4, dkdY - 1, DOCK_PX2 - 4, dkdY + 15
         End If
         If dkdI = DOCK_LAUNCH Then
             If dkdI = dockSel Then dkdPal = 15 Else dkdPal = 10

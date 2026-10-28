@@ -40,7 +40,7 @@ End Sub
 Sub RMP_DrawPage
     Dim rmdI As Integer, rmdRow As Integer, rmdY As Integer, rmdAct As Integer, rmdSy As Integer
     Dim rmdKey As String, rmdPad As String, rmdKPal As Integer, rmdPPal As Integer, rmdLPal As Integer
-    Dim rmdCC As Long, rmdName As String
+    Dim rmdName As String
 
     If rmpSel < rmdTop Then rmdTop = rmpSel
     If rmpSel >= rmdTop + RMD_ROWS_SHOWN Then rmdTop = rmpSel - RMD_ROWS_SHOWN + 1
@@ -63,11 +63,7 @@ Sub RMP_DrawPage
         If rmdRow >= RMP_ROWS Then Exit For
         rmdY = RMD_ROW_Y + rmdI * RMD_ROW_H
         If rmdRow = rmpSel Then
-            Line (26, rmdY - 1)-(scrW - 27, rmdY + 15), _RGBA(0, 40, 100, 180), BF
-            Line (26, rmdY - 1)-(scrW - 27, rmdY + 15), _RGB(0, 100, 180), B
-            rmdCC = _RGB(0, 210, 255)
-            Line (26, rmdY - 1)-(30, rmdY - 1), rmdCC : Line (scrW - 27, rmdY - 1)-(scrW - 31, rmdY - 1), rmdCC
-            Line (26, rmdY + 15)-(30, rmdY + 15), rmdCC : Line (scrW - 27, rmdY + 15)-(scrW - 31, rmdY + 15), rmdCC
+            UI_MenuHighlight 26, rmdY - 1, scrW - 27, rmdY + 15
             rmdLPal = 14
         Else
             rmdLPal = 9

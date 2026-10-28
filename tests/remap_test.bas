@@ -21,6 +21,7 @@ Sub DBG_Print (rtDbg As String) : End Sub
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/sys/inputscript.bas'
+'$INCLUDE:'../src/sys/menunav.bas'
 '$INCLUDE:'../src/state/pauselogic.bas'
 '$INCLUDE:'../src/state/remaplogic.bas'
 

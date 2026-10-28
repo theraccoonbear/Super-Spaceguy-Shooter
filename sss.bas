@@ -143,6 +143,8 @@ IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
 IF cliCrawls THEN
     CRAWLBROWSE_Init
     gameState = GS_CRAWLS
+ELSEIF cliSceneType = "consent" THEN
+    gameState = GS_CONSENT
 ELSEIF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
     IF seqJumpCrawl$ <> "" THEN

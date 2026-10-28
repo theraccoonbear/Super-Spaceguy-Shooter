@@ -108,7 +108,7 @@ Sub RMP_Leave
 End Sub
 
 Function RMP_Input%
-    Dim riRes As Integer, riAct As Integer, riEsc As Integer, riSkip As Integer
+    Dim riRes As Integer, riAct As Integer, riEsc As Integer, riSkip As Integer, riSel0 As Integer, riNav As Integer
     RMP_Input% = RMP_EV_NONE
     If rmpMsgT > 0 Then rmpMsgT = rmpMsgT - 1
     riEsc = KEY_Down%(27)
@@ -137,8 +137,9 @@ Function RMP_Input%
             RMP_Release rmpAuto
         End If
     Case Else
-        If KEY_Pressed%(E3D_KEY_UP) Then rmpSel = (rmpSel + RMP_ROWS - 1) Mod RMP_ROWS : RMP_Input% = RMP_EV_MOVE
-        If KEY_Pressed%(E3D_KEY_DOWN) Then rmpSel = (rmpSel + 1) Mod RMP_ROWS : RMP_Input% = RMP_EV_MOVE
+        riSel0 = rmpSel
+        riNav = MENU_Nav%(rmpSel, RMP_ROWS, KEY_Pressed%(E3D_KEY_UP), KEY_Pressed%(E3D_KEY_DOWN), 0)
+        If rmpSel <> riSel0 Then RMP_Input% = RMP_EV_MOVE
         If KEY_Pressed%(E3D_KEY_LEFT) Or KEY_Pressed%(E3D_KEY_RIGHT) Then rmpCol = 1 - rmpCol : RMP_Input% = RMP_EV_MOVE
         If (riEsc And rmpEscWas = 0) Or KEY_Back% Then
             rmpSaveDue = -1
