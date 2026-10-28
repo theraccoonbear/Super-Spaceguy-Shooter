@@ -166,7 +166,7 @@ Sub ABOUT_Update()
     Line (17, scrH - 36)-(scrW - 18, scrH - 28), _RGBA(2, 4, 18, 100), BF
     Line (17, scrH - 28)-(scrW - 18, scrH - 20), _RGBA(2, 4, 18, 220), BF
 
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "up/dn scroll   ESC/B back", scrH - 14, scrW, 255
+    UI_PromptsCentered "up/dn scroll   " + UI_Tok$("ESC", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
 
     _Dest 0
     _PutImage , backBuffer, 0

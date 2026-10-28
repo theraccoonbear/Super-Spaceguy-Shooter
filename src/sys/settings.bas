@@ -262,7 +262,7 @@ Sub OPTS_Update ()
             FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
         ElseIf oI = 6 Then
             If oI = optSel Then
-                FONT_PrintAlpha fontPalette(15), backBuffer, "REMAP [ENTER]", OPT_BAR_X, oY, 255
+                UI_Prompts "REMAP " + UI_Tok$("[ENTER]", E3D_ACT_CONFIRM), OPT_BAR_X, oY, 15, 255
             Else
                 FONT_PrintAlpha fontPalette(9),  backBuffer, "KEYS + GAMEPAD", OPT_BAR_X, oY, 200
             End If
@@ -275,7 +275,8 @@ Sub OPTS_Update ()
             If oI = optSel Then oCallMax = 13 Else oCallMax = 21
             If Len(oCallName) > oCallMax Then oCallName = Left$(oCallName, oCallMax - 2) + ".."
             If oI = optSel Then
-                FONT_PrintAlpha fontPalette(15), backBuffer, oCallName + " [ENTER]", OPT_BAR_X, oY, 255
+                FONT_PrintAlpha fontPalette(15), backBuffer, oCallName, OPT_BAR_X, oY, 255
+                UI_Prompts UI_Tok$("[ENTER]", E3D_ACT_CONFIRM), OPT_BAR_X + (Len(oCallName) + 1) * FONT_CHAR_W, oY, 15, 255
             Else
                 FONT_PrintAlpha fontPalette(9),  backBuffer, oCallName,             OPT_BAR_X, oY, 200
             End If
@@ -285,7 +286,11 @@ Sub OPTS_Update ()
     If highScore > 0 Then
         FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "HI SCORE:  " + LTRIM$(STR$(highScore)), 202, scrW, 255
     End If
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
+    If INP_LastDevice% = INP_DEV_PAD Then
+        UI_PromptsCentered "< > adjust  up/dn select  " + UI_Tok$("", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
+    Else
+        FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
+    End If
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0

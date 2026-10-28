@@ -78,16 +78,12 @@ Sub RMP_DrawPage
             rmdKey = E3D_KeyName$(keyBind(rmdAct))
             rmdKPal = 9 : rmdPPal = 9
             If E3D_KeyFixed%(rmdAct) Then rmdKPal = 8
-            If rmdAct > E3D_ACT_PAD_COUNT Then
-                rmdPad = "STICK" : rmdPPal = 8
-            Else
-                rmdPad = E3D_PadBtnName$(padBind(rmdAct), ctrlLayout)
-            End If
+            If rmdAct > E3D_ACT_PAD_COUNT Then rmdPad = "STICK" : rmdPPal = 8 Else rmdPad = ""
             If rmdRow = rmpSel Then
                 If rmpCol = 0 Then rmdKPal = 15 Else rmdPPal = 15
             End If
             FONT_PrintAlpha fontPalette(rmdKPal), backBuffer, rmdKey, RMD_KEY_X, rmdY, 255
-            FONT_PrintAlpha fontPalette(rmdPPal), backBuffer, rmdPad, RMD_PAD_X, rmdY, 255
+            If rmdPad = "" Then UI_PadBadge padBind(rmdAct), RMD_PAD_X, rmdY, 255 Else FONT_PrintAlpha fontPalette(rmdPPal), backBuffer, rmdPad, RMD_PAD_X, rmdY, 255
         End If
     Next rmdI
     If rmdTop > 0 Then FONT_PrintAlpha fontPalette(8), backBuffer, "^", scrW - 34, RMD_ROW_Y - 2, 255
@@ -101,7 +97,7 @@ Sub RMP_DrawPage
         If Len(rmdName) > 34 Then rmdName = Left$(rmdName, 32) + ".."
         FONT_PrintCenteredAlpha fontPalette(8), backBuffer, rmdName, 190, scrW, 255
     End If
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "ENTER/A REBIND  < > KEY/PAD  ESC", scrH - 14, scrW, 255
+    UI_PromptsCentered UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " REBIND  < > KEY/PAD  " + UI_Tok$("ESC", E3D_ACT_BACK), scrH - 14, 8, 255
 End Sub
 
 Sub RMP_DrawWizard

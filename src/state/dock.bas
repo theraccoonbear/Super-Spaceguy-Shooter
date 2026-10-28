@@ -126,7 +126,7 @@ Sub DOCK_Draw
         If dockMsgBad Then dkdPal = 12 Else dkdPal = 10
         UI_Text dkdPal, dockMsg, DOCK_PX1 + 8, dkdY + 32, 255
     End If
-    UI_Text 8, "ENTER/A BUY  ESC/B GO", DOCK_PX1 + 8, DOCK_PY2 - 18, 255
+    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("ESC", E3D_ACT_BACK) + " GO", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
 
     _Dest 0
     _PutImage , backBuffer, 0

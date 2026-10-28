@@ -66,9 +66,9 @@ Sub GS_USERNAME_Update ()
     ' key hints
     Dim unHY As Integer : unHY = scrH \ 2 + 22
     Dim unKX As Integer : unKX = scrW \ 2 - 44
-    FONT_PrintAlpha fontPalette(15), backBuffer, "ENTER/A", unKX,                   unHY,      255
+    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM), INP_LastDevice%, unKX, unHY, 15, 255, 0
     FONT_PrintAlpha fontPalette(9),  backBuffer, "OK",      unKX + 9 * FONT_CHAR_W, unHY,      255
-    FONT_PrintAlpha fontPalette(15), backBuffer, "ESC/B",   unKX,                   unHY + 16, 200
+    UI_PromptsAt UI_Tok$("ESC", E3D_ACT_BACK), INP_LastDevice%, unKX, unHY + 16, 15, 200, 0
     FONT_PrintAlpha fontPalette(8),  backBuffer, "SKIP",    unKX + 9 * FONT_CHAR_W, unHY + 16, 200
 
     _DEST 0

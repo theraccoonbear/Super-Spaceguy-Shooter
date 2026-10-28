@@ -26,7 +26,7 @@ End Sub
 Sub CONTROLS_Row (ctlrRow As Integer, ctlrKey As String, ctlrAct As String)
     Dim ctlrY As Integer
     ctlrY = CTL_ROW_Y + ctlrRow * CTL_ROW_H
-    FONT_PrintAlpha fontPalette(15), backBuffer, ctlrKey, CTL_KEY_X, ctlrY, 255
+    UI_PromptsAt ctlrKey, INP_DEV_PAD, CTL_KEY_X, ctlrY, 15, 255, 0
     FONT_PrintAlpha fontPalette(9),  backBuffer, ctlrAct, CTL_ACT_X, ctlrY, 255
 End Sub
 
@@ -94,7 +94,7 @@ Sub CONTROLS_Update ()
         CONTROLS_Systems ctlPage - 2
     End If
 
-    FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "<- -> page   ESC/B back", scrH - 14, scrW, 255
+    UI_PromptsCentered "<- -> page   " + UI_Tok$("ESC", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
 
     _Dest 0
     _PutImage , backBuffer, 0
@@ -107,11 +107,12 @@ Sub CONTROLS_Update ()
     ctlEscWas = ctlEsc
 End Sub
 
-' Bound key / pad button names for the reference pages (remapped in Settings > Controls, #266).
+' Bound key names, and pad button badges as UI_Tok$ prompts, for the reference pages
+' (remapped in Settings > Controls, #266).
 Function CONTROLS_Key$ (ckAct As Integer)
     CONTROLS_Key$ = E3D_KeyName$(keyBind(ckAct))
 End Function
 
 Function CONTROLS_Pad$ (cpAct As Integer)
-    CONTROLS_Pad$ = E3D_PadBtnName$(padBind(cpAct), ctrlLayout)
+    CONTROLS_Pad$ = UI_Tok$("", cpAct)
 End Function

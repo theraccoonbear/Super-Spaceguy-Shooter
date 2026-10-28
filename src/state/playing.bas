@@ -29,31 +29,33 @@ Sub GS_PLAYING_Update ()
                 RMP_Open gameState
         END SELECT
         IF pauseShown THEN
-            ' key / pad-button column, sized to the bound buttons' names
-            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer
-            Dim gspK(0 TO 3) As String, gspL(0 TO 3) As String, gspPal(0 TO 3) As Integer
-            gspK(0) = "Y"
-            gspK(1) = "C/" + E3D_PadBtnName$(padBind(E3D_ACT_ROLL), ctrlLayout)
-            gspK(2) = "K/" + E3D_PadBtnName$(padBind(E3D_ACT_NOVA), ctrlLayout)
-            gspK(3) = "ESC/" + E3D_PadBtnName$(padBind(E3D_ACT_BACK), ctrlLayout)
+            ' prompt column, sized to the widest prompt for the device last used
+            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer, gspDev As Integer, gspPal As Integer
+            Dim gspK(0 TO 3) As String, gspL(0 TO 3) As String, gspPals(0 TO 3) As Integer
+            gspK(0) = UI_Tok$("Y", 0)
+            gspK(1) = UI_Tok$("C", E3D_ACT_ROLL)
+            gspK(2) = UI_Tok$("K", E3D_ACT_NOVA)
+            gspK(3) = UI_Tok$("ESC", E3D_ACT_BACK)
             gspL(0) = "CONFIRM RETREAT" : gspL(1) = "CONTROLS" : gspL(2) = "REMAP CONTROLS" : gspL(3) = "CANCEL"
-            gspPal(0) = 14 : gspPal(1) = 9 : gspPal(2) = 9 : gspPal(3) = 8
+            gspPals(0) = 14 : gspPals(1) = 9 : gspPals(2) = 9 : gspPals(3) = 8
+            gspDev = INP_LastDevice%
             gspKW = 0
             FOR gspKi = 0 TO 3
-                IF LEN(gspK(gspKi)) > gspKW THEN gspKW = LEN(gspK(gspKi))
+                IF UI_PromptsW%(gspK(gspKi), gspDev) > gspKW THEN gspKW = UI_PromptsW%(gspK(gspKi), gspDev)
             NEXT gspKi
-            gspKW = gspKW + 2
-            gspPx = (scrW - (gspKW + 15) * FONT_CHAR_W) \ 2
+            gspKW = gspKW + 2 * FONT_CHAR_W
+            gspPx = (scrW - gspKW - 15 * FONT_CHAR_W) \ 2
             _DEST backBuffer
             UI_DrawPanel scrW\2 - 104, scrH\2 - 30, scrW\2 + 104, scrH\2 + 70, "ABORT MISSION"
             FOR gspKi = 0 TO 3
                 gspRy = scrH\2 - 4 + gspKi * 18
+                gspPal = gspPals(gspKi)
                 IF gspKi = pauseSel THEN
                     UI_MenuHighlight scrW\2 - 101, gspRy - 2, scrW\2 + 101, gspRy + 14
-                    FONT_PrintAlpha fontPalette(15), backBuffer, LEFT$(gspK(gspKi) + SPACE$(gspKW), gspKW) + gspL(gspKi), gspPx, gspRy, 255
-                ELSE
-                    FONT_PrintAlpha fontPalette(gspPal(gspKi)), backBuffer, LEFT$(gspK(gspKi) + SPACE$(gspKW), gspKW) + gspL(gspKi), gspPx, gspRy, 255
+                    gspPal = 15
                 END IF
+                UI_PromptsAt gspK(gspKi), gspDev, gspPx, gspRy, gspPal, 255, 0
+                FONT_PrintAlpha fontPalette(gspPal), backBuffer, gspL(gspKi), gspPx + gspKW, gspRy, 255
             NEXT gspKi
             _DEST 0
             _PUTIMAGE , backBuffer, 0

@@ -29,20 +29,20 @@ Sub GS_CONSENT_Update()
     LINE (cnPX1 + 8, scrH \ 2 + 16)-(cnPX2 - 8, scrH \ 2 + 16), _RGB(0, 55, 110)
 
     ' two-column layout: keys right-aligned to cnDX-16, descs left-aligned at cnDX
-    ' all three key labels in fontPalette(15); right edges share X = cnDX - 2*FONT_CHAR_W
+    ' the prompts (key names or pad badges) right edges share X = cnDX - 2*FONT_CHAR_W
     Dim cnDX  As Integer : cnDX  = scrW \ 2          ' desc column left edge
     Dim cnAY(0 To 2) As Integer, cnI As Integer
     Dim cnKeyTxt(0 To 2) As String, cnDesc(0 To 2) As String, cnPal(0 To 2) As Integer, cnA(0 To 2) As Integer
-    cnKeyTxt(0) = "SPACE/A" : cnDesc(0) = "OK"              : cnPal(0) = 9 : cnA(0) = 255
-    cnKeyTxt(1) = "S/X"     : cnDesc(1) = "DON'T ASK AGAIN" : cnPal(1) = 9 : cnA(1) = 255
-    cnKeyTxt(2) = "ESC/B"   : cnDesc(2) = "NO THANKS"       : cnPal(2) = 8 : cnA(2) = 200
+    cnKeyTxt(0) = UI_Tok$("SPACE", E3D_ACT_CONFIRM) : cnDesc(0) = "OK"              : cnPal(0) = 9 : cnA(0) = 255
+    cnKeyTxt(1) = UI_Tok$("S", E3D_ACT_ROLL) : cnDesc(1) = "DON'T ASK AGAIN" : cnPal(1) = 9 : cnA(1) = 255
+    cnKeyTxt(2) = UI_Tok$("ESC", E3D_ACT_BACK) : cnDesc(2) = "NO THANKS"       : cnPal(2) = 8 : cnA(2) = 200
     For cnI = 0 To 2
         cnAY(cnI) = scrH \ 2 + 22 + cnI * 16
         If cnI = consentSel Then
             UI_MenuHighlight cnPX1 + 6, cnAY(cnI) - 1, cnPX2 - 6, cnAY(cnI) + 14
             cnPal(cnI) = 15 : cnA(cnI) = 255
         End If
-        FONT_PrintAlpha fontPalette(15), backBuffer, cnKeyTxt(cnI), cnDX - (Len(cnKeyTxt(cnI)) + 2) * FONT_CHAR_W, cnAY(cnI), cnA(cnI)
+        UI_PromptsAt cnKeyTxt(cnI), INP_LastDevice%, cnDX - 2 * FONT_CHAR_W - UI_PromptsW%(cnKeyTxt(cnI), INP_LastDevice%), cnAY(cnI), 15, cnA(cnI), 0
         FONT_PrintAlpha fontPalette(cnPal(cnI)), backBuffer, cnDesc(cnI), cnDX, cnAY(cnI), cnA(cnI)
     Next cnI
 

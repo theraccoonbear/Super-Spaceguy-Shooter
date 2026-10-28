@@ -43,11 +43,7 @@ Sub GS_LEADERBOARD_Update ()
     End If
 
     Dim lbdThrobBright As Integer : lbdThrobBright = Int(170 + 85 * Sin(tt * 5))
-    If ctrlDev > 0 Then
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE OR A TO RETURN", lbdPY2 - 18, scrW, lbdThrobBright
-    Else
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE TO RETURN", lbdPY2 - 18, scrW, lbdThrobBright
-    End If
+    UI_PromptsCentered "PRESS " + UI_Tok$("SPACE", E3D_ACT_FIRE) + " TO RETURN", lbdPY2 - 18, 15, lbdThrobBright
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0

@@ -85,6 +85,16 @@ Dim Shared padSetupDue As Integer   ' an unknown pad with no saved bindings: the
 Dim Shared padSavedN As Integer
 Dim Shared padSavedName$(1 To E3D_PAD_SAVED_MAX), padSavedBinds$(1 To E3D_PAD_SAVED_MAX)
 
+' The device last used, so prompts name only its buttons: a keyboard key going down picks the
+' keyboard, a pad button or a stick / d-pad push past the deadzone picks the pad (and a pad
+' found at startup starts it on the pad). Both the real input (E3D_InputUpdate) and scripted
+' input (ISC_Apply) report through INP_NoteKeys / E3D_PadMap.
+'   dev = INP_LastDevice%     INP_DEV_KEYS or INP_DEV_PAD
+Const INP_DEV_KEYS = 0
+Const INP_DEV_PAD  = 1
+Dim Shared inpLastDev As Integer, inpKeysWas As Integer
+Dim Shared inpPadBtnWas(1 To E3D_PAD_MAX_BTNS) As Integer, inpPadAxWas(1 To 4) As Integer
+
 E3D_KeyDefaults
 E3D_PadDefaults E3D_LAYOUT_XPAD
 ctrlLayout = E3D_LAYOUT_XPAD   ' names buttons the xpad way until a pad is picked
@@ -99,6 +109,7 @@ Sub E3D_CtrlInit
     Next ctrlI
     E3D_CtrlScan ctrlN
     If ctrlDev > 0 Then
+        inpLastDev = INP_DEV_PAD
         DBG_Print "Gamepad: device " + LTRIM$(STR$(ctrlDev))
     Else
         DBG_Print "No gamepad found; keyboard-only"
@@ -399,6 +410,12 @@ Sub E3D_InputUpdate (held() As Integer)
     held(E3D_KEY_E)      = E3D_KeyBindDown%(keyBind(E3D_ACT_ROLL))
     held(E3D_KEY_PAD_START) = 0 : held(E3D_KEY_PAD_A) = 0 : held(E3D_KEY_PAD_B) = 0
     held(E3D_KEY_PAD_X) = 0 : held(E3D_KEY_PAD_Y) = 0 : held(E3D_KEY_PAD_SELECT) = 0
+    Dim inpKc As Integer, inpKAny As Integer
+    inpKAny = held(E3D_KEY_LEFT) Or held(E3D_KEY_RIGHT) Or held(E3D_KEY_UP) Or held(E3D_KEY_DOWN) Or held(E3D_KEY_ESCAPE) Or held(E3D_KEY_ENTER) Or held(E3D_KEY_TAB)
+    For inpKc = 32 To 126
+        If _KeyDown(inpKc) Then inpKAny = -1 : Exit For
+    Next inpKc
+    INP_NoteKeys inpKAny
 
     ' _DEVICES is only counted every E3D_CTRL_RESCAN_TICKS frames
     Static ctrlPlugTick As Integer
@@ -448,6 +465,7 @@ End Sub
 ' (padBind), then E3D_PadApply sets the slots.
 Sub E3D_PadMap (held() As Integer)
     Dim padMapX As Single, padMapY As Single, padMapI As Integer, padMapB As Integer
+    INP_NotePad
     padMapX = padRawAxis(E3D_CTRL_AXIS_X)
     If Abs(padRawAxis(E3D_CTRL_HAT_X)) > Abs(padMapX) Then padMapX = padRawAxis(E3D_CTRL_HAT_X)
     padMapY = padRawAxis(E3D_CTRL_AXIS_Y)
@@ -486,3 +504,30 @@ Function E3D_KeyBindDown% (kbdCode As Long)
         If _KeyDown(kbdCode - 32) Then E3D_KeyBindDown% = 1
     End If
 End Function
+
+Function INP_LastDevice%
+    INP_LastDevice% = inpLastDev
+End Function
+
+' inkDown: any keyboard key is down this frame; the keyboard is picked when that starts.
+Sub INP_NoteKeys (inkDown As Integer)
+    If inkDown <> 0 And inpKeysWas = 0 Then inpLastDev = INP_DEV_KEYS
+    inpKeysWas = (inkDown <> 0)
+End Sub
+
+' From the raw pad state: the pad is picked when a button goes down or the stick / d-pad
+' crosses the deadzone.
+Sub INP_NotePad
+    Dim inpI As Integer, inpOn As Integer, inpAx(1 To 4) As Integer
+    For inpI = 1 To E3D_PAD_MAX_BTNS
+        inpOn = (padRawBtn(inpI) <> 0)
+        If inpOn And inpPadBtnWas(inpI) = 0 Then inpLastDev = INP_DEV_PAD
+        inpPadBtnWas(inpI) = inpOn
+    Next inpI
+    inpAx(1) = E3D_CTRL_AXIS_X : inpAx(2) = E3D_CTRL_AXIS_Y : inpAx(3) = E3D_CTRL_HAT_X : inpAx(4) = E3D_CTRL_HAT_Y
+    For inpI = 1 To 4
+        inpOn = (Abs(padRawAxis(inpAx(inpI))) > E3D_AXIS_DEADZONE)
+        If inpOn And inpPadAxWas(inpI) = 0 Then inpLastDev = INP_DEV_PAD
+        inpPadAxWas(inpI) = inpOn
+    Next inpI
+End Sub

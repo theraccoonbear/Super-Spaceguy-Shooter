@@ -11,7 +11,7 @@ Sub GS_INTRO_Update ()
     FONT_PrintCenteredAlpha fontPalette(14), backBuffer, emperorName, scrH - 34, scrW, 255
     IF introTimer > 60 THEN
         gsiThrobBright = INT(160 + 95 * SIN(tt * 5))
-        FONT_PrintCenteredAlpha fontPalette(15), backBuffer, "PRESS SPACE", scrH - 14, scrW, gsiThrobBright
+        UI_PromptsCentered "PRESS " + UI_Tok$("SPACE", E3D_ACT_FIRE), scrH - 14, 15, gsiThrobBright
     END IF
     IF introTimer < 40 THEN
         LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, 255 - introTimer * 6), BF

@@ -4,7 +4,8 @@
 ' (ISC_Apply -> held() / E3D_PadMap -> KEY_Pressed% / KEY_Confirm% / KEY_Hit&): arrows,
 ' stick and d-pad move the cursor and wrap, ENTER / pad A take the highlighted row, a fresh
 ' pause opens on CANCEL (so ENTER resumes), W / S never move a cursor, and every hotkey
-' still works whatever row is highlighted.
+' still works whatever row is highlighted. Also the last-used device (INP_LastDevice%) that
+' prompts follow: a key press picks the keyboard, a pad button / stick / d-pad push the pad.
 '
 ' Build: ./tools/buildqb tests/menu_test.bas
 ' Run:   builds/menu_test    (exit 0 = pass, exit 1 = any failure)
@@ -203,6 +204,32 @@ MT_Assert mtR = CONSENT_NO, "ESC: NO THANKS"
 mtR = MT_Consent%("2 2 PAD_B", 4)
 MT_Assert mtR = CONSENT_NO, "pad B: NO THANKS"
 
+' ---- last-used device (prompts show only its buttons) ----
+Print ""
+Print "--- last-used device ---"
+Dim mtF As Long, mtDevAt(0 To 40) As Integer, mtHeld(0 To 32767) As Integer
+MT_Script "0 0 ENTER/2 2 PAD_A/4 4 A/6 6 PAD_DPAD_UP/8 8 UP/10 20 PAD_LEFT/15 15 Y/22 30 PAD_B/25 25 ESC/32 32 PADBTN9/34 34 SPACE/36 36 PAD_RIGHT"
+For mtF = 0 To 40
+    MT_Frame mtF
+    mtDevAt(mtF) = INP_LastDevice%
+Next mtF
+MT_Assert mtDevAt(0) = INP_DEV_KEYS, "ENTER: keyboard"
+MT_Assert mtDevAt(2) = INP_DEV_PAD And mtDevAt(3) = INP_DEV_PAD, "pad A: pad, and it stays the pad once released"
+MT_Assert mtDevAt(4) = INP_DEV_KEYS, "a letter key: keyboard"
+MT_Assert mtDevAt(6) = INP_DEV_PAD, "d-pad: pad"
+MT_Assert mtDevAt(8) = INP_DEV_KEYS, "arrow key: keyboard"
+MT_Assert mtDevAt(10) = INP_DEV_PAD, "stick push: pad"
+MT_Assert mtDevAt(15) = INP_DEV_KEYS And mtDevAt(20) = INP_DEV_KEYS, "a key while the stick is still held: keyboard, and the held stick doesn't take it back"
+MT_Assert mtDevAt(22) = INP_DEV_PAD And mtDevAt(25) = INP_DEV_KEYS And mtDevAt(30) = INP_DEV_KEYS, "ESC while pad B is held: keyboard"
+MT_Assert mtDevAt(32) = INP_DEV_PAD, "any raw pad button (the Guide button too): pad"
+MT_Assert mtDevAt(34) = INP_DEV_KEYS, "SPACE: keyboard"
+MT_Assert mtDevAt(36) = INP_DEV_PAD, "stick right: pad"
+MT_Script "0 0 ENTER"
+MT_Frame 0
+padRawAxis(E3D_CTRL_AXIS_X) = E3D_AXIS_DEADZONE / 2
+E3D_PadMap mtHeld()
+MT_Assert INP_LastDevice% = INP_DEV_KEYS, "a stick inside the deadzone doesn't pick the pad"
+padRawAxis(E3D_CTRL_AXIS_X) = 0
 Print ""
 Print "=== " + LTrim$(Str$(mtPassed + mtFailed)) + " tests: " + LTrim$(Str$(mtPassed)) + " passed, " + LTrim$(Str$(mtFailed)) + " failed ==="
 If mtFailed > 0 Then System 1

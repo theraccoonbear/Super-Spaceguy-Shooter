@@ -1,0 +1,4 @@
+# The DATA NOTICE after a d-pad press: pad button badges, cursor on DON'T ASK AGAIN.
+#! args: --scene consent
+#! shots: 30
+10 10 PAD_DPAD_DOWN
