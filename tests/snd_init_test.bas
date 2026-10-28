@@ -14,6 +14,16 @@ $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
 Const SAMPLE_RATE = 44100
+' UI sound ids (dims.bas in the game)
+Const SND_UI_MOVE   = 1
+Const SND_UI_DENY   = 2
+Const SND_UI_PUP    = 3
+Const SND_UI_TYPE   = 4
+Const SND_UI_DEL    = 5
+Const SND_UI_COLOR  = 6
+Const SND_UI_SPIN   = 7
+Const SND_UI_SPIN_N = 39
+Const SND_UI_LAST   = SND_UI_SPIN + SND_UI_SPIN_N - 1
 
 ' music.bas's mixer reads these (dims.bas / speech.bas in the game)
 Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single, spkSampleOut As Single
@@ -131,13 +141,13 @@ sndTAfterBounds:
 ON ERROR GOTO 0
 ST_Assert sndTRtErr = 0, "sndWhoosh index 0 and SND_WHOOSH_LEN-1 are valid"
 
-' ── UI one-shots (#268): the dock's cursor tick, its "can't" buzz and the power-up chime
+' ── UI one-shots (#268, #266): the dock's cursor tick, its "can't" buzz, the power-up chime and the callsign sounds
 ' (dock purchase, Settings' SFX slider) must start and end at 0, with no DC left at the
 ' end, and a retrigger must not step the waveform (the click / hiss the dock had).
 Print ""
 Print "--- UI one-shots end cleanly (#268) ---"
 Dim sndTId As Integer, sndTLen As Long, sndTK As Long, sndTEdge As Single, sndTDC As Single
-For sndTId = SND_UI_MOVE To SND_UI_PUP
+For sndTId = SND_UI_MOVE To SND_UI_LAST
     sndTLen = SND_UiLen&(sndTId)
     sndTEdge = 0 : sndTDC = 0
     For sndTK = 0 To 2
@@ -150,10 +160,31 @@ For sndTId = SND_UI_MOVE To SND_UI_PUP
 Next sndTId
 ST_Assert SND_UiSample!(SND_UI_PUP, SND_PUP_LEN - 1) = 0, "power-up chime's last sample is exactly 0"
 
+' the callsign sounds (#266): type click, delete / back blip, color shimmer, spinner ticks
+Dim sndTPk As Single, sndTZc As Long, sndTZcPrev As Long, sndTRise As Integer, sndTZcA As Long
+sndTRise = -1 : sndTZcPrev = 0
+For sndTId = SND_UI_TYPE To SND_UI_LAST
+    sndTLen = SND_UiLen&(sndTId)
+    sndTPk = 0 : sndTZc = 0
+    For sndTK = 0 To sndTLen - 1
+        If Abs(SND_UiSample!(sndTId, sndTK)) > sndTPk Then sndTPk = Abs(SND_UiSample!(sndTId, sndTK))
+        If sndTK > 0 Then
+            If (SND_UiSample!(sndTId, sndTK) >= 0) <> (SND_UiSample!(sndTId, sndTK - 1) >= 0) Then sndTZc = sndTZc + 1
+        End If
+    Next sndTK
+    ST_Assert sndTLen > 0 And SND_UiSample!(sndTId, 0) = 0 And SND_UiSample!(sndTId, sndTLen - 1) = 0, "UI sound" + Str$(sndTId) + ": first and last samples exactly 0"
+    ST_Assert sndTPk > 0.05 And sndTPk < 0.5, "UI sound" + Str$(sndTId) + ": audible, not loud (peak" + Str$(sndTPk) + ")"
+    If sndTId > SND_UI_SPIN And sndTZc < sndTZcPrev Then sndTRise = 0
+    If sndTId = SND_UI_SPIN Then sndTZcA = sndTZc
+    sndTZcPrev = sndTZc
+Next sndTId
+ST_Assert sndTRise And sndTZc > sndTZcA * 1.5, "spinner ticks rise in pitch through the set (zero crossings" + Str$(sndTZcA) + " ->" + Str$(sndTZc) + ", never falling)"
+ST_Assert SND_UiLen&(SND_UI_SPIN) < SAMPLE_RATE * 5 / 60, "a spinner tick ends before the next at the 12/s hold-repeat (5 frames)"
+
 ' worst step between consecutive output samples, retriggering each sound mid-play at
 ' varying phases, against the sound's own steepest step played once
 Dim sndTStep As Single, sndTPrev As Single, sndTCur As Single, sndTN As Integer, sndTBase As Single
-For sndTId = SND_UI_MOVE To SND_UI_PUP
+For sndTId = SND_UI_MOVE To SND_UI_LAST
     ' baseline: the sound's own steepest step, played once
     sndUiCurPos = -1 : sndUiOldPos = -1 : sndTPrev = 0 : sndTBase = 0
     SND_UiPlay sndTId

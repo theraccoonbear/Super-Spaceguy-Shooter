@@ -3,6 +3,7 @@
 ' pick = CONSENT_Input%   once per frame: CONSENT_NONE, CONSENT_OK, CONSENT_SAVE or CONSENT_NO.
 ' Rows (cursor consentSel, starts on OK): OK, DON'T ASK AGAIN, NO THANKS; up / down move,
 ' ENTER / pad A picks. Hotkeys: SPACE = OK, S / pad X = don't ask again, ESC / pad B = no.
+' uiSfx: move, confirm on any pick, back on ESC / pad B.
 ' Local variable prefix: cl*
 
 Const CONSENT_NONE = 0
@@ -26,5 +27,7 @@ Function CONSENT_Input%
     If clPick >= 0 Then clRes = clPick + 1
     If KEY_Pressed%(E3D_KEY_PAD_X) Then clRes = CONSENT_SAVE
     If KEY_Pressed%(E3D_KEY_PAD_B) Then clRes = CONSENT_NO
+    If clRes = CONSENT_OK Or clRes = CONSENT_SAVE Then uiSfx = SND_UI_OK
+    If clRes = CONSENT_NO And clPick < 0 Then uiSfx = SND_UI_BACK
     CONSENT_Input% = clRes
 End Function

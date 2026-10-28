@@ -24,6 +24,11 @@ Sub DBG_Print (mtDbg As String) : End Sub
 '$INCLUDE:'../src/state/consentlogic.bas'
 
 Dim Shared mtPassed As Integer, mtFailed As Integer
+Dim Shared mtSfx As String   ' the UI sounds the frames asked for (uiSfx), as "id,id,"
+
+Function MT_I$ (mtiId As Integer)
+    MT_I$ = LTrim$(Str$(mtiId)) + ","
+End Function
 
 Sub MT_Assert (mtaCond As Integer, mtaName As String)
     If mtaCond Then
@@ -62,10 +67,12 @@ Function MT_Pause% (mtpScript As String, mtpLast As Long)
     Dim mtpF As Long, mtpR As Integer
     MT_Script mtpScript
     escConfirm = 0 : escWas = 0 : pauseSel = PAUSE_ROW_RETREAT
+    mtSfx = "" : uiSfx = 0
     MT_Pause% = PAUSE_NONE
     For mtpF = 0 To mtpLast
         MT_Frame mtpF
         mtpR = PAUSE_Input%
+        If uiSfx Then mtSfx = mtSfx + MT_I$(uiSfx) : uiSfx = 0
         If mtpR <> PAUSE_NONE Then MT_Pause% = mtpR : Exit Function
     Next mtpF
 End Function
@@ -75,10 +82,12 @@ Function MT_Consent% (mtcScript As String, mtcLast As Long)
     Dim mtcF As Long, mtcR As Integer
     MT_Script mtcScript
     consentSel = 0
+    mtSfx = "" : uiSfx = 0
     MT_Consent% = CONSENT_NONE
     For mtcF = 0 To mtcLast
         MT_Frame mtcF
         mtcR = CONSENT_Input%
+        If uiSfx Then mtSfx = mtSfx + MT_I$(uiSfx) : uiSfx = 0
         If mtcR <> CONSENT_NONE Then MT_Consent% = mtcR : Exit Function
     Next mtcF
 End Function
@@ -203,6 +212,51 @@ mtR = MT_Consent%("2 2 ESC", 4)
 MT_Assert mtR = CONSENT_NO, "ESC: NO THANKS"
 mtR = MT_Consent%("2 2 PAD_B", 4)
 MT_Assert mtR = CONSENT_NO, "pad B: NO THANKS"
+
+' ---- UI sounds: what each menu action asks the main loop to play (uiSfx) ----
+Print ""
+Print "--- UI sounds ---"
+mtSel = 0 : uiSfx = 0
+mtR = MENU_Nav%(mtSel, 4, -1, 0, 0)
+MT_Assert uiSfx = SND_UI_MOVE, "MENU_Nav% move: the move tick"
+uiSfx = 0
+mtR = MENU_Nav%(mtSel, 4, 0, 0, -1)
+MT_Assert uiSfx = SND_UI_OK, "MENU_Nav% pick: confirm"
+uiSfx = 0
+mtR = MENU_Nav%(mtSel, 4, 0, 0, 0)
+MT_Assert uiSfx = 0, "MENU_Nav% with no input: silent"
+mtR = MT_Pause%("2 2 ESC", 4)
+MT_Assert mtSfx = "", "pause: opening it is silent"
+mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 ENTER", 12)
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_OK), "pause: a tick per move, confirm on retreat"
+mtR = MT_Pause%("2 2 ESC/4 4 ENTER", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_BACK), "pause: ENTER on CANCEL is back"
+mtR = MT_Pause%("2 2 ESC/4 4 ESC", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_BACK), "pause: ESC closing it is back"
+mtR = MT_Pause%("2 2 ESC/4 4 PAD_B", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_BACK), "pause: pad B is back"
+mtR = MT_Pause%("2 2 ESC/4 4 N", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_BACK), "pause: N is back"
+mtR = MT_Pause%("2 2 ESC/4 4 Y", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_OK), "pause: Y hotkey confirms"
+mtR = MT_Pause%("2 2 ESC/4 4 C", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_OK), "pause: C hotkey confirms"
+mtR = MT_Pause%("2 2 ESC/4 4 PAD_Y", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_OK), "pause: pad Y (Remap) confirms"
+mtR = MT_Consent%("2 2 DOWN/4 4 ENTER", 6)
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_OK), "consent: move, confirm"
+mtR = MT_Consent%("2 2 DOWN/4 4 DOWN/6 6 ENTER", 8)
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_OK), "consent: picking the NO THANKS row confirms"
+mtR = MT_Consent%("2 2 SPACE", 4)
+MT_Assert mtSfx = MT_I$(SND_UI_OK), "consent: SPACE hotkey confirms"
+mtR = MT_Consent%("2 2 S", 4)
+MT_Assert mtSfx = MT_I$(SND_UI_OK), "consent: S hotkey confirms"
+mtR = MT_Consent%("2 2 PAD_X", 4)
+MT_Assert mtSfx = MT_I$(SND_UI_OK), "consent: pad X confirms"
+mtR = MT_Consent%("2 2 ESC", 4)
+MT_Assert mtSfx = MT_I$(SND_UI_BACK), "consent: ESC is back"
+mtR = MT_Consent%("2 2 PAD_B", 4)
+MT_Assert mtSfx = MT_I$(SND_UI_BACK), "consent: pad B is back"
 
 ' ---- last-used device (prompts show only its buttons) ----
 Print ""

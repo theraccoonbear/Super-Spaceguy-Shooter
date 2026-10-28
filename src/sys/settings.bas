@@ -134,6 +134,7 @@ Sub OPTS_Update ()
                 Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
+            If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
             If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
             If optSel = 3 And Not optLfWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
@@ -159,6 +160,7 @@ Sub OPTS_Update ()
                 Case 5 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
+            If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
             If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
             If optSel = 3 And Not optRtWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
@@ -170,7 +172,7 @@ Sub OPTS_Update ()
 
     If oEsc And Not optEscWas Then
         SETTINGS_Save
-        TITLE_ReturnTo GS_TITLE
+        TITLE_ReturnTo GS_TITLE : uiSfx = SND_UI_BACK
     End If
 
     ' a press, not a hold: the A that picked SETTINGS on the console is still down here
@@ -180,17 +182,17 @@ Sub OPTS_Update ()
         unSavedName    = telemPlayerName
         unFromSettings = -1
         Do While KEY_Hit& <> 0 : Loop  ' drain ENTER from the key-press buffer before username reads it
-        GS_USERNAME_Init
+        GS_USERNAME_Init : uiSfx = SND_UI_OK
         gameState      = GS_USERNAME
     End If
     If oEnter And optSel = 6 Then
         SETTINGS_Save
-        RMP_Open GS_OPTIONS
+        RMP_Open GS_OPTIONS : uiSfx = SND_UI_OK
     End If
 
     Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
     If oAbout And Not optAboutWas Then
-        ABOUT_Prep GS_OPTIONS : gameState = GS_ABOUT
+        ABOUT_Prep GS_OPTIONS : gameState = GS_ABOUT : uiSfx = SND_UI_OK
     End If
     optAboutWas = oAbout
 

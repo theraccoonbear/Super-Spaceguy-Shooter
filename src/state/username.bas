@@ -115,7 +115,7 @@ Sub GS_USERNAME_Update ()
     Select Case UN_Input%(telemPlayerName, unCursorPos, UN_MAX_LEN)
         Case UN_DONE  ' min 3 chars
             If Len(telemPlayerName) = 0 Then telemPlayerName = UN_AutoName$
-            If Len(telemPlayerName) >= 3 Then
+            If Len(telemPlayerName) >= UN_MIN_LEN Then
                 SETTINGS_Save
                 If unFromSettings Then
                     unFromSettings = 0 : TITLE_ReturnTo GS_OPTIONS

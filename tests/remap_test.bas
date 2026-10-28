@@ -248,6 +248,40 @@ RMP_Open GS_PLAYING
 For rtF = 0 To 6 : RT_GameFrame rtF : Next rtF
 RT_Assert gameState = GS_PLAYING, "keyboard ESC leaves Controls with pad pause and back unbound"
 
+' ---- UI sound events (remap.bas plays RMP_EV_* as uiSfx) ----
+Print ""
+Print "--- UI sound events ---"
+Dim rtEvLog As String, rtEv As Integer
+RT_Reset
+gameState = GS_TITLE
+RT_Script "2 2 DOWN/4 4 RIGHT/6 6 ESC"
+RT_Frame 0
+RMP_Open GS_TITLE
+rtEvLog = ""
+For rtF = 1 To 10
+    RT_Frame rtF
+    rtEv = RMP_Input%
+    If rtEv <> RMP_EV_NONE Then rtEvLog = rtEvLog + LTrim$(Str$(rtEv)) + ","
+Next rtF
+RT_Assert rtEvLog = LTrim$(Str$(RMP_EV_MOVE)) + "," + LTrim$(Str$(RMP_EV_MOVE)) + "," + LTrim$(Str$(RMP_EV_BACK)) + ",", "page: row move, column move, ESC leaving is back (" + rtEvLog + ")"
+
+RT_Reset
+gameState = GS_TITLE
+RT_Script "2 2 ENTER/4 4 PADBTN6/6 6 PADBTN6/8 8 PAD_RIGHT/10 10 ESC"
+RT_Frame 0
+RMP_Open GS_TITLE
+rtEvLog = ""
+For rtF = 1 To 14
+    RT_Frame rtF
+    If rtF = 2 Then rmpSel = RMP_ROW_SETUP
+    rtEv = RMP_Input%
+    If rtEv <> RMP_EV_NONE Then rtEvLog = rtEvLog + LTrim$(Str$(rtEv)) + ","
+Next rtF
+RT_Assert rtEvLog = LTrim$(Str$(RMP_EV_OK)) + "," + LTrim$(Str$(RMP_EV_OK)) + "," + LTrim$(Str$(RMP_EV_DENY)) + "," + LTrim$(Str$(RMP_EV_MOVE)) + "," + LTrim$(Str$(RMP_EV_BACK)) + ",", "wizard: start ok, bind taken ok, duplicate deny, skip move, ESC back (" + rtEvLog + ")"
+RMP_Leave
+rmpLeft = 0 : rmpSaveDue = 0
+RT_Reset
+
 ' ---- save / load ----
 Print ""
 Print "--- save / load ---"

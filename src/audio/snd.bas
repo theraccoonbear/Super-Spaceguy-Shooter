@@ -10,10 +10,11 @@ Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
 Const SND_DEATH_LEN  = 32760  ' 742ms ship-death: three impacts then a deep BOOM
 Const SND_UIMOVE_LEN = 1764   ' 40ms dock / menu cursor tick
 Const SND_UIDENY_LEN = 5292   ' 120ms "can't do that" double buzz
+Const SND_UITYPE_LEN = 1102   ' 25ms callsign typewriter click
+Const SND_UIDEL_LEN  = 3087   ' 70ms falling blip: delete, and leaving a menu
+Const SND_UICOL_LEN  = 4851   ' 110ms callsign color shimmer
+Const SND_UISPIN_LEN = 1323   ' 30ms callsign spinner tick
 Const SND_UI_XFADE   = 96     ' a retriggered one-shot fades the old one out over this many samples (~2ms)
-Const SND_UI_MOVE = 1
-Const SND_UI_DENY = 2
-Const SND_UI_PUP  = 3
 
 Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
@@ -47,6 +48,10 @@ Dim Shared sndHihatPos As Integer : sndHihatPos = -1
 ' retrigger never cuts a waveform off mid-cycle (the click). See SND_UiPlay / SND_UiNext!.
 Dim Shared sndUiMove(0 To SND_UIMOVE_LEN - 1) As Single
 Dim Shared sndUiDeny(0 To SND_UIDENY_LEN - 1) As Single
+Dim Shared sndUiType(0 To SND_UITYPE_LEN - 1) As Single
+Dim Shared sndUiDel(0 To SND_UIDEL_LEN - 1) As Single
+Dim Shared sndUiCol(0 To SND_UICOL_LEN - 1) As Single
+Dim Shared sndUiSpin(0 To SND_UI_SPIN_N - 1, 0 To SND_UISPIN_LEN - 1) As Single
 Dim Shared sndUiCur As Integer, sndUiCurPos As Long : sndUiCurPos = -1
 Dim Shared sndUiOld As Integer, sndUiOldPos As Long : sndUiOldPos = -1
 Dim Shared sndUiOldGain As Single
@@ -61,7 +66,7 @@ Sub SND_Init()
     Dim sndK As Long, sndF As Single, sndFade As Single
     Dim sndGenPh As Single, sndGenT As Single
     Dim sndGenNz As Single, sndGenHP As Single, sndGenPX As Single
-    Dim sndDLK As Single
+    Dim sndDLK As Single, sndSpI As Integer
 
     sndEngineFreq = 80.0 : sndEngineAmp = 0.07
 
@@ -98,6 +103,31 @@ Sub SND_Init()
         End If
         sndUiDeny(sndK) = (Sin(6.2832 * 196.0 * sndK / SAMPLE_RATE) + Sin(6.2832 * 392.0 * sndK / SAMPLE_RATE) * 0.4) * sndF * 0.22
     Next sndK
+    ' callsign typewriter click: inharmonic metal partials over a low thunk, no noise (no hiss)
+    For sndK = 0 To SND_UITYPE_LEN - 1
+        sndGenT = sndK / SAMPLE_RATE
+        sndUiType(sndK) = ((Sin(6.2832 * 2150.0 * sndGenT) * 0.5 + Sin(6.2832 * 3430.0 * sndGenT) * 0.35 + Sin(6.2832 * 5170.0 * sndGenT) * 0.25) * Exp(-sndK / 110.0) + Sin(6.2832 * 180.0 * sndGenT) * 0.45 * Exp(-sndK / 300.0)) * SND_UiEnv!(sndK, SND_UITYPE_LEN, 22, 300) * 0.22
+    Next sndK
+    ' delete / menu back: 520 -> 240 Hz falling blip
+    sndGenPh = 0
+    For sndK = 0 To SND_UIDEL_LEN - 1
+        sndF = 520.0 * (240.0 / 520.0) ^ (sndK / SND_UIDEL_LEN)
+        sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+        sndUiDel(sndK) = (Sin(sndGenPh) + Sin(2 * sndGenPh) * 0.25) * SND_UiEnv!(sndK, SND_UIDEL_LEN, 88, 900) * 0.22
+    Next sndK
+    ' color shimmer: an E-major triad gliding up 8% under a 30 Hz tremolo
+    sndGenPh = 0
+    For sndK = 0 To SND_UICOL_LEN - 1
+        sndGenPh = sndGenPh + 6.2832 * 1320.0 * (1 + 0.08 * sndK / SND_UICOL_LEN) / SAMPLE_RATE
+        sndUiCol(sndK) = (Sin(sndGenPh) + Sin(sndGenPh * 1.2583) * 0.6 + Sin(sndGenPh * 1.497) * 0.4) * (0.6 + 0.4 * Sin(6.2832 * 30.0 * sndK / SAMPLE_RATE)) * SND_UiEnv!(sndK, SND_UICOL_LEN, 132, 1800) * 0.12
+    Next sndK
+    ' spinner ticks: 600 Hz for "A" rising to ~1 kHz at the set's last character
+    For sndSpI = 0 To SND_UI_SPIN_N - 1
+        sndF = 600.0 * 2 ^ (0.75 * sndSpI / (SND_UI_SPIN_N - 1))
+        For sndK = 0 To SND_UISPIN_LEN - 1
+            sndUiSpin(sndSpI, sndK) = (Sin(6.2832 * sndF * sndK / SAMPLE_RATE) + Sin(6.2832 * 2 * sndF * sndK / SAMPLE_RATE) * 0.2) * Exp(-sndK / 350.0) * SND_UiEnv!(sndK, SND_UISPIN_LEN, 44, 400) * 0.24
+        Next sndK
+    Next sndSpI
     ' the power-up chime gets the same short attack, so it starts from silence even mid-mix
     For sndK = 0 To 87
         sndPup(sndK) = sndPup(sndK) * SND_UiEnv!(sndK, SND_PUP_LEN, 88, 88)
@@ -295,6 +325,10 @@ Function SND_UiLen& (ulId As Integer)
         Case SND_UI_MOVE : SND_UiLen& = SND_UIMOVE_LEN
         Case SND_UI_DENY : SND_UiLen& = SND_UIDENY_LEN
         Case SND_UI_PUP  : SND_UiLen& = SND_PUP_LEN
+        Case SND_UI_TYPE  : SND_UiLen& = SND_UITYPE_LEN
+        Case SND_UI_DEL   : SND_UiLen& = SND_UIDEL_LEN
+        Case SND_UI_COLOR : SND_UiLen& = SND_UICOL_LEN
+        Case SND_UI_SPIN To SND_UI_SPIN + SND_UI_SPIN_N - 1 : SND_UiLen& = SND_UISPIN_LEN
         Case Else        : SND_UiLen& = 0
     End Select
 End Function
@@ -304,6 +338,10 @@ Function SND_UiSample! (usId As Integer, usPos As Long)
         Case SND_UI_MOVE : SND_UiSample! = sndUiMove(usPos)
         Case SND_UI_DENY : SND_UiSample! = sndUiDeny(usPos)
         Case SND_UI_PUP  : SND_UiSample! = sndPup(usPos)
+        Case SND_UI_TYPE  : SND_UiSample! = sndUiType(usPos)
+        Case SND_UI_DEL   : SND_UiSample! = sndUiDel(usPos)
+        Case SND_UI_COLOR : SND_UiSample! = sndUiCol(usPos)
+        Case SND_UI_SPIN To SND_UI_SPIN + SND_UI_SPIN_N - 1 : SND_UiSample! = sndUiSpin(usId - SND_UI_SPIN, usPos)
         Case Else        : SND_UiSample! = 0
     End Select
 End Function

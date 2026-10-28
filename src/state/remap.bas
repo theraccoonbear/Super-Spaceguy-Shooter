@@ -21,9 +21,10 @@ Sub RMP_Update
     End If
     rmdEv = RMP_Input%
     Select Case rmdEv
-        Case RMP_EV_MOVE : SND_UiMove
-        Case RMP_EV_OK : SND_Pup
-        Case RMP_EV_DENY : SND_UiDeny
+        Case RMP_EV_MOVE : uiSfx = SND_UI_MOVE
+        Case RMP_EV_OK : uiSfx = SND_UI_OK
+        Case RMP_EV_DENY : uiSfx = SND_UI_DENY
+        Case RMP_EV_BACK : uiSfx = SND_UI_BACK
     End Select
     If rmpSaveDue Then rmpSaveDue = 0 : SETTINGS_Save
     If rmpLeft Then

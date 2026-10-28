@@ -261,6 +261,7 @@ DO
         GS_LEADERBOARD_Update
 
     END SELECT
+    IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
 
     DBG_Overlay
 

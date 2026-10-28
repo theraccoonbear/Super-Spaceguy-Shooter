@@ -20,6 +20,20 @@ CONST GS_DOCK        = 15   ' upgrade dock between stages (src/state/dock.bas)
 CONST GS_REMAP       = 16   ' Controls remap page + pad setup wizard (src/state/remap.bas, #266)
 CONST UN_MAX_LEN     = 32
 
+' --- UI one-shot sound ids (src/audio/snd.bas SND_UiPlay) ---
+' Menu and callsign logic asks for one by setting uiSfx; the main loop plays it and clears it.
+CONST SND_UI_MOVE   = 1
+CONST SND_UI_DENY   = 2
+CONST SND_UI_PUP    = 3
+CONST SND_UI_TYPE   = 4
+CONST SND_UI_DEL    = 5
+CONST SND_UI_COLOR  = 6
+CONST SND_UI_SPIN   = 7    ' + i: the callsign spinner's tick for UN_SPIN_SET character i (0-based)
+CONST SND_UI_SPIN_N = 39   ' = Len(UN_SPIN_SET); callsign_pad_test checks
+CONST SND_UI_OK     = SND_UI_PUP
+CONST SND_UI_BACK   = SND_UI_DEL
+DIM SHARED uiSfx AS INTEGER
+
 ' --- object pool limits ---
 CONST MAX_ENEMIES   = 35
 CONST MAX_BULLETS   = 256   ' >= UPG_PeakBullets%, the worst case upgrades.ini allows (upgrade_test checks)

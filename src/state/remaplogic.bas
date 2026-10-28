@@ -3,7 +3,8 @@
 '
 ' RMP_Open ret            the page (from Settings or the pause dialog), back to state ret
 ' RMP_OpenWizard ret      straight into the pad setup wizard (an unknown pad at the title)
-' ev = RMP_Input%         once per frame; RMP_EV_* for the UI sound. rmpSaveDue asks the
+' ev = RMP_Input%         once per frame; RMP_EV_* for the UI sound (a wizard bind taken is OK,
+'                         a skip MOVE, a clash DENY; leaving BACK). rmpSaveDue asks the
 '                         caller to SETTINGS_Save; on leaving, gameState is ret again.
 '
 ' The wizard, one prompt per action from rmpWizFirst to rmpWizLast:
@@ -34,6 +35,7 @@ Const RMP_EV_NONE = 0
 Const RMP_EV_MOVE = 1
 Const RMP_EV_OK = 2
 Const RMP_EV_DENY = 3
+Const RMP_EV_BACK = 4
 
 Dim Shared rmpMode As Integer, rmpReturn As Integer, rmpAuto As Integer, rmpLeaveAfter As Integer
 Dim Shared rmpSel As Integer, rmpCol As Integer, rmpEscWas As Integer
@@ -123,7 +125,9 @@ Function RMP_Input%
         riAct = rmpWizAct
         riRes = RMP_WizStep%(riEsc, riSkip, KEY_Hit&)
         If rmpMsgT = RMP_MSG_FRAMES And rmpMsgBad Then RMP_Input% = RMP_EV_DENY
-        If rmpWizAct <> riAct And riRes = RMP_RUNNING Then RMP_Input% = RMP_EV_OK
+        If rmpWizAct <> riAct And riRes = RMP_RUNNING Then
+            If rmpWizSet(riAct) Then RMP_Input% = RMP_EV_OK Else RMP_Input% = RMP_EV_MOVE
+        End If
         If riRes = RMP_FINISHED Then
             If rmpWizKind = E3D_BIND_PAD Then E3D_PadRemember
             rmpSaveDue = -1
@@ -134,6 +138,7 @@ Function RMP_Input%
             ' an unknown pad's first-run setup counts as seen once cancelled: Settings > Controls reruns it
             If rmpAuto Then E3D_PadRemember : rmpSaveDue = -1
             RMP_Say "CANCELLED - NOTHING CHANGED", -1
+            RMP_Input% = RMP_EV_BACK
             RMP_Release rmpAuto
         End If
     Case Else
@@ -145,6 +150,7 @@ Function RMP_Input%
             rmpSaveDue = -1
             rmpEscWas = riEsc
             RMP_Release -1
+            RMP_Input% = RMP_EV_BACK
             Exit Function
         End If
         rmpEscWas = riEsc

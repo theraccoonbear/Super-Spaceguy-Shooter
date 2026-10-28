@@ -18,6 +18,9 @@
 '   UN_PadNext s$, cur, maxLen            onto the next character (appending at the end)
 '   UN_PadDel s$, cur                     delete it and step back (the empty slot: backspace)
 '   UN_PadColor s$, cur, maxLen           its color to the next ~X code; the rest keep theirs
+' Each action also sets uiSfx: a spin its character's tick (deny when there's no room), a
+' character added the type click (deny at maxLen), a delete the falling blip, a color
+' change the shimmer (deny over maxLen), done confirm (deny under UN_MIN_LEN), skip back.
 ' Local variable prefix: ul*
 
 Const UN_NONE = 0
@@ -27,6 +30,7 @@ Const UN_SKIP = 3
 Const UN_SPIN_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -."
 Const UN_REP_DELAY = 18
 Const UN_REP_EVERY = 5
+Const UN_MIN_LEN = 3
 
 Dim Shared unRepDir As Integer, unRepN As Integer
 
@@ -122,28 +126,62 @@ Sub UN_PadColor (ulCS As String, ulCC As Integer, ulCMax As Integer)
     End If
 End Sub
 
+Sub UN_DoneSfx (ulDnS As String)
+    If Len(ulDnS) = 0 Or Len(ulDnS) >= UN_MIN_LEN Then uiSfx = SND_UI_OK Else uiSfx = SND_UI_DENY
+End Sub
+
+' A keyboard edit from ulKS0 to ulKS (cursor ulKC after it).
+Sub UN_KeySfx (ulKS0 As String, ulKS As String, ulKC As Integer, ulKKey As Long)
+    If ulKKey = TXE_KEY_BKSP Or ulKKey = TXE_KEY_DEL Then
+        If Len(ulKS) < Len(ulKS0) Then uiSfx = SND_UI_DEL
+    ElseIf ulKKey >= 33 And ulKKey <= 126 Then
+        If Len(ulKS) = Len(ulKS0) Then
+            uiSfx = SND_UI_DENY
+        ElseIf TXE_IsTok%(ulKS, ulKC - 1) Or TXE_IsTok%(ulKS, ulKC) Then
+            uiSfx = SND_UI_COLOR
+        Else
+            uiSfx = SND_UI_TYPE
+        End If
+    End If
+End Sub
+
+' A spin from ulYS0 to ulYS: the tick for the character now under the cursor, or deny when
+' the empty slot had no room for one.
+Sub UN_SpinSfx (ulYS0 As String, ulYS As String, ulYC As Integer)
+    Dim ulYP As Integer, ulYI As Integer
+    If ulYS = ulYS0 Then uiSfx = SND_UI_DENY : Exit Sub
+    ulYP = UN_SpinAt%(ulYS, ulYC)
+    If ulYP = 0 Then Exit Sub
+    ulYI = InStr(UN_SPIN_SET, UCase$(Mid$(ulYS, ulYP, 1)))
+    If ulYI > 0 Then uiSfx = SND_UI_SPIN + ulYI - 1
+End Sub
+
 Function UN_Input% (ulIS As String, ulIC As Integer, ulIMax As Integer)
     Dim ulIKey As Long, ulIS0 As String, ulIC0 As Integer, ulIHeld As Integer, ulIRep As Integer
+    Dim ulIT As String, ulITC As Integer
     UN_Input% = UN_NONE
     ulIKey = KEY_Hit&
     Select Case ulIKey
         Case 0
-        Case 13, 32 : UN_Input% = UN_DONE : Exit Function
-        Case 27 : UN_Input% = UN_SKIP : Exit Function
+        Case 13, 32 : UN_DoneSfx ulIS : UN_Input% = UN_DONE : Exit Function
+        Case 27 : uiSfx = SND_UI_BACK : UN_Input% = UN_SKIP : Exit Function
         Case Else
-            If TXE_Key%(ulIS, ulIC, ulIKey, ulIMax) Then UN_Input% = UN_EDIT
+            ulIT = ulIS
+            If TXE_Key%(ulIS, ulIC, ulIKey, ulIMax) Then UN_Input% = UN_EDIT : UN_KeySfx ulIT, ulIS, ulIC, ulIKey
     End Select
     If INP_LastDevice% <> INP_DEV_PAD Then unRepDir = 0 : Exit Function
-    If KEY_Pressed%(E3D_KEY_PAD_START) Then UN_Input% = UN_DONE : Exit Function
-    If KEY_Pressed%(E3D_KEY_PAD_SELECT) Then UN_Input% = UN_SKIP : Exit Function
+    If KEY_Pressed%(E3D_KEY_PAD_START) Then UN_DoneSfx ulIS : UN_Input% = UN_DONE : Exit Function
+    If KEY_Pressed%(E3D_KEY_PAD_SELECT) Then uiSfx = SND_UI_BACK : UN_Input% = UN_SKIP : Exit Function
 
     ulIS0 = ulIS : ulIC0 = ulIC
     If ulIC < 0 Then ulIC = 0
     If ulIC > Len(ulIS) Then ulIC = Len(ulIS)
     If KEY_Pressed%(E3D_KEY_UP) Then
-        unRepDir = 1 : unRepN = 0 : UN_PadSpin ulIS, ulIC, 1, ulIMax
+        unRepDir = 1 : unRepN = 0 : ulIT = ulIS
+        UN_PadSpin ulIS, ulIC, 1, ulIMax : UN_SpinSfx ulIT, ulIS, ulIC
     ElseIf KEY_Pressed%(E3D_KEY_DOWN) Then
-        unRepDir = -1 : unRepN = 0 : UN_PadSpin ulIS, ulIC, -1, ulIMax
+        unRepDir = -1 : unRepN = 0 : ulIT = ulIS
+        UN_PadSpin ulIS, ulIC, -1, ulIMax : UN_SpinSfx ulIT, ulIS, ulIC
     Else
         ulIHeld = 0
         If unRepDir > 0 And held(E3D_KEY_UP) <> 0 Then ulIHeld = -1
@@ -151,14 +189,37 @@ Function UN_Input% (ulIS As String, ulIC As Integer, ulIMax As Integer)
         If ulIHeld Then
             unRepN = unRepN + 1
             ulIRep = unRepDir
-            If unRepN >= UN_REP_DELAY And (unRepN - UN_REP_DELAY) Mod UN_REP_EVERY = 0 Then UN_PadSpin ulIS, ulIC, ulIRep, ulIMax
+            If unRepN >= UN_REP_DELAY And (unRepN - UN_REP_DELAY) Mod UN_REP_EVERY = 0 Then
+                ulIT = ulIS
+                UN_PadSpin ulIS, ulIC, ulIRep, ulIMax : UN_SpinSfx ulIT, ulIS, ulIC
+            End If
         Else
             unRepDir = 0
         End If
     End If
     If KEY_Pressed%(E3D_KEY_LEFT) Then UN_PadLeft ulIS, ulIC
-    If KEY_Pressed%(E3D_KEY_RIGHT) Or KEY_Pressed%(E3D_KEY_PAD_A) Then UN_PadNext ulIS, ulIC, ulIMax
-    If KEY_Pressed%(E3D_KEY_PAD_B) Then UN_PadDel ulIS, ulIC
-    If KEY_Pressed%(E3D_KEY_PAD_Y) Then UN_PadColor ulIS, ulIC, ulIMax
+    If KEY_Pressed%(E3D_KEY_RIGHT) Or KEY_Pressed%(E3D_KEY_PAD_A) Then
+        ulIT = ulIS : ulITC = ulIC
+        UN_PadNext ulIS, ulIC, ulIMax
+        If Len(ulIS) > Len(ulIT) Then
+            uiSfx = SND_UI_TYPE
+        ElseIf ulIC = ulITC And Len(ulIS) >= ulIMax Then
+            uiSfx = SND_UI_DENY
+        End If
+    End If
+    If KEY_Pressed%(E3D_KEY_PAD_B) Then
+        ulIT = ulIS
+        UN_PadDel ulIS, ulIC
+        If Len(ulIS) < Len(ulIT) Then uiSfx = SND_UI_DEL
+    End If
+    If KEY_Pressed%(E3D_KEY_PAD_Y) Then
+        ulIT = ulIS
+        UN_PadColor ulIS, ulIC, ulIMax
+        If ulIS <> ulIT Then
+            uiSfx = SND_UI_COLOR
+        ElseIf UN_SpinAt%(ulIS, ulIC) > 0 Then
+            uiSfx = SND_UI_DENY
+        End If
+    End If
     If ulIS <> ulIS0 Or ulIC <> ulIC0 Then UN_Input% = UN_EDIT
 End Function

@@ -3,7 +3,7 @@
 ' spelling a name on the pad's letter spinner, wrap-around both ways, hold-to-repeat, B
 ' delete, Y color (one character only, ~X tokens zero width), Start done, Back skip, cursor
 ' moves stepping over ~X tokens, the length cap, and switching between keyboard and pad
-' mid-entry on the same string.
+' mid-entry on the same string, and the UI sound (uiSfx) each action asks for.
 '
 ' Build: ./tools/buildqb tests/callsign_pad_test.bas
 ' Run:   builds/callsign_pad_test    (exit 0 = pass, exit 1 = any failure)
@@ -21,14 +21,14 @@ Sub DBG_Print (cpDbg As String) : End Sub
 '$INCLUDE:'../src/state/usernamelogic.bas'
 
 Dim Shared cpPassed As Integer, cpFailed As Integer
-Dim Shared cpS As String, cpC As Integer
+Dim Shared cpS As String, cpC As Integer, cpSfx As String
 
 Sub CP_Assert (cpaCond As Integer, cpaName As String)
     If cpaCond Then
         Print "PASS  " + cpaName
         cpPassed = cpPassed + 1
     Else
-        Print "FAIL  " + cpaName + "   (s=" + Chr$(34) + cpS + Chr$(34) + " cur=" + LTrim$(Str$(cpC)) + ")"
+        Print "FAIL  " + cpaName + "   (s=" + Chr$(34) + cpS + Chr$(34) + " cur=" + LTrim$(Str$(cpC)) + " sfx=" + cpSfx + ")"
         cpFailed = cpFailed + 1
     End If
 End Sub
@@ -53,17 +53,24 @@ Sub CP_Script (cpsLines As String)
     Loop
 End Sub
 
+Function CP_I$ (cpiId As Integer)
+    CP_I$ = LTrim$(Str$(cpiId)) + ","
+End Function
+
 ' The screen on cprName$ with the cursor at cprCur, frames 0..cprLast of the script; returns
-' UN_DONE / UN_SKIP on the frame one comes (stopping there), else UN_NONE.
+' UN_DONE / UN_SKIP on the frame one comes (stopping there), else UN_NONE. cpSfx collects the
+' UI sounds asked for (uiSfx), one per frame as the main loop plays them.
 Function CP_Run% (cprName As String, cprCur As Integer, cprScript As String, cprLast As Long)
     Dim cprF As Long, cprR As Integer
     cpS = cprName : cpC = cprCur
+    cpSfx = "" : uiSfx = 0
     CP_Script cprScript
     CP_Run% = UN_NONE
     For cprF = 0 To cprLast
         KEY_FrameBegin
         ISC_Apply cprF, held()
         cprR = UN_Input%(cpS, cpC, UN_MAX_LEN)
+        If uiSfx Then cpSfx = cpSfx + CP_I$(uiSfx) : uiSfx = 0
         If cprR = UN_DONE Or cprR = UN_SKIP Then CP_Run% = cprR : Exit Function
     Next cprF
 End Function
@@ -184,6 +191,57 @@ cpR = CP_Run%("AB", 1, "2 2 PAD_DPAD_LEFT/4 4 X", 6)
 CP_Assert cpS = "xAB" And cpC = 1, "typing after a pad move inserts at the pad's cursor"
 cpR = CP_Run%("AB", 2, "2 2 BACKSPACE/4 4 PAD_DPAD_UP", 6)
 CP_Assert cpS = "AA" And cpC = 1, "backspace then the pad: the empty slot past the end gets an A"
+
+Print ""
+Print "--- UI sounds (uiSfx) ---"
+Dim cpCap As String : cpCap = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+CP_Assert Len(UN_SPIN_SET) = SND_UI_SPIN_N, "one spinner tick per UN_SPIN_SET character (SND_UI_SPIN_N)"
+cpR = CP_Run%("", 0, "2 2 PAD_DPAD_UP", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_SPIN), "up on the empty box: A's tick, the lowest"
+cpR = CP_Run%("", 0, "2 2 PAD_DPAD_DOWN", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_SPIN + SND_UI_SPIN_N - 1), "down on the empty box: .'s tick, the highest"
+cpR = CP_Run%("A", 0, "2 30 PAD_DPAD_UP", 30)
+CP_Assert cpSfx = CP_I$(SND_UI_SPIN + 1) + CP_I$(SND_UI_SPIN + 2) + CP_I$(SND_UI_SPIN + 3) + CP_I$(SND_UI_SPIN + 4), "held up: one tick per step, rising B C D E"
+cpR = CP_Run%("", 0, "2 2 PAD_DPAD_UP/4 4 PAD_A", 6)
+CP_Assert cpSfx = CP_I$(SND_UI_SPIN) + CP_I$(SND_UI_TYPE), "pad A appending a letter: type click"
+cpR = CP_Run%("AB", 0, "2 2 PAD_A/4 4 PAD_DPAD_LEFT", 6)
+CP_Assert cpSfx = "", "pad A / left only moving the cursor: silent"
+cpR = CP_Run%(cpCap, 32, "2 2 PAD_A", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_DENY), "pad A at the length cap: deny"
+cpR = CP_Run%(cpCap, 31, "2 2 PAD_A/4 4 PAD_DPAD_UP", 6)
+CP_Assert cpSfx = CP_I$(SND_UI_DENY), "spin on the empty slot at the cap: deny"
+cpR = CP_Run%("ACEA", 3, "2 2 PAD_B", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_DEL), "pad B delete: falling blip"
+cpR = CP_Run%("", 0, "2 2 PAD_B", 4)
+CP_Assert cpSfx = "", "pad B with nothing to delete: silent"
+cpR = CP_Run%("ACE", 1, "2 2 PAD_Y", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_COLOR), "pad Y color: shimmer"
+cpR = CP_Run%("ABCDEFGHIJKLMNOPQRSTUVWXYZ01234", 1, "2 2 PAD_Y", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_DENY), "pad Y over the cap: deny"
+cpR = CP_Run%("AB~E", 4, "2 2 PAD_Y", 4)
+CP_Assert cpSfx = "", "pad Y on the empty slot: silent"
+cpR = CP_Run%("ACE", 3, "2 2 PAD_START", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_OK), "Start with 3 characters: confirm"
+cpR = CP_Run%("AC", 2, "2 2 PAD_START", 4)
+CP_Assert cpR = UN_DONE And cpSfx = CP_I$(SND_UI_DENY), "Start with 2 characters: deny"
+cpR = CP_Run%("", 0, "2 2 PAD_START", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_OK), "Start on an empty box (an auto callsign follows): confirm"
+cpR = CP_Run%("ACE", 3, "2 2 PAD_SELECT", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_BACK), "Back skip: back"
+cpR = CP_Run%("", 0, "4 4 A/6 6 C/8 8 E/10 10 7/14 14 ENTER", 16)
+CP_Assert cpSfx = CP_I$(SND_UI_TYPE) + CP_I$(SND_UI_TYPE) + CP_I$(SND_UI_TYPE) + CP_I$(SND_UI_TYPE) + CP_I$(SND_UI_OK), "typed a c e 7 ENTER: four clicks, confirm"
+cpR = CP_Run%("AC", 2, "2 2 ENTER", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_DENY), "ENTER with 2 characters: deny"
+cpR = CP_Run%("ACE", 3, "2 2 ESC", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_BACK), "ESC skip: back"
+cpR = CP_Run%("AB", 2, "2 2 BACKSPACE/4 4 BACKSPACE/6 6 BACKSPACE", 8)
+CP_Assert cpSfx = CP_I$(SND_UI_DEL) + CP_I$(SND_UI_DEL), "backspace: a blip per character removed, silent once empty"
+cpR = CP_Run%(cpCap, 32, "2 2 X", 4)
+CP_Assert cpSfx = CP_I$(SND_UI_DENY), "typing at the cap: deny"
+cpR = CP_Run%("~", 1, "2 2 3", 4)
+CP_Assert cpS = "~3" And cpSfx = CP_I$(SND_UI_COLOR), "typing the digit that completes ~3: shimmer"
+cpR = CP_Run%("AB", 2, "2 2 RIGHT/4 4 LEFT", 6)
+CP_Assert cpSfx = "", "keyboard cursor keys: silent"
 
 Print ""
 Print "=== " + LTrim$(Str$(cpPassed + cpFailed)) + " tests: " + LTrim$(Str$(cpPassed)) + " passed, " + LTrim$(Str$(cpFailed)) + " failed ==="

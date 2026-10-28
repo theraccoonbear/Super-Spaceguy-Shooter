@@ -2,7 +2,9 @@
 '
 ' pick = MENU_Nav%(sel, count, up, dn, confirm)   rows 0..count-1; up / dn move sel one row,
 '                                                 wrapping; confirm (on a frame with no move)
-'                                                 returns sel, else -1. No input read: tests
+'                                                 returns sel, else -1; uiSfx gets the move /
+'                                                 confirm sound (callers override it for a
+'                                                 cancel row). No input read: tests
 '                                                 drive it with plain flags.
 ' pick = MENU_Input%(sel, count)                  the same from this frame's presses: up / down
 '                                                 (arrows, stick, d-pad; not W/S, which some
@@ -14,10 +16,13 @@ Function MENU_Nav% (mnSel As Integer, mnCount As Integer, mnUp As Integer, mnDn 
     If mnCount < 1 Then Exit Function
     If mnUp Then
         mnSel = (mnSel + mnCount - 1) Mod mnCount
+        uiSfx = SND_UI_MOVE
     ElseIf mnDn Then
         mnSel = (mnSel + 1) Mod mnCount
+        uiSfx = SND_UI_MOVE
     ElseIf mnPick Then
         MENU_Nav% = mnSel
+        uiSfx = SND_UI_OK
     End If
 End Function
 

@@ -45,6 +45,7 @@ Sub GS_TITLE_Update ()
     ' gamepad Start also sets ESCAPE; on the title it means "play", not "open console" (Back opens it)
     IF (held(E3D_KEY_ESCAPE) AND escWas = 0 AND held(E3D_KEY_PAD_START) = 0) OR KEY_Pressed%(E3D_KEY_PAD_SELECT) THEN
         titleEscConfirm = 1 - titleEscConfirm : titleConSel = 0
+        IF titleEscConfirm = 0 THEN uiSfx = SND_UI_BACK
     END IF
     escWas = held(E3D_KEY_ESCAPE)
     IF titleEscConfirm THEN
@@ -56,6 +57,8 @@ Sub GS_TITLE_Update ()
         IF KEY_Down%(76) OR KEY_Down%(108) THEN gstPick = 3
         IF KEY_Down%(81) OR KEY_Down%(113) THEN gstPick = 4
         IF KEY_Down%(78) OR KEY_Down%(110) OR KEY_Pressed%(E3D_KEY_PAD_B) THEN gstPick = 5
+        IF gstPick >= 0 AND gstPick <= 4 THEN uiSfx = SND_UI_OK
+        IF gstPick = 5 THEN uiSfx = SND_UI_BACK
         SELECT CASE gstPick
             CASE 0
                 ABOUT_Prep GS_TITLE : gameState = GS_ABOUT : titleEscConfirm = 0
