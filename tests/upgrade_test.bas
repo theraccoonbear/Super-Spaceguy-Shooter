@@ -312,7 +312,7 @@ UPG_Reset : settingNerf = 0 : godMode = 0
 utLegKills = 10 : utLegBoss = 1 : utLegAst = 0
 UT_Assert UT_Near%(SUP_LegNeed!, 55), "10-kill combat + a boss: 10 x 3 + 25 = 55"
 utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
-UT_Assert UT_Near%(SUP_LegNeed!, 50), "the asteroid field: 50"
+UT_Assert UT_Near%(SUP_LegNeed!, 90), "the asteroid field: 90 (it burns ~89)"
 utLegKills = 40 : utLegBoss = 1
 credits = 10000 : utR = UPG_Buy%(UPG_FUEL) : utR = UPG_Buy%(UPG_FUEL)
 UT_Assert UT_Near%(SUP_LegNeed!, 100), "a long leg is capped at the base tank (100), even with a bigger tank"
