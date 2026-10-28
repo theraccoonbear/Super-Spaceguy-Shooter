@@ -159,9 +159,10 @@ SEQ_ListCrawls
 For scCI = 0 To seqCount - 1
     If seqKind(scCI) = SEQ_CRAWL Then scSeqCrawls = scSeqCrawls + 1
 Next scCI
-ST_Assert seqCrawlCount = scSeqCrawls + 1, "list = every sequence CRAWL task + death_final (" + LTrim$(Str$(seqCrawlCount)) + ")"
-ST_Assert seqCrawlKey$(0) = "intro" And seqCrawlKey$(seqCrawlCount - 2) = "outro", "sequence crawls listed in play order (intro .. outro)"
-ST_Assert seqCrawlKey$(seqCrawlCount - 1) = SEQ_CRAWL_DEATH And seqCrawlAt(seqCrawlCount - 1) = -1, "death_final listed as code-started"
+ST_Assert seqCrawlCount = scSeqCrawls + 2, "list = every sequence CRAWL task + death_final + stranded_final (" + LTrim$(Str$(seqCrawlCount)) + ")"
+ST_Assert seqCrawlKey$(0) = "intro" And seqCrawlKey$(seqCrawlCount - 3) = "outro", "sequence crawls listed in play order (intro .. outro)"
+ST_Assert seqCrawlKey$(seqCrawlCount - 2) = SEQ_CRAWL_DEATH And seqCrawlAt(seqCrawlCount - 2) = -1, "death_final listed as code-started"
+ST_Assert seqCrawlKey$(seqCrawlCount - 1) = SEQ_CRAWL_STRANDED And seqCrawlAt(seqCrawlCount - 1) = -1, "stranded_final listed as code-started (#277)"
 
 scAt = SEQ_JumpToScene("crawl:stage3")
 ST_Assert scAt >= 0 And seqKind(scAt) = SEQ_CRAWL And SEQ_GetKV$(seqSval$(scAt), "txt") = "stage3", "crawl:stage3 lands on the stage3 CRAWL task"

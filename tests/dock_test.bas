@@ -4,7 +4,8 @@
 ' KEY_Confirm% / KEY_Back%) into the real DOCK_Input% each frame, as the game does, with
 ' the real upgrade table from assets/config/: navigating (keys, W/S, stick, d-pad,
 ' wrap-around, scrolling), buying, a purchase it can't afford, a held ENTER buying once,
-' fuel and shields by the amount (LEFT / RIGHT, fill what you can afford, FULL, #277),
+' fuel and shields by the amount (LEFT / RIGHT, fill what you can afford, FULL, #277), the
+' stranded dialog (only YES answers it; LAUNCH and back both raise it, #277),
 ' LAUNCH, and leaving in one press with ESC, pad B or pad Start.
 '
 ' Build: ./tools/buildqb tests/dock_test.bas
@@ -202,6 +203,37 @@ DT_Assert dtRes(4) = DOCK_FULL And credits = 500 And dockMsg = "SHIELDS ALREADY 
 DT_Script 500, "2 2 DOWN/4 4 DOWN/6 6 RIGHT/8 8 LEFT"
 dtLeft = DT_Run%(10)
 DT_Assert dtRes(6) = DOCK_NONE And dtRes(8) = DOCK_NONE And credits = 500, "LEFT / RIGHT on an upgrade row do nothing"
+
+Print ""
+Print "--- stranded: no fuel, no credits, no way out (#277) ---"
+DT_ScriptAt 0, 10, -1, "2 2 UP/4 4 ENTER/6 6 ESC/8 8 UP/10 10 DOWN/12 12 LEFT/14 14 PAD_B/16 16 PAD_START/18 18 RIGHT/20 20 ENTER"
+dtLeft = DT_Run%(24)
+DT_Assert dtRes(4) = DOCK_ASK And dockAsk <> 0, "LAUNCH with 10 fuel, $0 and a 55-fuel jump ahead: the stranded dialog"
+DT_Assert dtRes(6) = DOCK_NONE And dtRes(14) = DOCK_NONE And dtRes(16) = DOCK_NONE, "ESC, pad B and pad Start do nothing there"
+DT_Assert dtRes(8) = DOCK_NONE And dtRes(10) = DOCK_NONE And dtRes(12) = DOCK_NONE And dtRes(18) = DOCK_NONE And dockSel = DOCK_LAUNCH, "nor do up, down, left or right"
+DT_Assert dtRes(20) = DOCK_STRANDED And dtLeft = -1, "ENTER on [ YES ] ends the run (the dock never just leaves)"
+DT_ScriptAt 0, 10, -1, "2 2 PAD_B/4 4 PAD_A"
+dtLeft = DT_Run%(6)
+DT_Assert dtRes(2) = DOCK_ASK And dtRes(4) = DOCK_STRANDED, "leaving with pad B asks too; pad A answers YES"
+DT_ScriptAt 126, 10, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "10 fuel + $126 (45 units at $2.80) reaches 55 exactly: leaves"
+DT_ScriptAt 125, 10, -1, "2 2 ESC"
+dtLeft = DT_Run%(4)
+DT_Assert dtRes(2) = DOCK_ASK, "$125 buys only 44: stranded"
+DT_ScriptAt 0, 60, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "broke but 60 in the tank: leaves"
+godMode = -1
+DT_ScriptAt 0, 0, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "god mode: never stranded"
+godMode = 0
+dtLegKills = 0 : dtLegBoss = 0
+DT_ScriptAt 0, 0, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "no jump ahead (the last dock): never stranded"
+dtLegKills = 10 : dtLegBoss = 1
+DT_ScriptAt 0, 10, -1, "2 2 ESC"
+dtLeft = DT_Run%(4)
+DOCK_Open
+DT_Assert dockAsk = 0, "the next dock opens without the dialog"
 
 Print ""
 Print "--- skip in one press ---"

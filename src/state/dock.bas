@@ -54,14 +54,51 @@ Sub DOCK_Update
     Select Case dkdRes
         Case DOCK_MOVED : SND_UiMove
         Case DOCK_BOUGHT : SND_Pup
-        Case DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL : SND_UiDeny
+        Case DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL, DOCK_ASK : SND_UiDeny
+        Case DOCK_STRANDED : SND_UiMove
     End Select
     DOCK_Draw
     If dkdRes = DOCK_LEAVE Then
         _Dest backBuffer
         Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
         SEQ_Advance
+    ElseIf dkdRes = DOCK_STRANDED Then
+        DOCK_Strand
     End If
+End Sub
+
+' The stranded ending (#277): the run is over, scored like a death (leftover credits cashed
+' in, high score, session end), then the stranded crawl and the STRANDED game-over card.
+Sub DOCK_Strand
+    TELEM_RunStranded levelNum, fuelLevel, SUP_LegNeed!, credits, SUP_UnitPrice!(SUP_FUEL, levelNum)
+    CR_CashOut
+    If score > highScore Then highScore = score : SETTINGS_Save
+    telemExitReason = "stranded"
+    TELEM_SessionEnd
+    runStranded = -1
+    crawlNextState = GS_GAMEOVER
+    CRAWL_Prep SEQ_CRAWL_STRANDED, scrH
+    gameState = GS_CRAWL
+    MUS_SetCue "crawl"
+End Sub
+
+' The stranded dialog (#277), centred over the dock: why, the question, and its one answer.
+Sub DOCK_DrawStrandAsk
+    Const DSA_X1 = 44
+    Const DSA_Y1 = 64
+    Const DSA_X2 = 275
+    Const DSA_Y2 = 172
+    Dim dsaNeed As Single, dsaCan As Long
+    dsaNeed = SUP_LegNeed!
+    dsaCan = Int(fuelLevel) + SUP_MaxAffordable%(SUP_FUEL, levelNum)
+    Line (DSA_X1, DSA_Y1)-(DSA_X2, DSA_Y2), _RGBA(0, 0, 8, 200), BF
+    UI_Panel DSA_X1, DSA_Y1, DSA_X2, DSA_Y2
+    UI_TextCentered 12, "NOT ENOUGH FUEL TO JUMP", DSA_Y1 + 8, 255
+    UI_TextCentered 8, "NEED " + LTrim$(Str$(-Int(-dsaNeed))) + " FU, CAN GET " + LTrim$(Str$(dsaCan)), DSA_Y1 + 26, 255
+    UI_TextCentered 15, "ABANDON RUN AND", DSA_Y1 + 48, 255
+    UI_TextCentered 15, "EKE OUT A LIVING HERE?", DSA_Y1 + 64, 255
+    UI_MenuHighlight scrW \ 2 - 36, DSA_Y1 + 85, scrW \ 2 + 35, DSA_Y1 + 101
+    UI_TextCentered 15, "[ YES ]", DSA_Y1 + 86, 255
 End Sub
 
 Sub DOCK_Draw
@@ -152,6 +189,7 @@ Sub DOCK_Draw
         UI_Text 11, DOCK_NewsWindow$(dockNewsTick), DOCK_PX1 + 8, dkdY + 32, 255
     End If
     UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("ESC", E3D_ACT_BACK) + " GO", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
+    If dockAsk Then DOCK_DrawStrandAsk
 
     _Dest 0
     _PutImage , backBuffer, 0

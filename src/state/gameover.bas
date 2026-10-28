@@ -16,13 +16,14 @@ Sub GS_GAMEOVER_Update ()
     IF gsgFrac < 0 THEN gsgFrac = 0
     IF gsgFrac > 1 THEN gsgFrac = 1
     gsgBonus = INT(crBonusPts * gsgFrac)
-    Dim gsgY As Integer, gsgStep As Integer
+    Dim gsgY As Integer, gsgStep As Integer, gsgTitle As String
+    IF runStranded THEN gsgTitle = "STRANDED" ELSE gsgTitle = "GAME OVER"
     IF crBonusCredits > 0 THEN
-        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 62, scrW \ 2 + 88, scrH \ 2 + 62, "GAME OVER"
+        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 62, scrW \ 2 + 88, scrH \ 2 + 62, gsgTitle
         FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTRIM$(STR$(gsgBonus)), scrH \ 2 - 38, scrW, 255
         gsgY = scrH \ 2 - 20 : gsgStep = 18
     ELSE
-        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 54, scrW \ 2 + 88, scrH \ 2 + 54, "GAME OVER"
+        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 54, scrW \ 2 + 88, scrH \ 2 + 54, gsgTitle
         gsgY = scrH \ 2 - 28 : gsgStep = 20
     END IF
     FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score - crBonusPts + gsgBonus)), gsgY, scrW, 255

@@ -54,6 +54,7 @@ Dim Shared seqLastError As String
 ' directly. SEQ_ListCrawls builds the list; --scene crawl:<key>, the --help scene
 ' list and the --crawls browser all read it, so it is the one complete list.
 Const SEQ_CRAWL_DEATH = "death_final"   ' started by playing.bas on game over
+Const SEQ_CRAWL_STRANDED = "stranded_final"   ' started by dock.bas when the run ends stranded (#277)
 
 Dim Shared seqCrawlCount As Integer
 Dim Shared seqCrawlKey$(0 To SEQ_MAX - 1)
@@ -81,6 +82,7 @@ Sub SEQ_ListCrawls()
         If seqKind(seqlcI) = SEQ_CRAWL Then SEQ_AddCrawl SEQ_GetKV$(seqSval$(seqlcI), "txt"), seqLabel$(seqlcI), seqlcI
     Next seqlcI
     SEQ_AddCrawl SEQ_CRAWL_DEATH, "game over", -1
+    SEQ_AddCrawl SEQ_CRAWL_STRANDED, "stranded at a dock", -1
 End Sub
 
 ' The leg after the current task (the dock): its PLAY tasks up to the next ARRIVE, as the

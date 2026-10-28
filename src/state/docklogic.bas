@@ -10,7 +10,11 @@
 '                                  ENTER / pad A to buy, ESC / pad B / pad Start to leave
 ' A supply row's amount (dockAmt) starts at what the credits fill, and goes back there after
 ' every purchase; LEFT / RIGHT change it by SUP_Step% within 1..what's missing.
-' Results: DOCK_NONE, DOCK_MOVED, DOCK_BOUGHT, DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL, DOCK_LEAVE
+' Leaving (LAUNCH or back) when even every credit spent on fuel won't reach the next planet
+' (SUP_Stranded%) opens the stranded dialog instead (dockAsk, DOCK_ASK): its one answer is
+' YES, so only ENTER / pad A does anything there, and it ends the run (DOCK_STRANDED).
+' Results: DOCK_NONE, DOCK_MOVED, DOCK_BOUGHT, DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL, DOCK_LEAVE,
+'          DOCK_ASK, DOCK_STRANDED
 ' Local variable prefix: dk*
 
 Const DOCK_REFUEL  = 1
@@ -25,14 +29,17 @@ Const DOCK_NOFUNDS = 3
 Const DOCK_MAXED   = 4
 Const DOCK_FULL    = 5
 Const DOCK_LEAVE   = 6
+Const DOCK_ASK     = 7
+Const DOCK_STRANDED = 8
 
 Dim Shared dockSel As Integer, dockTop As Integer
 Dim Shared dockMsg As String, dockMsgTimer As Integer, dockMsgBad As Integer
 Dim Shared dockAmt(1 To 2) As Integer   ' amount on the REFUEL / SHIELDS rows (SUP_FUEL / SUP_SHIELD)
+Dim Shared dockAsk As Integer          ' -1 = the stranded dialog is up
 
 Sub DOCK_Open
     dockSel = 1 : dockTop = 1
-    dockMsg = "" : dockMsgTimer = 0 : dockMsgBad = 0
+    dockMsg = "" : dockMsgTimer = 0 : dockMsgBad = 0 : dockAsk = 0
     UPG_DockVisit
     DOCK_ResetAmts
 End Sub
@@ -62,7 +69,11 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
     Dim dkRes As Integer, dkBuyRes As Integer, dkKind As Integer, dkMiss As Integer, dkAmt As Integer
     dkRes = DOCK_NONE
     If dockMsgTimer > 0 Then dockMsgTimer = dockMsgTimer - 1
-    If dkBack Then DOCK_Step% = DOCK_LEAVE : Exit Function
+    If dockAsk Then
+        If dkBuy Then DOCK_Step% = DOCK_STRANDED Else DOCK_Step% = DOCK_NONE
+        Exit Function
+    End If
+    If dkBack Then DOCK_Step% = DOCK_TryLeave% : Exit Function
     dkKind = DOCK_SupplyOf%(dockSel)
     If dkUp Then
         dockSel = dockSel - 1 : If dockSel < 1 Then dockSel = DOCK_LAUNCH
@@ -79,7 +90,7 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
         If dkMiss = 0 Then dkAmt = 0
         If dkAmt <> dockAmt(dkKind) Then dockAmt(dkKind) = dkAmt : dkRes = DOCK_MOVED
     ElseIf dkBuy Then
-        If dockSel = DOCK_LAUNCH Then DOCK_Step% = DOCK_LEAVE : Exit Function
+        If dockSel = DOCK_LAUNCH Then DOCK_Step% = DOCK_TryLeave% : Exit Function
         If dkKind > 0 Then
             dkAmt = dockAmt(dkKind)
             dkBuyRes = SUP_Buy%(dkKind, dkAmt, levelNum)
@@ -113,6 +124,11 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
     If dockSel < dockTop Then dockTop = dockSel
     If dockSel > dockTop + DOCK_VISIBLE - 1 Then dockTop = dockSel - DOCK_VISIBLE + 1
     DOCK_Step% = dkRes
+End Function
+
+' LAUNCH or back: leave, unless the next jump is out of reach (then ask).
+Function DOCK_TryLeave%
+    If SUP_Stranded% Then dockAsk = -1 : DOCK_TryLeave% = DOCK_ASK Else DOCK_TryLeave% = DOCK_LEAVE
 End Function
 
 ' Name of what was just bought: the level now owned.

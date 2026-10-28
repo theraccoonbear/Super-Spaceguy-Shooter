@@ -178,6 +178,17 @@ ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE
 
 ~6This one flew.
 
+[BLOCK:stranded_final]
+~4-~E=~7[ ~3STRANDED ~7]~E=~4-
+
+~6The tank is dry, and so are the credits. At blockade prices, nobody is flying anywhere.
+
+~6The galaxy will not be saved today. ~4{{the_empire}}~6 will not even notice.
+
+~6The dockside canteen is hiring. The pay is terrible, the soup is worse, and the dishes never stop coming.
+
+~6You take the job.
+
 [BLOCK:dock_news1]
 {{emperor}} has ordered a blockade of the refinery world {{refinery_world}}. Fuel traders warn that prices will climb.
 
