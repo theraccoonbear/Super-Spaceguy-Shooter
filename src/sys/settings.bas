@@ -22,12 +22,13 @@ Sub SETTINGS_Save ()
     Else
         If debugMode Then DBG_Print "[settings] saved"
     End If
+    E3D_BindsWrite sfH
     Close #sfH
 End Sub
 
 Sub SETTINGS_Load ()
     Dim sfH As Integer, sfLine As String, sfKey As String, sfVal As Single, sfEq As Integer
-    Dim sfRaw As String
+    Dim sfRaw As String, sfBound As Integer
     If _FILEEXISTS(_STARTDIR$ + "/sss_settings.ini") Then
         sfH = FreeFile
         Open _STARTDIR$ + "/sss_settings.ini" For Input As #sfH
@@ -39,6 +40,8 @@ Sub SETTINGS_Load ()
                 sfRaw = Mid$(sfLine, sfEq + 1)
                 sfVal = Val(sfRaw)
                 Select Case sfKey
+                    Case "keys", "padbind"
+                        sfBound = E3D_BindsLoadLine%(sfKey, sfRaw)
                     Case "player_id"
                         If Len(sfRaw) >= 32 Then telemPlayerID = sfRaw
                     Case "lb_player_id"
@@ -91,6 +94,7 @@ Sub SETTINGS_Load ()
         leaderboardPlayerID = TELEM_NewUUID$
         SETTINGS_Save
     End If
+    E3D_PadReselect
 End Sub
 
 Sub OPTS_Update ()
@@ -111,11 +115,11 @@ Sub OPTS_Update ()
 
     ' navigate: edge-detect on up/down
     If oUp And Not optUpWas Then
-        optSel = (optSel + 5) Mod 6
+        optSel = (optSel + 6) Mod 7
         optLfRpt = 0 : optRtRpt = 0
     End If
     If oDn And Not optDnWas Then
-        optSel = (optSel + 1) Mod 6
+        optSel = (optSel + 1) Mod 7
         optLfRpt = 0 : optRtRpt = 0
     End If
 
@@ -183,6 +187,10 @@ Sub OPTS_Update ()
         GS_USERNAME_Init
         gameState      = GS_USERNAME
     End If
+    If oEnter And optSel = 6 Then
+        SETTINGS_Save
+        RMP_Open GS_OPTIONS
+    End If
 
     Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
     If oAbout And Not optAboutWas Then
@@ -208,11 +216,11 @@ Sub OPTS_Update ()
     ' main content panel
     UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
 
-    Dim oLabels(0 To 5) As String
-    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "CALLSIGN"
+    Dim oLabels(0 To 6) As String
+    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "CALLSIGN" : oLabels(6) = "CONTROLS"
 
-    For oI = 0 To 5
-        oY = 40 + oI * 28
+    For oI = 0 To 6
+        oY = 36 + oI * 24
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
@@ -263,6 +271,12 @@ Sub OPTS_Update ()
                 oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
             End If
             FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
+        ElseIf oI = 6 Then
+            If oI = optSel Then
+                FONT_PrintAlpha fontPalette(15), backBuffer, "REMAP [ENTER]", OPT_BAR_X, oY, 255
+            Else
+                FONT_PrintAlpha fontPalette(9),  backBuffer, "KEYS + GAMEPAD", OPT_BAR_X, oY, 200
+            End If
         Else
             ' callsign row: show current name (or prompt) instead of a slider
             Dim oCallName As String

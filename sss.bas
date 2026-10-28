@@ -239,6 +239,11 @@ DO
         DOCK_Update
         MUS_Fill 0
 
+    CASE GS_REMAP
+        RMP_Update
+        ' opened from the pause dialog: keep music starved (silent) like the dialog does
+        IF RMP_InGame% = 0 THEN MUS_Fill 0
+
     CASE GS_LEADIN
         LEADIN_Update
 

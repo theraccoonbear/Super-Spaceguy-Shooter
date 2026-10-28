@@ -36,6 +36,7 @@ Const GS_LEADERBOARD = 12
 Const GS_CONTROLS    = 13
 Const GS_CRAWLS      = 14
 Const GS_DOCK        = 15
+Const GS_REMAP       = 16
 Const MAX_ENEMIES = 1
 Const MESH_COUNT  = 1
 

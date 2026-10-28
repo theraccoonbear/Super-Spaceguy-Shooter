@@ -25,6 +25,7 @@ Const GS_CONSENT     = 10
 Const GS_USERNAME    = 11
 Const GS_LEADERBOARD = 12
 Const GS_CONTROLS    = 13
+Const GS_REMAP       = 16
 Const GS_CRAWLS      = 14
 
 Dim Shared gameState As Integer

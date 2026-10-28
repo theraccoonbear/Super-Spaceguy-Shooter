@@ -17,6 +17,7 @@ CONST GS_LEADERBOARD = 12
 CONST GS_CONTROLS    = 13
 CONST GS_CRAWLS      = 14   ' --crawls dev browser (src/2d/crawlbrowse.bas)
 CONST GS_DOCK        = 15   ' upgrade dock between stages (src/state/dock.bas)
+CONST GS_REMAP       = 16   ' Controls remap page + pad setup wizard (src/state/remap.bas, #266)
 CONST UN_MAX_LEN     = 32
 
 ' --- object pool limits ---
@@ -311,6 +312,7 @@ DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
 DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 5 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
+DIM SHARED escKWas         AS INTEGER  ' ABORT MISSION dialog: K (remap controls) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER
 DIM SHARED escNWas         AS INTEGER

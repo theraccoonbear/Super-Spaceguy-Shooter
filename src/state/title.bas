@@ -1,5 +1,11 @@
 Sub GS_TITLE_Update ()
     Dim gstThrobBright As Integer
+    ' a pad with no built-in layout and no saved bindings: first-run setup (#266)
+    IF padSetupDue AND ctrlDev > 0 AND iscActive = 0 AND titleEscConfirm = 0 THEN
+        padSetupDue = 0
+        RMP_OpenWizard GS_TITLE
+        EXIT SUB
+    END IF
     tt = tt + 0.025
     _DEST backBuffer
     _PUTIMAGE (0, 0)-(scrW - 1, scrH - 1), titleImg, backBuffer

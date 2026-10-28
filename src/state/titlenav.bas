@@ -5,7 +5,7 @@
 
 Function TITLE_SpeakOnEntry% (tsePrev As Integer)
     Select Case tsePrev
-        Case GS_TITLE, GS_OPTIONS, GS_CONTROLS, GS_ABOUT, GS_LEADERBOARD
+        Case GS_TITLE, GS_OPTIONS, GS_CONTROLS, GS_ABOUT, GS_LEADERBOARD, GS_REMAP
             TITLE_SpeakOnEntry% = 0
         Case Else
             TITLE_SpeakOnEntry% = -1

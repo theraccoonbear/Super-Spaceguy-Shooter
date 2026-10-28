@@ -13,45 +13,29 @@ Sub GS_PLAYING_Update ()
     Dim spDmg As Integer
 
     ' ESC confirm dialog: in play and during the planet arrival / cinematic, which it
-    ' pauses the same way (nothing below runs while it's open)
+    ' pauses the same way (nothing below runs while it's open). Input: src/state/pauselogic.bas
     IF gameState = GS_PLAYING OR gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
-        Dim gspWasOpen As Integer : gspWasOpen = escConfirm
-        IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
-            escConfirm = 1 - escConfirm
-            IF escConfirm THEN
-                escYWas = KEY_Down%(89) OR KEY_Down%(121)
-                escNWas = KEY_Down%(78) OR KEY_Down%(110)
-                escCWas = KEY_Down%(67) OR KEY_Down%(99)
-            END IF
-        END IF
-        escWas = held(E3D_KEY_ESCAPE)
-        IF escConfirm THEN
-            ' pad: A confirms, B cancels, X opens Controls (Start toggles the dialog, as ESC does)
-            Dim gspPadYes As Integer, gspPadNo As Integer, gspPadCtl As Integer
-            gspPadYes = gspWasOpen AND KEY_Confirm%
-            gspPadNo = gspWasOpen AND KEY_Pressed%(E3D_KEY_PAD_B)
-            gspPadCtl = gspWasOpen AND KEY_Pressed%(E3D_KEY_PAD_X)
-            IF ((KEY_Down%(89) OR KEY_Down%(121)) AND escYWas = 0) OR gspPadYes THEN
-                escConfirm = 0
+        SELECT CASE PAUSE_Input%
+            CASE PAUSE_QUIT
                 telemExitReason = "quit"
                 TELEM_SessionEnd
                 SEQ_RewindToTitle
                 gameState = GS_TITLE
                 planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
                 MUS_SetCue "title"
-            END IF
-            escYWas = KEY_Down%(89) OR KEY_Down%(121)
-            IF ((KEY_Down%(78) OR KEY_Down%(110)) AND escNWas = 0) OR gspPadNo THEN escConfirm = 0
-            escNWas = KEY_Down%(78) OR KEY_Down%(110)
-            IF ((KEY_Down%(67) OR KEY_Down%(99)) AND escCWas = 0) OR gspPadCtl THEN
+            CASE PAUSE_CONTROLS
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
-            END IF
-            escCWas = KEY_Down%(67) OR KEY_Down%(99)
+            CASE PAUSE_REMAP
+                RMP_Open gameState
+        END SELECT
+        IF pauseShown THEN
+            Dim gspPx As Integer : gspPx = scrW\2 - 96
             _DEST backBuffer
-            UI_DrawPanel scrW\2 - 96, scrH\2 - 30, scrW\2 + 96, scrH\2 + 52, "ABORT MISSION"
-            FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "Y/A   CONFIRM RETREAT", scrH\2 - 4,  scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "C/X   CONTROLS       ", scrH\2 + 14, scrW, 255
-            FONT_PrintCenteredAlpha fontPalette(8),  backBuffer, "ESC/B CANCEL         ", scrH\2 + 32, scrW, 255
+            UI_DrawPanel scrW\2 - 104, scrH\2 - 30, scrW\2 + 104, scrH\2 + 70, "ABORT MISSION"
+            FONT_PrintAlpha fontPalette(14), backBuffer, LEFT$("Y/" + E3D_PadBtnName$(padBind(E3D_ACT_CONFIRM), ctrlLayout) + SPACE$(10), 10) + "CONFIRM RETREAT", gspPx, scrH\2 - 4, 255
+            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$("C/" + E3D_PadBtnName$(padBind(E3D_ACT_ROLL), ctrlLayout) + SPACE$(10), 10) + "CONTROLS", gspPx, scrH\2 + 14, 255
+            FONT_PrintAlpha fontPalette(9),  backBuffer, LEFT$("K/" + E3D_PadBtnName$(padBind(E3D_ACT_NOVA), ctrlLayout) + SPACE$(10), 10) + "REMAP CONTROLS", gspPx, scrH\2 + 32, 255
+            FONT_PrintAlpha fontPalette(8),  backBuffer, LEFT$("ESC/" + E3D_PadBtnName$(padBind(E3D_ACT_BACK), ctrlLayout) + SPACE$(10), 10) + "CANCEL", gspPx, scrH\2 + 50, 255
             _DEST 0
             _PUTIMAGE , backBuffer, 0
             EXIT SUB
