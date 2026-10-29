@@ -190,7 +190,7 @@ The Worker serves the three calls the game makes: `POST /sss_telemetry`, `POST /
 2. `npm ci`, then `npx wrangler login`.
 3. `npx wrangler d1 create sss` and paste the printed `database_id` into `server/wrangler.toml`.
 4. `npm run migrate` to create the tables in the remote database.
-5. `npx wrangler secret put API_KEY` and enter a long random string (e.g. `openssl rand -hex 32`). This is the game's `DB_KEY`.
+5. `npx wrangler secret put API_KEY` and enter a long random string (e.g. `openssl rand -hex 32`). This is the game's `DB_KEY`. It identifies the client, it is not a secret: it is embedded in every build (`strings builds/sss` shows it), so anyone can post with it. The Worker's own checks are what protect the data (see below).
 6. `npm run deploy`. Wrangler prints the Worker URL (`https://sss-api.<your-account>.workers.dev`).
 7. In the GitHub repo settings, set the Actions secrets `DB_URL` to the Worker URL and `DB_KEY` to the `API_KEY`, then rebuild. CI writes them into `assets/.env`.
 
@@ -209,6 +209,17 @@ npx wrangler dev --ip 0.0.0.0                  # serves http://localhost:8787
 Then point the game at it in `assets/.env` with `DB_KEY=localkey` and a `DB_URL` that depends on where the game runs. A native build uses `DB_URL=http://localhost:8787`. A game run with `tools/dev run` uses `DB_URL=http://host.containers.internal:8787`, because inside the container `localhost` is the container, not your machine. `DB_URL` and `DB_KEY` are embedded at build time, so rebuild after editing `assets/.env`.
 
 The free plan allows 100,000 Worker requests and 100,000 D1 rows written per day; past that, requests fail until the 00:00 UTC reset. Cloudflare's [Workers](https://developers.cloudflare.com/workers/platform/limits/) and [D1](https://developers.cloudflare.com/d1/platform/pricing/) limits pages list no inactivity pause.
+
+**What the Worker accepts.** `POST /scores` takes exactly one row per request, a `score` up to 250,000 and a `wave` up to 100 (the derivation is next to `MAX_SCORE` in `server/src/index.ts`; raise it if scoring grows), and a `player_name` that follows the in-game callsign rules: 3 to 32 printable ASCII characters (32-126), `~X` colour tokens included. Each client IP may make 10 `POST /scores` and 30 `POST /sss_telemetry` requests a minute (the `[[ratelimits]]` bindings in `server/wrangler.toml`); past that the Worker answers 429. The game sends one of each per run.
+
+**Moderating the leaderboard.** To look at and remove bad rows, from `server/`:
+
+```bash
+npx wrangler d1 execute sss --remote --command "SELECT id, player_name, score, wave, created_at FROM scores ORDER BY score DESC LIMIT 20"
+npx wrangler d1 execute sss --remote --command "DELETE FROM scores WHERE id IN (123, 124)"
+```
+
+`DELETE FROM scores WHERE player_name = '...'` or `WHERE score > ...` work the same way. Run the `SELECT` with the same `WHERE` first to check what it matches.
 
 ---
 
