@@ -9,7 +9,7 @@
 ' Local variable prefix: ab*
 
 Const NOVA_FX_FRAMES = 32
-Const ABL_HINT_FRAMES = 180   ' how long "NOVA READY - Q / PAD Y" stays up after launch
+Const ABL_HINT_FRAMES = 180   ' how long "NOVA READY - Q" stays up after launch
 
 
 Sub ABL_Update
@@ -137,7 +137,7 @@ End Sub
 
 ' The launch hint: one centred line per newly bought ability, fading out at the end.
 Sub ABL_DrawHint
-    Dim abhA As Integer, abhLine As String, abhP As Integer, abhQ As Integer, abhY As Integer
+    Dim abhA As Integer, abhLine As String, abhP As Integer, abhQ As Integer, abhY As Integer, abhW As Integer
     abhA = 255
     If ablHintTimer < 40 Then abhA = Int(255 * ablHintTimer / 40)
     abhY = 44 : abhP = 1
@@ -145,8 +145,9 @@ Sub ABL_DrawHint
         abhQ = InStr(abhP, ablHintText, Chr$(10))
         If abhQ = 0 Then abhQ = Len(ablHintText) + 1
         abhLine = Mid$(ablHintText, abhP, abhQ - abhP)
-        Line (scrW \ 2 - Len(abhLine) * 4 - 5, abhY - 2)-(scrW \ 2 + Len(abhLine) * 4 + 4, abhY + 16), _RGBA(0, 10, 30, abhA * 3 \ 4), BF
-        FONT_PrintCenteredAlpha fontPalette(11), backBuffer, abhLine, abhY, scrW, abhA
+        abhW = UI_PromptsW%(abhLine, INP_LastDevice%)
+        Line (scrW \ 2 - abhW \ 2 - 5, abhY - 2)-(scrW \ 2 + abhW \ 2 + 4, abhY + 16), _RGBA(0, 10, 30, abhA * 3 \ 4), BF
+        UI_PromptsCentered abhLine, abhY, 11, abhA
         abhY = abhY + 20
         abhP = abhQ + 1
     Loop

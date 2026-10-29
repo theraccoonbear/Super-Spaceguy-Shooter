@@ -47,7 +47,7 @@ Sub CONTROLS_Systems (csPart As Integer)
         End If
         FONT_PrintAlpha fontPalette(15), backBuffer, csNm, CTL_KEY_X, csY, 255
         FONT_PrintAlpha fontPalette(8), backBuffer, csLv, scrW - 28 - Len(csLv) * FONT_CHAR_W, csY, 255
-        FONT_PrintAlpha fontPalette(9), backBuffer, csInfo, CTL_KEY_X + 16, csY + 12, 255
+        UI_PromptsAt csInfo, INP_LastDevice%, CTL_KEY_X + 16, csY + 12, 9, 255, 0
     Next csI
 End Sub
 

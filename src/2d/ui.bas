@@ -105,10 +105,6 @@ Sub UI_DrawPanel(uiX1 As Integer, uiY1 As Integer, uiX2 As Integer, uiY2 As Inte
     End If
 End Sub
 
-Function UI_Tok$ (utkKey As String, utkAct As Integer)
-    UI_Tok$ = "{" + utkKey + "|" + LTrim$(Str$(utkAct)) + "}"
-End Function
-
 ' Badge shape and colours for raw pad button ubsBtn: ubsTxt$ is what goes inside, ubsPill is
 ' -1 for a pill (wider labels), ubsClr its fill, ubsDark -1 when the label is drawn in black.
 Sub UI_BadgeStyle (ubsBtn As Integer, ubsTxt As String, ubsPill As Integer, ubsClr As Long, ubsDark As Integer, ubsA As Integer)
@@ -160,24 +156,6 @@ Sub UI_PadBadge (upbBtn As Integer, upbX As Integer, upbY As Integer, upbA As In
         FONT_PrintAlpha upbSheet, backBuffer, upbTxt, upbX + 4, upbY, upbA
     End If
 End Sub
-
-' Splits the next UI_Tok$ off upnTxt$ from upnPos: upnLit$ is the text before it; returns 0
-' when there is no token left (upnLit$ is then the rest).
-Function UI_PromptNext% (upnTxt As String, upnPos As Integer, upnLit As String, upnKey As String, upnAct As Integer)
-    Dim upnO As Integer, upnC As Integer, upnBar As Integer, upnTok As String
-    UI_PromptNext% = 0
-    upnO = InStr(upnPos, upnTxt, "{")
-    If upnO > 0 Then upnC = InStr(upnO, upnTxt, "}")
-    If upnO = 0 Or upnC = 0 Then upnLit = Mid$(upnTxt, upnPos) : upnPos = Len(upnTxt) + 1 : Exit Function
-    upnLit = Mid$(upnTxt, upnPos, upnO - upnPos)
-    upnTok = Mid$(upnTxt, upnO + 1, upnC - upnO - 1)
-    upnBar = InStr(upnTok, "|")
-    upnKey = Left$(upnTok, upnBar - 1)
-    upnAct = Val(Mid$(upnTok, upnBar + 1))
-    If upnKey = "" And upnAct > 0 Then upnKey = E3D_KeyName$(keyBind(upnAct))
-    upnPos = upnC + 1
-    UI_PromptNext% = -1
-End Function
 
 Function UI_PromptsW% (upwTxt As String, upwDev As Integer)
     Dim upwPos As Integer, upwLit As String, upwKey As String, upwAct As Integer, upwW As Integer, upwMore As Integer

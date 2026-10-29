@@ -50,6 +50,7 @@ End Sub
 '$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 '$INCLUDE:'../src/gameplay/supplies.bas'
+'$INCLUDE:'../src/2d/prompttext.bas'
 
 Dim Shared utPassed As Integer, utFailed As Integer
 
@@ -153,8 +154,15 @@ UT_Assert UPG_Info$(UPG_LASER) = "BIGGER, FASTER LASER BANK", "laser info comes 
 UT_Assert UPG_Next$(UPG_LASER) = "BANK 100 > 125 REGEN +20%", "laser next: BANK 100 > 125 REGEN +20% (" + UPG_Next$(UPG_LASER) + ")"
 UT_Assert UPG_Next$(UPG_CANNON) = "NEXT: 2 PARALLEL SHOTS", "cannon next: 2 parallel shots"
 UT_Assert UPG_Next$(UPG_RAPID) = "SHOT DELAY .18>.14S", "rapid next: SHOT DELAY .18>.14S (" + UPG_Next$(UPG_RAPID) + ")"
-UT_Assert UPG_Next$(UPG_NOVA) = "CHARGES/STAGE 0>1" And Left$(UPG_Info$(UPG_NOVA), 4) = "Q/Y:", "nova: charges 0>1, and its info names the keys"
-UT_Assert UPG_Next$(UPG_ROLL) = "UNLOCKS THE ROLL" And Left$(UPG_Info$(UPG_ROLL), 4) = "E/X:", "roll: unlocks, and its info names the keys"
+UT_Assert UPG_Next$(UPG_NOVA) = "CHARGES/STAGE 0>1" And Left$(UPG_Info$(UPG_NOVA), 5) = UI_Tok$("", E3D_ACT_NOVA) + ":", "nova: charges 0>1, and its info opens with the nova key token"
+UT_Assert UPG_Next$(UPG_ROLL) = "UNLOCKS THE ROLL" And Left$(UPG_Info$(UPG_ROLL), 5) = UI_Tok$("", E3D_ACT_ROLL) + ":", "roll: unlocks, and its info opens with the roll key token"
+E3D_KeyDefaults
+UT_Assert UI_PromptsKeyText$(UPG_Info$(UPG_NOVA)) = "Q: CLEAR SHOTS+BLAST" And UI_PromptsKeyText$(UPG_Info$(UPG_ROLL)) = "E: UNTOUCHABLE DASH", "default keys: Q: CLEAR SHOTS+BLAST / E: UNTOUCHABLE DASH"
+keyBind(E3D_ACT_NOVA) = Asc("k") : keyBind(E3D_ACT_ROLL) = E3D_KEY_SPACE
+UT_Assert UI_PromptsKeyText$(UPG_Info$(UPG_NOVA)) = "K: CLEAR SHOTS+BLAST" And UI_PromptsKeyText$(UPG_Info$(UPG_ROLL)) = "SPACE: UNTOUCHABLE DASH", "remapped nova to K, roll to SPACE: the info lines follow (" + UI_PromptsKeyText$(UPG_Info$(UPG_ROLL)) + ")"
+UT_Assert UI_PromptsKeyText$(CFG_Get$(cfgAbilities, "hint_nova")) = "NOVA READY - K" And UI_PromptsKeyText$(CFG_Get$(cfgAbilities, "hint_roll")) = "ROLL READY - SPACE", "remapped: the launch hints name the new keys"
+E3D_KeyDefaults
+UT_Assert UI_PromptsKeyText$(CFG_Get$(cfgAbilities, "hint_nova")) = "NOVA READY - Q" And UI_PromptsKeyText$(CFG_Get$(cfgAbilities, "hint_roll")) = "ROLL READY - E", "default keys: NOVA READY - Q / ROLL READY - E"
 UT_Assert UPG_Next$(UPG_ARMOUR) = "CRASH DAMAGE 100>75%", "armour next: CRASH DAMAGE 100>75% (" + UPG_Next$(UPG_ARMOUR) + ")"
 credits = 10000
 utR = UPG_Buy%(UPG_CANNON)
@@ -166,7 +174,7 @@ Print ""
 Print "--- launch hint for a newly bought ability ---"
 UPG_Reset : credits = 10000
 utR = UPG_Buy%(UPG_NOVA)
-UT_Assert upgHintPending = CFG_Get$(cfgAbilities, "hint_nova"), "first nova queues NOVA READY - Q / PAD Y"
+UT_Assert upgHintPending = CFG_Get$(cfgAbilities, "hint_nova"), "first nova queues NOVA READY - {|4}"
 utR = UPG_Buy%(UPG_NOVA)
 UT_Assert upgHintPending = CFG_Get$(cfgAbilities, "hint_nova"), "nova level 2 adds no second hint"
 utR = UPG_Buy%(UPG_ROLL)
@@ -214,11 +222,13 @@ utR = UPG_Buy%(UPG_TRACTOR)
 UT_Assert UT_Near%(tractorR, 10) And UT_Near%(tractorPull, 0.05), "tractor beam 1: range 10, pull 0.05"
 UT_Assert UT_ArmourCheck% = -1, "hull armour: 100 -> 75 -> 50, 17 -> 13 at 75%"
 utOk = -1
+keyBind(E3D_ACT_NOVA) = E3D_KEY_SPACE : keyBind(E3D_ACT_ROLL) = E3D_KEY_SPACE
 For utI = 1 To UPG_COUNT
     If Len(UPG_Next$(utI)) = 0 Or Len(UPG_Next$(utI)) > 25 Then utOk = 0 : Print "  next: "; UPG_Next$(utI)
-    If Len(UPG_Info$(utI)) = 0 Or Len(UPG_Info$(utI)) > 25 Then utOk = 0 : Print "  info: "; UPG_Info$(utI)
+    If Len(UPG_Info$(utI)) = 0 Or Len(UI_PromptsKeyText$(UPG_Info$(utI))) > 25 Then utOk = 0 : Print "  info: "; UI_PromptsKeyText$(UPG_Info$(utI))
 Next utI
-UT_Assert utOk <> 0, "every row has an info line and a next-level line that fit the dock panel (25 chars)"
+E3D_KeyDefaults
+UT_Assert utOk <> 0, "every row has an info line and a next-level line that fit the dock panel (25 chars, info with keys bound to SPACE)"
 
 Print ""
 Print "--- capacity bars: length follows capacity, absolute values (#268) ---"

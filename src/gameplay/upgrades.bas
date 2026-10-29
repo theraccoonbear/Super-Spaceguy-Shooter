@@ -41,7 +41,7 @@ Const UPG_MAXED   = 2
 Dim Shared upgKey$(1 To UPG_COUNT)
 Dim Shared upgNames$(1 To UPG_COUNT)    ' "NAME" or "NAME LV1,NAME LV2,..."
 Dim Shared upgDesc$(1 To UPG_COUNT)     ' what it does (upgdesc_<key>), for the dock and the SHIP SYSTEMS page
-Dim Shared upgHintPending As String   ' "ROLL READY ..." lines (Chr$(10)-separated) to show on the next launch
+Dim Shared upgHintPending As String   ' "ROLL READY {|3}" lines (Chr$(10)-separated) to show on the next launch
 Dim Shared upgHintNova As String, upgHintRoll As String
 Dim Shared upgMax(1 To UPG_COUNT) As Integer
 Dim Shared upgLevel(1 To UPG_COUNT) As Integer

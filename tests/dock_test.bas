@@ -37,6 +37,7 @@ End Sub
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 '$INCLUDE:'../src/gameplay/supplies.bas'
 '$INCLUDE:'../src/state/docklogic.bas'
+'$INCLUDE:'../src/2d/prompttext.bas'
 
 Dim Shared dtPassed As Integer, dtFailed As Integer
 Dim Shared dtRes(0 To 199) As Integer   ' DOCK_Input% result per frame of the last run
@@ -254,6 +255,14 @@ DT_Assert UPG_Buy%(UPG_NOVA) = UPG_OK, "nova bought"
 novaCharges = 0
 DOCK_Open
 DT_Assert novaCharges = novaMax And dockSel = 1 And dockTop = 1, "opening the dock refills nova and puts the cursor on the first row"
+
+Print ""
+Print "--- info lines name the bound keys (#287) ---"
+DT_Assert InStr(UPG_Info$(UPG_NOVA), UI_Tok$("", E3D_ACT_NOVA)) = 1 And InStr(UPG_Info$(UPG_ROLL), UI_Tok$("", E3D_ACT_ROLL)) = 1, "nova and roll info lines open with their action's key token"
+E3D_KeyDefaults
+keyBind(E3D_ACT_NOVA) = Asc("k")
+DT_Assert Left$(UI_PromptsKeyText$(UPG_Info$(UPG_NOVA)), 2) = "K:", "nova rebound to K: the dock's nova line reads K: (" + UI_PromptsKeyText$(UPG_Info$(UPG_NOVA)) + ")"
+E3D_KeyDefaults
 
 Print ""
 Print "=== " + LTrim$(Str$(dtPassed + dtFailed)) + " tests: " + LTrim$(Str$(dtPassed)) + " passed, " + LTrim$(Str$(dtFailed)) + " failed ==="
