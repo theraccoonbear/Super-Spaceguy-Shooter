@@ -1,5 +1,6 @@
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { KEY, gameHeaders, get, post, rows } from "./helpers";
+import { KEY, configuredLimit, fakeLimiter, gameHeaders, get, post, postWith, rows } from "./helpers";
 
 const PLAYER = "3f2a9c1e-7b4d-4e8a-9c2f-1d5e6a7b8c9d";
 
@@ -108,22 +109,37 @@ describe("POST /sss_telemetry", () => {
   });
 
   it("returns 429 once a client passes 30 batches a minute, per IP", async () => {
+    const limit = configuredLimit("TELEMETRY_LIMITER");
+    expect(limit).toBe(30);
+    const limiter = { TELEMETRY_LIMITER: fakeLimiter(limit) };
     const ip = "203.0.113.30";
-    for (let i = 0; i < 30; i++) {
-      expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), ip)).status).toBe(201);
+    for (let i = 0; i < limit; i++) {
+      expect((await postWith(limiter, "/sss_telemetry", GAME_BATCH, ip)).status).toBe(201);
     }
-    expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), ip)).status).toBe(429);
-    expect(await rows("SELECT id FROM sss_telemetry")).toHaveLength(120);
-    expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), "203.0.113.31")).status).toBe(201);
+    expect((await postWith(limiter, "/sss_telemetry", GAME_BATCH, ip)).status).toBe(429);
+    expect(await rows("SELECT id FROM sss_telemetry")).toHaveLength(limit * 4);
+    expect((await postWith(limiter, "/sss_telemetry", GAME_BATCH, "203.0.113.31")).status).toBe(201);
+    expect(new Set(limiter.TELEMETRY_LIMITER.keys)).toEqual(new Set([ip, "203.0.113.31"]));
   });
 
   it("limits /scores and /sss_telemetry separately", async () => {
+    const limiters = {
+      SCORES_LIMITER: fakeLimiter(configuredLimit("SCORES_LIMITER")),
+      TELEMETRY_LIMITER: fakeLimiter(configuredLimit("TELEMETRY_LIMITER")),
+    };
     const ip = "203.0.113.40";
     const score =
       '{"player_id":"p","player_name":"ACE","score":1450,"wave":3,"session":"20261027143005"}';
-    for (let i = 0; i < 10; i++) await post("/scores", score, gameHeaders(), ip);
-    expect((await post("/scores", score, gameHeaders(), ip)).status).toBe(429);
-    expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), ip)).status).toBe(201);
+    for (let i = 0; i < configuredLimit("SCORES_LIMITER"); i++) await postWith(limiters, "/scores", score, ip);
+    expect((await postWith(limiters, "/scores", score, ip)).status).toBe(429);
+    expect((await postWith(limiters, "/sss_telemetry", GAME_BATCH, ip)).status).toBe(201);
+    expect(limiters.TELEMETRY_LIMITER.keys).toEqual([ip]);
+  });
+
+  it("is wired to the TELEMETRY_LIMITER binding from wrangler.toml", async () => {
+    expect(typeof env.TELEMETRY_LIMITER?.limit).toBe("function");
+    expect(await env.TELEMETRY_LIMITER!.limit({ key: "wiring-check" })).toEqual({ success: true });
+    expect((await post("/sss_telemetry", GAME_BATCH)).status).toBe(201);
   });
 
   it("rejects GET with 405", async () => {
