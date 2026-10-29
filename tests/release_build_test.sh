@@ -50,6 +50,15 @@ for flag in "${DEV_FLAGS[@]}"; do
     fi
 done
 
+# A libcurl symbol version (Debian's CURL_OPENSSL_4) makes Fedora's loader warn on every launch (#303)
+if [ "$(uname -s)" = Linux ]; then
+    if readelf -V "$BIN" | grep -q 'File: libcurl'; then
+        fail "binary requires libcurl symbol versions: $(readelf -V "$BIN" | grep -A1 'File: libcurl' | tail -n 1 | xargs)"
+    else
+        echo "ok:   no libcurl symbol versions required"
+    fi
+fi
+
 if [ "$fails" -ne 0 ]; then
     echo "release_build_test: $fails check(s) failed"
     exit 1

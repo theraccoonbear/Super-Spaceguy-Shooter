@@ -117,11 +117,15 @@ case "$(uname -s)" in
     fi
     ;;
   *)
+    # Link against an unversioned libcurl stub so the binary loads cleanly on Fedora too (#303)
+    CURL_STUB_DIR=$(mktemp -d)
+    CURL_LINK_FLAGS=$("$REPODIR/tools/curl-link-stub" "$CURL_STUB_DIR")
     if command -v xvfb-run &>/dev/null; then
-      xvfb-run "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "$REPODIR/sss.bas"
+      xvfb-run "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "-f:ExtraLinkerFlags=$CURL_LINK_FLAGS" "$REPODIR/sss.bas"
     else
-      "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "$REPODIR/sss.bas"
+      "$QB64" -x -w "-s:ExeDefaultDir=$REPODIR/builds" "-f:ExtraLinkerFlags=$CURL_LINK_FLAGS" "$REPODIR/sss.bas"
     fi
+    rm -rf "$CURL_STUB_DIR"
     ;;
 esac
 echo "==> Build complete"
