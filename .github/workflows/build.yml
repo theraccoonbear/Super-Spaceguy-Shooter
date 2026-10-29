@@ -267,8 +267,10 @@ jobs:
         shell: bash
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
 
+      # run.sh writes out/FAILED whenever a scene fails, including non-gating gameplay scenes
+      # that leave the job green
       - name: Upload render test screenshots and diffs
-        if: failure()
+        if: failure() || hashFiles('tests/render/out/FAILED') != ''
         uses: actions/upload-artifact@v4
         with:
           name: render-test-results

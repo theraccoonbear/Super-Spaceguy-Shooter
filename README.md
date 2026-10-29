@@ -169,11 +169,14 @@ Golden-screenshot tests catch rendering regressions (blend state, font alpha, ov
 | `boss5` | a cut's warning lines, then its beam |
 | `boss6` | devour's pull streaks and chevrons |
 
+Each scene is in one of two groups, set by a `#! group:` line in its file (`ui` if there is none). **ui** scenes (title, About, consent, callsign, dock) gate: a mismatch fails the run and CI. **gameplay** scenes (bosses, `playing2`, `pickups`, and the pause dialogs over live play) move with every tuning tweak before v0.1 (#319), so for now a mismatch is reported (per-group summary, a CI `::warning::` per scene, diffs uploaded) but doesn't fail the run. Don't re-bless gameplay goldens per PR during tuning. The switch is `GAMEPLAY_GATING=0` near the top of `tests/render/run.sh`. **At v0.1** (release checklist): re-bless the gameplay goldens once from the final build (`tools/dev render --update gameplay`), then flip it to `1`.
+
 ```bash
 tools/dev render                # in the container: build sss, run every scene, compare (~2 min, mostly the build)
 tools/dev render boss5 title    # just these scenes
 tools/dev render --no-build     # reuse builds/sss
 tools/dev render --update       # re-bless: run each scene 3 times, check the runs are byte-identical, save as goldens
+tools/dev render --update ui    # re-bless one group only (ui, gameplay or all)
 tests/render/run.sh             # natively on Linux (needs qb64pe on PATH and xvfb-run)
 ```
 

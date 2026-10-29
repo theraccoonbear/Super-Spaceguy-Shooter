@@ -1,4 +1,5 @@
 # Boss 6: devour's pull streaks and chevrons (360, 400).
+#! group: gameplay
 #! args: --scene boss6
 #! shots: 360,400
 0 400 FIRE

@@ -1,5 +1,6 @@
 # The ABORT MISSION (pause) dialog over level 1: opened with ESC on CANCEL, then the cursor
 # moved up to REMAP CONTROLS.
+#! group: gameplay
 #! args: --scene playing1
 #! shots: 220,250
 200 200 ESC
