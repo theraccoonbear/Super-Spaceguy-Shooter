@@ -28,11 +28,25 @@ Sub SETTINGS_Save ()
 End Sub
 
 Sub SETTINGS_Load ()
+    SETTINGS_LoadFile _STARTDIR$ + "/sss_settings.ini"
+    If Len(telemPlayerID) < 32 Then
+        telemPlayerID = TELEM_NewUUID$
+        SETTINGS_Save
+    End If
+    If Len(leaderboardPlayerID) < 32 Then
+        leaderboardPlayerID = TELEM_NewUUID$
+        SETTINGS_Save
+    End If
+    E3D_PadReselect
+End Sub
+
+Sub SETTINGS_LoadFile (sfPath As String)
     Dim sfH As Integer, sfLine As String, sfKey As String, sfVal As Single, sfEq As Integer
     Dim sfRaw As String, sfBound As Integer
-    If _FILEEXISTS(_STARTDIR$ + "/sss_settings.ini") Then
+    camF.orbitTheta = _PI(1.0) : camF.orbitPhi = CAM_DEFAULT_PHI : camF.orbitR = CAM_DEFAULT_R : camF.angleLocked = 0
+    If _FILEEXISTS(sfPath) Then
         sfH = FreeFile
-        Open _STARTDIR$ + "/sss_settings.ini" For Input As #sfH
+        Open sfPath For Input As #sfH
         Do While Not EOF(sfH)
             Line Input #sfH, sfLine
             sfEq = InStr(sfLine, "=")
@@ -87,13 +101,4 @@ Sub SETTINGS_Load ()
             End If
         End If
     End If
-    If Len(telemPlayerID) < 32 Then
-        telemPlayerID = TELEM_NewUUID$
-        SETTINGS_Save
-    End If
-    If Len(leaderboardPlayerID) < 32 Then
-        leaderboardPlayerID = TELEM_NewUUID$
-        SETTINGS_Save
-    End If
-    E3D_PadReselect
 End Sub
