@@ -1,0 +1,5 @@
+# Power-ups (#183): a shield crystal in the ship's path, a fuel canister beside it, a points star
+# off-screen (edge arrow); halos, crossing reticles, then the grab's pop (god mode: SH is full,
+# so it pays FULL +250).
+#! args: --scene playing2 --pup shield,fuel,points
+#! shots: 15,70

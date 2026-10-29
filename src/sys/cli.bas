@@ -88,6 +88,19 @@ Sub CLI_Parse()
         cliNumOk = CR_ParseArg%(cliVal, cliFuel)
         If cliNumOk = 0 Or cliFuel < 1 Then GAME_Usage("--fuel needs a whole number 1 or more, got '" + cliVal + "'")
     End If
+    cliVal = CLI_Value$(cliLine, "--pup ")
+    If cliVal <> "" Then
+        cliPup = cliVal
+        cliI = 0
+        Do While cliVal <> ""
+            cliPos = InStr(cliVal, ",")
+            If cliPos = 0 Then cliPos = Len(cliVal) + 1
+            If PUP_KindOf%(Left$(cliVal, cliPos - 1)) = 0 Then GAME_Usage("--pup takes shield, fuel or points, got '" + Left$(cliVal, cliPos - 1) + "'")
+            cliI = cliI + 1
+            cliVal = Mid$(cliVal, cliPos + 1)
+        Loop
+        If cliI > 3 Then GAME_Usage("--pup takes at most 3 kinds")
+    End If
     cliVal = CLI_Value$(cliLine, "--seed ")
     If cliVal <> "" Then
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--seed needs a whole number, got '" + cliVal + "'")

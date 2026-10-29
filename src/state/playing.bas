@@ -2,12 +2,9 @@ Const DIM_FAR        = 55      ' distance dimming far threshold
 Const DIM_NEAR       = 28      ' distance dimming near threshold
 Const DIM_AMBIENT    = 0.22    ' minimum brightness at far distance
 Const SCORE_ASTEROID = 50      ' points per asteroid kill
-Const SCORE_POWERUP  = 500     ' points for powerup collect
-Const SHIELD_RESTORE = 30      ' shield added by powerup
 
 Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
-    Dim hit As Integer
     Dim i As Integer, j As Integer
     Dim gspAstNear As Integer, gspAstI As Integer
     Dim spDmg As Integer
@@ -187,6 +184,7 @@ Sub GS_PLAYING_Update ()
                 END IF
             END IF
             WAVE_Spawn
+            IF cliPup <> "" THEN GAME_DevPups
 
             FOR i = 1 TO MAX_BULLETS
                 IF bullets(i).active THEN
@@ -205,20 +203,15 @@ Sub GS_PLAYING_Update ()
             FOR i = 1 TO MAX_POWERUPS
                 IF powerups(i).active THEN
                     powerups(i).px  = powerups(i).px  + powerups(i).vx
+                    powerups(i).rx  = powerups(i).rx  + powerups(i).drx
                     powerups(i).ry  = powerups(i).ry  + powerups(i).dry
                     powerups(i).rz  = powerups(i).rz  + powerups(i).drz
-                    IF powerups(i).px < -5 THEN powerups(i).active = 0
-                    IF tractorR > 0 THEN ABL_Tractor i
-
-                    E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-                    powerups(i).px, powerups(i).py, powerups(i).pz, boxLib(MESH_POWERUP), hit
-                    IF hit THEN
+                    IF powerups(i).px < -5 THEN
                         powerups(i).active = 0
-                        lives = lives + SHIELD_RESTORE
-                        IF lives > shieldMax THEN lives = shieldMax
-                        score = score + SCORE_POWERUP
-                        SND_Pup
-                        TELEM_PowerupCollected
+                        TELEM_PowerupMissed PUP_KindName$(WAVE_PupKind%(powerups(i).meshIdx))
+                    ELSE
+                        IF tractorR > 0 THEN ABL_Tractor i
+                        IF PUP_Grabbed%(powerups(i).px - player.px, powerups(i).py - player.py, powerups(i).pz - player.pz) THEN GS_PLAYING_PupGrab i
                     END IF
                 END IF
             NEXT i
@@ -320,14 +313,16 @@ Sub GS_PLAYING_Update ()
                 pPos.x = powerups(j).px : pPos.y = powerups(j).py : pPos.z = powerups(j).pz
                 pRot.x = powerups(j).rx : pRot.y = powerups(j).ry : pRot.z = powerups(j).rz
                 E3D_BuildObjectMat pPos, pRot, powerups(j).scl, objMat
-                E3D_SceneAddMeshLit meshLib(MESH_POWERUP), objMat, cam.POS, tt, lightDir
+                E3D_SceneAddMeshLit meshLib(powerups(j).meshIdx), objMat, cam.POS, tt, pupLight
             END IF
         END IF
     NEXT j
 
+    GS_PLAYING_PupHalos
     E3D_SceneFlush vpMat, scrW, scrH
 
     COMBAT_OverlayDraw
+    GS_PLAYING_PupMarks
     ABL_Draw
 
     FX_Draw vpMat, scrW, scrH
@@ -353,4 +348,123 @@ Sub GS_PLAYING_Update ()
     ELSE
         MUS_Fill 0
     END IF
+End Sub
+
+' Power-up i is caught: give it (src/gameplay/powerups.bas), then the pop, gauge flash, sound and log.
+Sub GS_PLAYING_PupGrab (gpgI As Integer)
+    Dim gpgKind As Integer, gpgAmt As Single, gpgN As String
+    gpgKind = WAVE_PupKind%(powerups(gpgI).meshIdx)
+    powerups(gpgI).active = 0
+    gpgAmt = PUP_Apply!(gpgKind, levelNum)
+    gpgN = LTRIM$(STR$(INT(gpgAmt + 0.5)))
+    pupPopTimer = 50 : pupPopY = scrH * 0.55
+    IF pupOverflowPts > 0 THEN
+        pupPopTxt = "FULL +" + LTRIM$(STR$(pupOverflowPts)) : pupPopPal = 14
+    ELSE
+        SELECT CASE gpgKind
+            CASE PUP_SHIELD : pupPopTxt = "+" + gpgN + " SH" : pupPopPal = 10 : hudFlashKind = 1 : hudFlashTimer = 48
+            CASE PUP_FUEL   : pupPopTxt = "+" + gpgN + " FU" : pupPopPal = 6  : hudFlashKind = 3 : hudFlashTimer = 48
+            CASE ELSE       : pupPopTxt = "+" + gpgN : pupPopPal = 14
+        END SELECT
+    END IF
+    SND_Pup
+    TELEM_PowerupCollected PUP_KindName$(gpgKind), gpgAmt
+End Sub
+
+' The kind's colour (gold points, green shield, orange fuel) at alpha gpcA.
+Function GS_PLAYING_PupClr& (gpcKind As Integer, gpcA As Integer)
+    Dim gpcAl As Integer
+    gpcAl = gpcA
+    IF gpcAl < 0 THEN gpcAl = 0
+    IF gpcAl > 255 THEN gpcAl = 255
+    SELECT CASE gpcKind
+        CASE PUP_SHIELD : GS_PLAYING_PupClr& = _RGBA32(80, 255, 140, gpcAl)
+        CASE PUP_FUEL   : GS_PLAYING_PupClr& = _RGBA32(255, 140, 30, gpcAl)
+        CASE ELSE       : GS_PLAYING_PupClr& = _RGBA32(255, 215, 40, gpcAl)
+    END SELECT
+End Function
+
+' A pulsing glow behind each power-up, drawn before the scene so the model sits on top of it.
+Sub GS_PLAYING_PupHalos
+    Dim gphI As Integer, gphK As Integer, gphKind As Integer, gphOk As Integer, gphOk2 As Integer
+    Dim gphSX As Single, gphSY As Single, gphEX As Single, gphEY As Single, gphR As Single, gphP As Single, gphFade As Single
+    _DEST backBuffer
+    FOR gphI = 1 TO MAX_POWERUPS
+        IF powerups(gphI).active THEN
+            IF powerups(gphI).px > cam.POS.x + 1 THEN
+                COMBAT_Project powerups(gphI).px, powerups(gphI).py, powerups(gphI).pz, gphSX, gphSY, gphOk
+                COMBAT_Project powerups(gphI).px, powerups(gphI).py + 1.1, powerups(gphI).pz, gphEX, gphEY, gphOk2
+                IF gphOk AND gphOk2 THEN
+                    gphKind = WAVE_PupKind%(powerups(gphI).meshIdx)
+                    gphP = 0.5 + 0.5 * SIN(tt * 7 + gphI)
+                    gphR = ABS(gphSY - gphEY) * (0.9 + 0.2 * gphP)
+                    gphFade = (powerups(gphI).px - player.px) / 10
+                    IF gphFade > 1 THEN gphFade = 1
+                    IF gphR < 3 THEN gphR = 3
+                    IF gphR < 150 THEN
+                        FOR gphK = 0 TO 2
+                            CIRCLE (gphSX, gphSY), gphR - gphK * gphR * 0.18, GS_PLAYING_PupClr&(gphKind, INT((30 + gphK * 20 + gphP * 30) * gphFade))
+                        NEXT gphK
+                    END IF
+                END IF
+            END IF
+        END IF
+    NEXT gphI
+End Sub
+
+' Over the scene: a crossing reticle where each power-up will pass the ship (the last
+' pup_marker_frames frames, closing in to the grab radius), and an edge arrow for one off-screen.
+Sub GS_PLAYING_PupMarks
+    Dim gpmI As Integer, gpmKind As Integer, gpmOk As Integer, gpmOk2 As Integer, gpmA As Integer
+    Dim gpmDX As Single, gpmFr As Single, gpmF As Single, gpmR As Single
+    Dim gpmSX As Single, gpmSY As Single, gpmEX As Single, gpmEY As Single, gpmPx As Single
+    Dim gpmUX As Single, gpmUY As Single, gpmLen As Single, gpmT As Single, gpmT2 As Single
+    IF gameState <> GS_PLAYING THEN EXIT SUB
+    _DEST backBuffer
+    FOR gpmI = 1 TO MAX_POWERUPS
+        IF powerups(gpmI).active THEN
+            gpmKind = WAVE_PupKind%(powerups(gpmI).meshIdx)
+            gpmDX = powerups(gpmI).px - player.px
+            gpmFr = gpmDX / pupSpeed
+            IF gpmDX > -pupGrabDX AND gpmFr <= pupMarkerFrames AND pupMarkerFrames > 0 THEN
+                gpmF = gpmFr / pupMarkerFrames
+                IF gpmF < 0 THEN gpmF = 0
+                gpmR = pupGrabR * (1 + 0.3 * gpmF)
+                COMBAT_Project player.px, powerups(gpmI).py, powerups(gpmI).pz, gpmSX, gpmSY, gpmOk
+                COMBAT_Project player.px, powerups(gpmI).py + gpmR, powerups(gpmI).pz, gpmEX, gpmEY, gpmOk2
+                IF gpmOk AND gpmOk2 THEN
+                    gpmPx = ABS(gpmSY - gpmEY)
+                    IF gpmPx >= 2 AND gpmPx < 300 THEN
+                        gpmA = 60 + INT(160 * (1 - gpmF))
+                        CIRCLE (gpmSX, gpmSY), gpmPx, GS_PLAYING_PupClr&(gpmKind, gpmA)
+                        CIRCLE (gpmSX, gpmSY), gpmPx + 1, GS_PLAYING_PupClr&(gpmKind, gpmA \ 3)
+                        LINE (gpmSX - gpmPx - 3, gpmSY)-(gpmSX - gpmPx + 2, gpmSY), GS_PLAYING_PupClr&(gpmKind, gpmA)
+                        LINE (gpmSX + gpmPx - 2, gpmSY)-(gpmSX + gpmPx + 3, gpmSY), GS_PLAYING_PupClr&(gpmKind, gpmA)
+                        LINE (gpmSX, gpmSY - gpmPx - 3)-(gpmSX, gpmSY - gpmPx + 2), GS_PLAYING_PupClr&(gpmKind, gpmA)
+                        LINE (gpmSX, gpmSY + gpmPx - 2)-(gpmSX, gpmSY + gpmPx + 3), GS_PLAYING_PupClr&(gpmKind, gpmA)
+                    END IF
+                END IF
+            END IF
+            IF gpmDX > -pupGrabDX THEN
+                COMBAT_Project powerups(gpmI).px, powerups(gpmI).py, powerups(gpmI).pz, gpmSX, gpmSY, gpmOk
+                IF gpmOk THEN
+                    IF gpmSX < 0 OR gpmSX >= scrW OR gpmSY < 0 OR gpmSY >= scrH THEN
+                        gpmUX = gpmSX - scrW / 2 : gpmUY = gpmSY - scrH / 2
+                        gpmLen = SQR(gpmUX * gpmUX + gpmUY * gpmUY)
+                        IF gpmLen > 0.001 THEN
+                            gpmUX = gpmUX / gpmLen : gpmUY = gpmUY / gpmLen
+                            gpmT = 1E+09 : gpmT2 = 1E+09
+                            IF ABS(gpmUX) > 0.001 THEN gpmT = (scrW / 2 - 12) / ABS(gpmUX)
+                            IF ABS(gpmUY) > 0.001 THEN gpmT2 = (scrH / 2 - 12) / ABS(gpmUY)
+                            IF gpmT2 < gpmT THEN gpmT = gpmT2
+                            gpmEX = scrW / 2 + gpmUX * gpmT : gpmEY = scrH / 2 + gpmUY * gpmT
+                            gpmA = 150 + INT(100 * (0.5 + 0.5 * SIN(tt * 10)))
+                            COMBAT_Chevron gpmEX - gpmUX * 8, gpmEY - gpmUY * 8, gpmUX, gpmUY, 0, GS_PLAYING_PupClr&(gpmKind, gpmA)
+                            COMBAT_Chevron gpmEX - gpmUX * 8, gpmEY - gpmUY * 8, gpmUX, gpmUY, -4, GS_PLAYING_PupClr&(gpmKind, gpmA \ 2)
+                        END IF
+                    END IF
+                END IF
+            END IF
+        END IF
+    NEXT gpmI
 End Sub
