@@ -22,20 +22,24 @@ It runs natively on Linux, macOS, and Windows as a single compiled binary with n
 - Combat with projectiles, collision, hit effects, and wave-based enemy spawning, plus three boss fights
 - Parallax starfield backdrop, with true 3D-modeled ships, asteroids, and pickups (planets are 2D sprites)
 - Fully procedural audio: music, sound effects, and synthesized speech, with no audio files
-- Persistent settings (music/SFX/speech/narration volumes, telemetry consent, player callsign)
+- Persistent settings (music/SFX/speech/narration volumes, fullscreen, telemetry consent, player callsign, key and gamepad bindings)
 - Optional anonymous gameplay telemetry and an online leaderboard (opt-in, disabled unless a backend is configured)
 - Cross-platform CI/CD building, testing, and releasing on all three platforms
 
 ## Building
 
-You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) installed and on your `PATH` as `qb64pe`.
+You need:
+
+- [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) installed and on your `PATH` as `qb64pe`.
+- [Node.js](https://nodejs.org/) with `npm` on your `PATH`. `tools/buildqb sss.bas` runs `npm install` in `math/` and then `node tools/emit-spline.js` to generate the spline math (see [Flight path math](#flight-path-math)).
+- Network access on the first build, so `npm install` can fetch [exprforge](https://www.npmjs.com/package/exprforge) into `math/node_modules/`. Later builds use the installed copy.
 
 ```bash
 # recommended -- run from the repo root
 tools/buildqb sss.bas
 ```
 
-This bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows).
+This generates the spline math, bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows).
 
 ```bash
 # smoke test
@@ -45,6 +49,16 @@ builds/sss --version
 Pre-built binaries for Linux, macOS, and Windows are produced by CI on every merge to `master` and attached to tagged releases.
 
 **Release builds.** A plain build is a dev build. `tools/buildqb --release sss.bas` (or `SSS_RELEASE=1`; `.github/scripts/qb64build.sh --release` in CI; `tools/dev build --release` in the container) makes a release build: `--version` prints the bare version, and the dev-only flags (everything below except `--version`, `--help`, `--no-telem` and `--debug`) are compiled out, so passing one is an `unknown option` error. `--debug` still works, for bug reports, but `--help` doesn't list it. `tools/make-version.sh` switches it with `$LET RELEASEBUILD` in the generated `src/sys/version.bas`. Tagged (`v*`) releases ship release builds; every other CI build is a dev build, plus one Linux release build checked by `tests/release_build_test.sh`. A release build overwrites `builds/sss`, so rebuild without `--release` before using the dev flags again.
+
+### Downloading a release
+
+Each release has three binaries: `sss-linux`, `sss-macos` and `sss-windows.exe`. Release assets don't keep the executable bit, so on Linux and macOS make the file executable after downloading it:
+
+```bash
+chmod +x sss-linux    # or sss-macos
+```
+
+macOS also quarantines files downloaded from the internet and won't open an unsigned binary. Clear the flag with `xattr -d com.apple.quarantine sss-macos`, or right-click the file in Finder, choose **Open**, and confirm.
 
 ### Building in a container
 
@@ -96,6 +110,7 @@ sss [options]
   --ships N              Start every run with N ships (testing)
   --shields N            Start every run with N shield points (testing, e.g. damaged shields at the dock)
   --fuel N               Start every run with N fuel (testing, e.g. a nearly empty tank at the dock)
+  --pup K,K,K            Place power-ups (shield, fuel, points) when play starts: in your path, beside it, off-screen
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
 ```
 
@@ -177,8 +192,6 @@ The game can optionally send anonymous gameplay events and score submissions to 
    ```
 2. Leave it empty or absent to disable network telemetry entirely. The game still writes a local `sss_telemetry.csv`, and no network requests are made.
 3. Players are asked for one-time consent in-game before anything is sent; `--no-telem` skips telemetry (and the consent prompt) for a single session.
-
-Builds released before the switch have the old Supabase URL embedded and keep calling it; only builds made after `DB_URL`/`DB_KEY` point at the Worker use it.
 
 See [`src/sys/README-telemetry.md`](src/sys/README-telemetry.md) for the event schema and [`src/sys/README-http.md`](src/sys/README-http.md) for the underlying HTTP layer.
 
@@ -272,14 +285,14 @@ The codebase is split across `$INCLUDE` modules organized by discipline under `s
 
 Gameplay doesn't use it today. The boss uses hand-coded hunt/evade movement, and spline routes are kept for possible cinematics. See [ADR-0001](docs/adr/0001-rail-shooter-scope.md).
 
-Do not hand-edit the generated files. Run `node tools/emit-spline.js` from the repo root to regenerate both downstream targets from the DSL:
+Do not hand-edit the generated files. `node tools/emit-spline.js` (run from the repo root, after `npm install` in `math/`) regenerates both downstream targets from the DSL:
 
 | Generated file | Language | Consumer |
 |---|---|---|
 | `src/gameplay/spline_path_gen.bi` | QB64-PE | Game runtime (`behavior.bas` flyover states; not used by gameplay) |
 | `tools/TrailForge/src/math/spline_gen.ts` | TypeScript | TrailForge preview |
 
-The CI pipeline regenerates both files on every build, so the generated code is always fresh. If you add or change a function in the DSL, run the emit script locally and commit the regenerated files.
+`tools/buildqb sss.bas` runs the emit script on every build (locally and in CI), and the test runner regenerates `spline_path_gen.bi` when it is missing or older than its inputs, so the QB64 output is always fresh. `spline_path_gen.bi` is gitignored: never commit it. `spline_gen.ts` is tracked: if you add or change a function in the DSL, run the emit script (or `tools/dev emit`) and commit the regenerated `spline_gen.ts` with your `formula.expr` change.
 
 Implemented algorithms: Catmull-Rom position/tangent weights, Gram-Schmidt frame, standoff offset, arc-length reparameterization, and Rodrigues parallel transport for smooth ship-body orientation.
 
@@ -287,7 +300,15 @@ Implemented algorithms: Catmull-Rom position/tangent weights, Gram-Schmidt frame
 
 ## Controls
 
-To see the controls in game, open the pause dialog (ESC / Start) and press **C** (X on a gamepad), or pick CONTROLS in the title screen's command console.
+To see the controls in game, open the pause dialog (ESC / Start) and press **C** (the roll button, X by default, on a gamepad), or pick CONTROLS in the title screen's command console.
+
+The tables below show the default bindings. On-screen prompts follow the device you last touched: key names after a key press, the bound pad button (as a coloured badge) after a pad press. Every menu and dialog has a cursor: ↑ / ↓ (or the stick or d-pad) move it and ENTER / pad A picks, and the hotkeys listed below still work.
+
+### Remapping
+
+Settings > **CONTROLS** (ENTER / pad A on that row), or **K** / the nova button (Y by default) in the pause dialog, opens the remap page. It lists every action with its key and its pad button. ↑ / ↓ pick an action, ← / → switch between the KEY and PAD columns, and ENTER / pad A rebinds it: press the new key or button. **RUN PAD SETUP** asks for each pad action in turn, and **RESET TO DEFAULTS** restores both. ESC is always pause and back, and the arrow keys and the stick and d-pad always move, so those can't be rebound; W / A / S / D are the movement keys you can change. Leaving the page saves the bindings in `sss_settings.ini`, with pad bindings stored per controller name.
+
+**First-run pad setup.** When a gamepad the game has no built-in layout for, and no saved bindings for, is connected at the title screen, the pad setup wizard opens on its own: press the button you want for each action. A stick, d-pad or arrow push skips an action (so does waiting 10 seconds), and keyboard ESC cancels. A cancelled setup isn't asked again for that pad; run it from Settings > CONTROLS > RUN PAD SETUP.
 
 ### In flight
 
@@ -297,7 +318,7 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 | Space (hold) | A or B | Fire (both bottom face buttons, so a Nintendo-labeled pad fires from either) |
 | E | X | Evasive roll, once bought at the dock |
 | Q | Y | Nova pulse, once bought at the dock |
-| ESC | Start | Pause / abort-mission dialog (Y / A confirms the abort, C / X shows controls, ESC / B cancels) |
+| ESC | Start | Pause / abort-mission dialog: CONFIRM RETREAT, CONTROLS, REMAP CONTROLS, CANCEL. It opens on CANCEL, so ENTER / A resumes. Keyboard hotkeys: Y retreats, C shows the controls, K opens the remap page, N cancels. Pad: the roll button (X) shows the controls, the nova button (Y) opens the remap page, B cancels. ESC / Start closes it |
 | TAB | Back / Select | Camera mode on/off. The game freezes while you adjust; pressing it again locks the angle and saves it |
 | ↑ / ↓ (camera mode) | Stick up/down | Tilt the camera |
 | R (camera mode) | — | Reset to the default chase camera |
@@ -309,11 +330,11 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 |---|---|---|
 | P | Start | Start a new game |
 | ESC | Back / Select | Open/close the command console |
-| A / C / S / L / Q / N | — | Console: About / Controls / Settings / Leaderboard / Quit / Cancel |
+| A / C / S / L / Q / N | B (Cancel only) | Console: About / Controls / Settings / Leaderboard / Quit / Cancel |
 | ↑ ↓ then ENTER | Stick up/down then A | Console: move the highlight and pick it |
 | ↑ ↓ ← → | Left stick | Navigate and adjust Settings; scroll About; page through Controls |
-| ENTER | A | Confirm (Settings callsign, data notice, callsign entry) |
-| ESC | B (or Start) | Back / cancel (Settings, About, Leaderboard, Controls, data notice, callsign entry) |
+| ENTER | A | Confirm (Settings callsign and CONTROLS rows, data notice, remap page) |
+| ESC | B (or Start) | Back / cancel (Settings, About, Leaderboard, Controls, remap page, data notice) |
 | F11 | — | Toggle fullscreen (any screen) |
 
 ### Story screens
@@ -325,7 +346,9 @@ To see the controls in game, open the pause dialog (ESC / Start) and press **C**
 | Space | A | Continue (intro card, game over) |
 | Any key | A / Start | Skip the logo cards |
 
-On the data notice, X is "don't ask again" (S on the keyboard). Typing a callsign needs the keyboard; with a gamepad, A keeps the shown name (or picks a random one) and B skips.
+On the data notice, X is "don't ask again" (S on the keyboard).
+
+**Callsign entry.** On the keyboard, type the name, then ENTER (or SPACE) when done or ESC to skip. On a gamepad it's an arcade letter spinner: up / down spin the character under the cursor (A-Z, 0-9, space, `-`, `.`; hold to repeat), left / right move, A goes to the next character (adding one at the end), B deletes, Y cycles that character's colour, Start is done and Back skips. Both edit the same name, so you can switch device mid-entry.
 
 ### Upgrade dock
 
