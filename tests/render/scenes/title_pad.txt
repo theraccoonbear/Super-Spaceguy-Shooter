@@ -1,5 +1,6 @@
 # The title after a d-pad press: pad prompts (START to play, BACK for options), then the
 # COMMAND CONSOLE opened with Back, its cancel prompt the B badge.
+#! group: ui
 #! args: --scene title
 #! shots: 100,160
 # the version string (bottom right) changes with every commit

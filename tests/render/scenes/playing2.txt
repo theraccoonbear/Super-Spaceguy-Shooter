@@ -1,4 +1,5 @@
 # Level 2 combat: enemy fighters and a lock-on bracket, enemy bolts with impact rings, the HUD.
+#! group: gameplay
 #! args: --scene playing2
 #! shots: 900
 0 900 FIRE
