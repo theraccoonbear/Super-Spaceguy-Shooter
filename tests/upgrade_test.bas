@@ -321,6 +321,8 @@ Print "--- the next jump's fuel need, and stranded (#277) ---"
 UPG_Reset : settingNerf = 0 : godMode = 0
 utLegKills = 10 : utLegBoss = 1 : utLegAst = 0
 UT_Assert UT_Near%(SUP_LegNeed!, 55), "10-kill combat + a boss: 10 x 3 + 25 = 55"
+utLegKills = 24 : utLegBoss = 1 : utLegAst = 0
+UT_Assert UT_Near%(SUP_LegNeed!, 97), "the last leg (chapter 6): 24 x 3 + 25 = 97, under the base tank"
 utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
 UT_Assert UT_Near%(SUP_LegNeed!, 90), "the asteroid field: 90 (it burns ~89)"
 utLegKills = 40 : utLegBoss = 1

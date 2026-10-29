@@ -66,8 +66,8 @@ CONST MESH_COUNT        = 15
 CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
 CONST BOSS_MAX_HP       = 30
 CONST BOSS_MAX_HP_NERF  = BOSS_MAX_HP * NERF_FACTOR  ' 3
-CONST BOSS_TRIGGER      = 1000
-CONST BOSS_TRIGGER_NERF = BOSS_TRIGGER * NERF_FACTOR ' 100
+CONST BOSS_TRIGGER      = 10                         ' enemy kills that end a combat stage (#312)
+CONST BOSS_TRIGGER_NERF = BOSS_TRIGGER * NERF_FACTOR ' 1
 CONST BOSS_WARN_FRAMES  = 120   ' frames of warning before boss spawns
 CONST PLANET_COUNT     = 6
 CONST HIT_SCALE        = 1.5    ' enemy AABB scale factor for hit detection (visual stays unchanged)
@@ -174,8 +174,8 @@ DIM SHARED enemyFireTimer(1 TO MAX_ENEMIES) AS SINGLE
 ' --- game state ---
 DIM SHARED score AS LONG
 DIM SHARED highScore AS LONG
-DIM SHARED stageScore AS LONG     : stageScore = BOSS_TRIGGER
-DIM SHARED stageScoreBase AS LONG : stageScoreBase = 0
+DIM SHARED stageKillTarget AS LONG : stageKillTarget = BOSS_TRIGGER
+DIM SHARED stageKills AS LONG      : stageKills = 0
 DIM SHARED lives AS INTEGER : lives = 100
 DIM SHARED shipLives AS INTEGER : shipLives = 3
 DIM SHARED tt AS SINGLE

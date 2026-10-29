@@ -183,10 +183,7 @@ Sub STAGE_DrawPlanetBackground
         Case LEVEL_BOSS
             stProg = 1.0
         Case LEVEL_COMBAT
-            If stageScore <= stageScoreBase Then Exit Sub
-            stProg = (score - stageScoreBase) / CSng(stageScore - stageScoreBase)
-            If stProg < 0.0 Then stProg = 0.0
-            If stProg > 1.0 Then stProg = 1.0
+            stProg = SEQ_StageProgress!
         Case LEVEL_ASTEROID
             If settingNerf Then stAstDur = ASTFIELD_DURATION * NERF_FACTOR Else stAstDur = ASTFIELD_DURATION
             If stAstDur <= 0 Then Exit Sub
