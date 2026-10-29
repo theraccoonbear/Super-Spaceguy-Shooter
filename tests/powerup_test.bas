@@ -63,9 +63,9 @@ Print "--- config: the real powerups.ini ---"
 cfgPowerups = CFG_Parse$(_EMBEDDED$("CFGPOWERUPS"))
 ptOk = PUP_Load%
 PT_Assert ptOk <> 0, "powerups.ini loads " + pupLoadErr
-PT_Assert PT_Near%(pupChance, 0.25), "pup_chance 0.25"
+PT_Assert PT_Near%(pupChance, 0.15), "pup_chance 0.15"
 PT_Assert PT_Near%(pupW(PUP_POINTS), 45) And PT_Near%(pupW(PUP_SHIELD), 40) And PT_Near%(pupW(PUP_FUEL), 15), "weights points 45, shield 40, fuel 15"
-PT_Assert pupPoints = 500 And pupShield = 30 And pupOverflow = 250, "points 500, shield 30, overflow 250"
+PT_Assert pupPoints = 500 And pupShield = 45 And pupOverflow = 250, "points 500, shield 45, overflow 250"
 PT_Assert pupFuelCnt = 5, "fuel amounts for 5 chapters"
 PT_Assert PT_Near%(pupSpawnX, 45) And PT_Near%(pupSpawnXVar, 10), "spawn 45..55 ahead"
 PT_Assert PT_Near%(pupSpreadY, 10) And PT_Near%(pupSpreadZ, 14), "spread y 10, z 14"
@@ -123,13 +123,13 @@ PT_Assert PUP_InTractor%(10, 10, 14, 18), "level 2 (reach 18) holds a spawn at t
 Print ""
 Print "--- amounts per chapter ---"
 PT_Assert PT_Near%(PUP_Amount!(PUP_POINTS, 3), 500), "points: 500"
-PT_Assert PT_Near%(PUP_Amount!(PUP_SHIELD, 3), 30), "shield: 30"
-PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 1), 10), "fuel chapter 1: 10"
-PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 2), 8), "fuel chapter 2: 8"
-PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 3), 6), "fuel chapter 3: 6"
-PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 5), 4), "fuel chapter 5: 4"
-PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 6), 4), "fuel chapter 6 (past the end): the last value, 4"
-PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 0), 10), "fuel chapter 0 (before the first): the first value"
+PT_Assert PT_Near%(PUP_Amount!(PUP_SHIELD, 3), 45), "shield: 45"
+PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 1), 15), "fuel chapter 1: 15"
+PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 2), 15), "fuel chapter 2: 15"
+PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 3), 15), "fuel chapter 3: 15"
+PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 5), 15), "fuel chapter 5: 15"
+PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 6), 15), "fuel chapter 6 (past the end): the last value, 15"
+PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 0), 15), "fuel chapter 0 (before the first): the first value"
 
 Print ""
 Print "--- applying: caps and overflow ---"
@@ -139,15 +139,15 @@ ptAmt = PUP_Apply!(PUP_POINTS, 1)
 PT_Assert PT_Near%(ptAmt, 500) And score = 1500 And pupOverflowPts = 0, "points: +500 score"
 lives = 50 : score = 0
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
-PT_Assert PT_Near%(ptAmt, 30) And lives = 80 And score = 0, "shield 50 -> 80"
-lives = 90
+PT_Assert PT_Near%(ptAmt, 45) And lives = 95 And score = 0, "shield 50 -> 95"
+lives = 80
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
-PT_Assert PT_Near%(ptAmt, 10) And lives = 100 And score = 0 And pupOverflowPts = 0, "shield 90: tops up to 100 (+10), no points"
+PT_Assert PT_Near%(ptAmt, 20) And lives = 100 And score = 0 And pupOverflowPts = 0, "shield 80: tops up to 100 (+20), no points"
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
 PT_Assert PT_Near%(ptAmt, 0) And lives = 100 And score = 250 And pupOverflowPts = 250, "shield full: +250 score instead"
 fuelLevel = 50 : score = 0
 ptAmt = PUP_Apply!(PUP_FUEL, 2)
-PT_Assert PT_Near%(ptAmt, 8) And PT_Near%(fuelLevel, 58) And score = 0, "fuel chapter 2: 50 -> 58"
+PT_Assert PT_Near%(ptAmt, 15) And PT_Near%(fuelLevel, 65) And score = 0, "fuel chapter 2: 50 -> 65"
 fuelLevel = 97.5
 ptAmt = PUP_Apply!(PUP_FUEL, 1)
 PT_Assert PT_Near%(ptAmt, 2.5) And PT_Near%(fuelLevel, 100) And pupOverflowPts = 0, "fuel 97.5: tops up to 100 (+2.5)"
@@ -156,10 +156,10 @@ ptAmt = PUP_Apply!(PUP_FUEL, 1)
 PT_Assert PT_Near%(ptAmt, 0) And PT_Near%(fuelLevel, 99.5) And score = 250 And pupOverflowPts = 250, "fuel under a unit from full counts as full: +250 score"
 fuelMax = 160 : fuelLevel = 100 : score = 0
 ptAmt = PUP_Apply!(PUP_FUEL, 4)
-PT_Assert PT_Near%(ptAmt, 5) And PT_Near%(fuelLevel, 105) And score = 0, "a bigger tank (160) has room: chapter 4 gives 5"
+PT_Assert PT_Near%(ptAmt, 15) And PT_Near%(fuelLevel, 115) And score = 0, "a bigger tank (160) has room: chapter 4 gives 15"
 shieldMax = 150 : lives = 100
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
-PT_Assert PT_Near%(ptAmt, 30) And lives = 130, "a bigger shield (150) has room: +30"
+PT_Assert PT_Near%(ptAmt, 45) And lives = 145, "a bigger shield (150) has room: +45"
 
 Print ""
 Print "passed:" + Str$(ptPassed) + "  failed:" + Str$(ptFailed)
