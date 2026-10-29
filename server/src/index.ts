@@ -1,14 +1,35 @@
 export interface Env {
   DB: D1Database;
   API_KEY: string;
+  SCORES_LIMITER?: RateLimit;
+  TELEMETRY_LIMITER?: RateLimit;
 }
 
 type Row = Record<string, string | number>;
 type FieldKind = "text" | "count";
-type Schema = Record<string, { kind: FieldKind; max?: number }>;
+type Schema = Record<string, { kind: FieldKind; max?: number; pattern?: RegExp }>;
 
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_ROWS = 1000;
+
+// A full winning run tops out near 65,000 (the best real score is 21,882, 2026-10-28):
+//   kills       ~150 x SCORE_ENEMY 100       = 15,000  (sequence.txt triggers total 70;
+//                                                       a god-mode run measured 71)
+//   bosses         3 x 2,000                 =  6,000  (boss.bas)
+//   power-ups    ~40 x pup_points 500        = 20,000  (pup_chance 0.25 per combat wave)
+//   near misses  <96 x INT(scl*60) <= ~180   = 17,300  (50-frame cooldown over the
+//                                                       4,800-frame asteroid field)
+//   fuel bonus   fuelMax 160 x 5             =    800
+//   credit bonus ~6,000 credits x 1          =  6,000  (economy.ini credit_bonus_rate)
+// The ceiling leaves ~4x headroom for balance changes; raise it if the game's scoring grows.
+const MAX_SCORE = 250_000;
+// The game sends waveType, the formation index (0-5, wave.bas). 100 leaves room for more
+// formations or a switch to the level number.
+const MAX_WAVE = 100;
+// The callsign screen (usernamelogic.bas / textedit.bas) types chars 32-126 only, ~X colour
+// tokens included, needs UN_MIN_LEN 3 to confirm and stops at UN_MAX_LEN 32; skipping
+// gives UN_AutoName$ "PILOT-1234".
+const CALLSIGN = /^[\x20-\x7e]{3,32}$/;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
 const LEADERBOARD_COLUMNS = ["player_name", "score", "wave"];
@@ -23,9 +44,9 @@ const TELEMETRY: Schema = {
 
 const SCORES: Schema = {
   player_id: { kind: "text", max: 64 },
-  player_name: { kind: "text", max: 32 },
-  score: { kind: "count" },
-  wave: { kind: "count" },
+  player_name: { kind: "text", max: 32, pattern: CALLSIGN },
+  score: { kind: "count", max: MAX_SCORE },
+  wave: { kind: "count", max: MAX_WAVE },
   session: { kind: "text", max: 64 },
 };
 
@@ -54,12 +75,14 @@ async function route(request: Request, env: Env): Promise<Response> {
   switch (path) {
     case "/sss_telemetry":
       requireMethod(request, "POST");
+      await rateLimit(request, env.TELEMETRY_LIMITER);
       await requireKey(request, env);
-      return insert(env, "sss_telemetry", TELEMETRY, await readRows(request, TELEMETRY));
+      return insert(env, "sss_telemetry", TELEMETRY, await readRows(request, TELEMETRY, MAX_ROWS));
     case "/scores":
       requireMethod(request, "POST");
+      await rateLimit(request, env.SCORES_LIMITER);
       await requireKey(request, env);
-      return insert(env, "scores", SCORES, await readRows(request, SCORES));
+      return insert(env, "scores", SCORES, await readRows(request, SCORES, 1));
     case "/top_scores":
       requireMethod(request, "GET");
       return topScores(env, url.searchParams);
@@ -72,6 +95,14 @@ function requireMethod(request: Request, method: string): void {
   if (request.method !== method) {
     throw new HttpError(405, `method ${request.method} not allowed`);
   }
+}
+
+// Absent in plain local runs that don't simulate the binding: no limit there.
+async function rateLimit(request: Request, limiter: RateLimit | undefined): Promise<void> {
+  if (!limiter) return;
+  const key = request.headers.get("CF-Connecting-IP") ?? "unknown";
+  const { success } = await limiter.limit({ key });
+  if (!success) throw new HttpError(429, "too many requests");
 }
 
 async function requireKey(request: Request, env: Env): Promise<void> {
@@ -92,7 +123,7 @@ async function sameSecret(given: string, expected: string): Promise<boolean> {
   return crypto.subtle.timingSafeEqual(a, b);
 }
 
-async function readRows(request: Request, schema: Schema): Promise<Row[]> {
+async function readRows(request: Request, schema: Schema, maxRows: number): Promise<Row[]> {
   const declared = Number(request.headers.get("Content-Length") ?? 0);
   if (declared > MAX_BODY_BYTES) throw new HttpError(400, "body larger than 256 KB");
   const raw = await request.arrayBuffer();
@@ -106,7 +137,9 @@ async function readRows(request: Request, schema: Schema): Promise<Row[]> {
   }
   const items = Array.isArray(body) ? body : [body];
   if (items.length === 0) throw new HttpError(400, "no rows");
-  if (items.length > MAX_ROWS) throw new HttpError(400, `more than ${MAX_ROWS} rows`);
+  if (items.length > maxRows) {
+    throw new HttpError(400, maxRows === 1 ? "exactly one row allowed" : `more than ${maxRows} rows`);
+  }
   return items.map((item, i) => validateRow(item, schema, i));
 }
 
@@ -126,8 +159,13 @@ function validateRow(item: unknown, schema: Schema, index: number): Row {
       if (value.length > rule.max!) {
         throw new HttpError(400, `row ${index}: ${key} longer than ${rule.max}`);
       }
+      if (rule.pattern && !rule.pattern.test(value)) {
+        throw new HttpError(400, `row ${index}: ${key} is not a valid callsign`);
+      }
     } else if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
       throw new HttpError(400, `row ${index}: ${key} must be a non-negative integer`);
+    } else if (rule.max !== undefined && value > rule.max) {
+      throw new HttpError(400, `row ${index}: ${key} above ${rule.max}`);
     }
     row[key] = value;
   }

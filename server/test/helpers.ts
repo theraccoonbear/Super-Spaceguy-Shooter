@@ -12,8 +12,15 @@ export function gameHeaders(key = KEY): Record<string, string> {
   };
 }
 
-export function post(path: string, body: string, headers = gameHeaders()): Promise<Response> {
-  return exports.default.fetch(new Request(ORIGIN + path, { method: "POST", headers, body }));
+let nextIp = 0;
+
+// Each call comes from a fresh client IP so the per-IP rate limits only bite where a test
+// pins one with `ip`.
+export function post(path: string, body: string, headers = gameHeaders(), ip?: string): Promise<Response> {
+  const from = ip ?? `10.0.${(++nextIp >> 8) & 255}.${nextIp & 255}`;
+  return exports.default.fetch(
+    new Request(ORIGIN + path, { method: "POST", headers: { ...headers, "CF-Connecting-IP": from }, body }),
+  );
 }
 
 export function get(path: string, headers: Record<string, string> = {}): Promise<Response> {
