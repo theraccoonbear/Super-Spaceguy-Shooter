@@ -453,6 +453,8 @@ Sub SEQ_Advance()
                     seqaTrig  = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If seqaTrig = 0 Then seqaTrig = 10
                     stageScoreBase  = score
+                    spawnTimer      = 0
+                    waveStageN      = 0
                     planetTimer     = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR       = 3.0
                     planetBgAlpha   = 245.0

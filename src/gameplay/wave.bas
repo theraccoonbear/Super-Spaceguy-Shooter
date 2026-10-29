@@ -7,10 +7,6 @@
 ' Local variable prefix: wv*  (QB64-PE hoists Sub locals to module scope;
 ' all names must be unique across the compilation unit.)
 
-Const SPAWN_INTERVAL_BASE = 7.0    ' base spawn interval (seconds)
-Const SPAWN_INTERVAL_MIN  = 2.0    ' difficulty reduces interval by up to this
-Const SPAWN_DIST_MIN      = 70     ' spawn ahead of player: min distance
-Const SPAWN_DIST_VAR      = 30     ' spawn ahead of player: variance
 Const SPAWN_SPREAD_Y      = 18     ' ±Y spawn spread
 Const SPAWN_SPREAD_Z      = 22     ' ±Z spawn spread
 Const DIFF_SPEED_SCALE    = 0.6    ' how much difficulty boosts enemy speed
@@ -91,7 +87,7 @@ Sub WAVE_Spawn
     End If
 
     wvOK = (gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0)
-    If spawnTimer > (SPAWN_INTERVAL_BASE - diffScale * SPAWN_INTERVAL_MIN) And wvOK Then
+    If spawnTimer > WVT_GapTicks!(waveStageN, diffScale) And wvOK Then
         spawnTimer = 0
 
         ' formation type pool grows each level: harder types unlock as stages progress
@@ -123,7 +119,8 @@ Sub WAVE_Spawn
         End Select
         If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
-        wvCX = player.px + SPAWN_DIST_MIN + RNG!(RNG_GAME) * SPAWN_DIST_VAR
+        wvCX = player.px + WVT_DistMin!(waveStageN) + RNG!(RNG_GAME) * WVT_DistVar!(waveStageN)
+        waveStageN = waveStageN + 1
         wvCY = player.py + (RNG!(RNG_GAME) * (SPAWN_SPREAD_Y * 2)) - SPAWN_SPREAD_Y
         wvCZ = player.pz + (RNG!(RNG_GAME) * (SPAWN_SPREAD_Z * 2)) - SPAWN_SPREAD_Z
         ' per-type speed: solo=slow, pincer/vwedge=fast

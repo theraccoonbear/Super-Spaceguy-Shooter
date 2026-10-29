@@ -254,6 +254,7 @@ DIM SHARED diffTime AS SINGLE
 DIM SHARED diffScale AS SINGLE
 DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
+DIM SHARED waveStageN AS INTEGER   ' waves spawned so far in this combat stage (wavetiming.bas)
 DIM SHARED held(0 TO 32767) AS INTEGER
 DIM SHARED fireTimer AS SINGLE
 

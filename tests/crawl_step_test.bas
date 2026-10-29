@@ -59,6 +59,8 @@ Dim Shared bltActive    As Integer
 Dim Shared settingNerf  As Integer
 Dim Shared diffTime     As Single
 Dim Shared diffScale    As Single
+Dim Shared spawnTimer   As Single
+Dim Shared waveStageN   As Integer
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
 Dim Shared planetCurrent As Integer
