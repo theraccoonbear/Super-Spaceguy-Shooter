@@ -45,7 +45,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 |---|---|---|
 | *(main loop)* | `sss.bas` | Entry point, CLI parsing, main game loop, HTTP_Pump dispatch |
 | `SEQ_` | `src/sys/sequence.bas` | Data-driven scene sequencer (`assets/sequence.txt`); see `src/sys/README-sequence.md` |
-| `SET_` | `src/sys/settings.bas` | Persistent INI settings (volumes, consent, callsign) |
+| `SET_` | `src/sys/settingsio.bas` | Persistent INI settings (volumes, consent, callsign); the options screen is `settings.bas` |
 | `CFG_` | `src/sys/config.bas` | The one key=value parser for every embedded .ini (gamevalues.ini and `assets/config/*.ini`) |
 | `DBG_` | `src/sys/debug.bas` | Debug HUD overlay and diagnostic console output (`--debug`) |
 | `HTTP_` | `src/sys/http.bas` | Non-blocking HTTP queue via libcurl; see `src/sys/README-http.md` |
@@ -114,7 +114,7 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 
 ## Architectural invariants — never violate these
 
-1. **No runtime file I/O.** Assets are baked via `$EMBED`. There is no `OPEN … FOR INPUT` at runtime except `sss_settings.ini` (written/read by `settings.bas` for persistence) and `sss_telemetry.csv` (written by `telemetry.bas` for local logging).
+1. **No runtime file I/O.** Assets are baked via `$EMBED`. There is no `OPEN … FOR INPUT` at runtime except `sss_settings.ini` (written/read by `settingsio.bas` for persistence) and `sss_telemetry.csv` (written by `telemetry.bas` for local logging). Both are skipped for the session when the startup probe in `sss.bas` finds the launch folder unwritable (`ioReadOnly`, #283).
 2. **Single compiled binary.** No DLLs, no plugins, no dynamic loading.
 3. **Single thread.** The frame loop is: input → update → render → `_Display`. `HTTP_Pump` must be called once per frame from the main loop for async transfers to make progress.
 4. **All state is module-global.** `src/sys/dims.bas` declares every `DIM SHARED` variable the game uses. No module has private state that another module cannot read.

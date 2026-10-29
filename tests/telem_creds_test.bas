@@ -42,6 +42,7 @@ End Type
 ' Vars referenced by telemetry.bas but not under test
 Dim Shared boss           As BossObj
 Dim Shared telemOn         As Integer
+Dim Shared ioReadOnly      As Integer
 Dim Shared telemSession    As String
 Dim Shared telemPlayerID   As String
 Dim Shared telemConsent    As Integer
