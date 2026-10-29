@@ -25,12 +25,14 @@ runs:
         node tools/emit-spline.js
 
     # Keyed on the pinned version (the release tag), so a cache hit needs no API lookup.
+    # Windows' key has a suffix so its cache is re-saved once with the libqb objects the
+    # test workers build (qb64test.sh copies them back, #270); bump it to re-warm.
     - name: Cache QB64-PE
       id: cache_qb64pe
       uses: actions/cache@v4
       with:
         path: qb64pe-bin
-        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}
+        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}
 
     - name: Resolve QB64-PE release version
       if: steps.cache_qb64pe.outputs.cache-hit != 'true'

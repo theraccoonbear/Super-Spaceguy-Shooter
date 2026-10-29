@@ -246,10 +246,23 @@ export REPODIR QB64_DIR IS_WIN WORK JOBS TOOL_NAMES
 export -f build_test test_job
 
 echo "==> Building and running ${#TESTS[@]} tests and compiling ${#TOOLS[@]} tools, $JOBS at a time..."
-touch "$WORK/diag_marker" # DIAG270
+touch "$WORK/suite_start"
 SUITE_T0=$SECONDS
 printf '%s\n' "${TESTS[@]}" "${TOOLS[@]}" | xargs -P "$JOBS" -I{} bash -c 'test_job "$1"' _ {}
-for ((w = 1; w <= JOBS; w++)); do echo "DIAG270 worker $w built:"; find "$WORK/qb$w/internal/c" -path "*c_compiler" -prune -o -type f -newer "$WORK/diag_marker" -print; done # DIAG270
+
+# Windows: copy the libqb/parts objects the workers had to build back into the shared
+# install (never overwriting), so a QB64-PE cache saved after this run has them and
+# later runs' workers start warm instead of each rebuilding them (#270).
+if [ "$IS_WIN" = 1 ]; then
+  for ((w = 1; w <= JOBS; w++)); do
+    (cd "$WORK/qb$w/internal/c" && find . -path ./c_compiler -prune -o -type f \( -name '*.o' -o -name '*.a' \) \
+      ! -name 'qbx*.o' -newer "$WORK/suite_start" -print) | while read -r obj; do
+      [ -e "$QB64_DIR/internal/c/$obj" ] && continue
+      echo "    (worker $w built ${obj#./}, keeping it in the shared install)"
+      cp "$WORK/qb$w/internal/c/$obj" "$QB64_DIR/internal/c/$obj"
+    done
+  done
+fi
 
 FAILED=()
 for name in "${TESTS[@]}" "${TOOLS[@]}"; do
