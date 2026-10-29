@@ -18,6 +18,8 @@ OPTION _EXPLICIT
 Const VERSION$ = "0.0.0-test"
 Const BUILD_KIND$ = "dev"
 Const UN_MAX_LEN = 32
+Const CAM_DEFAULT_PHI = 0.1545
+Const CAM_DEFAULT_R   = 6.80
 
 Type BossObj
     active  As Integer

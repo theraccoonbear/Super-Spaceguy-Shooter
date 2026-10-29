@@ -92,6 +92,7 @@ TESTS=(
   callsign_pad_test
   powerup_test
   readonly_io_test
+  cam_default_test
 )
 
 # Dev tools (path from the repo root, no .bas): compiled only (they're interactive), so an engine change

@@ -63,7 +63,7 @@ Sub STAGE_Update
     ' cinematic transition: camera freezes, ship rockets toward planet
     If planetTimer = 120 And gameState = GS_PLANET Then
         gameState    = GS_CINEMATIC
-        cinematicCamX = player.px - CAM_OFFSET_X
+        cinematicCamX = player.px - CAM_CHASE_X
         shipCinVX    = 0.06
     End If
 
@@ -76,13 +76,13 @@ Sub STAGE_Update
         shipCinVX = shipCinVX + 0.009
         player.px = player.px + shipCinVX
         ' pronounced rightward bank — ramp is short so sweep starts immediately
-        cinPhase = (player.px - cinematicCamX - CAM_OFFSET_X) / 12.0
+        cinPhase = (player.px - cinematicCamX - CAM_CHASE_X) / 12.0
         If cinPhase > 1.0 Then cinPhase = 1.0
         player.py = player.py + (-3.0 - player.py) * 0.022 * cinPhase
         player.pz = player.pz + (25.0 - player.pz) * 0.035 * cinPhase
         invTimer = 60
         ' fade to black once ship is well ahead of camera
-        If player.px > cinematicCamX + CAM_OFFSET_X + 40 Then
+        If player.px > cinematicCamX + CAM_CHASE_X + 40 Then
             cinematicFade = cinematicFade + 3
             If cinematicFade > 255 Then cinematicFade = 255
         End If
