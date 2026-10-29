@@ -13,10 +13,14 @@
 # Why per-worker QB64-PE copies: on Linux and macOS, qb64pe picks its temp folder
 # (internal/temp, tempN) without a lock, so two compiles on one install can silently
 # swap or clobber each other's output -- a test binary that is really another test
-# and still passes (#239). Each worker gets its own copy instead. Windows locks its
-# temp folder properly, and its install (with the bundled compiler) is too big to
-# copy, so Windows workers share it. Either way every test must print its own
-# "=== <name> ===" banner, so a mixed-up binary fails loudly instead.
+# and still passes (#239). Each worker gets its own copy instead. Windows does lock
+# its temp folder, but every compile also builds any missing libqb_make_*.o and
+# internal/c/parts objects into the install's shared internal/c, and two compiles
+# building or linking the same object at once leave a broken one there that fails
+# every later compile on every worker (#270). So Windows workers get their own copy
+# too, minus the bundled compiler (too big to copy), which they share read-only
+# through a junction. Every test must still print its own "=== <name> ===" banner,
+# so a mixed-up binary fails loudly instead.
 set -euo pipefail
 
 REPODIR="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -104,18 +108,30 @@ JOBS="${QB64_TEST_JOBS:-$((CPUS / 2))}"
 [ "$JOBS" -gt "$((${#TESTS[@]} + ${#TOOLS[@]}))" ] && JOBS="$((${#TESTS[@]} + ${#TOOLS[@]}))"
 
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+
+# Windows junctions: $1 = link, $2 = target. Removed with rmdir, which drops the
+# link only -- a recursive delete could follow it into the shared install.
+win_junction() {
+  WIN_LINK="$(cygpath -w "$1")" WIN_TARGET="$(cygpath -w "$2")" \
+    powershell -Command 'if (Test-Path $env:WIN_LINK) { cmd /c rmdir $env:WIN_LINK }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET' > /dev/null
+}
+cleanup() {
+  if [ "$IS_WIN" = 1 ]; then
+    local link
+    for link in "$WORK"/qb*/assets "$WORK"/qb*/internal/c/c_compiler; do
+      [ -e "$link" ] && cmd //c rmdir "$(cygpath -w "$link")"
+    done
+  fi
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 
 # QB64-PE resolves $EMBED paths relative to its binary directory.
 # Mirror the link that buildqb creates so $EMBED:'assets/...' resolves.
 link_assets() {
   local qbdir="$1"
   if [ "$IS_WIN" = 1 ]; then
-    local win_link win_target
-    win_link=$(cygpath -w "$qbdir/assets")
-    win_target=$(cygpath -w "$REPODIR/assets")
-    WIN_LINK="$win_link" WIN_TARGET="$win_target" \
-      powershell -Command 'if (Test-Path $env:WIN_LINK) { Remove-Item $env:WIN_LINK -Force -Recurse }; New-Item -ItemType Junction -Path $env:WIN_LINK -Target $env:WIN_TARGET' > /dev/null
+    win_junction "$qbdir/assets" "$REPODIR/assets"
   else
     ln -sfn "$REPODIR/assets" "$qbdir/assets"
   fi
@@ -123,21 +139,37 @@ link_assets() {
 link_assets "$QB64_DIR"
 
 # Worker N compiles with $WORK/qb<N>/qb64pe: a private copy of the parts of the
-# install a compile touches (Linux/macOS), or the shared install (Windows).
-for ((w = 1; w <= JOBS; w++)); do
+# install a compile touches. Windows copies run in parallel (many small files are
+# slow to copy there).
+setup_worker() {
+  local w="$1" d="$WORK/qb$1" entry
+  mkdir -p "$d/internal"
+  cp -a "$QB64" "$QB64_DIR/Makefile" "$d/"
+  # settings/ only exists once qb64pe has run; a fresh install (container, CI cache
+  # miss) has none, and qb64pe creates its own
+  [ -d "$QB64_DIR/settings" ] && cp -a "$QB64_DIR/settings" "$d/"
+  cp -a "$QB64_DIR/internal/source" "$QB64_DIR/internal/support" "$d/internal/"
   if [ "$IS_WIN" = 1 ]; then
-    echo "$QB64_DIR" > "$WORK/qbdir$w"
+    mkdir -p "$d/internal/c"
+    for entry in "$QB64_DIR/internal/c"/*; do
+      [ "$(basename "$entry")" = c_compiler ] || cp -a "$entry" "$d/internal/c/"
+    done
+    win_junction "$d/internal/c/c_compiler" "$QB64_DIR/internal/c/c_compiler"
   else
-    mkdir -p "$WORK/qb$w/internal"
-    cp -a "$QB64" "$QB64_DIR/Makefile" "$WORK/qb$w/"
-    # settings/ only exists once qb64pe has run; a fresh install (container, CI cache
-    # miss) has none, and qb64pe creates its own
-    [ -d "$QB64_DIR/settings" ] && cp -a "$QB64_DIR/settings" "$WORK/qb$w/"
-    cp -a "$QB64_DIR/internal/c" "$QB64_DIR/internal/source" "$QB64_DIR/internal/support" "$WORK/qb$w/internal/"
-    link_assets "$WORK/qb$w"
-    echo "$WORK/qb$w" > "$WORK/qbdir$w"
+    cp -a "$QB64_DIR/internal/c" "$d/internal/"
   fi
-done
+  link_assets "$d"
+  echo "$d" > "$WORK/qbdir$w"
+}
+if [ "$IS_WIN" = 1 ]; then
+  for ((w = 1; w <= JOBS; w++)); do setup_worker "$w" & done
+  wait
+  for ((w = 1; w <= JOBS; w++)); do
+    [ -f "$WORK/qbdir$w" ] || { echo "ERROR: setting up QB64-PE copy for worker $w failed"; exit 1; }
+  done
+else
+  for ((w = 1; w <= JOBS; w++)); do setup_worker "$w"; done
+fi
 
 # Compile a test .bas into an executable. $1 = qb64pe dir, $2 = source, $3 = output
 # path (no extension). Prints the runnable path on success.
@@ -183,9 +215,7 @@ test_job() {
   qbdir="$(cat "$WORK/qbdir$slot")"
   t0=$SECONDS
   if ! bin="$(build_test "$qbdir" "$src" "$out" 2>> "$log")"; then
-    if [ "$IS_WIN" = 0 ]; then
-      cat "$qbdir"/internal/temp*/compilelog.txt >> "$log" 2> /dev/null || true
-    fi
+    cat "$qbdir"/internal/temp*/compilelog.txt >> "$log" 2> /dev/null || true
     rmdir "$WORK/lock$slot"
     echo "FAIL build" > "$WORK/$name.result"
     echo "$((SECONDS - t0))s build" > "$WORK/$name.time"
@@ -216,8 +246,10 @@ export REPODIR QB64_DIR IS_WIN WORK JOBS TOOL_NAMES
 export -f build_test test_job
 
 echo "==> Building and running ${#TESTS[@]} tests and compiling ${#TOOLS[@]} tools, $JOBS at a time..."
+touch "$WORK/diag_marker" # DIAG270
 SUITE_T0=$SECONDS
 printf '%s\n' "${TESTS[@]}" "${TOOLS[@]}" | xargs -P "$JOBS" -I{} bash -c 'test_job "$1"' _ {}
+for ((w = 1; w <= JOBS; w++)); do echo "DIAG270 worker $w built:"; find "$WORK/qb$w/internal/c" -path "*c_compiler" -prune -o -type f -newer "$WORK/diag_marker" -print; done # DIAG270
 
 FAILED=()
 for name in "${TESTS[@]}" "${TOOLS[@]}"; do
@@ -234,6 +266,7 @@ run_http_test() {
   echo "==> ${name}"
   local t0=$SECONDS
   if ! bin="$(build_test "$(cat "$WORK/qbdir1")" "$REPODIR/tests/${name}.bas" "$REPODIR/tests/${name}")"; then
+    cat "$(cat "$WORK/qbdir1")"/internal/temp*/compilelog.txt 2> /dev/null || true
     echo "FAIL build" > "$WORK/$name.result"
     return 0
   fi
