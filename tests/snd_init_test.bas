@@ -70,7 +70,7 @@ End Function
 ' and returns its RMS, skipping the first 2 s while the pads fade in.
 Function ST_CueRms! (stCRn As String, stCRsec As Single, stCRpeak As Single)
     Dim stCRk As Long, stCRs As Single, stCRsum As Double, stCRcnt As Long
-    sndKickPos = -1 : sndSnarePos = -1 : sndHihatPos = -1
+    MUS_Reset
     MUS_SetCue stCRn
     stCRpeak = 0
     For stCRk = 0 To CLng(stCRsec * SAMPLE_RATE) - 1
@@ -99,6 +99,9 @@ ST_Assert SND_WHOOSH_LEN <= SND_INT_MAX, "SND_WHOOSH_LEN <= 32767"
 ST_Assert SND_KICK_LEN   <= SND_INT_MAX, "SND_KICK_LEN <= 32767"
 ST_Assert SND_SNARE_LEN  <= SND_INT_MAX, "SND_SNARE_LEN <= 32767"
 ST_Assert SND_HIHAT_LEN  <= SND_INT_MAX, "SND_HIHAT_LEN <= 32767"
+ST_Assert SND_TOM_LEN    <= SND_INT_MAX, "SND_TOM_LEN <= 32767"
+ST_Assert SND_CRASH_LEN  <= SND_INT_MAX, "SND_CRASH_LEN <= 32767"
+ST_Assert SND_OHAT_LEN   <= SND_INT_MAX, "SND_OHAT_LEN <= 32767"
 ST_Assert SND_DEATH_LEN  <= SND_INT_MAX, "SND_DEATH_LEN <= 32767"
 
 Print ""

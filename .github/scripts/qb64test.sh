@@ -71,6 +71,7 @@ TESTS=(
   scene_jump_planet_test
   spk_timing_test
   snd_init_test
+  music_test
   telem_creds_test
   death_telem_test
   dbg_output_test
@@ -100,6 +101,8 @@ TOOLS=(
   stress
   obj2e3d
   tools/padrecord
+  musicplayer
+  tools/musrender
 )
 
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"

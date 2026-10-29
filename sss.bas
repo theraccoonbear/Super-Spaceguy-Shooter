@@ -155,6 +155,7 @@ GAME_InitMeshes
 IF debugMode THEN dbgOverlay = 1
 
 SND_Init
+MUS_SetCue "crawl"   ' music from launch: consent, callsign and the lead-in cards run into the intro crawl on one cue
 SPK_Init
 E3D_CtrlInit
 SETTINGS_Load

@@ -1,17 +1,26 @@
 ' musicplayer.bas -- standalone preview tool for music.mus cues
 '
-' Build: from repo root — <qb64pe-dir>/qb64pe -x musicplayer.bas -o builds/musicplayer
+' Build: tools/buildqb musicplayer.bas   (offline WAV renders instead: tools/musrender.bas)
 '
 ' Controls: up/down to select, space/enter to play, ESC to quit
 $EMBED:'assets/music.mus':'MUSICDATA'
 
 Const SAMPLE_RATE = 44100
+Const SND_UI_MOVE   = 1
+Const SND_UI_DENY   = 2
+Const SND_UI_PUP    = 3
+Const SND_UI_TYPE   = 4
+Const SND_UI_DEL    = 5
+Const SND_UI_COLOR  = 6
+Const SND_UI_SPIN   = 7
+Const SND_UI_SPIN_N = 39
 
 Dim Shared volMusic  As Single : volMusic  = 1.0
 Dim Shared volSfx    As Single : volSfx    = 0.9
 Dim Shared volSpeech As Single : volSpeech = 0.0
 Dim Shared spkSampleOut As Single
 
+'$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/audio/snd.bas'
 '$INCLUDE:'src/audio/music.bas'
 

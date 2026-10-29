@@ -7,6 +7,9 @@ Const SND_WHOOSH_LEN = 22050
 Const SND_KICK_LEN   = 11025  ' 250ms kick drum
 Const SND_SNARE_LEN  = 4410   ' 100ms snare
 Const SND_HIHAT_LEN  = 2205   ' 50ms hi-hat
+Const SND_TOM_LEN    = 19845  ' 450ms floor tom / timpani hit (music)
+Const SND_CRASH_LEN  = 30870  ' 700ms crash cymbal (music)
+Const SND_OHAT_LEN   = 11025  ' 250ms open hi-hat (music)
 Const SND_DEATH_LEN  = 32760  ' 742ms ship-death: three impacts then a deep BOOM
 Const SND_UIMOVE_LEN = 1764   ' 40ms dock / menu cursor tick
 Const SND_UIDENY_LEN = 5292   ' 120ms "can't do that" double buzz
@@ -37,12 +40,11 @@ Dim Shared sndWhooshLgPos As Integer : sndWhooshLgPos = -1
 Dim Shared sndKick(0 To SND_KICK_LEN - 1)   As Single
 Dim Shared sndSnare(0 To SND_SNARE_LEN - 1) As Single
 Dim Shared sndHihat(0 To SND_HIHAT_LEN - 1) As Single
+Dim Shared sndTom(0 To SND_TOM_LEN - 1)     As Single
+Dim Shared sndCrash(0 To SND_CRASH_LEN - 1) As Single
+Dim Shared sndOHat(0 To SND_OHAT_LEN - 1)   As Single
 Dim Shared sndDeath(0 To SND_DEATH_LEN - 1) As Single
 Dim Shared sndDeathPos As Integer : sndDeathPos = -1
-
-Dim Shared sndKickPos  As Integer : sndKickPos  = -1
-Dim Shared sndSnarePos As Integer : sndSnarePos = -1
-Dim Shared sndHihatPos As Integer : sndHihatPos = -1
 
 ' one-shot UI voice (#268): the playing sound, plus the one it replaced fading out, so a
 ' retrigger never cuts a waveform off mid-cycle (the click). See SND_UiPlay / SND_UiNext!.
@@ -67,6 +69,7 @@ Sub SND_Init()
     Dim sndGenPh As Single, sndGenT As Single
     Dim sndGenNz As Single, sndGenHP As Single, sndGenPX As Single
     Dim sndDLK As Single, sndSpI As Integer
+    Dim sndNz As _Unsigned Long, sndGenMt As Single
 
     sndEngineFreq = 80.0 : sndEngineAmp = 0.07
 
@@ -207,6 +210,45 @@ Sub SND_Init()
         sndGenHP = sndGenNz - sndGenPX + 0.85 * sndGenHP
         sndGenPX = sndGenNz
         sndHihat(sndK) = sndGenHP * sndFade * 0.055
+    Next sndK
+
+    ' music-only drums (#207). Their noise comes from a local xorshift, not RNG_AUDIO, so adding
+    ' them doesn't move the speech and blip randomness. Each starts and ends at exactly 0.
+    sndNz = 2463534242
+    ' floor tom / timpani: 110 -> 75 Hz drop, a fading 1.6x overtone, a 4 ms mallet thump
+    sndGenPh = 0 : sndGenMt = 0
+    For sndK = 0 To SND_TOM_LEN - 1
+        sndGenT = sndK / SND_TOM_LEN
+        sndF = 75.0 + 35.0 * Exp(-sndGenT * 9.0)
+        sndGenPh = sndGenPh + 6.2832 * sndF / SAMPLE_RATE
+        If sndGenPh > 6.2832 Then sndGenPh = sndGenPh - 6.2832
+        sndGenMt = sndGenMt + 6.2832 * sndF * 1.6 / SAMPLE_RATE
+        If sndGenMt > 6.2832 Then sndGenMt = sndGenMt - 6.2832
+        sndNz = RNG_Step~&(sndNz)
+        sndGenNz = sndNz / 4294967296# * 2 - 1
+        sndTom(sndK) = (Sin(sndGenPh) + Sin(sndGenMt) * 0.3 * Exp(-sndGenT * 12.0) + sndGenNz * 0.4 * Exp(-sndK / 180.0)) * Exp(-sndGenT * 5.0) * SND_UiEnv!(sndK, SND_TOM_LEN, 22, 2000) * 0.32
+    Next sndK
+    ' crash: high-passed noise over inharmonic metal partials, long decay
+    sndGenHP = 0 : sndGenPX = 0
+    For sndK = 0 To SND_CRASH_LEN - 1
+        sndGenT = sndK / SND_CRASH_LEN
+        sndDLK = sndK / SAMPLE_RATE
+        sndNz = RNG_Step~&(sndNz)
+        sndGenNz = sndNz / 4294967296# * 2 - 1
+        sndGenHP = sndGenNz - sndGenPX + 0.80 * sndGenHP
+        sndGenPX = sndGenNz
+        sndF = Sin(6.2832 * 3150.0 * sndDLK) * 0.3 + Sin(6.2832 * 4370.0 * sndDLK) * 0.25 + Sin(6.2832 * 5990.0 * sndDLK) * 0.2
+        sndCrash(sndK) = (sndGenHP * 0.8 + sndF * Exp(-sndGenT * 3.0)) * Exp(-sndGenT * 4.0) * SND_UiEnv!(sndK, SND_CRASH_LEN, 44, 4000) * 0.075
+    Next sndK
+    ' open hi-hat: the closed hat's noise, ringing 250 ms
+    sndGenHP = 0 : sndGenPX = 0
+    For sndK = 0 To SND_OHAT_LEN - 1
+        sndGenT = sndK / SND_OHAT_LEN
+        sndNz = RNG_Step~&(sndNz)
+        sndGenNz = sndNz / 4294967296# * 2 - 1
+        sndGenHP = sndGenNz - sndGenPX + 0.85 * sndGenHP
+        sndGenPX = sndGenNz
+        sndOHat(sndK) = sndGenHP * Exp(-sndGenT * 4.0) * SND_UiEnv!(sndK, SND_OHAT_LEN, 22, 1500) * 0.045
     Next sndK
 
     ' death: ka-ka-ka-BOOOM (742ms total = Integer ceiling)
