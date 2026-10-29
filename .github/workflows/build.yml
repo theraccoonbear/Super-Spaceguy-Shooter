@@ -120,6 +120,22 @@ jobs:
             exit 1
           }
 
+      # Fedora's libcurl has no symbol versions, so a CURL_OPENSSL_4 requirement makes its loader warn (#303)
+      - name: Check the binary needs no libcurl symbol versions
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ERR=$(xvfb-run -a "${{ matrix.artifact-path }}" --version 2>&1 >/dev/null)
+          if grep -q "no version information available" <<< "$ERR"; then
+            echo "::error::loader warning: $ERR"
+            exit 1
+          fi
+          if readelf -V "${{ matrix.artifact-path }}" | grep -A1 'File: libcurl'; then
+            echo "::error::binary requires libcurl symbol versions"
+            exit 1
+          fi
+          echo "ok: no libcurl symbol versions required"
+
       - name: Dump compile log on failure
         if: failure()
         shell: bash

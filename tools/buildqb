@@ -71,9 +71,17 @@ rm -f "$old_exe"
 echo ">>> Building $1..."
 # -o, not -s:ExeDefaultDir: -s saves into QB64-PE's config.ini on every build
 mkdir -p ./builds
-build_output=$(qb64pe -w -x "$1" -o "$(realpath .)/builds/$base" 2>&1)
+# Linux: link against an unversioned libcurl stub, as CI does, so the binary loads cleanly on Fedora too (#303)
+link_flags=()
+if [ "$(uname -s)" = Linux ]; then
+    curl_stub_dir=$(mktemp -d)
+    curl_link_flags=$("$(dirname "$0")/curl-link-stub" "$curl_stub_dir") || exit 1
+    link_flags=("-f:ExtraLinkerFlags=$curl_link_flags")
+fi
+build_output=$(qb64pe -w -x "$1" ${link_flags[@]+"${link_flags[@]}"} -o "$(realpath .)/builds/$base" 2>&1)
 
 build_status=$?
+[ -n "${curl_stub_dir:-}" ] && rm -rf "$curl_stub_dir"
 echo "$build_output"
 
 if [ $build_status -ne 0 ] || echo "$build_output" | grep -Eiq 'error|fatal' || [ ! -x "$old_exe" ]; then
