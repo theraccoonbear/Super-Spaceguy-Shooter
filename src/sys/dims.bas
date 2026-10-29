@@ -49,7 +49,7 @@ CONST MESH_PLAYER       = 1
 CONST MESH_ENEMY        = 2
 CONST MESH_ASTEROID     = 3
 CONST MESH_BULLET       = 4
-CONST MESH_POWERUP      = 5
+CONST MESH_PUP_SHIELD   = 5
 CONST MESH_ENEMY_ARROW  = 6
 CONST MESH_ENEMY_HLINE  = 7
 CONST MESH_ENEMY_VCOL   = 8
@@ -58,7 +58,9 @@ CONST MESH_ENEMY_VWEDGE = 10
 CONST MESH_THRUSTER     = 11
 CONST MESH_EBULLET      = 12
 CONST MESH_BOSS         = 13
-CONST MESH_COUNT        = 13
+CONST MESH_PUP_FUEL     = 14
+CONST MESH_PUP_POINTS   = 15
+CONST MESH_COUNT        = 15
 
 ' --- boss / stage globals ---
 CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
@@ -186,6 +188,8 @@ DIM SHARED fuelLevel AS SINGLE : fuelLevel = 100.0
 DIM SHARED fuelStranded AS INTEGER
 DIM SHARED runStranded AS INTEGER   ' -1 = the run ended stranded at a dock (game over says STRANDED, #277)
 DIM SHARED scorePopTimer AS INTEGER, scorePopY AS SINGLE, scorePopVal AS LONG
+DIM SHARED pupPopTimer AS INTEGER, pupPopY AS SINGLE, pupPopTxt AS STRING, pupPopPal AS INTEGER   ' power-up pop, apart from the kill pops (#183)
+DIM SHARED hudFlashKind AS INTEGER, hudFlashTimer AS INTEGER   ' gauge (1 SH, 3 FU) a pickup just filled
 DIM SHARED spawnFlashTimer AS INTEGER
 DIM SHARED spawnFlashPX AS SINGLE, spawnFlashPY AS SINGLE, spawnFlashPZ AS SINGLE
 DIM SHARED planetTimer AS INTEGER
@@ -345,6 +349,7 @@ DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N cr
 DIM SHARED cliShips        AS LONG     ' --ships N: start with N ships (testing: quick game over)
 DIM SHARED cliShields      AS LONG     ' --shields N: start with N shield points (testing: damaged shields at the dock)
 DIM SHARED cliFuel         AS LONG     ' --fuel N: start with N fuel (testing: a stranded dock)
+DIM SHARED cliPup          AS STRING   ' --pup kinds: place these power-ups once play starts (screenshots, #183)
 DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
 DIM SHARED cliShotN        AS INTEGER
@@ -383,6 +388,7 @@ DIM SHARED objMat       AS E3D_Matrix4
 DIM SHARED pPos         AS E3D_Coord
 DIM SHARED pRot         AS E3D_Coord
 DIM SHARED thrusterLight AS E3D_Coord
+DIM SHARED pupLight     AS E3D_Coord   ' power-ups are lit from the camera side so each reads at a glance (#183)
 DIM SHARED eLitDir      AS E3D_Coord
 DIM SHARED lightDir     AS E3D_Coord
 DIM SHARED meshLib(1 TO MESH_COUNT) AS E3D_Mesh

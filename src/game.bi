@@ -5,6 +5,7 @@
 '$INCLUDE:'gameplay/credits.bas'
 '$INCLUDE:'gameplay/upgrades.bas'
 '$INCLUDE:'gameplay/supplies.bas'
+'$INCLUDE:'gameplay/powerups.bas'
 '$INCLUDE:'state/docklogic.bas'
 '$INCLUDE:'state/pauselogic.bas'
 '$INCLUDE:'state/consentlogic.bas'

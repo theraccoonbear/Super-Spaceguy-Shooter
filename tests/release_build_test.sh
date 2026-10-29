@@ -17,7 +17,7 @@ if [ "$(uname -s)" = Linux ] && command -v xvfb-run > /dev/null 2>&1; then
     RUN=(xvfb-run -a)
 fi
 
-DEV_FLAGS=(--scene --crawls --god --nerf --credits --ships --shields --fuel --input-script
+DEV_FLAGS=(--scene --crawls --god --nerf --credits --ships --shields --fuel --pup --input-script
            --frames --seed --screenshot-at --leaderboard-file --debug)
 
 fails=0

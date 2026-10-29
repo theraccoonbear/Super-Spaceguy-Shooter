@@ -85,6 +85,7 @@ TESTS=(
   remap_test
   menu_test
   callsign_pad_test
+  powerup_test
 )
 
 # Dev tools (path from the repo root, no .bas): compiled only (they're interactive), so an engine change

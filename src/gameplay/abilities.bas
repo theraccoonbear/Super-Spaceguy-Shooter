@@ -93,10 +93,9 @@ End Sub
 Sub ABL_Tractor (abtI As Integer)
     Dim abtDX As Single, abtDY As Single, abtDZ As Single
     abtDX = powerups(abtI).px - player.px
-    If abtDX < -2 Or abtDX > 45 Then Exit Sub
     abtDY = player.py - powerups(abtI).py
     abtDZ = player.pz - powerups(abtI).pz
-    If abtDY * abtDY + abtDZ * abtDZ > tractorR * tractorR Then Exit Sub
+    If PUP_InTractor%(abtDX, abtDY, abtDZ, tractorR) = 0 Then Exit Sub
     powerups(abtI).py = powerups(abtI).py + abtDY * tractorPull
     powerups(abtI).pz = powerups(abtI).pz + abtDZ * tractorPull
 End Sub
@@ -126,12 +125,10 @@ Sub ABL_Draw
     If tractorR > 0 Then
         For abdI = 1 To MAX_POWERUPS
             If powerups(abdI).active Then
-                If powerups(abdI).px - player.px > -2 And powerups(abdI).px - player.px < 45 Then
-                    If (powerups(abdI).py - player.py) ^ 2 + (powerups(abdI).pz - player.pz) ^ 2 <= tractorR * tractorR Then
-                        COMBAT_Project player.px, player.py, player.pz, abdSX, abdSY, abdOk
-                        COMBAT_Project powerups(abdI).px, powerups(abdI).py, powerups(abdI).pz, abdEX, abdEY, abdOk2
-                        If abdOk And abdOk2 Then Line (abdSX, abdSY)-(abdEX, abdEY), _RGBA(120, 255, 160, 90)
-                    End If
+                If PUP_InTractor%(powerups(abdI).px - player.px, powerups(abdI).py - player.py, powerups(abdI).pz - player.pz, tractorR) Then
+                    COMBAT_Project player.px, player.py, player.pz, abdSX, abdSY, abdOk
+                    COMBAT_Project powerups(abdI).px, powerups(abdI).py, powerups(abdI).pz, abdEX, abdEY, abdOk2
+                    If abdOk And abdOk2 Then Line (abdSX, abdSY)-(abdEX, abdEY), _RGBA(120, 255, 160, 90)
                 End If
             End If
         Next abdI
