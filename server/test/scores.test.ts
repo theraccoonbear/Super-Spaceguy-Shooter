@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import worker from "../src/index";
-import { ORIGIN, gameHeaders, post, rows } from "./helpers";
+import { ORIGIN, configuredLimit, fakeLimiter, gameHeaders, post, postWith, rows } from "./helpers";
 
 const GAME_SCORE =
   '{"player_id":"9b8a7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d","player_name":"ACE","score":1450,"wave":3,"session":"20261027143005"}';
@@ -49,14 +49,24 @@ describe("POST /scores", () => {
   });
 
   it("returns 429 once a client passes 10 posts a minute, per IP", async () => {
+    const limit = configuredLimit("SCORES_LIMITER");
+    expect(limit).toBe(10);
+    const limiter = { SCORES_LIMITER: fakeLimiter(limit) };
     const ip = "203.0.113.7";
-    for (let i = 0; i < 10; i++) {
-      expect((await post("/scores", GAME_SCORE, gameHeaders(), ip)).status).toBe(201);
+    for (let i = 0; i < limit; i++) {
+      expect((await postWith(limiter, "/scores", GAME_SCORE, ip)).status).toBe(201);
     }
-    const res = await post("/scores", GAME_SCORE, gameHeaders(), ip);
+    const res = await postWith(limiter, "/scores", GAME_SCORE, ip);
     expect(res.status).toBe(429);
-    expect(await rows("SELECT id FROM scores")).toHaveLength(10);
-    expect((await post("/scores", GAME_SCORE, gameHeaders(), "203.0.113.8")).status).toBe(201);
+    expect(await rows("SELECT id FROM scores")).toHaveLength(limit);
+    expect((await postWith(limiter, "/scores", GAME_SCORE, "203.0.113.8")).status).toBe(201);
+    expect(new Set(limiter.SCORES_LIMITER.keys)).toEqual(new Set([ip, "203.0.113.8"]));
+  });
+
+  it("is wired to the SCORES_LIMITER binding from wrangler.toml", async () => {
+    expect(typeof env.SCORES_LIMITER?.limit).toBe("function");
+    expect(await env.SCORES_LIMITER!.limit({ key: "wiring-check" })).toEqual({ success: true });
+    expect((await post("/scores", GAME_SCORE)).status).toBe(201);
   });
 
   it("runs unlimited when the rate limit binding is absent", async () => {
