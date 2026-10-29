@@ -20,7 +20,8 @@ Single-context repo:
 │   ├── adr/               ← architectural decision records
 │   │   └── 0001-*.md
 │   └── agents/            ← skill configuration (this directory)
-└── src/                   ← does not exist; source lives as *.bas at repo root
+├── sss.bas                ← entry point
+└── src/                   ← game source, split by discipline (sys/, 3d/, audio/, gameplay/, state/, 2d/)
 ```
 
 ## Use the glossary's vocabulary

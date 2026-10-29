@@ -34,7 +34,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
