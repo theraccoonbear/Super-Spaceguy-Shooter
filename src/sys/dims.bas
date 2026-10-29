@@ -80,6 +80,11 @@ CONST LEVEL_BOSS     = 2
 ' --- camera ---
 CONST CAM_OFFSET_X  = 6.5
 CONST CAM_OFFSET_Y  = 2.0
+' fresh-settings in-play camera (#311); CAM_OFFSET_X/Y only frame the title, crawl and game-over screens
+CONST CAM_DEFAULT_PHI = 0.1545
+CONST CAM_DEFAULT_R   = 6.80
+CONST CAM_CHASE_X     = CAM_DEFAULT_R * COS(CAM_DEFAULT_PHI)
+CONST CAM_CHASE_Y     = CAM_DEFAULT_R * SIN(CAM_DEFAULT_PHI)
 CONST CAM_LEAD_X    = 8
 CONST CAM_LAG_RATE  = 0.08
 CONST CAM_FWD_RATE  = 0.04

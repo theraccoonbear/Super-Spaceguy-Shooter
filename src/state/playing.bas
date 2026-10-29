@@ -78,8 +78,8 @@ Sub GS_PLAYING_Update ()
         IF camF.orbitMode THEN
             IF held(E3D_KEY_R) AND rWas = 0 THEN
                 camF.orbitTheta = _PI(1.0)
-                camF.orbitPhi   = _ATAN2(CAM_OFFSET_Y, CAM_OFFSET_X)
-                camF.orbitR     = SQR(CAM_OFFSET_X * CAM_OFFSET_X + CAM_OFFSET_Y * CAM_OFFSET_Y)
+                camF.orbitPhi   = CAM_DEFAULT_PHI
+                camF.orbitR     = CAM_DEFAULT_R
                 camF.orbitMode  = 0 : camF.angleLocked = 0
                 SETTINGS_Save
             END IF
@@ -247,12 +247,12 @@ Sub GS_PLAYING_Update ()
     IF gameState = GS_CINEMATIC THEN
         cam.POS.x = cinematicCamX
     ELSE
-        cam.POS.x = player.px - CAM_OFFSET_X
+        cam.POS.x = player.px - CAM_CHASE_X
     END IF
-    cam.POS.y = camF.lagY + CAM_OFFSET_Y - camF.fwdY * CAM_FWD_SCALE
+    cam.POS.y = camF.lagY + CAM_CHASE_Y - camF.fwdY * CAM_FWD_SCALE
     cam.POS.z = camF.lagZ               - camF.fwdZ * CAM_FWD_SCALE
     IF gameState = GS_CINEMATIC THEN
-        cam.target.x = cinematicCamX + CAM_OFFSET_X + CAM_LEAD_X
+        cam.target.x = cinematicCamX + CAM_CHASE_X + CAM_LEAD_X
         cam.target.y = camF.lagY
         cam.target.z = camF.lagZ
     ELSE
