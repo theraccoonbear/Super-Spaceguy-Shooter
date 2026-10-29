@@ -240,7 +240,7 @@ mtB1 = MT_CueIdx%("boss") : mtB2 = MT_CueIdx%("boss2") : mtB3 = MT_CueIdx%("boss
 mtGo = MT_CueIdx%("gameover") : mtDock = MT_CueIdx%("dock") : mtGame = MT_CueIdx%("game")
 If mtB1 >= 0 And mtB2 >= 0 And mtB3 >= 0 And mtGo >= 0 And mtDock >= 0 And mtGame >= 0 Then
     MT_Assert musCueBPM(mtB1) < musCueBPM(mtB2) And musCueBPM(mtB2) < musCueBPM(mtB3), "boss phases speed up (" + LTrim$(Str$(musCueBPM(mtB1))) + "," + Str$(musCueBPM(mtB2)) + "," + Str$(musCueBPM(mtB3)) + " bpm)"
-    MT_Assert mtRms(mtB3) > mtRms(mtB1), "boss phase 3 is louder than phase 1"
+    MT_Assert mtRms(mtB1) < mtRms(mtB2) And mtRms(mtB2) < mtRms(mtB3), "boss phases get louder"
     MT_Assert mtRms(mtB3) > mtRms(mtDock) And mtRms(mtGame) > mtRms(mtDock), "the dock is calmer than combat and the boss"
     MT_Assert musCueBPM(mtGo) <= 80 And mtRms(mtGo) < mtRms(mtGame), "game over is slow and quieter than combat"
 Else

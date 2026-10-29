@@ -88,8 +88,8 @@ DRUMS title  0.55
 # Em C D Bm | Em C Am B7 under an A melody (softer) then a busier B melody;
 # plucked saw bass in octave 8ths, square counter-line, two-voice string pad.
 # ================================================================
-INST gbass    0.055  0     0     0.85  SAW  A=2   R=8   D=0.25  S=0.55
-INST glead    0.037  0.65  0.004 0.92  DET  A=6   R=20
+INST gbass    0.060  0     0     0.85  SAW  A=2   R=8   D=0.25  S=0.55
+INST glead    0.042  0.65  0.004 0.92  DET  A=6   R=20
 INST gcount   0.018  0     0     0.95  SQR  A=25  R=60
 INST gpad     0.013  0.20  0.05  1.00  A=120 R=150
 
@@ -122,9 +122,9 @@ DRUMS game  1.15
 #   boss2 158  brass takes the theme an octave up, driving octave bass, strings, backbeat
 #   boss3 176  everything at once, plus a semitone string trill and 16th hats
 # ================================================================
-INST mkbsn    0.060  0     0     0.55  SQR  A=3   R=12
+INST mkbsn    0.070  0     0     0.55  SQR  A=3   R=12
 INST mkbrass  0.034  0     0     0.80  SAW  A=6   R=15  D=0.3   S=0.7
-INST mkpizz   0.075  0.30  0.10  0.70  A=2   R=20  D=0.12  S=0
+INST mkpizz   0.085  0.30  0.10  0.70  A=2   R=20  D=0.12  S=0
 INST mkbass   0.040  0     0     0.85  SAW  A=2   R=8   D=0.2   S=0.5
 INST mkstr    0.016  0.25  0.08  1.00  A=80  R=120
 INST mktril   0.009  0.20  0     0.90  A=3   R=5
@@ -159,7 +159,7 @@ CUE boss  140
 VOICE mkbsn   mk_mel4
 VOICE mkpizz  mk_pz
 VOICE mkstr   mk_s1
-DRUMS mk1  1.0
+DRUMS mk1  1.2
 
 CUE boss2  158
 VOICE mkbrass mk_mel5
