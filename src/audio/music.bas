@@ -10,6 +10,8 @@ Const MUS_DRUM_MAX   = 16
 Const MUS_DRUM_STEPS = 64
 Const MUS_INST_MAX   = 32
 Const MUS_HARM_MAX   = 16
+Const MUS_OLD        = MUS_VOICE_MAX   ' musVoice() offset of the outgoing cue's voices during a crossfade
+Const MUS_XF_MS      = 60              ' default crossfade into a cue; CUE ... XF=ms overrides
 
 Const MUS_WAVE_ADD = 0
 Const MUS_WAVE_DET = 1
@@ -51,6 +53,7 @@ Type MUS_Voice
     seqBase As Integer
     seqLen  As Integer
     isPad   As Integer
+    stepDur As Long
     lastOut As Single
 End Type
 
@@ -95,10 +98,11 @@ Dim Shared musCueDiv(0 To MUS_CUE_MAX - 1)  As Integer
 Dim Shared musCueVCnt(0 To MUS_CUE_MAX - 1) As Integer
 Dim Shared musCueDrum(0 To MUS_CUE_MAX - 1) As Integer
 Dim Shared musCueDrumGain(0 To MUS_CUE_MAX - 1) As Single
+Dim Shared musCueXf(0 To MUS_CUE_MAX - 1) As Single
 Dim Shared musCueTmpl(0 To MUS_CUE_MAX - 1, 0 To MUS_CUE_VMAX - 1) As MUS_Voice
 Dim Shared musCueCnt As Integer
 
-Dim Shared musVoice(0 To MUS_VOICE_MAX - 1) As MUS_Voice
+Dim Shared musVoice(0 To 2 * MUS_VOICE_MAX - 1) As MUS_Voice
 Dim Shared musVoiceCnt As Integer
 Dim Shared musStepDur As Long
 Dim Shared musDrumIdx As Integer    : musDrumIdx  = -1
@@ -108,6 +112,8 @@ Dim Shared musDrumGain As Single
 Dim Shared musParseLine$
 Dim Shared musInvK(1 To MUS_HARM_MAX) As Single
 Dim Shared musTail As Single, musLastVox As Single
+Dim Shared musCurCue As Integer : musCurCue = -1
+Dim Shared musOldCnt As Integer, musXfN As Long, musXfT As Long, musOldScale As Single, musOldLast As Single
 
 Dim Shared musDkPos(0 To MUS_DK_N - 1) As Long
 Dim Shared musDkGain(0 To MUS_DK_N - 1) As Single
@@ -379,9 +385,20 @@ Sub MUS_Load()
                 musLcur = musCueCnt
                 musCueN$(musLcur)   = MUS_Tok$
                 musCueBPM(musLcur)  = Val(MUS_Tok$)
-                musLtmp$ = MUS_Tok$
                 musCueDiv(musLcur) = 4
-                If Len(musLtmp$) > 0 Then musCueDiv(musLcur) = Val(musLtmp$)
+                musCueXf(musLcur) = MUS_XF_MS
+                musLtmp$ = MUS_Tok$
+                Do While Len(musLtmp$) > 0
+                    If UCase$(Left$(musLtmp$, 3)) = "XF=" Then
+                        musCueXf(musLcur) = Val(Mid$(musLtmp$, 4))
+                        If musCueXf(musLcur) < 1 Or musCueXf(musLcur) > 5000 Then MUS_LoadErr "CUE " + musCueN$(musLcur) + ": XF= must be 1..5000 ms" : musCueXf(musLcur) = MUS_XF_MS
+                    ElseIf InStr("0123456789", Left$(musLtmp$, 1)) > 0 Then
+                        musCueDiv(musLcur) = Val(musLtmp$)
+                    Else
+                        MUS_LoadErr "CUE " + musCueN$(musLcur) + ": unknown option " + musLtmp$
+                    End If
+                    musLtmp$ = MUS_Tok$
+                Loop
                 If musCueBPM(musLcur) < 20 Or musCueBPM(musLcur) > 300 Or musCueDiv(musLcur) < 1 Or musCueDiv(musLcur) > 12 Then
                     MUS_LoadErr "CUE " + musCueN$(musLcur) + ": bpm must be 20..300 and div 1..12"
                     If musCueBPM(musLcur) < 20 Then musCueBPM(musLcur) = 20
@@ -452,7 +469,7 @@ End Sub
 ' attack/release it gets (each at most half the sounding time, so short notes still close).
 Sub MUS_NoteStart (nsV As Integer, nsIdx As Integer)
     Dim nsLen As Long, nsMax As Integer
-    musVoice(nsV).noteDur = CLng(musND(nsIdx)) * musStepDur
+    musVoice(nsV).noteDur = CLng(musND(nsIdx)) * musVoice(nsV).stepDur
     musVoice(nsV).count   = musVoice(nsV).noteDur
     musVoice(nsV).gateOff = CLng(musVoice(nsV).noteDur * (1.0 - musVoice(nsV).gate))
     musVoice(nsV).freq    = musNF(nsIdx)
@@ -476,20 +493,46 @@ Sub MUS_NoteStart (nsV As Integer, nsIdx As Integer)
     End If
 End Sub
 
+' Back to silence at once, as before the first cue (offline renders and tests start each cue clean).
+Sub MUS_Reset
+    Dim musRk As Integer
+    For musRk = 0 To MUS_DK_N - 1 : musDkPos(musRk) = -1 : musDkOldPos(musRk) = -1 : Next musRk
+    musVoiceCnt = 0 : musOldCnt = 0 : musCurCue = -1 : musDrumIdx = -1
+    musXfN = 0 : musXfT = 0 : musTail = 0 : musLastVox = 0 : musOldLast = 0
+End Sub
+
 Sub MUS_SetCue(musSCn$)
     Dim musSCi As Integer, musSCv As Integer
     For musSCi = 0 To musCueCnt - 1
         If musCueN$(musSCi) = musSCn$ Then Exit For
     Next musSCi
     If musSCi >= musCueCnt Then Exit Sub
+    ' already playing it (a return from About / Settings / Leaderboard, a crawl after the
+    ' sequencer started it): keep going rather than restart
+    If musSCi = musCurCue Then Exit Sub
 
-    musTail = musTail + musLastVox
-    musLastVox = 0
+    ' crossfade: the playing voices move to the old bank and fade out while the new cue fades
+    ' in. A fade still running hands its old bank to the tail, which decays without a step.
+    musOldScale = 1
+    If musXfT < musXfN Then
+        musTail = musTail + musOldLast
+        musOldScale = 0.5 - 0.5 * Cos(MUS_PI * musXfT / musXfN)
+    End If
+    For musSCv = 0 To musVoiceCnt - 1
+        musVoice(MUS_OLD + musSCv) = musVoice(musSCv)
+    Next musSCv
+    musOldCnt = musVoiceCnt : musOldLast = 0
+    musXfN = CLng(musCueXf(musSCi) * SAMPLE_RATE / 1000)
+    If musXfN < 1 Then musXfN = 1
+    musXfT = 0
+    musCurCue = musSCi
+
     musStepDur   = CLng(SAMPLE_RATE) * 60 \ (CLng(musCueBPM(musSCi)) * musCueDiv(musSCi))
     musVoiceCnt  = musCueVCnt(musSCi)
 
     For musSCv = 0 To musVoiceCnt - 1
         musVoice(musSCv)         = musCueTmpl(musSCi, musSCv)
+        musVoice(musSCv).stepDur = musStepDur
         musVoice(musSCv).phase   = 0
         musVoice(musSCv).amp     = 0
         musVoice(musSCv).lastOut = 0
@@ -543,9 +586,17 @@ Function MUS_MusicSample!
     Dim musMSdbits As Integer, musMSk As Integer, musMSg As Single
     Dim musMSw As Single, musMSenv As Single, musMSel As Long, musMSleft As Long
     Dim musMSs1 As Single, musMSc2 As Single, musMSsp As Single, musMSsc As Single, musMSsn As Single
-    Dim musMSout As Single
-    musMSs = 0
-    For musMSvi = 0 To musVoiceCnt - 1
+    Dim musMSout As Single, musMSj As Integer, musMSn As Integer, musMSgNew As Single, musMSgOld As Single, musMSold As Single
+    musMSs = 0 : musMSold = 0
+    musMSgNew = 1 : musMSgOld = 0 : musMSn = musVoiceCnt
+    If musXfT < musXfN Then
+        musXfT = musXfT + 1
+        musMSgNew = 0.5 - 0.5 * Cos(MUS_PI * musXfT / musXfN)
+        musMSgOld = (1 - musMSgNew) * musOldScale
+        musMSn = musVoiceCnt + musOldCnt
+    End If
+    For musMSj = 0 To musMSn - 1
+        If musMSj < musVoiceCnt Then musMSvi = musMSj Else musMSvi = MUS_OLD + musMSj - musVoiceCnt
         If musVoice(musMSvi).isPad Then
             musVoice(musMSvi).amp   = musVoice(musMSvi).amp + (musVoice(musMSvi).vol - musVoice(musMSvi).amp) * musVoice(musMSvi).atk
             musVoice(musMSvi).phase = musVoice(musMSvi).phase + MUS_TWO_PI * musVoice(musMSvi).freq / SAMPLE_RATE
@@ -594,8 +645,10 @@ Function MUS_MusicSample!
             End If
         End If
         musVoice(musMSvi).lastOut = musMSout
-        musMSs = musMSs + musMSout
-    Next musMSvi
+        If musMSj < musVoiceCnt Then musMSs = musMSs + musMSout Else musMSold = musMSold + musMSout
+    Next musMSj
+    musOldLast = musMSold * musMSgOld
+    musMSs = musMSs * musMSgNew + musOldLast
     musLastVox = musMSs
     musTail = musTail * MUS_TAIL_K
     musMSs = musMSs + musTail
@@ -610,6 +663,7 @@ Function MUS_MusicSample!
                 If musMSdbits And (2 ^ musMSk) Then
                     musMSg = musDrumGain
                     If musMSdbits And (2 ^ (musMSk + 8)) Then musMSg = musMSg * MUS_DK_SOFT
+                    musMSg = musMSg * musMSgNew
                     MUS_DrumHit musMSk, musMSg
                 End If
             Next musMSk

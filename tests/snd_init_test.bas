@@ -69,9 +69,8 @@ End Function
 ' Renders stCRsec seconds of a cue through the real mixer (music only, before volMusic)
 ' and returns its RMS, skipping the first 2 s while the pads fade in.
 Function ST_CueRms! (stCRn As String, stCRsec As Single, stCRpeak As Single)
-    Dim stCRk As Long, stCRs As Single, stCRsum As Double, stCRcnt As Long, stCRd As Integer
-    For stCRd = 0 To MUS_DK_N - 1 : musDkPos(stCRd) = -1 : musDkOldPos(stCRd) = -1 : Next stCRd
-    musTail = 0 : musLastVox = 0
+    Dim stCRk As Long, stCRs As Single, stCRsum As Double, stCRcnt As Long
+    MUS_Reset
     MUS_SetCue stCRn
     stCRpeak = 0
     For stCRk = 0 To CLng(stCRsec * SAMPLE_RATE) - 1

@@ -72,9 +72,7 @@ Function MT_LoopSteps& (mtLSc As Integer)
 End Function
 
 Sub MT_Silence
-    Dim mtSk As Integer
-    For mtSk = 0 To MUS_DK_N - 1 : musDkPos(mtSk) = -1 : musDkOldPos(mtSk) = -1 : Next mtSk
-    musTail = 0 : musLastVox = 0
+    MUS_Reset
 End Sub
 
 Print "=== music_test ==="
@@ -243,6 +241,7 @@ If mtB1 >= 0 And mtB2 >= 0 And mtB3 >= 0 And mtGo >= 0 And mtDock >= 0 And mtGam
     MT_Assert mtRms(mtB1) < mtRms(mtB2) And mtRms(mtB2) < mtRms(mtB3), "boss phases get louder"
     MT_Assert mtRms(mtB3) > mtRms(mtDock) And mtRms(mtGame) > mtRms(mtDock), "the dock is calmer than combat and the boss"
     MT_Assert musCueBPM(mtGo) <= 80 And mtRms(mtGo) < mtRms(mtGame), "game over is slow and quieter than combat"
+    MT_Assert mtRms(MT_CueIdx%("crawl")) <= 0.048, "the crawl, under the narration, is no louder than it was before #207 (RMS" + Str$(mtRms(MT_CueIdx%("crawl"))) + " <= 0.048)"
 Else
     MT_Assert 0, "boss, boss2, boss3, gameover, dock and game cues exist"
 End If
@@ -292,6 +291,59 @@ For mtDk = 0 To MUS_DK_N - 1
     MT_Assert mtStep <= mtBase * 1.5 + 0.01, "drum" + Str$(mtDk) + ": retriggering mid-hit adds no step (worst" + Str$(mtStep) + " vs own" + Str$(mtBase) + ")"
 Next mtDk
 MT_Assert sndTom(0) = 0 And sndTom(SND_TOM_LEN - 1) = 0 And sndCrash(0) = 0 And sndCrash(SND_CRASH_LEN - 1) = 0 And sndOHat(0) = 0 And sndOHat(SND_OHAT_LEN - 1) = 0, "tom, crash and open hat start and end at exactly 0"
+
+' ── the launch flow at the mixer: sss.bas starts "crawl" at launch (consent, callsign, lead-in
+' cards), the sequencer's intro CRAWL step and crawl.bas set it again, then the emperor card,
+' the title, a return from About, and P into the stage 1 crawl. No silent gap, no restart of
+' the playing cue, no step at any switch.
+Print "--- launch -> title -> crawl plays through ---"
+Dim mtLCue(0 To 6) As String, mtLSec(0 To 6) As Single, mtLI As Integer, mtLWin As Double, mtLWinN As Long
+Dim mtLGap As Long, mtLGapMax As Long, mtLSame As Integer, mtLIdx As Integer, mtLCnt As Long, mtLStepBad As Integer
+mtLCue(0) = "crawl" : mtLSec(0) = 6
+mtLCue(1) = "crawl" : mtLSec(1) = 0.02
+mtLCue(2) = "crawl" : mtLSec(2) = 8
+mtLCue(3) = "emperor" : mtLSec(3) = 6
+mtLCue(4) = "title" : mtLSec(4) = 6
+mtLCue(5) = "title" : mtLSec(5) = 4
+mtLCue(6) = "crawl" : mtLSec(6) = 8
+MT_Silence
+mtLSame = -1 : mtPrevS = 0
+For mtLI = 0 To 6
+    If mtLI > 0 Then
+        mtLIdx = musVoice(0).noteIdx : mtLCnt = musVoice(0).count
+    End If
+    MUS_SetCue mtLCue(mtLI)
+    If mtLI > 0 Then
+        If mtLCue(mtLI) = mtLCue(mtLI - 1) And (musVoice(0).noteIdx <> mtLIdx Or musVoice(0).count <> mtLCnt Or musXfT < musXfN) Then mtLSame = 0
+    End If
+    For mtK = 0 To CLng(mtLSec(mtLI) * SAMPLE_RATE) - 1
+        mtS = MUS_MusicSample!
+        mtA = musLastVox + musTail
+        If mtK = 0 And mtLI > 0 Then
+            If Abs(mtA - mtPrevS) > mtWorstNear * 1.5 + 0.005 Then mtLStepBad = mtLStepBad + 1 : Print "      step at the switch to " + mtLCue(mtLI) + ":" + Str$(Abs(mtA - mtPrevS))
+        End If
+        mtPrevS = mtA
+        mtLWin = mtLWin + CDbl(mtS) * mtS : mtLWinN = mtLWinN + 1
+        If mtLWinN = 2205 Then
+            ' (the first second is the launch fade-in from nothing)
+            If Sqr(mtLWin / mtLWinN) < 0.002 And (mtLI > 0 Or mtK > SAMPLE_RATE) Then mtLGap = mtLGap + 1 Else mtLGap = 0
+            If mtLGap > mtLGapMax Then mtLGapMax = mtLGap
+            mtLWin = 0 : mtLWinN = 0
+        End If
+    Next mtK
+    ' the worst step the music makes by itself just before the next switch
+    mtWorstNear = 0
+    For mtK = 0 To 1999
+        mtS = MUS_MusicSample!
+        mtA = musLastVox + musTail
+        If Abs(mtA - mtPrevS) > mtWorstNear Then mtWorstNear = Abs(mtA - mtPrevS)
+        mtPrevS = mtA
+    Next mtK
+Next mtLI
+MT_Assert mtLGapMax <= 1, "no silence over 50 ms anywhere from launch to the stage crawl (longest" + Str$(mtLGapMax * 50) + " ms)"
+MT_Assert mtLSame, "setting the cue already playing (intro crawl, back from About) doesn't restart it"
+MT_Assert mtLStepBad = 0, "no step at any switch on the way"
+MT_Assert musCueXf(MT_CueIdx%("crawl")) >= 500 And musCueXf(MT_CueIdx%("emperor")) >= 500 And musCueXf(MT_CueIdx%("title")) >= 500, "the launch-flow cues (crawl, emperor, title) crossfade over at least 0.5 s"
 
 ' ── cost: the mixer runs this every sample, so the heaviest cue must render far faster than real time ──
 Print "--- cost ---"

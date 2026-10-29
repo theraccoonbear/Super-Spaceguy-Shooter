@@ -18,6 +18,8 @@
 # DRUM  name   step step ...   K kick  S snare  H hi-hat  T tom  C crash  O open hat  . rest
 #         lowercase = a soft hit; letters combine in one step (KH = kick + hat). <= 64 steps.
 # CUE   name   bpm  [div]      div = steps per beat (default 4 = 16ths; 6 = triplet grid)
+#         XF=ms  crossfade from the playing cue into this one (default 60). Setting the cue
+#         already playing does nothing: it keeps playing.
 # VOICE inst   seq
 # CHORD pad-name
 # DRUMS drum-name  [gain]
@@ -25,21 +27,37 @@
 # Sources: title adapts the ostinato of Holst's "Mars" (The Planets, 1914-16; Holst d. 1934);
 # boss/boss2/boss3 adapt Grieg's "In the Hall of the Mountain King" (Peer Gynt, 1875; Grieg
 # d. 1907); gameover adapts Chopin's funeral march (Sonata No. 2, 1839; Chopin d. 1849). All
-# transcribed from the public-domain originals, no modern arrangement. Everything else is original.
+# transcribed from the public-domain originals, no modern arrangement. The crawl's bass is the
+# title's Mars-style bass line at half tempo. Everything else is original.
 # ================================================================
 
 # ================================================================
-# CRAWL  (intro/epilogue narrative scroll, half-tempo Mars bass)
+# CRAWL  (story crawl, and the music from launch until the title: G minor, the Mars bass at
+# half tempo). It sits under the narration, so it stays out of the voice's band: bass, sub and
+# a low string line below ~300 Hz, a slow soft line two octaves above the voice, a timpani
+# pulse with a pickup into each phrase.
 # ================================================================
-INST cbass    0.07   0.50  0.25  0.50
+INST cbass    0.046  0.35  0.10  0.92  A=60  R=200
+INST csub     0.026  0     0     0.92  A=200 R=300
+INST clow     0.016  0.15  0     1.00  A=300 R=400
+INST chigh    0.0060 0     0.05  0.95  A=400 R=600
 
 SEQ crawl_bass  G2 8  G2 8  G2 8  D3 8  G2 8  C3 8  C3 8  C3 8  G2 8  Ab2 8  F2 8  F2 8  F2 8  C3 8  D3 8  Bb2 8  Bb2 8  C3 8  D3 8  Eb3 8
+SEQ crawl_sub   +crawl_bass^-12
+SEQ crawl_low   Bb2 16  D3 16  Eb3 32  C3 16  A2 16  C3 16  D3 16  F2 16  G2 16
+SEQ crawl_high  D6 16  F6 16  G6 16  Eb6 32  F6 16  G6 16  D6 16  F6 16  G6 16
 
-PAD gm_pad     0.020  0.00003   G3  Bb3  D4
+PAD gm_pad     0.010  0.00003   G3  Bb3  D4
 
-CUE crawl  56
+DRUM crawl_timp t . . . . . . . . . . . . . . . . . . . . . . . . . . . t . t .
+
+CUE crawl  56  XF=1500
 VOICE cbass  crawl_bass
+VOICE csub   crawl_sub
+VOICE clow   crawl_low
+VOICE chigh  crawl_high
 CHORD gm_pad
+DRUMS crawl_timp  0.7
 
 # ================================================================
 # EMPEROR  (antagonist reveal, slow Dm arpeggio + sub drone)
@@ -51,7 +69,7 @@ SEQ emp_bass    D2 4  F2 4  A2 4  C3 4
 PAD dm_pad     0.018  0.00002   D2  F2  A2
 PAD dm_drone   0.030  0.00002   D1
 
-CUE emperor  40
+CUE emperor  40  XF=1500
 VOICE arpin  emp_bass
 CHORD dm_pad
 CHORD dm_drone
@@ -75,7 +93,7 @@ PAD g5_pad     0.010  0.00003   G3  D4
 
 DRUM title      Tc . t . t . T . . . . . T . . . . . T . . t . . T . . . . .  T . t . t . T . . . . . T . . . . . T . . t . . T . . . . .
 
-CUE title  112  6
+CUE title  112  6  XF=1500
 VOICE tcoll   mars_ost
 VOICE tbass   mars_bass
 VOICE tbrass  title_lead
@@ -107,7 +125,7 @@ SEQ game_p2     E4 16  E4 16  D4 16  D4 16  E4 16  E4 16  E4 16  D#4 16
 
 DRUM game       KC h H h SH h H h KH h KH h SH h H h  KH h H h SH h H h KH h KH h SH h H h  KH h H h SH h H h KH h KH h SH h H h  KH h H h SH h H h KH h T h T t S S
 
-CUE game  140
+CUE game  140  XF=250
 VOICE gbass   game_bass
 VOICE glead   game_lead
 VOICE gcount  game_count
@@ -192,7 +210,7 @@ PAD gmaj_pad   0.022  0.00004   G3  B3  D4
 
 DRUM pln_timp   T . . . . . . . t . . . . . . .
 
-CUE planet  120
+CUE planet  120  XF=400
 VOICE plbass   pln_bass
 VOICE plbrass  pln_fan
 CHORD gmaj_pad
@@ -231,7 +249,7 @@ SEQ go_lh2      C3 4
 
 DRUM go_drum    t . . . . . . . . . . . . . . .
 
-CUE gameover  60
+CUE gameover  60  XF=600
 VOICE gomel   go_mel
 VOICE gotoll  go_toll
 VOICE golh    go_lh1
@@ -253,7 +271,7 @@ PAD fmaj7_pad  0.012  0.00003   F3  A3  C4  E4
 
 DRUM dock_hh    K . H . . . H . K . H . . . H H
 
-CUE dock  96
+CUE dock  96  XF=800
 VOICE tbass  dock_bass
 VOICE dlead  dock_lead
 VOICE dbell  dock_arp
