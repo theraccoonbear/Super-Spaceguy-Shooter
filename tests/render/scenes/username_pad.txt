@@ -1,5 +1,6 @@
 # Callsign entry on the pad: A, then on to a second letter spun up to C and colored with Y
 # (the arrows and highlight on it), the pad prompts below the box.
+#! group: ui
 #! args: --scene username
 #! shots: 40
 10 10 PAD_DPAD_UP

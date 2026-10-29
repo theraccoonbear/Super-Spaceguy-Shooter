@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # tests/render/run.sh -- golden-screenshot render tests (#71). Linux only (needs xvfb-run).
 #
-# Usage: tests/render/run.sh [--update] [--no-build] [--repeat N] [scene ...]
-#   --update     bless: save this run's screenshots as the goldens in tests/render/golden/
+# Usage: tests/render/run.sh [--update [ui|gameplay|all]] [--no-build] [--repeat N] [scene ...]
+#   --update     bless: save this run's screenshots as the goldens in tests/render/golden/;
+#                an optional group blesses only that group's scenes (default all)
 #   --no-build   use the existing builds/sss instead of building it first (CI builds it earlier)
 #   --repeat N   run every scene N times and fail unless all N runs are byte-identical
 #                (determinism check; --update uses at least 3)
@@ -10,17 +11,24 @@
 #
 # Each scene is an input script, tests/render/scenes/<scene>.txt, whose "#!" comment lines say
 # how to run it:
+#   #! group: gameplay            ui (the default) or gameplay; see GAMEPLAY_GATING below
 #   #! args: --scene boss3        extra sss options (always added: --god --no-telem --seed 1)
 #   #! shots: 360,440             frames to screenshot; the run stops after the last
 #   #! mask: x,y,w,h              rectangle left out of the comparison (repeatable)
 # Every screenshot is compared with tests/render/golden/<scene>-<frame>.png by tools/imgdiff.bas.
 # The actual screenshots go to tests/render/out/<scene>/, plus diff-<frame>.png for each
 # mismatch (red = differs, yellow = differs within the tolerance, blue = masked).
+# A failing ui scene fails the run. A failing gameplay scene only warns (exit 0) while
+# GAMEPLAY_GATING is 0; either way out/FAILED lists the failing scenes.
 #
 # Env: QB64_BIN_DIR    QB64-PE install to build with (default: the qb64pe on PATH)
 #      RENDER_TOL      per-channel tolerance, 0-255 (default 0: exact)
 #      RENDER_MAX_FRAC fraction of pixels allowed beyond the tolerance (default 0)
 set -euo pipefail
+
+# Gameplay goldens move with every pre-v0.1 tuning tweak (#319), so their failures don't gate yet.
+# Flip to 1 at v0.1, after re-blessing them once from the final build (--update gameplay).
+GAMEPLAY_GATING=0
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 RDIR="$REPO/tests/render"
@@ -29,13 +37,22 @@ TOL="${RENDER_TOL:-0}"
 MAXFRAC="${RENDER_MAX_FRAC:-0}"
 COMMON_ARGS=(--god --no-telem --seed 1)
 
-UPDATE=0; BUILD=1; REPEAT=1; SCENES=()
+# directive value(s) from a scene file: directive <file> <name>
+directive() { sed -n "s/^#! *$2: *//p" "$1"; }
+# a scene's group: ui unless its file says "#! group: gameplay"
+group_of() {
+    local sf="$RDIR/scenes/$1.txt"
+    if [ -f "$sf" ] && [ "$(directive "$sf" group)" = gameplay ]; then echo gameplay; else echo ui; fi
+}
+
+UPDATE=0; UPDATE_GROUP=all; BUILD=1; REPEAT=1; SCENES=()
 while [ $# -gt 0 ]; do
     case "$1" in
-        --update)   UPDATE=1 ;;
+        --update)   UPDATE=1
+                    case "${2:-}" in ui|gameplay|all) UPDATE_GROUP="$2"; shift ;; esac ;;
         --no-build) BUILD=0 ;;
         --repeat)   shift; REPEAT="${1:?--repeat needs a count}" ;;
-        -h|--help)  sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)  sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
         -*)         echo "Error: unknown option $1" >&2; exit 2 ;;
         *)          SCENES+=("$1") ;;
     esac
@@ -44,6 +61,12 @@ done
 [ "$UPDATE" = 1 ] && [ "$REPEAT" -lt 3 ] && REPEAT=3
 if [ ${#SCENES[@]} -eq 0 ]; then
     for f in "$RDIR"/scenes/*.txt; do SCENES+=("$(basename "$f" .txt)"); done
+fi
+if [ "$UPDATE" = 1 ] && [ "$UPDATE_GROUP" != all ]; then
+    picked=()
+    for s in "${SCENES[@]}"; do [ "$(group_of "$s")" = "$UPDATE_GROUP" ] && picked+=("$s"); done
+    [ ${#picked[@]} -gt 0 ] || { echo "Error: no $UPDATE_GROUP scenes in this run to update" >&2; exit 2; }
+    SCENES=("${picked[@]}")
 fi
 
 command -v xvfb-run > /dev/null || { echo "Error: xvfb-run not found (try tools/dev render)" >&2; exit 2; }
@@ -58,16 +81,14 @@ build() {
 [ "$BUILD" = 1 ] && build sss.bas
 [ -x builds/sss ] || { echo "Error: builds/sss missing (build it, or drop --no-build)" >&2; exit 2; }
 build tools/imgdiff.bas
-
-# directive value(s) from a scene file: directive <file> <name>
-directive() { sed -n "s/^#! *$2: *//p" "$1"; }
+rm -f "$OUT/FAILED"
 
 FAILED=()
 fail() { echo "    FAIL $1"; FAILED+=("$2"); }
 
 for scene in "${SCENES[@]}"; do
     sf="$RDIR/scenes/$scene.txt"
-    echo "==> $scene"
+    echo "==> $scene ($(group_of "$scene"))"
     [ -f "$sf" ] || { fail "no scene file $sf" "$scene"; continue; }
     read -r -a args <<< "$(directive "$sf" args)"
     shots="$(directive "$sf" shots)"
@@ -142,10 +163,36 @@ if [ "$UPDATE" = 0 ] && [ -d "$RDIR/golden" ]; then
 fi
 
 echo ""
+# per-group summary: the scenes that ran and the ones that failed
+declare -A RAN=() BAD=()
+for s in "${SCENES[@]}"; do g="$(group_of "$s")"; RAN[$g]="${RAN[$g]:-} $s"; done
+for s in $(printf '%s\n' "${FAILED[@]+"${FAILED[@]}"}" | sort -u); do g="$(group_of "$s")"; BAD[$g]="${BAD[$g]:-} $s"; done
+gate=0
+for g in ui gameplay; do
+    [ -n "${RAN[$g]:-}" ] || continue
+    n=$(wc -w <<< "${RAN[$g]}")
+    gating=1; [ "$g" = gameplay ] && [ "$GAMEPLAY_GATING" != 1 ] && gating=0
+    if [ -z "${BAD[$g]:-}" ]; then
+        echo "==> $g: all $n scenes passed"
+    elif [ "$gating" = 1 ]; then
+        echo "==> $g: FAILED:${BAD[$g]} (of $n)"
+        gate=1
+    else
+        echo "==> $g: FAILED, not gating (GAMEPLAY_GATING=0):${BAD[$g]} (of $n)"
+        if [ -n "${GITHUB_ACTIONS:-}" ]; then
+            for s in ${BAD[$g]}; do
+                echo "::warning title=Render gameplay scene failed::$s doesn't match its goldens (not gating until v0.1; diffs in the render-test-results artifact)"
+            done
+        fi
+    fi
+done
 if [ ${#FAILED[@]} -gt 0 ]; then
-    echo "==> RENDER TESTS FAILED: $(printf '%s\n' "${FAILED[@]}" | sort -u | tr '\n' ' ')"
+    printf '%s\n' "${FAILED[@]}" | sort -u > "$OUT/FAILED"
     echo "    actual screenshots and diffs: $OUT/"
-    echo "    if the change is intended, re-bless: tests/render/run.sh --update (tools/dev render --update)"
+    echo "    if the change is intended, re-bless: tests/render/run.sh --update <group> (tools/dev render --update <group>)"
+fi
+if [ "$gate" = 1 ]; then
+    echo "==> RENDER TESTS FAILED"
     exit 1
 fi
-echo "==> All ${#SCENES[@]} render scenes passed"
+echo "==> Render tests passed (${#SCENES[@]} scenes run)"

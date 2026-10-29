@@ -1,4 +1,5 @@
 # The telemetry DATA NOTICE: the cursor on OK, then moved down to DON'T ASK AGAIN.
+#! group: ui
 #! args: --scene consent
 #! shots: 30,60
 45 45 DOWN

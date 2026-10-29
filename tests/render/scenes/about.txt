@@ -1,5 +1,6 @@
 # About screen (title -> ESC -> A), scrolled down past the version line to the credits:
 # the panel UI, the bitmap font and its rich colour codes.
+#! group: ui
 #! args: --scene title
 #! shots: 200
 60 60 ESC
