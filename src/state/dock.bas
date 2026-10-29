@@ -177,7 +177,7 @@ Sub DOCK_Draw
         DOCK_DrawSupplyInfo DOCK_SupplyOf%(dockSel), dkdY
     Else
         ' what it does, then what the next level changes
-        UI_Text 15, UPG_Info$(dockSel - DOCK_UPG0), DOCK_PX1 + 8, dkdY, 255
+        UI_PromptsAt UPG_Info$(dockSel - DOCK_UPG0), INP_LastDevice%, DOCK_PX1 + 8, dkdY, 15, 255, -1
         dkdName = UPG_Next$(dockSel - DOCK_UPG0)
         If dkdName = "MAXED" Then dkdPal = 8 Else dkdPal = 14
         UI_Text dkdPal, dkdName, DOCK_PX1 + 8, dkdY + 16, 255

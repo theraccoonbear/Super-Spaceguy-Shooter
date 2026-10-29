@@ -30,6 +30,7 @@
 '$INCLUDE:'sys/debug.bas'
 '$INCLUDE:'sys/game.bas'
 '$INCLUDE:'sys/settings.bas'
+'$INCLUDE:'2d/prompttext.bas'
 '$INCLUDE:'2d/ui.bas'
 '$INCLUDE:'state/dock.bas'
 '$INCLUDE:'state/remap.bas'
