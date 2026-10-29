@@ -258,10 +258,13 @@ if [ "$IS_WIN" = 1 ]; then
     (cd "$WORK/qb$w/internal/c" && find . -path ./c_compiler -prune -o -type f \( -name '*.o' -o -name '*.a' \) \
       ! -name 'qbx*.o' -newer "$WORK/suite_start" -print) | while read -r obj; do
       [ -e "$QB64_DIR/internal/c/$obj" ] && continue
-      echo "    (worker $w built ${obj#./}, keeping it in the shared install)"
       cp "$WORK/qb$w/internal/c/$obj" "$QB64_DIR/internal/c/$obj"
+      echo "${obj#./}" >> "$WORK/kept_objects"
     done
   done
+  if [ -f "$WORK/kept_objects" ]; then
+    echo "==> Kept $(wc -l < "$WORK/kept_objects") QB64-PE objects the workers built in the shared install"
+  fi
 fi
 
 FAILED=()
