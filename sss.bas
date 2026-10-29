@@ -63,6 +63,22 @@ SEQ_Load _EMBEDDED$("SEQTXT")
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 CLI_Parse
 
+' Launched from a folder we can't write to (Program Files, a shared install, cwd /):
+' skip sss_settings.ini and sss_telemetry.csv for the session instead of raising
+' runtime-error dialogs (#283). Module level for the same ON ERROR reason as the
+' /dev/tty probe below, and ahead of it: that probe leaves its handler without
+' RESUME, after which a second trapped error is fatal.
+DIM ioProbe AS INTEGER : ioProbe = FREEFILE
+ON ERROR GOTO ioProbeFail
+OPEN _STARTDIR$ + "/sss_write_probe.tmp" FOR OUTPUT AS #ioProbe : CLOSE #ioProbe
+KILL _STARTDIR$ + "/sss_write_probe.tmp"
+GOTO ioProbeDone
+ioProbeFail:
+ioReadOnly = -1
+RESUME ioProbeDone
+ioProbeDone:
+ON ERROR GOTO 0
+
 ' Enable debug/diagnostic output where possible; DBG_Print and GTEXT_Log check dbgTtyOK.
 ' Windows: DBG_InitTty (src/sys/debug.bas) gates on --debug via $CONSOLE.
 ' Unix: probe for a controlling terminal (/dev/tty), staying silent when launched
@@ -82,6 +98,7 @@ $ELSE
     ON ERROR GOTO 0
     dbgTtyDone:
 $END IF
+IF ioReadOnly THEN DBG_Print "IO: launch folder " + _STARTDIR$ + " is not writable; settings and local telemetry won't be saved this session"
 
 ' --- screen ---
 scrW = 320 : scrH = 240

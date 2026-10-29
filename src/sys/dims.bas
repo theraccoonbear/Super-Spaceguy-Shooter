@@ -283,6 +283,7 @@ DIM SHARED dockBgImg   AS LONG
 ' --- telemetry ---
 DIM SHARED dbgTtyOK          AS INTEGER
 DIM SHARED telemOn           AS INTEGER
+DIM SHARED ioReadOnly        AS INTEGER   ' -1: launch folder not writable, skip settings + local CSV (#283)
 DIM SHARED telemKills        AS LONG
 DIM SHARED telemBossReached  AS INTEGER
 DIM SHARED telemBossPhaseLog AS INTEGER

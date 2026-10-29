@@ -59,6 +59,7 @@ Sub TELEM_Init()
     Else
         DBG_Print "TELEM: HTTP telemetry local only (no DB_URL configured)"
     End If
+    If ioReadOnly Then Exit Sub
     Dim tlF As Integer : tlF = FreeFile
     If Not _FileExists(_StartDir$ + "/sss_telemetry.csv") Then
         Open _StartDir$ + "/sss_telemetry.csv" For Output As #tlF
@@ -69,10 +70,13 @@ End Sub
 
 Sub TELEM_Row(tlEvent As String, tlData As String)
     If telemOn = 0 Then Exit Sub
-    Dim tlF As Integer : tlF = FreeFile
-    Open _StartDir$ + "/sss_telemetry.csv" For Append As #tlF
-    Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData
-    Close #tlF
+    Dim tlF As Integer
+    If ioReadOnly = 0 Then
+        tlF = FreeFile
+        Open _StartDir$ + "/sss_telemetry.csv" For Append As #tlF
+        Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData
+        Close #tlF
+    End If
     ' accumulate for bulk HTTP POST in TELEM_SessionEnd
     If Len(DB_URL) > 0 And Len(telemSession) > 0 Then
         Dim tlRowJson As String

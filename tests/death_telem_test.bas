@@ -89,6 +89,7 @@ Dim Shared gameOver          As Integer
 Dim Shared fxShakeTimer      As Integer
 Dim Shared fxFlashTimer      As Integer
 Dim Shared telemOn           As Integer
+Dim Shared ioReadOnly        As Integer
 Dim Shared telemSession      As String
 Dim Shared telemPlayerID     As String
 Dim Shared telemConsent      As Integer
