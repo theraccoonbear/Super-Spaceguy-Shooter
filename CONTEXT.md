@@ -21,8 +21,8 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 │   ├── 3d/                 ← software 3D pipeline: mesh, matrix, poly, camera, collision, starfield
 │   ├── audio/              ← music.bas, snd.bas (mixer/SFX), speech.bas (TTS)
 │   ├── gameplay/           ← player, enemy, boss, waves, behavior, stage/level logic, maneuvers
-│   ├── state/              ← per-screen game states: title, crawl, combat, asteroids, game over, consent, username, leaderboard, lead-in
-│   └── 2d/                 ← HUD, UI panels, bitmap font, particle effects, crawl renderer, about screen
+│   ├── state/              ← per-screen game states: title, crawl, combat, asteroids, game over, consent, username, leaderboard, lead-in, dock, remap, pause input
+│   └── 2d/                 ← HUD, UI panels, bitmap font, particle effects, crawl renderer, about and controls screens, text editing
 ├── assets/                 ← all game assets (embedded at compile time -- no runtime file I/O)
 │   ├── models.e3d          ← custom text mesh format (all 3D geometry)
 │   ├── sequence.txt        ← data-driven scene list
@@ -35,7 +35,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 └── tools/                  ← buildqb, bake_speech_dict, TrailForge (web tool), obj2e3d, viewer, etc.
 ```
 
-`sss.bas` is the only file QB64-PE compiles directly. It `$INCLUDE`s `src/game.bi` and `src/engine3d.bi`, which in turn pull in every module in the correct dependency order. Do not add `$INCLUDE` lines to `sss.bas` directly.
+`sss.bas` is the only file QB64-PE compiles directly. It `$INCLUDE`s `src/sys/version.bas`, `src/sys/rng.bas`, `src/engine3d.bi`, `src/sys/dims.bas` and `src/game.bi` in that order (the two manifests pull in every other module), and then, inline after the startup code, the seven main-loop states `src/state/title.bas`, `intro.bas`, `gameover.bas`, `crawl.bas`, `playing.bas`, `asteroids.bas` and `combat.bas`. New modules go in `src/game.bi`, not as another `$INCLUDE` in `sss.bas`.
 
 ---
 
@@ -67,7 +67,11 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `UI_` | `src/2d/ui.bas` | Sci-fi panel UI components. Panels drawn over art (the dock, the win tally) go through `UI_Panel` / `UI_PanelFade` and their text through `UI_Text` (see-through fill `UI_SEE_ALPHA`, shared borders, 1px text shadow) -- never a raw `Line ..., BF` box; full-screen menus use the opaque `UI_DrawPanel` |
 | `CRAWL_` | `src/2d/crawl.bas` | Scrolling narrative crawl renderer |
 | `FX_` | `src/2d/effects.bas` | Particle and visual effects |
-| `UPG_` / `CR_` | `src/gameplay/upgrades.bas` | Credits and the upgrade table (from `assets/config/*.ini`) |
+| `UPG_` | `src/gameplay/upgrades.bas` | The upgrade table (from `assets/config/upgrades.ini`) and its effects |
+| `CR_` | `src/gameplay/credits.bas` | Credits earned and spent, and the end-of-run cash-in (`assets/config/economy.ini`) |
+| `ISC_` / `KEY_` | `src/sys/inputscript.bas` | `--input-script` playback, and the per-frame key helpers every screen uses (`KEY_Pressed%`, `KEY_Confirm%`, `KEY_Back%`, `KEY_Down%`, `KEY_Hit&`) |
+| `MENU_` | `src/sys/menunav.bas` | Moving a cursor through a menu's rows, shared by every menu |
+| `TXE_` | `src/2d/textedit.bas` | One-line text editing over a string with `~X` colour tokens (the callsign field) |
 | `SUP_` | `src/gameplay/supplies.bas` | Fuel and shields bought by the amount at the dock: prices and the per-dock fuel surcharge (`assets/config/economy.ini`), the next jump's fuel need (`SEQ_NextLeg`) and the stranded check |
 | `DOCK_` | `src/state/docklogic.bas`, `src/state/dock.bas` | Upgrade dock: REFUEL / SHIELDS rows, the upgrades, LAUNCH; list logic and input, then drawing |
 | `ABL_` | `src/gameplay/abilities.bas` | In-flight upgrade effects: evasive roll, nova pulse, tractor beam |
@@ -114,10 +118,10 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 
 ## Architectural invariants — never violate these
 
-1. **No runtime file I/O.** Assets are baked via `$EMBED`. There is no `OPEN … FOR INPUT` at runtime except `sss_settings.ini` (written/read by `settingsio.bas` for persistence) and `sss_telemetry.csv` (written by `telemetry.bas` for local logging). Both are skipped for the session when the startup probe in `sss.bas` finds the launch folder unwritable (`ioReadOnly`, #283).
+1. **No runtime file I/O.** Assets are baked via `$EMBED`. The only files a player's game touches are `sss_settings.ini` (written/read by `settingsio.bas` for persistence) and `sss_telemetry.csv` (written by `telemetry.bas` for local logging), both in the launch folder. Both are skipped for the session when the startup probe in `sss.bas` finds the launch folder unwritable (`ioReadOnly`, #283). Dev builds also read `--input-script` / `--leaderboard-file` files and write `--screenshot-at` PNGs and the `SSS_MILESTONE_LOG` file.
 2. **Single compiled binary.** No DLLs, no plugins, no dynamic loading.
 3. **Single thread.** The frame loop is: input → update → render → `_Display`. `HTTP_Pump` must be called once per frame from the main loop for async transfers to make progress.
-4. **All state is module-global.** `src/sys/dims.bas` declares every `DIM SHARED` variable the game uses. No module has private state that another module cannot read.
+4. **All state is module-global.** `src/sys/dims.bas` declares the game-wide state; most modules also declare their own `DIM SHARED` variables at the top of the file (about 60% of all `Dim Shared` lines live outside `dims.bas`). Either way every shared variable is global: no module has private state that another module cannot read.
 5. **Name prefix = module owner.** `SEQ_Advance` belongs to `sequence.bas`. Don't add sequence logic to `stage.bas`.
 6. **$INCLUDE order is deps order.** `src/game.bi` and `src/engine3d.bi` pull in modules in the correct order. New modules belong there, not as direct `$INCLUDE` in `sss.bas`.
 7. **All spoken text must live in `gametext.txt`.** Never pass a string literal to `SPK_Say`. `bake_speech_dict` must be able to see every word that will be spoken or the CI dict-check will fail.
@@ -136,7 +140,7 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 - No texture mapping — faces are flat-colored with optional directional lighting
 - No unit test framework — tests are self-contained `.bas` programs in `tests/` that exit 0 on pass
 - No class system — QB64-PE has `TYPE` structs but no methods or inheritance
-- No dynamic allocation — array sizes are fixed at compile time
+- Almost no dynamic allocation — array sizes are fixed at compile time (the one `ReDim` is in `E3D_CtrlScan`, `src/3d/input.bas`). A non-`Static` array `Dim`med inside a Sub is allocated on every call, though, so hot-path workspaces are `Dim Shared`
 - **`E3D_DrawMesh` and `E3D_GetMeshFaces` are dead code** — they have no callers in the game, tools, or tests. Do not assume they're in use without checking call sites.
 
 ---
@@ -145,15 +149,14 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 
 These cause incorrect code in this codebase:
 
-- **`DIM SHARED` must appear before `$INCLUDE` lines** in the including file, or included Subs see 0. `src/sys/dims.bas` is the canonical place; don't declare game-wide vars elsewhere.
+- **`DIM SHARED` must appear before `$INCLUDE` lines** in the including file, or included Subs see 0. `src/sys/dims.bas` is the canonical place for game-wide vars; state only one module uses goes at the top of that module.
 - **`NOT` is bitwise**, not logical: `NOT 1 = -2` (truthy). Use `IF flag = 0` to guard disabled features. Booleans must be `0` / `-1`.
 - **Short names collide with QB64-PE built-ins**: `pos`, `val`, `len`, `tab`, `point`. Prefix with context (`objPos`, `sndVal`).
-- **All `DIM` inside Subs are module-scope in QB64-PE.** Variable names must be unique across all Subs in a compilation unit — not just within the Sub.
+- **A plain `DIM` outside any Sub is module-level and invisible to Subs** (use `DIM SHARED`). A `DIM` inside a Sub is local to that Sub: the same local name in two Subs is fine (dozens already are, some with different types). Don't give a Sub-local the name of a `DIM SHARED` variable.
 - **`UBOUND` on an empty array** returns -1, not 0. Guard with `IF UBOUND(arr) >= 0` before iterating.
 - **`STR$(n)` prepends a space** for positive numbers. Use `LTRIM$(STR$(n))` when concatenating.
 - **`CONST` scope**: constants declared inside a Sub are local to it. Module-level constants go at the top of the file before any Sub.
 - **`_COMMAND$(n)` subscript form** is not supported in QB64-PE v4.5.0. Use `COMMAND$` (full string) and parse it manually.
-- **`As String` in `$INCLUDE` Dim lines** can be ignored in some include contexts; use `$` suffix on the variable name for string vars in includes.
 - **Test stubs replicate shared vars.** Adding a new `$INCLUDE` to `sequence.bas`, `dims.bas`, or any file test stubs replicate means updating every affected test file. Grep for the variable name in `tests/` to find which stubs need it.
 
 ---
@@ -172,7 +175,8 @@ builds/sss --scene boss3                  # stage 3 boss fight
 builds/sss --scene playing2               # stage 2 combat
 
 # Full test suite (same as CI)
-QB64_BIN_DIR=/path/to/qb64pe .github/scripts/qb64test.sh
+tools/test                                # native, uses the qb64pe on PATH
+tools/dev test                            # in the container
 
 # Individual tests
 tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
@@ -205,7 +209,7 @@ tools/buildqb viewer.bas && builds/viewer
 | Where does audio happen? | `src/audio/snd.bas` (SFX triggers) + `src/audio/music.bas` (music engine) |
 | Where does speech happen? | `src/audio/speech.bas` — call `SPK_Say text$` (text$ must come from `gametext.txt`) |
 | Where do shared globals live? | `src/sys/dims.bas` — the game's shared memory layout |
-| Where do types/constants live? | `src/3d/types.bi` (3D types), `src/sys/dims.bas` (game constants), `src/game.bi` (game-wide constants) |
+| Where do types/constants live? | `src/3d/types.bi` (3D types), `src/sys/dims.bas` (game types and game-wide constants), and the top of each module for its own constants. `src/game.bi` holds only `$INCLUDE` lines |
 | Where does 3D rendering happen? | `src/3d/matrix.bas` → `src/3d/scene.bas` (batching) → `src/3d/poly.bas` (rasterization) |
 | Where do meshes come from? | `assets/models.e3d` (embedded); `tools/buildqb viewer.bas` to preview; `obj2e3d.bas` to convert OBJ |
 | Where does HTTP go? | `src/sys/http.bas` (queue/pump) → `src/sys/telemetry.bas` (events) + `src/sys/lbrd.bas` (leaderboard) |

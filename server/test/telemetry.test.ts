@@ -107,6 +107,25 @@ describe("POST /sss_telemetry", () => {
     expect(await rows("SELECT id FROM sss_telemetry")).toHaveLength(1001);
   });
 
+  it("returns 429 once a client passes 30 batches a minute, per IP", async () => {
+    const ip = "203.0.113.30";
+    for (let i = 0; i < 30; i++) {
+      expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), ip)).status).toBe(201);
+    }
+    expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), ip)).status).toBe(429);
+    expect(await rows("SELECT id FROM sss_telemetry")).toHaveLength(120);
+    expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), "203.0.113.31")).status).toBe(201);
+  });
+
+  it("limits /scores and /sss_telemetry separately", async () => {
+    const ip = "203.0.113.40";
+    const score =
+      '{"player_id":"p","player_name":"ACE","score":1450,"wave":3,"session":"20261027143005"}';
+    for (let i = 0; i < 10; i++) await post("/scores", score, gameHeaders(), ip);
+    expect((await post("/scores", score, gameHeaders(), ip)).status).toBe(429);
+    expect((await post("/sss_telemetry", GAME_BATCH, gameHeaders(), ip)).status).toBe(201);
+  });
+
   it("rejects GET with 405", async () => {
     expect((await get("/sss_telemetry", gameHeaders())).status).toBe(405);
   });
