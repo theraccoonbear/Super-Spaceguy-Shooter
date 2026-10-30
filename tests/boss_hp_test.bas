@@ -75,7 +75,7 @@ Function BT_Fight% (btfMax As Integer, btfDmg As Integer, btfShieldF As Long, bt
 End Function
 
 Dim btOk As Integer, btSrc As String, btP As Long, btQ As Long, btLine As String, btN As Integer
-Dim btHp(1 To 8) As Integer, btFuel(1 To 8) As Integer, btH As Integer, btPh As Integer, btShots As Integer
+Dim btHp(1 To 8) As Integer, btSecs(1 To 8) As Integer, btH As Integer, btPh As Integer, btShots As Integer
 
 Print "=== boss_hp_test ==="
 Print ""
@@ -107,14 +107,14 @@ Do
     If InStr(btLine, "PLAY type=boss") > 0 And Left$(LTrim$(btLine), 1) <> ";" And btN < 8 Then
         btN = btN + 1
         If InStr(btLine, " hp=") > 0 Then btHp(btN) = Val(Mid$(btLine, InStr(btLine, " hp=") + 4))
-        If InStr(btLine, " fuel=") > 0 Then btFuel(btN) = Val(Mid$(btLine, InStr(btLine, " fuel=") + 6))
+        If InStr(btLine, " secs=") > 0 Then btSecs(btN) = Val(Mid$(btLine, InStr(btLine, " secs=") + 6))
     End If
 Loop
 BT_Assert btN = 3, "three boss fights"
 BT_Assert btHp(1) = 30, "boss 1 (level 3): 30 HP, as before"
 BT_Assert btHp(2) = 90, "boss 2 (level 5): 90 HP (was 30)"
 BT_Assert btHp(3) = 130, "boss 3 (level 6): 130 HP (was 30)"
-BT_Assert btFuel(1) = 30 And btFuel(2) = 35 And btFuel(3) = 40, "fuel budgeted per fight (fuel=): 30, 35, 40 (all were fuel_boss 25)"
+BT_Assert btSecs(1) = 22 And btSecs(2) = 25 And btSecs(3) = 32, "each fight's expected seconds for the fuel estimate (secs=): 22, 25, 32"
 BT_Assert BHP_MaxHP%(btHp(2), 0) = 90 And BHP_MaxHP%(0, 0) = 30, "a fight's hp= is used; none falls back to the default"
 BT_Assert BHP_MaxHP%(btHp(1), -1) = 3 And BHP_MaxHP%(btHp(2), -1) = 9 And BHP_MaxHP%(btHp(3), -1) = 13, "--nerf: 3, 9, 13"
 BT_Assert BHP_MaxHP%(10, -1) = 3, "--nerf never below 3, one per phase"

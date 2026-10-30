@@ -14,7 +14,7 @@
 ;              seek=N -- boss bullet homing strength per frame (0=straight, 0.05=moderate curve)
 ;              attack=a,b,... -- the boss's attack pool (#26): laser, spore, cut, devour; one picked at random per volley
 ;              hp=N -- the boss's hit points (#90; none = boss_hp_default in assets/config/bosses.ini; --nerf: x 0.1)
-;              fuel=N -- fuel the fight is budgeted (#90; the dock's NEXT JUMP NEEDS; none = fuel_boss in assets/config/economy.ini)
+;              secs=N -- seconds the fight is expected to take, for the dock's NEXT JUMP NEEDS (#90; none = fuel_boss_secs in assets/config/economy.ini)
 ;   trigger=n: combat: enemy kills that end the stage (nerf: * NERF_FACTOR, at least 1); asteroid: parsecs
 ; ARRIVE mus=<cue>
 ; DOCK   [mus=<cue>]   upgrade dock: spend credits between stages (none after the last stage)
@@ -44,7 +44,7 @@ level:2
 level:3
     CRAWL txt=stage3 mus=crawl
     PLAY type=combat mus=game trigger=12
-    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore hp=30 fuel=30
+    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore hp=30 secs=22
     ARRIVE mus=planet
     DOCK mus=dock
 
@@ -57,14 +57,14 @@ level:4
 level:5
     CRAWL txt=stage5 mus=crawl
     PLAY type=combat mus=game trigger=18
-    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut hp=90 fuel=35
+    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut hp=90 secs=25
     ARRIVE mus=planet
     DOCK mus=dock
 
 level:6
     CRAWL txt=stage6 mus=crawl
-    PLAY type=combat mus=game trigger=20
-    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour hp=130 fuel=40
+    PLAY type=combat mus=game trigger=24
+    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour hp=130 secs=32
     ARRIVE mus=planet
 
 outro:

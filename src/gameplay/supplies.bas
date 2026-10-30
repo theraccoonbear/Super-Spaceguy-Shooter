@@ -12,8 +12,10 @@
 '   n = SUP_MaxAffordable%(kind, ch)   most units the credits buy, at most the missing ones
 '   n = SUP_Step%(kind)            LEFT / RIGHT step: supply_step_pct of the capacity
 '   r = SUP_Buy%(kind, n, ch)      SUP_OK / SUP_NOFUNDS / SUP_FULL; buys at most what's missing
-'   f = SUP_LegNeed!               fuel the next leg needs (SEQ_NextLeg); 0 when there is none
-'   s = SUP_Stranded%              -1 when even all the fuel the credits buy won't reach it
+'   f = SUP_LegNeed!               fuel the next leg needs (SEQ_NextLeg; honest, may pass the tank)
+'   f = SUP_LegReach!              ...of which the tank can hold: min(need, fuelMax)
+'   o = SUP_OverTank%              -1 when the need is more than the tank holds (UPGRADE TANK)
+'   s = SUP_Stranded%              -1 when even all the fuel the credits buy won't reach SUP_LegReach!
 ' Local variable prefix: sup*
 
 Const SUP_FUEL    = 1
@@ -25,7 +27,8 @@ Const SUP_MAX_CH  = 16
 
 Dim Shared supFuelPrice As Single, supShieldPrice As Single, supStepPct As Single
 Dim Shared supMult(1 To SUP_MAX_CH) As Single, supMultCnt As Integer
-Dim Shared supPerKill As Single, supBoss As Single, supAsteroid As Single
+Dim Shared supBurn As Single, supMargin As Single, supBossSecs As Single, supAstSecs As Single
+Dim Shared supKillSecs(1 To SUP_MAX_CH) As Single, supKillSecsCnt As Integer
 Dim Shared supLoadErr As String
 
 Function SUP_Load%
@@ -35,9 +38,18 @@ Function SUP_Load%
     supFuelPrice = Val(CFG_Get$(cfgEconomy, "fuel_price"))
     supShieldPrice = Val(CFG_Get$(cfgEconomy, "shield_price"))
     supStepPct = Val(CFG_Get$(cfgEconomy, "supply_step_pct"))
-    supPerKill = Val(CFG_Get$(cfgEconomy, "fuel_per_kill"))
-    supBoss = Val(CFG_Get$(cfgEconomy, "fuel_boss"))
-    supAsteroid = Val(CFG_Get$(cfgEconomy, "fuel_asteroid"))
+    supBurn = Val(CFG_Get$(cfgEconomy, "fuel_burn"))
+    supMargin = Val(CFG_Get$(cfgEconomy, "fuel_margin"))
+    supBossSecs = Val(CFG_Get$(cfgEconomy, "fuel_boss_secs"))
+    supAstSecs = Val(CFG_Get$(cfgEconomy, "fuel_asteroid_secs"))
+    If supBurn <= 0 Or supMargin < 1 Then supLoadErr = "config/economy.ini needs fuel_burn above 0 and fuel_margin 1 or more" : Exit Function
+    If supBossSecs <= 0 Or supAstSecs <= 0 Then supLoadErr = "config/economy.ini needs fuel_boss_secs and fuel_asteroid_secs above 0" : Exit Function
+    UPG_Split CFG_Get$(cfgEconomy, "fuel_kill_secs"), ",", suplV(), supKillSecsCnt
+    If supKillSecsCnt < 1 Then supLoadErr = "config/economy.ini has no fuel_kill_secs" : Exit Function
+    For suplI = 1 To supKillSecsCnt
+        supKillSecs(suplI) = Val(suplV(suplI))
+        If supKillSecs(suplI) <= 0 Then supLoadErr = "config/economy.ini fuel_kill_secs: every value above 0" : Exit Function
+    Next suplI
     UPG_Split CFG_Get$(cfgEconomy, "fuel_mult"), ",", suplV(), supMultCnt
     If supFuelPrice <= 0 Or supShieldPrice <= 0 Then supLoadErr = "config/economy.ini needs fuel_price and shield_price above 0" : Exit Function
     If supStepPct <= 0 Then supLoadErr = "config/economy.ini needs supply_step_pct above 0" : Exit Function
@@ -125,21 +137,41 @@ Function SUP_Buy% (supbKind As Integer, supbN As Integer, supbCh As Integer)
     SUP_Buy% = SUP_OK
 End Function
 
+' Seconds of play the leg after this dock (chapter levelNum + 1) is expected to take, x the
+' play burn and margin: never capped at the tank (SUP_LegReach! is what the tank can take).
 Function SUP_LegNeed!
-    Dim supnKills As Long, supnBossFuel As Single, supnBoss As Integer, supnAst As Integer, supnNeed As Single, supnCap As Single
-    SEQ_NextLeg supnKills, supnBossFuel, supnBoss, supnAst
-    supnNeed = supnKills * supPerKill + supnBossFuel + supnBoss * supBoss + supnAst * supAsteroid
-    supnCap = upgFxA(UPG_FUEL, 0)
-    If supnNeed > supnCap Then supnNeed = supnCap
+    Dim supnKills As Long, supnBossSecs As Single, supnBoss As Integer, supnAst As Integer
+    Dim supnSecs As Single, supnNeed As Single, supnCh As Integer
+    SEQ_NextLeg supnKills, supnBossSecs, supnBoss, supnAst
+    supnCh = levelNum + 1
+    If supnCh < 1 Then supnCh = 1
+    If supnCh > supKillSecsCnt Then supnCh = supKillSecsCnt
+    supnSecs = supnKills * supKillSecs(supnCh) + supnBossSecs + supnBoss * supBossSecs + supnAst * supAstSecs
+    supnNeed = supnSecs * supBurn * supMargin
     If settingNerf Then supnNeed = supnNeed * NERF_FACTOR
     SUP_LegNeed! = supnNeed
 End Function
 
+' The part of the next leg's need the tank can hold: min(need, fuelMax).
+Function SUP_LegReach!
+    Dim suprNeed As Single
+    suprNeed = SUP_LegNeed!
+    If suprNeed > fuelMax Then suprNeed = fuelMax
+    SUP_LegReach! = suprNeed
+End Function
+
+' -1 when the next leg needs more than the tank holds (the dock says UPGRADE TANK).
+Function SUP_OverTank%
+    SUP_OverTank% = (SUP_LegNeed! > fuelMax)
+End Function
+
+' Stranded only when the credits can't even fill to what the tank can take of the leg: a leg
+' longer than the tank is flown dry at the end, not refused at the dock.
 Function SUP_Stranded%
     Dim supsdNeed As Single, supsdCan As Integer
     SUP_Stranded% = 0
     If godMode Then Exit Function
-    supsdNeed = SUP_LegNeed!
+    supsdNeed = SUP_LegReach!
     If supsdNeed <= 0 Then Exit Function
     supsdCan = SUP_MaxAffordable%(SUP_FUEL, levelNum)
     If fuelLevel + supsdCan < supsdNeed Then SUP_Stranded% = -1

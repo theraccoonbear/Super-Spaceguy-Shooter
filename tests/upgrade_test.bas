@@ -38,9 +38,9 @@ Sub TELEM_ShieldBought (tsbA As Integer, tsbP As Long, tsbC As Integer)
     utShieldBuys = utShieldBuys + 1 : utShieldAmt = tsbA : utShieldPrice = tsbP : utShieldCh = tsbC
 End Sub
 ' SEQ_NextLeg (sequence.bas) reports this stub leg
-Dim Shared utLegKills As Long, utLegBossFuel As Single, utLegBoss As Integer, utLegAst As Integer
-Sub SEQ_NextLeg (snlK As Long, snlBF As Single, snlB As Integer, snlA As Integer)
-    snlK = utLegKills : snlBF = utLegBossFuel : snlB = utLegBoss : snlA = utLegAst
+Dim Shared utLegKills As Long, utLegBossSecs As Single, utLegBoss As Integer, utLegAst As Integer
+Sub SEQ_NextLeg (snlK As Long, snlBS As Single, snlB As Integer, snlA As Integer)
+    snlK = utLegKills : snlBS = utLegBossSecs : snlB = utLegBoss : snlA = utLegAst
 End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
@@ -66,6 +66,11 @@ End Sub
 
 Function UT_Near% (utnA As Single, utnB As Single)
     UT_Near% = (Abs(utnA - utnB) < 0.0001)
+End Function
+
+' Fuel needs multiply several decimal settings: compare them to the hundredth.
+Function UT_Close% (utcA As Single, utcB As Single)
+    UT_Close% = (Abs(utcA - utcB) < 0.01)
 End Function
 
 Dim utOk As Integer, utR As Integer, utI As Integer, utJ As Integer
@@ -269,7 +274,7 @@ Print ""
 Print "--- supplies: fuel and shields by the amount (#277) ---"
 utOk = SUP_Load%
 UT_Assert utOk <> 0, "SUP_Load% reads economy.ini (" + supLoadErr + ")"
-UT_Assert UT_Near%(supFuelPrice, 2) And UT_Near%(supShieldPrice, 1) And UT_Near%(supStepPct, 10), "fuel $2 a unit, shields $1 a point, steps of 10%"
+UT_Assert UT_Near%(supFuelPrice, 1.6) And UT_Near%(supShieldPrice, 1) And UT_Near%(supStepPct, 10), "fuel $1.60 a unit, shields $1 a point, steps of 10%"
 UT_Assert UT_Near%(SUP_Mult!(1), 1) And UT_Near%(SUP_Mult!(2), 1.4) And UT_Near%(SUP_Mult!(3), 1.8) And UT_Near%(SUP_Mult!(4), 2.2) And UT_Near%(SUP_Mult!(5), 2.6), "fuel surcharge per dock: 1.0, 1.4, 1.8, 2.2, 2.6"
 utOk = -1
 For utI = 2 To supMultCnt
@@ -277,8 +282,8 @@ For utI = 2 To supMultCnt
 Next utI
 UT_Assert utOk <> 0, "the blockade only tightens: every dock's fuel price is above the last"
 UT_Assert UT_Near%(SUP_Mult!(9), SUP_Mult!(supMultCnt)) And UT_Near%(SUP_Mult!(0), SUP_Mult!(1)), "past the list: its last value; before it: the first"
-UT_Assert UT_Near%(SUP_UnitPrice!(SUP_FUEL, 2), 2.8) And UT_Near%(SUP_UnitPrice!(SUP_SHIELD, 5), 1), "dock 2 fuel $2.80 a unit; shields flat $1 at any dock"
-UT_Assert SUP_Cost&(SUP_FUEL, 40, 2) = 112 And SUP_Cost&(SUP_FUEL, 40, 1) = 80 And SUP_Cost&(SUP_FUEL, 40, 5) = 208, "40 fuel: $80 at dock 1, $112 at dock 2, $208 at dock 5"
+UT_Assert UT_Near%(SUP_UnitPrice!(SUP_FUEL, 2), 2.24) And UT_Near%(SUP_UnitPrice!(SUP_SHIELD, 5), 1), "dock 2 fuel $2.24 a unit; shields flat $1 at any dock"
+UT_Assert SUP_Cost&(SUP_FUEL, 40, 2) = 90 And SUP_Cost&(SUP_FUEL, 40, 1) = 64 And SUP_Cost&(SUP_FUEL, 40, 5) = 166, "40 fuel: $64 at dock 1, $90 at dock 2 ($89.60), $166 at dock 5 ($166.40)"
 UT_Assert SUP_Cost&(SUP_SHIELD, 35, 3) = 35 And SUP_Cost&(SUP_FUEL, 0, 2) = 0, "35 shield points $35; nothing costs nothing"
 UPG_Reset
 fuelLevel = 71.9
@@ -287,27 +292,27 @@ UT_Assert SUP_Step%(SUP_FUEL) = 10 And SUP_Step%(SUP_SHIELD) = 10, "LEFT / RIGHT
 credits = 1000
 UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 29, "plenty of credits: fill what's missing, no more"
 credits = 50 : fuelLevel = 0
-UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 18, "$50 at $2.80: 18 units ($50.40 rounds to $50) (" + LTrim$(Str$(SUP_MaxAffordable%(SUP_FUEL, 2))) + ")"
-credits = 2
-UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 0, "$2 buys no $2.80 unit"
+UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 22, "$50 at $2.24: 22 units ($49.28 rounds to $49; 23 would be $52) (" + LTrim$(Str$(SUP_MaxAffordable%(SUP_FUEL, 2))) + ")"
+credits = 1
+UT_Assert SUP_MaxAffordable%(SUP_FUEL, 2) = 0, "$1 buys no $2.24 unit"
 
 credits = 500 : creditsSpent = 0 : fuelLevel = 40 : utFuelBuys = 0 : fuelStranded = -1
 utR = SUP_Buy%(SUP_FUEL, 30, 2)
-UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 70) And credits = 416 And creditsSpent = 84, "partial: 30 fuel at dock 2 for $84, tank 40 -> 70"
+UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 70) And credits = 433 And creditsSpent = 67, "partial: 30 fuel at dock 2 for $67 ($67.20), tank 40 -> 70"
 UT_Assert fuelStranded = 0, "fuel in the tank: no longer drifting"
-UT_Assert utFuelBuys = 1 And utFuelAmt = 30 And utFuelPrice = 84 And UT_Near%(utFuelUnit, 2.8) And UT_Near%(utFuelMult, 1.4) And utFuelCh = 2, "telemetry: fuel_bought 30, $84, $2.80/u, x1.4, chapter 2"
+UT_Assert utFuelBuys = 1 And utFuelAmt = 30 And utFuelPrice = 67 And UT_Near%(utFuelUnit, 2.24) And UT_Near%(utFuelMult, 1.4) And utFuelCh = 2, "telemetry: fuel_bought 30, $67, $2.24/u, x1.4, chapter 2"
 utR = SUP_Buy%(SUP_FUEL, 50, 2)
-UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 100) And credits = 332, "asking for more than's missing buys only the 30 missing"
+UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 100) And credits = 366, "asking for more than's missing buys only the 30 missing"
 utR = SUP_Buy%(SUP_FUEL, 10, 2)
-UT_Assert utR = SUP_FULL And credits = 332 And utFuelBuys = 2, "a full tank: refused, no charge, nothing logged"
+UT_Assert utR = SUP_FULL And credits = 366 And utFuelBuys = 2, "a full tank: refused, no charge, nothing logged"
 fuelLevel = 0 : credits = 10
 utR = SUP_Buy%(SUP_FUEL, 50, 2)
-UT_Assert utR = SUP_NOFUNDS And credits = 10 And UT_Near%(fuelLevel, 0), "50 fuel for $140 with $10: refused, nothing changes"
+UT_Assert utR = SUP_NOFUNDS And credits = 10 And UT_Near%(fuelLevel, 0), "50 fuel for $112 with $10: refused, nothing changes"
 utR = SUP_Buy%(SUP_FUEL, 0, 2)
 UT_Assert utR = SUP_NOFUNDS And credits = 10, "an amount of 0 buys nothing"
 credits = 50
 utR = SUP_Buy%(SUP_FUEL, SUP_MaxAffordable%(SUP_FUEL, 2), 2)
-UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 18) And credits = 0, "fill what you can afford: 18 units, $50 spent, $0 left"
+UT_Assert utR = SUP_OK And UT_Near%(fuelLevel, 22) And credits = 1, "fill what you can afford: 22 units, $49 spent, $1 left"
 lives = 40 : credits = 30 : utShieldBuys = 0
 UT_Assert SUP_Missing%(SUP_SHIELD) = 60 And SUP_MaxAffordable%(SUP_SHIELD, 4) = 30, "shields 40/100 with $30: 30 points affordable"
 utR = SUP_Buy%(SUP_SHIELD, 30, 4)
@@ -319,39 +324,62 @@ UT_Assert SUP_Buy%(SUP_SHIELD, 5, 4) = SUP_FULL, "full shields: refused"
 Print ""
 Print "--- the next jump's fuel need, and stranded (#277) ---"
 UPG_Reset : settingNerf = 0 : godMode = 0
-utLegKills = 10 : utLegBoss = 1 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 55), "10-kill combat + a boss: 10 x 3 + 25 = 55"
-utLegKills = 12 : utLegBoss = 0 : utLegBossFuel = 30 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 66), "chapter 3: 12 x 3 + boss 1's fuel=30 = 66"
-utLegKills = 18 : utLegBossFuel = 35
-UT_Assert UT_Near%(SUP_LegNeed!, 89), "chapter 5: 18 x 3 + boss 2's fuel=35 = 89"
-utLegKills = 20 : utLegBossFuel = 40
-UT_Assert UT_Near%(SUP_LegNeed!, 100), "the last leg (chapter 6): 20 x 3 + boss 3's fuel=40 = 100, the base tank"
-utLegBossFuel = 0
-utLegKills = 24 : utLegBoss = 1 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 97), "a boss with no fuel= uses fuel_boss: 24 x 3 + 25 = 97"
-utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
-UT_Assert UT_Near%(SUP_LegNeed!, 90), "the asteroid field: 90 (it burns ~89)"
-utLegKills = 40 : utLegBoss = 1
+UT_Assert UT_Near%(supBurn, 1.32) And UT_Near%(supMargin, 1.15), "real burn 1.32 fuel a second, x1.15 margin"
+UT_Assert supKillSecsCnt = 6 And UT_Near%(supKillSecs(1), 4.4) And UT_Near%(supKillSecs(6), 1.6), "seconds a kill per chapter: 4.4 .. 1.6"
+UT_Assert UT_Near%(supBossSecs, 25) And UT_Near%(supAstSecs, 80), "a boss with no secs= 25 s, the asteroid field 80 s"
+levelNum = 0 : utLegKills = 12 : utLegBoss = 0 : utLegBossSecs = 0 : utLegAst = 0
+UT_Assert UT_Close%(SUP_LegNeed!, 80.15), "chapter 1: 12 kills x 4.4 s = 52.8 s x 1.32 x 1.15 = 80.2"
+levelNum = 1 : utLegKills = 18
+UT_Assert UT_Close%(SUP_LegNeed!, 106.56), "chapter 2: 18 x 3.9 s = 70.2 s -> 106.6, more than the base tank"
+levelNum = 2 : utLegKills = 12 : utLegBossSecs = 22
+UT_Assert UT_Close%(SUP_LegNeed!, 108.08), "chapter 3: 12 x 4.1 s + boss 1's secs=22 = 71.2 s -> 108.1"
+levelNum = 3 : utLegKills = 0 : utLegBossSecs = 0 : utLegAst = 1
+UT_Assert UT_Close%(SUP_LegNeed!, 121.44), "chapter 4: the asteroid field, 80 s -> 121.4"
+levelNum = 4 : utLegKills = 18 : utLegBossSecs = 25 : utLegAst = 0
+UT_Assert UT_Close%(SUP_LegNeed!, 89.87), "chapter 5: 18 x 1.9 s + boss 2's secs=25 = 59.2 s -> 89.9"
+levelNum = 5 : utLegKills = 24 : utLegBossSecs = 32
+UT_Assert UT_Close%(SUP_LegNeed!, 106.87), "chapter 6: 24 x 1.6 s + boss 3's secs=32 = 70.4 s -> 106.9"
+levelNum = 2 : utLegKills = 12 : utLegBossSecs = 0 : utLegBoss = 1
+UT_Assert UT_Close%(SUP_LegNeed!, 112.64), "a boss with no secs= uses fuel_boss_secs: 49.2 + 25 s -> 112.6"
+UT_Assert SUP_OverTank% And UT_Near%(SUP_LegReach!, 100), "longer than the base tank: over the tank, the tank can take 100 of it"
+levelNum = 3 : utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
 credits = 10000 : utR = UPG_Buy%(UPG_FUEL) : utR = UPG_Buy%(UPG_FUEL)
-UT_Assert UT_Near%(SUP_LegNeed!, 100), "a long leg is capped at the base tank (100), even with a bigger tank"
+UT_Assert UT_Close%(SUP_LegNeed!, 121.44) And SUP_OverTank% = 0 And UT_Close%(SUP_LegReach!, 121.44), "never capped: a 160 tank takes all 121.4"
 UPG_Reset
-utLegKills = 10 : utLegBoss = 1 : utLegAst = 0 : settingNerf = -1
-UT_Assert UT_Near%(SUP_LegNeed!, 5.5), "--nerf: 55 x 0.1"
+credits = 10000 : utR = UPG_Buy%(UPG_FUEL)
+UT_Assert SUP_OverTank% = 0, "the first tank upgrade (130) holds the longest leg"
+UPG_Reset
+settingNerf = -1
+UT_Assert UT_Close%(SUP_LegNeed!, 12.14) And SUP_OverTank% = 0, "--nerf: 121.4 x 0.1"
 settingNerf = 0
 utLegKills = 0 : utLegBoss = 0 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 0), "no leg ahead: needs nothing"
+UT_Assert UT_Near%(SUP_LegNeed!, 0) And SUP_OverTank% = 0, "no leg ahead: needs nothing"
 fuelLevel = 0 : credits = 0
 UT_Assert SUP_Stranded% = 0, "the last dock (no leg ahead) never strands"
-utLegKills = 10 : utLegBoss = 1 : levelNum = 2
-fuelLevel = 30 : credits = 70
-UT_Assert SUP_Stranded% = 0, "30 in the tank + $70 = 25 units at $2.80: exactly 55, not stranded"
-credits = 69
-UT_Assert SUP_Stranded% <> 0, "$69 buys 24: 54 < 55, stranded"
+
+' stranded asks only for min(need, tank)
+levelNum = 2 : utLegKills = 12 : utLegBossSecs = 22 : utLegBoss = 0
+fuelLevel = 30 : credits = 157
+UT_Assert SUP_Stranded% = 0, "chapter 3 (108) on a 100 tank: 30 + $157 = 70 units at $2.24 fills it to 100, not stranded"
+credits = 156
+UT_Assert SUP_Stranded% <> 0, "$156 buys 69: 99 < 100, stranded"
+fuelLevel = 100 : credits = 0
+UT_Assert SUP_Stranded% = 0, "a full base tank is never stranded by a leg longer than the tank"
+credits = 10000 : utR = UPG_Buy%(UPG_FUEL)
+fuelLevel = 30 : credits = 177
+UT_Assert SUP_Stranded% = 0, "with a 130 tank the whole 108 is asked: 30 + 79 units ($177) = 109, not stranded"
+credits = 176
+UT_Assert SUP_Stranded% <> 0, "$176 buys 78: 108 < 108.1, stranded"
+UPG_Reset
+levelNum = 4 : utLegKills = 18 : utLegBossSecs = 25
+fuelLevel = 30 : credits = 211
+UT_Assert SUP_Stranded% = 0, "chapter 5 (89.9) fits the tank: 30 + 60 units at $3.52 ($211) = 90, not stranded"
+credits = 210
+UT_Assert SUP_Stranded% <> 0, "$210 buys 59: 89 < 89.9, stranded"
 godMode = -1
 UT_Assert SUP_Stranded% = 0, "god mode is never stranded"
 godMode = 0
-fuelLevel = 55 : credits = 0
+fuelLevel = 90 : credits = 0
 UT_Assert SUP_Stranded% = 0, "enough in the tank already, broke: not stranded"
 fuelLevel = 100 : credits = 10000
 

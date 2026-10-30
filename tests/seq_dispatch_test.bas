@@ -390,7 +390,7 @@ ST_Reset
 score = 3000 : levelNum = 5
 ST_GoTo "playing6"
 SEQ_Advance
-ST_Assert stageKillTarget = 20,                         "8.02  normal level6: target=20"
+ST_Assert stageKillTarget = 24,                         "8.02  normal level6: target=24"
 ' nerf mode: trigger * NERF_FACTOR, rounded, at least 1
 ST_Reset
 settingNerf = -1 : score = 0 : levelNum = 0
@@ -406,7 +406,7 @@ ST_Reset
 settingNerf = -1 : levelNum = 5
 ST_GoTo "playing6"
 SEQ_Advance
-ST_Assert stageKillTarget = 2,                          "8.05  nerf level6: 20 x 0.1 -> 2"
+ST_Assert stageKillTarget = 2,                          "8.05  nerf level6: 24 x 0.1 -> 2"
 ST_Reset
 settingNerf = -1
 SEQ_Load "level:1" + Chr$(10) + "    PLAY type=combat mus=game trigger=3" + Chr$(10)
@@ -664,13 +664,13 @@ st21R = ST_Jump%("dock1") : SEQ_NextLeg st21K, st21F, st21B, st21A
 ST_Assert st21K = 18 And st21F = 0 And st21B = 0 And st21A = 0, "21.01  after dock1: chapter 2, an 18-kill combat"
 ST_Reset
 st21R = ST_Jump%("dock2") : SEQ_NextLeg st21K, st21F, st21B, st21A
-ST_Assert st21K = 12 And st21F = 30 And st21B = 0 And st21A = 0, "21.02  after dock2: chapter 3, 12 kills and boss 1 (fuel=30)"
+ST_Assert st21K = 12 And st21F = 22 And st21B = 0 And st21A = 0, "21.02  after dock2: chapter 3, 12 kills and boss 1 (secs=22)"
 ST_Reset
 st21R = ST_Jump%("dock3") : SEQ_NextLeg st21K, st21F, st21B, st21A
 ST_Assert st21K = 0 And st21F = 0 And st21B = 0 And st21A = 1, "21.03  after dock3: chapter 4, the asteroid field"
 ST_Reset
 st21R = ST_Jump%("dock5") : SEQ_NextLeg st21K, st21F, st21B, st21A
-ST_Assert st21K = 20 And st21F = 40 And st21B = 0 And st21A = 0, "21.04  after dock5: chapter 6, 20 kills and boss 3 (fuel=40)"
+ST_Assert st21K = 24 And st21F = 32 And st21B = 0 And st21A = 0, "21.04  after dock5: chapter 6, 24 kills and boss 3 (secs=32)"
 ST_Reset
 st21R = ST_Jump%("boss6") : SEQ_Advance : SEQ_NextLeg st21K, st21F, st21B, st21A
 ST_Assert st21K = 0 And st21F = 0 And st21B = 0 And st21A = 0, "21.05  after the last arrival: no leg ahead"
