@@ -41,7 +41,7 @@ End Type
 Dim Shared gameState    As Integer
 Dim Shared score        As Long
 Dim Shared highScore    As Long
-Dim Shared stageScore   As Long
+Dim Shared stageKillTarget As Long
 Dim Shared levelNum     As Integer
 Dim Shared levelType    As Integer
 Dim Shared bltActive    As Integer
@@ -71,7 +71,7 @@ Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim Shared introTimer As Integer
-Dim Shared stageScoreBase As Long
+Dim Shared stageKills     As Long
 Dim Shared scrW         As Single
 Dim Shared planetR       As Single
 Dim Shared planetBgR     As Single
@@ -117,7 +117,7 @@ End Sub
 Function SimPlayingN%(spN As Integer)
     ' Mirror GAME_ResetState
     gameState    = GS_TITLE
-    score        = 0 : highScore = 0 : stageScore = 0
+    score        = 0 : highScore = 0 : stageKillTarget = 0
     levelNum     = 0 : levelType = 0 : bltActive = 0
     settingNerf  = 0 : diffTime = 0 : diffScale = 0
     planetCurrent = PLANET_COUNT : planetNameIdx = PLANET_COUNT

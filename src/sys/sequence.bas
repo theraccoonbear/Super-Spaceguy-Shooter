@@ -9,7 +9,7 @@
 '   EMPEROR mus=<cue>
 '   TITLE  mus=<cue>
 '   PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
-'     trigger: score units of 100 pts before combat phase ends (nerf: * NERF_FACTOR)
+'     trigger: enemy kills that end the combat phase (nerf: * NERF_FACTOR, at least 1)
 '   ARRIVE mus=<cue>
 '   DOCK   [mus=<cue>]   upgrade dock (src/state/dock.bas); none after the last stage
 '
@@ -103,6 +103,22 @@ Sub SEQ_NextLeg(seqnKills As Long, seqnBoss As Integer, seqnAst As Integer)
         End If
     Next seqnI
 End Sub
+
+' A combat stage ends on enemy kills, not score (#312): power-ups and bonuses only add points.
+' stageKills counts ships shot down or caught in a Nova; asteroids and the boss's spores don't count.
+Function SEQ_StageCleared%
+    SEQ_StageCleared% = (stageKills >= stageKillTarget)
+End Function
+
+' 0..1 share of the combat stage's kill target reached (the approaching planet's size).
+Function SEQ_StageProgress!
+    Dim seqpP As Single
+    If stageKillTarget <= 0 Then SEQ_StageProgress! = 1.0 : Exit Function
+    seqpP = stageKills / CSng(stageKillTarget)
+    If seqpP < 0.0 Then seqpP = 0.0
+    If seqpP > 1.0 Then seqpP = 1.0
+    SEQ_StageProgress! = seqpP
+End Function
 
 Sub SEQ_Add(seqaKind As Integer, seqaSval As String, seqaLabel As String)
     If seqCount >= SEQ_MAX Then Exit Sub
@@ -452,16 +468,17 @@ Sub SEQ_Advance()
                     bltActive = 0
                     seqaTrig  = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If seqaTrig = 0 Then seqaTrig = 10
-                    stageScoreBase  = score
+                    stageKills      = 0
                     spawnTimer      = 0
                     waveStageN      = 0
                     planetTimer     = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR       = 3.0
                     planetBgAlpha   = 245.0
                     If settingNerf Then
-                        stageScore = score + CLng(seqaTrig * 100 * NERF_FACTOR)
+                        stageKillTarget = CLng(seqaTrig * NERF_FACTOR)
+                        If stageKillTarget < 1 Then stageKillTarget = 1
                     Else
-                        stageScore = score + seqaTrig * 100
+                        stageKillTarget = seqaTrig
                     End If
                     If diffTime < (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT) Then
                         diffTime = (levelNum - 1) * (DIFF_RAMP_DURATION / DIFF_STAGE_COUNT)
@@ -472,9 +489,9 @@ Sub SEQ_Advance()
                     StarfieldReset player.px - CAM_OFFSET_X, CAM_OFFSET_Y, 0
                     gameState = GS_PLAYING
                 Case "boss"
-                    ' stageScore set to max so combat trigger won't re-fire during boss
+                    ' stageKillTarget set to max so combat trigger won't re-fire during boss
                     levelType      = LEVEL_BOSS
-                    stageScore     = 2147483647
+                    stageKillTarget = 2147483647
                     boss.warnTimer = BOSS_WARN_FRAMES
                     gameState      = GS_PLAYING
                     SPK_Say GTEXT_Get$("speech_boss_warning")
@@ -490,7 +507,7 @@ Sub SEQ_Advance()
                     levelNum       = levelNum + 1
                     DBG_Print "[SEQ] PLAY asteroid fired: levelNum=" + Str$(levelNum) + " seqIdx=" + Str$(seqIdx)
                     levelType      = LEVEL_ASTEROID
-                    stageScore     = 2147483647
+                    stageKillTarget = 2147483647
                     planetTimer    = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR      = 3.0
                     planetBgAlpha  = 245.0
