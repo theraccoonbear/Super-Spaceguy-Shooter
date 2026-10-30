@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  # Pinned to match local dev (CLAUDE.md) and tools/container. Bump deliberately, all three together.
+  # Pinned to match local dev (CLAUDE.md), tools/container and determinism.yml. Bump deliberately, all together.
   QB64PE_VERSION: v4.5.0
 
 jobs:

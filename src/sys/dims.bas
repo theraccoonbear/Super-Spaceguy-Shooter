@@ -349,6 +349,7 @@ DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
+DIM SHARED cliRealtime     AS INTEGER  ' --realtime: keep the 60 fps throttle in scripted runs (recordings)
 DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
 DIM SHARED cliSeedSet      AS INTEGER
 DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N credits (testing the dock)
@@ -383,6 +384,7 @@ DIM SHARED dbgGraveWas AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
 DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
 DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
+DIM SHARED dbgMlogNarr AS INTEGER   ' crawl paragraphs already logged (crawlSaidCount), see DBG_MilestoneNarr
 
 ' --- engine / render ---
 DIM SHARED vpMat AS E3D_Matrix4

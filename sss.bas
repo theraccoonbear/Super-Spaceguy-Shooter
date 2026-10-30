@@ -284,6 +284,7 @@ DO
 
     END SELECT
     IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
+    SPK_Tick
 
     DBG_Overlay
 
@@ -294,7 +295,7 @@ DO
             httpLastTag = ""
         End If
     End If
-    IF iscActive = 0 THEN _LIMIT 60  ' scripted runs go flat out: gameplay steps per frame, not per second
+    IF iscActive = 0 OR cliRealtime THEN _LIMIT 60  ' scripted runs go flat out unless --realtime: gameplay steps per frame, not per second
     _DISPLAY
     IF cliShotN > 0 THEN GAME_MaybeScreenshot
     gameFrame = gameFrame + 1

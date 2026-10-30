@@ -49,6 +49,7 @@ End Function
 ' file is emptied at startup and gets one line for each frame on which gameState or
 ' the sequence step changed, plus EXIT when --frames ends the run:
 '   <frame> <state> <seqIdx> [<label> <TASK> <task args>]
+'   <frame> NARR <label> <paragraph>   a crawl paragraph starts speaking (DBG_MilestoneNarr)
 '   <frame> EXIT
 Sub DBG_MilestoneInit()
     Dim dbgMiF As Integer
@@ -86,6 +87,19 @@ Sub DBG_MilestoneLog()
         dbgMlLine = RTrim$(dbgMlLine + " " + seqSval$(seqIdx))
     End If
     DBG_MilestoneWrite dbgMlLine
+End Sub
+
+' Call once per crawl frame, after CRAWL_Step%: a NARR line for each paragraph the crawl
+' started since the last call (fast-forward can start more than one in a frame).
+Sub DBG_MilestoneNarr()
+    Dim dbgMnLab As String
+    If dbgMlogPath = "" Then Exit Sub
+    dbgMnLab = "-"
+    If seqIdx >= 0 And seqIdx < seqCount Then dbgMnLab = seqLabel$(seqIdx)
+    Do While dbgMlogNarr < crawlSaidCount
+        DBG_MilestoneWrite LTrim$(Str$(gameFrame)) + " NARR " + dbgMnLab + " " + LTrim$(Str$(dbgMlogNarr))
+        dbgMlogNarr = dbgMlogNarr + 1
+    Loop
 End Sub
 
 Sub DBG_MilestoneWrite(dbgMwLine As String)
