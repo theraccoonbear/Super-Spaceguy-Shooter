@@ -13,7 +13,7 @@ Sub GAME_ResetState
     CR_ResetRun
     credits = cliCredits
     ablHintTimer = 0
-    score = 0 : IF settingNerf THEN stageScore = BOSS_TRIGGER_NERF ELSE stageScore = BOSS_TRIGGER
+    score = 0 : stageKills = 0 : IF settingNerf THEN stageKillTarget = BOSS_TRIGGER_NERF ELSE stageKillTarget = BOSS_TRIGGER
     lives = shieldMax : shipLives = 3 : laserEnergy = laserMax : gameOver = 0 : diffTime = 0 : diffScale = 0 : levelNum = 0
     If cliShips > 0 Then shipLives = cliShips
     If cliShields > 0 Then lives = cliShields

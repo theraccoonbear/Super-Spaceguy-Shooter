@@ -10,10 +10,10 @@
 '   7.  SEQ_Advance level 1 (no boss): combat phase -> ARRIVE direct
 '   8.  SEQ_Advance level 3 (boss): combat phase -> boss PLAY -> ARRIVE
 '   9.  SEQ_Advance ARRIVE: GS_PLANET, planet indices increment, music cue
-'  10.  SEQ_Advance stageScore: trigger * 100 normal; trigger * 100 * NERF_FACTOR nerf
+'  10.  SEQ_Advance stageKillTarget: trigger kills normal; trigger * NERF_FACTOR (at least 1) nerf
 '  11.  SEQ_Advance levelNum: only increments on combat or asteroid PLAY, not boss
-'  12.  SEQ_Advance PLAY boss: stageScore=MAX, boss.warnTimer set, gameState stays PLAYING
-'  13.  SEQ_Advance PLAY asteroid: levelType=LEVEL_ASTEROID, stageScore=MAX
+'  12.  SEQ_Advance PLAY boss: stageKillTarget=MAX, boss.warnTimer set, gameState stays PLAYING
+'  13.  SEQ_Advance PLAY asteroid: levelType=LEVEL_ASTEROID, stageKillTarget=MAX
 '  14.  CARD task parses as SEQ_EMPEROR
 '  15.  EMPEROR task parses as SEQ_EMPEROR (backward compat)
 '  16.  outro: end-of-sequence falls back to title
@@ -24,6 +24,7 @@
 '  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
 '  22.  PLAY boss attack=: bossAttackList$ per boss (cumulative attack pool)
 '  23.  stale arrival planetTimer cleared when the next combat/asteroid stage starts (#168)
+'  24.  the stage ends on kills, not score; progress follows kills (#312)
 '
 ' Build: from repo root:
 '   ./tools/buildqb tests/seq_dispatch_test.bas
@@ -60,7 +61,7 @@ End Type
 Dim Shared gameState    As Integer
 Dim Shared score        As Long
 Dim Shared highScore    As Long
-Dim Shared stageScore   As Long
+Dim Shared stageKillTarget As Long
 Dim Shared levelNum     As Integer
 Dim Shared levelType    As Integer
 Dim Shared bltActive    As Integer
@@ -88,7 +89,7 @@ Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim Shared introTimer As Integer
-Dim Shared stageScoreBase As Long
+Dim Shared stageKills     As Long
 Dim Shared scrW         As Single
 Dim Shared planetR       As Single
 Dim Shared planetBgR     As Single
@@ -122,7 +123,8 @@ Sub ST_Reset()
     gameState    = GS_TITLE
     score        = 0
     highScore    = 0
-    stageScore   = 0
+    stageKillTarget = 0
+    stageKills   = 0
     levelNum     = 0
     levelType    = 0
     bltActive    = 0
@@ -174,15 +176,15 @@ End Sub
 '  1  EMPEROR           label=emperor
 '  2  TITLE             label=title
 '  3  CRAWL stage1      label=level1
-'  4  PLAY  combat/10   label=level1
+'  4  PLAY  combat/12   label=level1
 '  5  ARRIVE            label=level1
 '  6  DOCK              label=level1
 '  7  CRAWL stage2      label=level2
-'  8  PLAY  combat/15   label=level2
+'  8  PLAY  combat/18   label=level2
 '  9  ARRIVE            label=level2
 ' 10  DOCK              label=level2
 ' 11  CRAWL stage3      label=level3
-' 12  PLAY  combat/10   label=level3
+' 12  PLAY  combat/12   label=level3
 ' 13  PLAY  boss        label=level3
 ' 14  ARRIVE            label=level3
 ' 15  DOCK              label=level3
@@ -191,12 +193,12 @@ End Sub
 ' 18  ARRIVE            label=level4
 ' 19  DOCK              label=level4
 ' 20  CRAWL stage5      label=level5
-' 21  PLAY  combat/15   label=level5
+' 21  PLAY  combat/18   label=level5
 ' 22  PLAY  boss        label=level5
 ' 23  ARRIVE            label=level5
 ' 24  DOCK              label=level5
 ' 25  CRAWL stage6      label=level6
-' 26  PLAY  combat/20   label=level6
+' 26  PLAY  combat/24   label=level6
 ' 27  PLAY  boss        label=level6
 ' 28  ARRIVE            label=level6   (no DOCK after the last stage)
 ' 29  CRAWL outro       label=outro
@@ -220,7 +222,7 @@ ST_Assert seqLabel$(2) = "title",                               "1.08  idx 2 lab
 ST_Assert seqKind(4)  = SEQ_PLAY,                               "1.09  idx 4 is PLAY"
 ST_Assert seqLabel$(4) = "level1",                              "1.10  idx 4 label=level1"
 ST_Assert SEQ_GetKV$(seqSval$(4), "type") = "combat",           "1.11  idx 4 type=combat"
-ST_Assert SEQ_GetKV$(seqSval$(4), "trigger") = "10",            "1.12  idx 4 trigger=10"
+ST_Assert SEQ_GetKV$(seqSval$(4), "trigger") = "12",            "1.12  idx 4 trigger=12"
 ST_Assert seqKind(5)  = SEQ_ARRIVE,                             "1.13  idx 5 is ARRIVE"
 ST_Assert seqLabel$(5) = "level1",                              "1.14  idx 5 label=level1"
 ST_Assert seqKind(13) = SEQ_PLAY,                               "1.15  idx 13 is PLAY"
@@ -319,7 +321,7 @@ ST_Assert seqIdx = 2 And gameState = GS_TITLE,  "5.03  idx 2 -> GS_TITLE"
 ST_Assert seqKind(seqIdx) = SEQ_TITLE,          "5.04  parked on SEQ_TITLE node"
 
 ' ────────────────────────────────────────────────────────────────────────────
-' 6. SEQ_Advance: level 1 -- no boss, score threshold -> ARRIVE
+' 6. SEQ_Advance: level 1 -- no boss, kill target -> ARRIVE
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "--- 6. level 1 (no boss) ---"
@@ -332,8 +334,8 @@ ST_Assert seqIdx = 4,                                    "6.01  at idx 4 after j
 ST_Assert gameState = GS_PLAYING,                        "6.02  gameState=GS_PLAYING"
 ST_Assert levelNum = 1,                                  "6.03  levelNum incremented to 1"
 ST_Assert levelType = LEVEL_COMBAT,                      "6.04  levelType=LEVEL_COMBAT"
-ST_Assert stageScore = 1000,                             "6.05  stageScore=trigger*100=1000"
-' simulate: score threshold reached -> boss.bas calls SEQ_Advance
+ST_Assert stageKillTarget = 12 And stageKills = 0,      "6.05  stageKillTarget=trigger=12, stageKills reset"
+' simulate: kill target reached -> boss.bas calls SEQ_Advance
 SEQ_Advance   ' should process ARRIVE (idx 5)
 ST_Assert seqIdx = 5,                                    "6.06  at idx 5 (ARRIVE)"
 ST_Assert gameState = GS_PLANET,                         "6.07  gameState=GS_PLANET (no boss)"
@@ -352,12 +354,12 @@ score = 0 : levelNum = 2   ' simulate levels 1+2 already done
 SEQ_Advance   ' PLAY type=combat, level:3
 ST_Assert seqIdx = 12,                                   "7.01  at idx 12 (level:3 combat)"
 ST_Assert levelNum = 3,                                  "7.02  levelNum=3"
-ST_Assert stageScore = 1000,                             "7.03  stageScore=trigger*100=1000"
-' score threshold -> SEQ_Advance -> boss PLAY
+ST_Assert stageKillTarget = 12,                        "7.03  stageKillTarget=trigger=12"
+' kill target -> SEQ_Advance -> boss PLAY
 SEQ_Advance   ' PLAY type=boss
 ST_Assert seqIdx = 13,                                   "7.04  at idx 13 (boss PLAY)"
 ST_Assert gameState = GS_PLAYING,                        "7.05  gameState stays GS_PLAYING during boss"
-ST_Assert stageScore = 2147483647,                       "7.06  stageScore=MAX (combat trigger disabled)"
+ST_Assert stageKillTarget = 2147483647,                  "7.06  stageKillTarget=MAX (combat trigger disabled)"
 ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "7.07  boss.warnTimer set"
 ' boss defeated -> SEQ_Advance -> ARRIVE
 SEQ_Advance   ' ARRIVE
@@ -371,34 +373,42 @@ ST_Assert gameState = GS_CRAWL And seqLabel$(seqIdx) = "level4", "7.11  DOCK -> 
 ST_Assert stLastCue = "crawl",                           "7.11b leaving the dock switches the music to the crawl cue"
 
 ' ────────────────────────────────────────────────────────────────────────────
-' 8. stageScore: normal vs nerf
+' 8. stageKillTarget: normal vs nerf
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
-Print "--- 8. stageScore computation ---"
-' normal mode, level:1 trigger=10 -> 10*100=1000
+Print "--- 8. stageKillTarget computation ---"
+' normal mode: the target is the trigger, in kills, whatever the score
 ST_Reset
-score = 500
+score = 500 : stageKills = 7
 ST_GoTo "playing1" : levelNum = 0
 SEQ_Advance
-ST_Assert stageScore = 1500,                             "8.01  normal: stageScore=score+trigger*100"
-' normal mode, level:6 trigger=20 -> 20*100=2000
+ST_Assert stageKillTarget = 12 And stageKills = 0,      "8.01  normal: target=trigger=12, score ignored, kills reset"
 ST_Reset
 score = 3000 : levelNum = 5
 ST_GoTo "playing6"
 SEQ_Advance
-ST_Assert stageScore = 5000,                             "8.02  normal level6: score+20*100"
-' nerf mode, level:1 trigger=10 -> 10*100*0.1=100
+ST_Assert stageKillTarget = 24,                         "8.02  normal level6: target=24"
+' nerf mode: trigger * NERF_FACTOR, rounded, at least 1
 ST_Reset
 settingNerf = -1 : score = 0 : levelNum = 0
 ST_GoTo "playing1"
 SEQ_Advance
-ST_Assert stageScore = 100,                              "8.03  nerf: stageScore=trigger*100*NERF_FACTOR"
-' nerf mode, level:2 trigger=15 -> 15*100*0.1=150
+ST_Assert stageKillTarget = 1,                          "8.03  nerf level1: 12 x 0.1 -> 1"
 ST_Reset
 settingNerf = -1 : score = 0 : levelNum = 1
 ST_GoTo "playing2"
 SEQ_Advance
-ST_Assert stageScore = 150,                              "8.04  nerf level2: trigger*100*NERF_FACTOR"
+ST_Assert stageKillTarget = 2,                          "8.04  nerf level2: 18 x 0.1 -> 2"
+ST_Reset
+settingNerf = -1 : levelNum = 5
+ST_GoTo "playing6"
+SEQ_Advance
+ST_Assert stageKillTarget = 2,                          "8.05  nerf level6: 24 x 0.1 -> 2"
+ST_Reset
+settingNerf = -1
+SEQ_Load "level:1" + Chr$(10) + "    PLAY type=combat mus=game trigger=3" + Chr$(10)
+SEQ_Advance
+ST_Assert stageKillTarget = 1,                          "8.06  nerf: 3 x 0.1 rounds to 0, held at 1 kill"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 9. levelNum: only increments on combat/asteroid PLAY, not boss
@@ -435,7 +445,7 @@ SEQ_Advance
 ST_Assert seqIdx = 17,                                   "10.01  at idx 17 (asteroid PLAY)"
 ST_Assert levelNum = 4,                                  "10.02  levelNum incremented to 4"
 ST_Assert levelType = LEVEL_ASTEROID,                    "10.03  levelType=LEVEL_ASTEROID"
-ST_Assert stageScore = 2147483647,                       "10.04  stageScore=MAX (no score trigger)"
+ST_Assert stageKillTarget = 2147483647,                  "10.04  stageKillTarget=MAX (no kill trigger)"
 ST_Assert gameState = GS_PLAYING,                        "10.05  gameState=GS_PLAYING"
 ' simulate asteroid field completion -> ARRIVE
 SEQ_Advance   ' idx 18: ARRIVE
@@ -527,7 +537,7 @@ ST_Assert st15R = 13,                                    "15.01  boss3 positione
 SEQ_Advance
 ST_Assert gameState = GS_PLAYING,                        "15.02  gameState=GS_PLAYING after boss dispatch"
 ST_Assert boss.warnTimer = BOSS_WARN_FRAMES,             "15.03  boss.warnTimer set"
-ST_Assert stageScore = 2147483647,                       "15.04  stageScore=MAX (combat trigger disabled)"
+ST_Assert stageKillTarget = 2147483647,                  "15.04  stageKillTarget=MAX (combat trigger disabled)"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 16. PLAY boss mus= CSV populates phase music tickable
@@ -648,19 +658,48 @@ Print "--- 21. SEQ_NextLeg: the leg after each dock (fuel need, #277) ---"
 Dim st21K As Long, st21B As Integer, st21A As Integer, st21R As Integer
 ST_Reset
 st21R = ST_Jump%("dock1") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 15 And st21B = 0 And st21A = 0, "21.01  after dock1: chapter 2, a 15-kill combat"
+ST_Assert st21K = 18 And st21B = 0 And st21A = 0, "21.01  after dock1: chapter 2, an 18-kill combat"
 ST_Reset
 st21R = ST_Jump%("dock2") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 10 And st21B = 1 And st21A = 0, "21.02  after dock2: chapter 3, 10 kills and a boss"
+ST_Assert st21K = 12 And st21B = 1 And st21A = 0, "21.02  after dock2: chapter 3, 12 kills and a boss"
 ST_Reset
 st21R = ST_Jump%("dock3") : SEQ_NextLeg st21K, st21B, st21A
 ST_Assert st21K = 0 And st21B = 0 And st21A = 1, "21.03  after dock3: chapter 4, the asteroid field"
 ST_Reset
 st21R = ST_Jump%("dock5") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 20 And st21B = 1 And st21A = 0, "21.04  after dock5: chapter 6, 20 kills and a boss"
+ST_Assert st21K = 24 And st21B = 1 And st21A = 0, "21.04  after dock5: chapter 6, 24 kills and a boss"
 ST_Reset
 st21R = ST_Jump%("boss6") : SEQ_Advance : SEQ_NextLeg st21K, st21B, st21A
 ST_Assert st21K = 0 And st21B = 0 And st21A = 0, "21.05  after the last arrival: no leg ahead"
+
+Print ""
+Print "--- 24. the stage ends on kills, not score (#312) ---"
+ST_Reset
+st21R = ST_Jump%("playing1")
+ST_Assert SEQ_StageCleared% = 0 And SEQ_StageProgress! = 0,          "24.01  stage start: not cleared, progress 0"
+score = score + 500 + 250
+ST_Assert SEQ_StageCleared% = 0 And SEQ_StageProgress! = 0,          "24.02  a gold star and an overflow bonus (+750 pts) don't move the stage"
+stageKills = 3
+ST_Assert SEQ_StageCleared% = 0 And Abs(SEQ_StageProgress! - 0.25) < 0.001, "24.03  3 of 12 kills: progress 0.25"
+stageKills = 11
+ST_Assert SEQ_StageCleared% = 0,                                     "24.04  11 of 12 kills: not cleared"
+stageKills = 12
+ST_Assert SEQ_StageCleared% <> 0 And SEQ_StageProgress! = 1,         "24.05  12 of 12 kills: cleared, progress 1"
+stageKills = 15
+ST_Assert SEQ_StageCleared% <> 0 And SEQ_StageProgress! = 1,         "24.06  overkill: still cleared, progress capped at 1"
+SEQ_Advance : SEQ_Advance : SEQ_Advance : SEQ_Advance                ' ARRIVE, DOCK, CRAWL, PLAY combat level2
+ST_Assert levelNum = 2 And stageKills = 0 And SEQ_StageCleared% = 0, "24.07  next combat stage starts from 0 kills"
+ST_Reset
+st21R = ST_Jump%("boss3")
+stageKills = 1000
+ST_Assert SEQ_StageCleared% = 0,                                     "24.08  boss fight: kills never re-fire the combat trigger"
+ST_Reset
+settingNerf = -1
+st21R = ST_Jump%("playing2")
+stageKills = 1
+ST_Assert SEQ_StageCleared% = 0 And Abs(SEQ_StageProgress! - 0.5) < 0.001, "24.09  nerf level2: 1 of 2 kills, progress 0.5"
+stageKills = 2
+ST_Assert SEQ_StageCleared% <> 0,                                    "24.10  nerf level2: 2 kills clear it"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="

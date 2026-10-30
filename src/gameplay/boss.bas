@@ -31,7 +31,7 @@ Sub BOSS_Update
     Dim bssAtk As Integer
 
     ' combat phase complete: hold off one second so the kill explosion plays out, then advance
-    If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And score >= stageScore And planetTransitionTimer = 0 Then
+    If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And SEQ_StageCleared% And planetTransitionTimer = 0 Then
         planetTransitionTimer = 75
     End If
 

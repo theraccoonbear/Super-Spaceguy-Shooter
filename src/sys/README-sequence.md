@@ -33,7 +33,7 @@ level:3
     DOCK
 ```
 
-`trigger` means different things per `PLAY` type: for `combat`, score units of 100 points before the phase ends (halved... actually scaled by `NERF_FACTOR` in `--nerf` mode); for `asteroid`, distance in parsecs; `boss` ignores it (a boss fight ends when the boss dies, not on a score threshold).
+`trigger` means different things per `PLAY` type: for `combat`, the enemy kills that end the phase (scaled by `NERF_FACTOR` in `--nerf` mode, at least 1; points from power-ups and bonuses don't count, #312); for `asteroid`, distance in parsecs; `boss` ignores it (a boss fight ends when the boss dies, not on a kill count).
 
 Boss `PLAY` lines also take per-phase lists, one comma-separated entry per HP phase: `mus=` (music cues), `speech=` (gametext keys; an empty entry means no line), `maneuver=` (flight patterns, currently unused in play), and `attack=`. `seek=` is a single number, the bullet homing strength. `attack=` is not per phase: it is the boss's attack pool (#26), any of `laser`, `spore` (spore bloom), `cut` (the cut) and `devour` (a pull toward the boss). Each volley the boss picks ONE pool entry at random, never two at once (the one exception: during devour's pull the boss keeps firing lasers, by design); a special that just fired cools down for 4 s, and picking it again in that time fires lasers instead (see `src/gameplay/attacks.bas`). Pools stack across bosses: level 3 is `attack=laser,spore`, level 5 `attack=laser,spore,cut`, level 6 `attack=laser,spore,cut,devour`. HP phases still escalate every attack: bigger, faster laser patterns, one spore cloud per phase reached (`src/gameplay/spores.bas`), one cut per phase reached in a chain (`src/gameplay/cuts.bas`), a stronger devour pull per phase (`src/gameplay/devour.bas`).
 
@@ -48,7 +48,7 @@ SEQ_GetKV$(sval$, key$)   ' extract "key=val" from a task's key=val... string
 SEQ_PrintScenes fh        ' print all valid --scene names, for --help
 ```
 
-`SEQ_Advance` is the workhorse: it increments `seqIdx`, looks at `seqKind(seqIdx)`, and does whatever that waypoint means. It sets `gameState`, sets the music cue, and for `PLAY` specifically, resets the appropriate stage state (`levelNum`, `stageScore`, `levelType`, fuel for asteroid fields, `boss.warnTimer` for boss fights, and so on). Reaching past the end of the table, or landing on the outro's `TITLE` task, both mean "the run is over": `TELEM_SessionEnd` fires, `SEQ_RewindToTitle` parks `seqIdx` at the first title waypoint, and `highScore` is saved if beaten.
+`SEQ_Advance` is the workhorse: it increments `seqIdx`, looks at `seqKind(seqIdx)`, and does whatever that waypoint means. It sets `gameState`, sets the music cue, and for `PLAY` specifically, resets the appropriate stage state (`levelNum`, `stageKills`, `stageKillTarget`, `levelType`, fuel for asteroid fields, `boss.warnTimer` for boss fights, and so on). Reaching past the end of the table, or landing on the outro's `TITLE` task, both mean "the run is over": `TELEM_SessionEnd` fires, `SEQ_RewindToTitle` parks `seqIdx` at the first title waypoint, and `highScore` is saved if beaten.
 
 ### The title screen is a waypoint, not a mode
 
@@ -65,7 +65,7 @@ title      -> the first SEQ_TITLE entry
 emperor    -> the first SEQ_EMPEROR entry
 ```
 
-It sets `seqIdx` to one *before* the resolved index and returns the resolved index; the caller (`sss.bas`'s startup block) then calls `SEQ_Advance` once to actually land on it, same as normal flow, just seeded to start somewhere other than the very beginning. For `playingN`/`bossN`, `sss.bas` also pre-seeds `levelNum` by parsing the digits out of the scene name (`playingN` → `levelNum = N - 1`, since `SEQ_Advance`'s `combat`/`asteroid` branch increments it; `bossN` → `levelNum = N`, since the boss branch doesn't increment it) so per-level score thresholds and planet indices come out the same as if you'd played through normally.
+It sets `seqIdx` to one *before* the resolved index and returns the resolved index; the caller (`sss.bas`'s startup block) then calls `SEQ_Advance` once to actually land on it, same as normal flow, just seeded to start somewhere other than the very beginning. For `playingN`/`bossN`, `sss.bas` also pre-seeds `levelNum` by parsing the digits out of the scene name (`playingN` → `levelNum = N - 1`, since `SEQ_Advance`'s `combat`/`asteroid` branch increments it; `bossN` → `levelNum = N`, since the boss branch doesn't increment it) so per-level kill targets and planet indices come out the same as if you'd played through normally.
 
 ## How to add a new task type
 
