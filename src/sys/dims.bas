@@ -64,8 +64,6 @@ CONST MESH_COUNT        = 15
 
 ' --- boss / stage globals ---
 CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
-CONST BOSS_MAX_HP       = 30
-CONST BOSS_MAX_HP_NERF  = BOSS_MAX_HP * NERF_FACTOR  ' 3
 CONST BOSS_TRIGGER      = 10                         ' enemy kills that end a combat stage (#312)
 CONST BOSS_TRIGGER_NERF = BOSS_TRIGGER * NERF_FACTOR ' 1
 CONST BOSS_WARN_FRAMES  = 120   ' frames of warning before boss spawns
@@ -255,6 +253,8 @@ DIM SHARED diffScale AS SINGLE
 DIM SHARED fTypeToMesh(0 TO 5) AS INTEGER
 DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED waveStageN AS INTEGER   ' waves spawned so far in this combat stage (wavetiming.bas)
+DIM SHARED stageClearT AS LONG    ' frames into the clear-out after a combat stage's kill target (0 = not clearing)
+DIM SHARED bossCfgHp AS INTEGER, bossMaxHP AS INTEGER, bossShieldT AS LONG
 DIM SHARED held(0 TO 32767) AS INTEGER
 DIM SHARED fireTimer AS SINGLE
 

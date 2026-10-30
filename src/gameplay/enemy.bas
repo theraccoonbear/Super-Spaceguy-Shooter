@@ -24,9 +24,21 @@ Sub ENEMY_Update
     Dim enHit As Integer
     Dim enHomingLerp As Single, enHomingRange As Single
     Dim enBDY As Single, enBDZ As Single
+    Dim enRVX As Single, enRVY As Single, enRVZ As Single
 
     For enI = 1 To MAX_ENEMIES
         If enemies(enI).active Then
+            ' stage cleared: break off and leave the playfield, no shooting, no collisions, no kill
+            If stageClearT > 0 Then
+                WVT_Retreat enemies(enI).px - player.px, enemies(enI).py - player.py, enemies(enI).pz - player.pz, enRVX, enRVY, enRVZ
+                enemies(enI).vx = enRVX : enemies(enI).vy = enRVY : enemies(enI).vz = enRVZ
+                enemies(enI).px = enemies(enI).px + enRVX
+                enemies(enI).py = enemies(enI).py + enRVY
+                enemies(enI).pz = enemies(enI).pz + enRVZ
+                enemies(enI).rx = enemies(enI).rx + ((enRVZ / 0.015) * 2 - enemies(enI).rx) * 0.12
+                If WVT_Gone%(enemies(enI).px - player.px, enemies(enI).py - player.py, enemies(enI).pz - player.pz) Then enemies(enI).active = 0
+                _Continue
+            End If
             enemies(enI).px = enemies(enI).px + enemies(enI).vx
             enemies(enI).ry = enemies(enI).ry + enemies(enI).dry
 
@@ -99,7 +111,7 @@ Sub ENEMY_Update
                         End If
                     Next enEJ
                 End If
-                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4)
+                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum)
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped

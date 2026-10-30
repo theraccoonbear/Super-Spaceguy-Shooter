@@ -92,6 +92,7 @@ TESTS=(
   callsign_pad_test
   powerup_test
   wave_timing_test
+  boss_hp_test
   readonly_io_test
   cam_default_test
 )

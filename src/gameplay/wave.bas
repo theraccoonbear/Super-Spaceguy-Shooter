@@ -86,8 +86,8 @@ Sub WAVE_Spawn
         Exit Sub
     End If
 
-    wvOK = (gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0)
-    If spawnTimer > WVT_GapTicks!(waveStageN, diffScale) And wvOK Then
+    wvOK = (gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And WVT_CanSpawn%(SEQ_StageCleared%))
+    If spawnTimer > WVT_GapTicks!(waveStageN, diffScale, levelNum) And wvOK Then
         spawnTimer = 0
 
         ' formation type pool grows each level: harder types unlock as stages progress
@@ -117,6 +117,7 @@ Sub WAVE_Spawn
         Case 4 : wvCount = 2 : wvTypeName = "pincer" : If levelNum >= 5 Then wvCount = 3 : wvDX(2) = 0 : wvDY(2) = 0 : wvDZ(2) = 0
         Case Else : wvCount = 2 : wvTypeName = "vwedge" : If levelNum >= 4 Then wvCount = 3
         End Select
+        wvCount = WVT_WaveSize%(waveStageN, levelNum, wvCount)
         If debugMode Then DBG_Print "[wave] " + wvTypeName + "  n=" + LTrim$(Str$(wvCount)) + "  score=" + LTrim$(Str$(score))
 
         wvCX = player.px + WVT_DistMin!(waveStageN) + RNG!(RNG_GAME) * WVT_DistVar!(waveStageN)
@@ -174,7 +175,7 @@ Sub WAVE_Spawn
                     enemies(wvI).dry = 0
                     enemies(wvI).scl = 0.9 + RNG!(RNG_GAME) * 0.4
                     enemies(wvI).strafeCool = ENEMY_STRAFE_COOL + Int(RNG!(RNG_GAME) * 60)
-                    enemyFireTimer(wvI) = EFIRE_INIT_MIN + RNG!(RNG_GAME) * EFIRE_INIT_VAR
+                    enemyFireTimer(wvI) = (EFIRE_INIT_MIN + RNG!(RNG_GAME) * EFIRE_INIT_VAR) * WVT_FireScale!(levelNum)
                     Exit For
                 End If
             Next wvI

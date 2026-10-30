@@ -202,6 +202,11 @@ Sub GS_PLAYING_Update ()
 
             FOR i = 1 TO MAX_POWERUPS
                 IF powerups(i).active THEN
+                    IF stageClearT > 0 THEN
+                        powerups(i).vx = -PUP_CLEAR_SPEED
+                        powerups(i).py = powerups(i).py + (player.py - powerups(i).py) * PUP_CLEAR_PULL
+                        powerups(i).pz = powerups(i).pz + (player.pz - powerups(i).pz) * PUP_CLEAR_PULL
+                    END IF
                     powerups(i).px  = powerups(i).px  + powerups(i).vx
                     powerups(i).rx  = powerups(i).rx  + powerups(i).drx
                     powerups(i).ry  = powerups(i).ry  + powerups(i).dry

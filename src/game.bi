@@ -7,6 +7,7 @@
 '$INCLUDE:'gameplay/supplies.bas'
 '$INCLUDE:'gameplay/powerups.bas'
 '$INCLUDE:'gameplay/wavetiming.bas'
+'$INCLUDE:'gameplay/bosshp.bas'
 '$INCLUDE:'state/docklogic.bas'
 '$INCLUDE:'state/pauselogic.bas'
 '$INCLUDE:'state/consentlogic.bas'
