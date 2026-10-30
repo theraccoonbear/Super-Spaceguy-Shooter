@@ -39,7 +39,7 @@ You need:
 tools/buildqb sss.bas
 ```
 
-This generates the spline math, bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows).
+This generates the spline math, bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows), or wherever `SSS_BUILD_OUT=<path>` says.
 
 ```bash
 # smoke test
@@ -92,7 +92,7 @@ The repo is bind-mounted at its host path, not copied, so `builds/` and every ge
 
 #### Recording a video
 
-`tools/dev record` makes an MP4, picture and sound, of a scripted run. With no options it records the [full playthrough](#testing) (`--god --nerf --seed 1 --frames 20000`, input `tests/playthrough/playthrough.txt`) to `builds/playthrough.mp4`, which takes about 6 minutes (the run plays at normal speed). Like `headless`, it rebuilds `builds/sss` first if it is stale, and nothing appears on your desktop or comes out of your speakers: inside the container the game runs on its own Xvfb display at 320x240, its sound goes to a PulseAudio server whose only output is a null sink, and `ffmpeg` records the display (`x11grab`, 60 fps) and that sink's monitor into H.264/AAC. The game starts from a fresh, empty launch folder, as the playthrough test does, so your saved settings and callsign don't change what the script does, and the same seed gives the same run.
+`tools/dev record` makes an MP4, picture and sound, of a scripted run. With no options it records the [full playthrough](#testing) (`--god --nerf --seed 1 --frames 20000`, input `tests/playthrough/playthrough.txt`) to `builds/playthrough.mp4`, which takes about 6 minutes (the run plays at normal speed). Nothing appears on your desktop or comes out of your speakers: inside the container the game runs on its own Xvfb display at 320x240, its sound goes to a PulseAudio server whose only output is a null sink, and `ffmpeg` records the display (`x11grab`, 60 fps) and that sink's monitor into H.264/AAC. The game starts from a fresh, empty launch folder, as the playthrough test does, so your saved settings and callsign don't change what the script does, and the same seed gives the same run.
 
 ```bash
 tools/dev record                                   # the playthrough -> builds/playthrough.mp4
@@ -107,10 +107,11 @@ tools/dev record --out ~/Videos/boss3.mp4 --script tests/input/boss-hold-left.tx
 | `--seed N` | `1` | random seed |
 | `--scale N` | `2` | whole-number upscale, nearest-neighbour (2 gives 640x480) |
 | `--timeout S` | frames / 60 + 120 | wall-clock limit; a hung game is stopped and the command fails |
+| `--rebuild` | | rebuild `builds/record/sss` even if it is up to date |
 
 Any other arguments (or everything after `--`) go to `sss` in place of the default `--god --nerf`. The recording stops when the game exits at `--frames`. `record` adds `--realtime`, a dev-only flag that keeps the 60 fps throttle a scripted run otherwise skips, so the video plays at normal speed and the sound lines up with it.
 
-`record` never sends telemetry or posts a score. The playthrough script OKs the data notice, so it refuses to run when `assets/.env` sets `DB_URL`: move `assets/.env` aside (or leave `DB_URL=` empty) and run it again; it rebuilds `builds/sss` without the credentials. It needs `ffmpeg` and PulseAudio in the dev image, so an image built before `record` existed needs a `tools/dev image` first (it tells you).
+`record` never sends telemetry or posts a score, even when your `assets/.env` has real credentials. The playthrough script OKs the data notice, so `record` plays its own binary, `builds/record/sss`. It builds that binary in the container with an empty file mounted over `assets/.env`, so the credentials never get embedded. Before every recording it checks that the binary contains no `DB_URL`/`DB_KEY` value and no copy of your `DB_URL`, and it deletes the binary and stops if it finds one. Your `assets/.env` and `builds/sss` are never touched. The record binary is reused while it is newer than every source file; `--rebuild` forces a fresh build. It needs `ffmpeg` and PulseAudio in the dev image, so an image built before `record` existed needs a `tools/dev image` first (it tells you).
 
 ### CLI options
 

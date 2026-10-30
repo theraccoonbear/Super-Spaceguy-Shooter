@@ -28,8 +28,11 @@
 #                    --seed N        random seed (default 1)
 #                    --scale N       integer upscale, nearest-neighbour (default 2)
 #                    --timeout S     wall-clock limit (default frames/60 + 120)
+#                    --rebuild       rebuild builds/record/sss even if it's current
 #                  Other args go to sss in place of the default --god --nerf
-#                  (e.g. --scene boss3 --god). Refuses a build with DB_URL set.
+#                  (e.g. --scene boss3 --god). Plays its own binary,
+#                  builds/record/sss, built with assets/.env masked, so it never
+#                  sends telemetry; builds/sss and assets/.env are left alone.
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
 # file land on the host owned by you. Only `run` touches your display/audio.
@@ -46,7 +49,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,42p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -179,21 +182,20 @@ echo "$out" | grep -qE "Super Spaceguy Shooter ${base}(-dev\+[0-9a-f]+(-dirty)?)
 echo ">>> smoke test passed"
 '
 
-# `record`, inside the container: $1 output file, $2 scale, $3 time limit, then the sss
+# `record`, inside the container: $1 game binary, $2 output file, $3 scale, $4 time limit, then the sss
 # args. Its own X server and a PulseAudio server whose only sink is a null sink, so the
 # game's sound goes nowhere but ffmpeg; the game runs from a fresh launch folder (no
 # saved settings or callsign), exactly as tests/playthrough/run.sh does.
 RECORD='
 set -uo pipefail
-out=$1 scale=$2 limit=$3
-shift 3
+bin=$1 out=$2 scale=$3 limit=$4
+shift 4
 for tool in Xvfb xdpyinfo pulseaudio pactl ffmpeg; do
     command -v "$tool" > /dev/null || {
         echo "Error: the dev image has no $tool; rebuild it with: tools/dev image" >&2
         exit 1
     }
 done
-bin="$PWD/builds/sss"
 launch=$(mktemp -d)
 export XDG_RUNTIME_DIR=$(mktemp -d) DISPLAY=:99
 pids=()
@@ -307,7 +309,7 @@ case "$cmd" in
     record)
         rec_out=builds/playthrough.mp4
         rec_script=tests/playthrough/playthrough.txt
-        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout=
+        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout= rec_rebuild=0
         rec_args=()
         rec_need() {
             [ $# -ge 2 ] && [ -n "$2" ] || { echo "Error: $1 needs a value" >&2; exit 1; }
@@ -326,21 +328,13 @@ case "$cmd" in
                 --seed)    rec_need "$@"; rec_num "$1" "$2" 0; rec_seed="$2"; shift 2 ;;
                 --scale)   rec_need "$@"; rec_num "$1" "$2" 1; rec_scale="$2"; shift 2 ;;
                 --timeout) rec_need "$@"; rec_num "$1" "$2" 1; rec_timeout="$2"; shift 2 ;;
+                --rebuild) rec_rebuild=1; shift ;;
                 --)        shift; rec_args+=("$@"); break ;;
                 *)         rec_args+=("$1"); shift ;;
             esac
         done
         [ ${#rec_args[@]} -eq 0 ] && rec_args=(--god --nerf)
         [ -n "$rec_timeout" ] || rec_timeout=$((rec_frames / 60 + 120))
-
-        # The run OKs the data notice, so a build with telemetry credentials would
-        # send its telemetry and post its score to the real leaderboard.
-        if [ -f "$REPO/assets/.env" ] && grep -Eq '^DB_URL=.+' "$REPO/assets/.env"; then
-            echo "Error: assets/.env sets DB_URL, so the recording would send telemetry and post a" >&2
-            echo "leaderboard score. Build without credentials: move assets/.env aside (or empty" >&2
-            echo "DB_URL=), then run tools/dev record again; it rebuilds builds/sss first." >&2
-            exit 1
-        fi
 
         # The container sees only the repo, so the script must be inside it.
         case "$rec_script" in /*) ;; *) rec_script="$PWD/$rec_script" ;; esac
@@ -355,10 +349,37 @@ case "$cmd" in
         rec_tmp="$REPO/builds/.record-$$.mp4"
 
         pick_engine; ensure_image
-        rebuild_if_stale
         [ "$DRYRUN" = 1 ] || mkdir -p "$REPO/builds" "$(dirname "$rec_out")"
         rec_start=$SECONDS
-        if ! run_in bash -c "$RECORD" record "$rec_tmp" "$rec_scale" "$rec_timeout" \
+
+        # The run OKs the data notice, so a binary with telemetry credentials would send
+        # its telemetry and post its score to the real leaderboard. Record with a binary
+        # of its own, builds/record/sss, built with an empty file mounted over
+        # assets/.env; your assets/.env and builds/sss are left alone.
+        rec_bin="$REPO/builds/record/sss"
+        rec_env="$REPO/builds/record/env-empty"
+        if [ "$rec_rebuild" = 1 ] || [ "$DRYRUN" = 1 ] || [ ! -x "$rec_bin" ] ||
+            [ -n "$(cd "$REPO" && find sss.bas src assets VERSION ! -path assets/.env -newer "$rec_bin" -print -quit)" ]; then
+            echo ">>> building $rec_bin without telemetry credentials..."
+            if [ "$DRYRUN" != 1 ]; then
+                mkdir -p "$(dirname "$rec_bin")"
+                : > "$rec_env"
+            fi
+            RUN_EXTRA=(-e SSS_BUILD_OUT=builds/record/sss)
+            [ -f "$REPO/assets/.env" ] && RUN_EXTRA+=(-v "$rec_env:$REPO/assets/.env:Z")
+            run_in ./tools/buildqb sss.bas || exit 1
+            RUN_EXTRA=()
+        fi
+        if [ "$DRYRUN" != 1 ]; then
+            rec_url="$(sed -n 's/^DB_URL=//p' "$REPO/assets/.env" 2> /dev/null | head -n 1 | tr -d '\r')"
+            if grep -aqE 'DB_(URL|KEY)=.' "$rec_bin" || { [ -n "$rec_url" ] && grep -aqF -- "$rec_url" "$rec_bin"; }; then
+                rm -f "$rec_bin"
+                echo "Error: $rec_bin has telemetry credentials embedded; deleted it, not recording" >&2
+                exit 1
+            fi
+        fi
+
+        if ! run_in bash -c "$RECORD" record "$rec_bin" "$rec_tmp" "$rec_scale" "$rec_timeout" \
                 "${rec_args[@]}" --realtime --seed "$rec_seed" --frames "$rec_frames" \
                 --input-script "$rec_script"; then
             rm -f "$rec_tmp"
