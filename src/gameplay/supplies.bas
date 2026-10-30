@@ -126,9 +126,9 @@ Function SUP_Buy% (supbKind As Integer, supbN As Integer, supbCh As Integer)
 End Function
 
 Function SUP_LegNeed!
-    Dim supnKills As Long, supnBoss As Integer, supnAst As Integer, supnNeed As Single, supnCap As Single
-    SEQ_NextLeg supnKills, supnBoss, supnAst
-    supnNeed = supnKills * supPerKill + supnBoss * supBoss + supnAst * supAsteroid
+    Dim supnKills As Long, supnBossFuel As Single, supnBoss As Integer, supnAst As Integer, supnNeed As Single, supnCap As Single
+    SEQ_NextLeg supnKills, supnBossFuel, supnBoss, supnAst
+    supnNeed = supnKills * supPerKill + supnBossFuel + supnBoss * supBoss + supnAst * supAsteroid
     supnCap = upgFxA(UPG_FUEL, 0)
     If supnNeed > supnCap Then supnNeed = supnCap
     If settingNerf Then supnNeed = supnNeed * NERF_FACTOR

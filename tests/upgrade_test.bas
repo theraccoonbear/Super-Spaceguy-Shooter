@@ -38,9 +38,9 @@ Sub TELEM_ShieldBought (tsbA As Integer, tsbP As Long, tsbC As Integer)
     utShieldBuys = utShieldBuys + 1 : utShieldAmt = tsbA : utShieldPrice = tsbP : utShieldCh = tsbC
 End Sub
 ' SEQ_NextLeg (sequence.bas) reports this stub leg
-Dim Shared utLegKills As Long, utLegBoss As Integer, utLegAst As Integer
-Sub SEQ_NextLeg (snlK As Long, snlB As Integer, snlA As Integer)
-    snlK = utLegKills : snlB = utLegBoss : snlA = utLegAst
+Dim Shared utLegKills As Long, utLegBossFuel As Single, utLegBoss As Integer, utLegAst As Integer
+Sub SEQ_NextLeg (snlK As Long, snlBF As Single, snlB As Integer, snlA As Integer)
+    snlK = utLegKills : snlBF = utLegBossFuel : snlB = utLegBoss : snlA = utLegAst
 End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
@@ -321,8 +321,15 @@ Print "--- the next jump's fuel need, and stranded (#277) ---"
 UPG_Reset : settingNerf = 0 : godMode = 0
 utLegKills = 10 : utLegBoss = 1 : utLegAst = 0
 UT_Assert UT_Near%(SUP_LegNeed!, 55), "10-kill combat + a boss: 10 x 3 + 25 = 55"
+utLegKills = 12 : utLegBoss = 0 : utLegBossFuel = 30 : utLegAst = 0
+UT_Assert UT_Near%(SUP_LegNeed!, 66), "chapter 3: 12 x 3 + boss 1's fuel=30 = 66"
+utLegKills = 18 : utLegBossFuel = 35
+UT_Assert UT_Near%(SUP_LegNeed!, 89), "chapter 5: 18 x 3 + boss 2's fuel=35 = 89"
+utLegKills = 20 : utLegBossFuel = 40
+UT_Assert UT_Near%(SUP_LegNeed!, 100), "the last leg (chapter 6): 20 x 3 + boss 3's fuel=40 = 100, the base tank"
+utLegBossFuel = 0
 utLegKills = 24 : utLegBoss = 1 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 97), "the last leg (chapter 6): 24 x 3 + 25 = 97, under the base tank"
+UT_Assert UT_Near%(SUP_LegNeed!, 97), "a boss with no fuel= uses fuel_boss: 24 x 3 + 25 = 97"
 utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
 UT_Assert UT_Near%(SUP_LegNeed!, 90), "the asteroid field: 90 (it burns ~89)"
 utLegKills = 40 : utLegBoss = 1

@@ -22,10 +22,10 @@ Sub TELEM_UpgradeBought (dtuItem As String, dtuLevel As Integer, dtuPrice As Lon
 Sub TELEM_CreditBonus (dtcC As Long, dtcR As Double, dtcP As Long) : End Sub
 Sub TELEM_FuelBought (dtfA As Integer, dtfP As Long, dtfU As Single, dtfM As Single, dtfC As Integer) : End Sub
 Sub TELEM_ShieldBought (dtsbA As Integer, dtsbP As Long, dtsbC As Integer) : End Sub
-' SEQ_NextLeg (sequence.bas) reports this stub leg: 10 kills and a boss, 55 fuel
+' SEQ_NextLeg (sequence.bas) reports this stub leg: 10 kills and a boss with no fuel=, 55 fuel
 Dim Shared dtLegKills As Long, dtLegBoss As Integer
-Sub SEQ_NextLeg (dtnK As Long, dtnB As Integer, dtnA As Integer)
-    dtnK = dtLegKills : dtnB = dtLegBoss : dtnA = 0
+Sub SEQ_NextLeg (dtnK As Long, dtnBF As Single, dtnB As Integer, dtnA As Integer)
+    dtnK = dtLegKills : dtnBF = 0 : dtnB = dtLegBoss : dtnA = 0
 End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'

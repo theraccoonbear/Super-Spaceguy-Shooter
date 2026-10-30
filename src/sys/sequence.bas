@@ -86,18 +86,21 @@ Sub SEQ_ListCrawls()
 End Sub
 
 ' The leg after the current task (the dock): its PLAY tasks up to the next ARRIVE, as the
-' combat kill triggers summed, boss fights and asteroid fields (SUP_LegNeed!'s fuel need).
+' combat kill triggers summed, the boss fights' fuel= summed (#90), the boss fights with no
+' fuel= (economy.ini fuel_boss each) and asteroid fields (SUP_LegNeed!'s fuel need).
 ' All zero when no leg follows.
-Sub SEQ_NextLeg(seqnKills As Long, seqnBoss As Integer, seqnAst As Integer)
-    Dim seqnI As Integer, seqnType As String
-    seqnKills = 0 : seqnBoss = 0 : seqnAst = 0
+Sub SEQ_NextLeg(seqnKills As Long, seqnBossFuel As Single, seqnBoss As Integer, seqnAst As Integer)
+    Dim seqnI As Integer, seqnType As String, seqnFuel As String
+    seqnKills = 0 : seqnBossFuel = 0 : seqnBoss = 0 : seqnAst = 0
     For seqnI = seqIdx + 1 To seqCount - 1
         If seqKind(seqnI) = SEQ_ARRIVE Or seqKind(seqnI) = SEQ_TITLE Then Exit For
         If seqKind(seqnI) = SEQ_PLAY Then
             seqnType = LCase$(SEQ_GetKV$(seqSval$(seqnI), "type"))
             Select Case seqnType
                 Case "combat" : seqnKills = seqnKills + Val(SEQ_GetKV$(seqSval$(seqnI), "trigger"))
-                Case "boss" : seqnBoss = seqnBoss + 1
+                Case "boss"
+                    seqnFuel = SEQ_GetKV$(seqSval$(seqnI), "fuel")
+                    If Len(seqnFuel) > 0 Then seqnBossFuel = seqnBossFuel + Val(seqnFuel) Else seqnBoss = seqnBoss + 1
                 Case "asteroid" : seqnAst = seqnAst + 1
             End Select
         End If
