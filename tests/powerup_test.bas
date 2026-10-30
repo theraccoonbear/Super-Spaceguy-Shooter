@@ -134,9 +134,10 @@ PT_Assert PT_Near%(PUP_Amount!(PUP_FUEL, 0), 10), "fuel chapter 0 (before the fi
 Print ""
 Print "--- applying: caps and overflow ---"
 shieldMax = 100 : fuelMax = 100
-score = 1000
+score = 1000 : stageKills = 3
 ptAmt = PUP_Apply!(PUP_POINTS, 1)
 PT_Assert PT_Near%(ptAmt, 500) And score = 1500 And pupOverflowPts = 0, "points: +500 score"
+PT_Assert stageKills = 3, "points: the stage's kill count doesn't move (#312)"
 lives = 50 : score = 0
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
 PT_Assert PT_Near%(ptAmt, 30) And lives = 80 And score = 0, "shield 50 -> 80"
@@ -145,6 +146,7 @@ ptAmt = PUP_Apply!(PUP_SHIELD, 1)
 PT_Assert PT_Near%(ptAmt, 10) And lives = 100 And score = 0 And pupOverflowPts = 0, "shield 90: tops up to 100 (+10), no points"
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
 PT_Assert PT_Near%(ptAmt, 0) And lives = 100 And score = 250 And pupOverflowPts = 250, "shield full: +250 score instead"
+PT_Assert stageKills = 3, "overflow bonus: the stage's kill count doesn't move (#312)"
 fuelLevel = 50 : score = 0
 ptAmt = PUP_Apply!(PUP_FUEL, 2)
 PT_Assert PT_Near%(ptAmt, 8) And PT_Near%(fuelLevel, 58) And score = 0, "fuel chapter 2: 50 -> 58"

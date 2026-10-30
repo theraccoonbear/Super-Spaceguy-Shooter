@@ -44,7 +44,7 @@ End Type
 Dim Shared gameState    As Integer
 Dim Shared score        As Long
 Dim Shared highScore    As Long
-Dim Shared stageScore   As Long
+Dim Shared stageKillTarget As Long
 Dim Shared levelNum     As Integer
 Dim Shared levelType    As Integer
 Dim Shared bltActive    As Integer
@@ -72,7 +72,7 @@ Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
 Dim Shared bsmManeuverName As String
 Dim Shared introTimer As Integer
-Dim Shared stageScoreBase As Long
+Dim Shared stageKills     As Long
 Dim Shared scrW         As Single
 Dim Shared planetR       As Single
 Dim Shared planetBgR     As Single

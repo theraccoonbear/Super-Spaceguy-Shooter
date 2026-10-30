@@ -116,6 +116,7 @@ Sub ENEMY_Update
                         telemShotsHit = telemShotsHit + 1
                         score = score + SCORE_ENEMY
                         If debugMode Then DBG_Print "[kill] enemy  score=" + LTrim$(Str$(score))
+                        stageKills = stageKills + 1
                         TELEM_EnemyKilled
                         CR_Add crKill
                         SND_Boom
