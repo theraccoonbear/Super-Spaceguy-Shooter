@@ -111,7 +111,7 @@ cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
 cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 DT_Assert UPG_Load% <> 0, "upgrade table loads"
 DT_Assert SUP_Load% <> 0, "supply prices load"
-levelNum = 2 : dtLegKills = 10 : dtLegBoss = 0   ' the dock after chapter 2: fuel $2.24 a unit
+levelNum = 2 : dtLegKills = 10 : dtLegBoss = 0   ' the dock after chapter 2: fuel $2.80 a unit
 DT_Assert DOCK_REFUEL = 1 And DOCK_SHIELDS = 2 And DOCK_LAUNCH = UPG_COUNT + 3, "rows: REFUEL, SHIELDS, the" + Str$(UPG_COUNT) + " upgrades, LAUNCH"
 
 Print ""
@@ -179,17 +179,17 @@ DT_Assert dockSel = DOCK_REFUEL And dockAmt(SUP_FUEL) = 60, "the dock opens on R
 DT_ScriptAt 1000, 40, -1, "2 2 LEFT/4 4 LEFT/6 6 RIGHT/8 8 ENTER"
 dtLeft = DT_Run%(10)
 DT_Assert dtRes(2) = DOCK_MOVED And dtRes(4) = DOCK_MOVED And dtRes(6) = DOCK_MOVED, "LEFT, LEFT, RIGHT: 60 -> 50 -> 40 -> 50"
-DT_Assert dtRes(8) = DOCK_BOUGHT And Int(fuelLevel + 0.5) = 90 And credits = 888, "ENTER buys 50 fuel at $2.24: $112, tank 40 -> 90"
+DT_Assert dtRes(8) = DOCK_BOUGHT And Int(fuelLevel + 0.5) = 90 And credits = 860, "ENTER buys 50 fuel at $2.80: $140, tank 40 -> 90"
 DT_Assert dockMsg = "BOUGHT 50 FUEL" And dockMsgBad = 0, "the dock says BOUGHT 50 FUEL (" + dockMsg + ")"
 DT_Assert dockAmt(SUP_FUEL) = 10, "after a buy the amount goes back to filling what's left (10)"
 DT_ScriptAt 1000, 95, -1, "2 2 RIGHT/4 4 LEFT"
 dtLeft = DT_Run%(6)
 DT_Assert dtRes(2) = DOCK_NONE And dtRes(4) = DOCK_MOVED And dockAmt(SUP_FUEL) = 1, "5 missing: RIGHT can't add more; LEFT stops at 1"
 DT_ScriptAt 50, 0, -1, "2 2 ENTER/4 4 ENTER"
-DT_Assert dockAmt(SUP_FUEL) = 22, "$50 and an empty tank: the amount is what $50 buys (22)"
+DT_Assert dockAmt(SUP_FUEL) = 18, "$50 and an empty tank: the amount is what $50 buys (18)"
 dtLeft = DT_Run%(6)
-DT_Assert dtRes(2) = DOCK_BOUGHT And Int(fuelLevel + 0.5) = 22 And credits = 1, "one ENTER: 22 fuel for $49, $1 left (less than a unit)"
-DT_Assert dockAmt(SUP_FUEL) = 78 And dtRes(4) = DOCK_NOFUNDS, "broke: the amount shows the whole gap, and ENTER says not enough credits"
+DT_Assert dtRes(2) = DOCK_BOUGHT And Int(fuelLevel + 0.5) = 18 And credits = 0, "one ENTER: 18 fuel, every credit spent"
+DT_Assert dockAmt(SUP_FUEL) = 82 And dtRes(4) = DOCK_NOFUNDS, "broke: the amount shows the whole gap, and ENTER says not enough credits"
 DT_Script 1000, "2 2 ENTER"
 dtLeft = DT_Run%(4)
 DT_Assert dtRes(2) = DOCK_FULL And credits = 1000 And dockMsg = "TANK ALREADY FULL", "a full tank: refused, nothing charged, TANK ALREADY FULL"
@@ -218,11 +218,11 @@ DT_Assert dtRes(20) = DOCK_STRANDED And dtLeft = -1, "ENTER on [ YES ] ends the 
 DT_ScriptAt 0, 10, -1, "2 2 PAD_B/4 4 PAD_A"
 dtLeft = DT_Run%(6)
 DT_Assert dtRes(2) = DOCK_ASK And dtRes(4) = DOCK_STRANDED, "leaving with pad B asks too; pad A answers YES"
-DT_ScriptAt 119, 10, -1, "2 2 ESC"
-DT_Assert DT_Run%(4) = 2, "10 fuel + $119 (53 units at $2.24) reaches 63 of 62.2: leaves"
-DT_ScriptAt 118, 10, -1, "2 2 ESC"
+DT_ScriptAt 148, 10, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "10 fuel + $148 (53 units at $2.80) reaches 63 of 62.2: leaves"
+DT_ScriptAt 147, 10, -1, "2 2 ESC"
 dtLeft = DT_Run%(4)
-DT_Assert dtRes(2) = DOCK_ASK, "$118 buys only 52: 62 < 62.2, stranded"
+DT_Assert dtRes(2) = DOCK_ASK, "$147 buys only 52: 62 < 62.2, stranded"
 DT_ScriptAt 0, 70, -1, "2 2 ESC"
 DT_Assert DT_Run%(4) = 2, "broke but 70 in the tank: leaves"
 godMode = -1
@@ -248,11 +248,11 @@ DT_Assert DOCK_TankWarn%(SUP_OverTank%, 180) = 0, "then back, taking turns"
 DT_Assert DOCK_TankWarnText$(fuelMax) = "TANK 100: UPGRADE TANK", "the warning: " + DOCK_TankWarnText$(fuelMax)
 DT_ScriptAt 0, -1, -1, "2 2 ESC"
 DT_Assert DT_Run%(4) = 2, "a full 100 tank, broke: leaves (the rest of the leg is flown dry, not refused)"
-DT_ScriptAt 157, 30, -1, "2 2 ESC"
-DT_Assert DT_Run%(4) = 2, "30 fuel + $157 fills the tank to 100 (all it can take): leaves"
-DT_ScriptAt 156, 30, -1, "2 2 ESC"
+DT_ScriptAt 196, 30, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "30 fuel + $196 fills the tank to 100 (all it can take): leaves"
+DT_ScriptAt 195, 30, -1, "2 2 ESC"
 dtLeft = DT_Run%(4)
-DT_Assert dtRes(2) = DOCK_ASK, "$156 reaches only 99 of the tank's 100: stranded"
+DT_Assert dtRes(2) = DOCK_ASK, "$195 reaches only 99 of the tank's 100: stranded"
 dtLegBoss = 0
 DT_Assert SUP_OverTank% = 0 And DOCK_TankWarn%(SUP_OverTank%, 90) = 0, "a jump the tank holds: never the warning"
 DOCK_Open
