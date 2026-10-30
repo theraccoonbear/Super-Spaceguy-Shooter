@@ -36,6 +36,8 @@
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
 # file land on the host owned by you. Only `run` touches your display/audio.
+# What runs inside the container lives in tools/container/in/ (one script per
+# command that needs more than a single command line).
 #
 # Env overrides:
 #   SSS_ENGINE=podman|docker   force an engine (default: podman if found, else docker)
@@ -49,7 +51,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -82,7 +84,7 @@ build_image() {
 
 ensure_image() {
     [ "$DRYRUN" = 1 ] && return
-    if !"$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
+    if ! "$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
         build_image
     fi
 }
@@ -95,10 +97,10 @@ rebuild_if_stale() {
     [ "$DRYRUN" = 1 ] && return
     if [ ! -x "$REPO/builds/sss" ] || [ -n "$(cd "$REPO" && find sss.bas src assets VERSION -newer builds/sss -print -quit)" ]; then
         echo ">>> sources changed since the last build; rebuilding builds/sss..."
-        run_in bash -c "./tools/buildqb sss.bas"
-    elif ! run_in bash -c '! ldd builds/sss 2>&1 | grep -q "not found"'; then
+        run_in ./tools/buildqb sss.bas
+    elif ! run_in tools/container/in/libs-ok.sh builds/sss; then
         echo ">>> builds/sss was built outside the container; rebuilding it here..."
-        run_in bash -c "./tools/buildqb sss.bas"
+        run_in ./tools/buildqb sss.bas
     fi
 }
 
@@ -170,90 +172,6 @@ gui_args() {
     fi
 }
 
-SMOKE='
-set -euo pipefail
-out=$(xvfb-run -a builds/sss --version | tr -d "\r")
-echo "$out"
-base=$(tr -d "[:space:]" < VERSION)
-echo "$out" | grep -qE "Super Spaceguy Shooter ${base}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
-    echo "Error: --version smoke test failed: expected a version starting with ${base}" >&2
-    exit 1
-}
-echo ">>> smoke test passed"
-'
-
-# `record`, inside the container: $1 game binary, $2 output file, $3 scale, $4 time limit, then the sss
-# args. Its own X server and a PulseAudio server whose only sink is a null sink, so the
-# game's sound goes nowhere but ffmpeg; the game runs from a fresh launch folder (no
-# saved settings or callsign), exactly as tests/playthrough/run.sh does.
-RECORD='
-set -uo pipefail
-bin=$1 out=$2 scale=$3 limit=$4
-shift 4
-for tool in Xvfb xdpyinfo pulseaudio pactl ffmpeg; do
-    command -v "$tool" > /dev/null || {
-        echo "Error: the dev image has no $tool; rebuild it with: tools/dev image" >&2
-        exit 1
-    }
-done
-launch=$(mktemp -d)
-export XDG_RUNTIME_DIR=$(mktemp -d) DISPLAY=:99
-pids=()
-cleanup() {
-    [ ${#pids[@]} -gt 0 ] && kill "${pids[@]}" 2> /dev/null
-    wait 2> /dev/null
-}
-trap cleanup EXIT
-
-# 320x240 is the game window, fullscreen or not
-Xvfb :99 -screen 0 320x240x24 -nolisten tcp > "$launch/xvfb.log" 2>&1 &
-pids+=($!)
-pulseaudio -n --daemonize=no --exit-idle-time=-1 \
-    --load=module-native-protocol-unix --load="module-null-sink sink_name=rec" \
-    > "$launch/pulse.log" 2>&1 &
-pids+=($!)
-for _ in $(seq 100); do
-    xdpyinfo > /dev/null 2>&1 && pactl info > /dev/null 2>&1 && break
-    sleep 0.1
-done
-xdpyinfo > /dev/null 2>&1 || { echo "Error: Xvfb did not start:" >&2; cat "$launch/xvfb.log" >&2; exit 1; }
-pactl info > /dev/null 2>&1 || { echo "Error: PulseAudio did not start:" >&2; cat "$launch/pulse.log" >&2; exit 1; }
-
-ffmpeg -nostdin -hide_banner -loglevel warning -y \
-    -thread_queue_size 1024 -f x11grab -draw_mouse 0 -framerate 60 -video_size 320x240 -i :99 \
-    -thread_queue_size 1024 -f pulse -i rec.monitor \
-    -vf "scale=iw*$scale:ih*$scale:flags=neighbor" \
-    -c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p \
-    -c:a aac -b:a 192k -movflags +faststart "$out" > "$launch/ffmpeg.log" 2>&1 &
-ff=$!
-pids+=($ff)
-
-echo ">>> recording: sss $*"
-start=$SECONDS
-(cd "$launch" && timeout -k 5 "$limit" "$bin" "$@" > game.out 2>&1)
-rc=$?
-echo ">>> game exited with $rc after $((SECONDS - start))s"
-sleep 1    # let the last sound reach the recording
-kill -TERM "$ff" 2> /dev/null
-wait "$ff" 2> /dev/null
-
-game_log() { grep -v "^ALSA lib" "$launch/game.out" | tail -n 20 >&2; }
-if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
-    echo "Error: still running after ${limit}s (hung, or an error dialog); stopped it" >&2
-    game_log
-    exit 1
-elif [ "$rc" -ne 0 ]; then
-    echo "Error: the game exited with status $rc" >&2
-    game_log
-    exit 1
-fi
-if [ ! -s "$out" ]; then
-    echo "Error: ffmpeg wrote no video:" >&2
-    cat "$launch/ffmpeg.log" >&2
-    exit 1
-fi
-'
-
 cmd="${1:-}"
 [ $# -gt 0 ] && shift
 
@@ -265,9 +183,9 @@ case "$cmd" in
     build)
         pick_engine; ensure_image
         if [ "${1:-}" = --release ]; then
-            run_in bash -c "./tools/buildqb --release sss.bas && bash tests/release_build_test.sh"
+            run_in tools/container/in/build.sh --release
         else
-            run_in bash -c "./tools/buildqb sss.bas && $SMOKE"
+            run_in tools/container/in/build.sh
         fi
         ;;
     test)
@@ -284,7 +202,7 @@ case "$cmd" in
         ;;
     emit)
         pick_engine; ensure_image
-        run_in bash -c '(cd math && npm install) && node tools/emit-spline.js'
+        run_in tools/container/in/emit.sh
         ;;
     shell)
         pick_engine; ensure_image
@@ -303,22 +221,24 @@ case "$cmd" in
     headless)
         pick_engine; ensure_image
         rebuild_if_stale
-        # Off-screen X server; the container has no sound card, so drop ALSA's noise.
-        run_in bash -c 'set -o pipefail; xvfb-run -a -s "-screen 0 1280x720x24" builds/sss "$@" 2>&1 | { grep -v "^ALSA lib" || true; }' headless "$@"
+        run_in tools/container/in/headless.sh "$@"
         ;;
     record)
         rec_out=builds/playthrough.mp4
         rec_script=tests/playthrough/playthrough.txt
-        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout= rec_rebuild=0
+        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout='' rec_rebuild=0
         rec_args=()
         rec_need() {
-            [ $# -ge 2 ] && [ -n "$2" ] || { echo "Error: $1 needs a value" >&2; exit 1; }
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: $1 needs a value" >&2
+                exit 1
+            fi
         }
         rec_num() {
-            [[ "$2" =~ ^[0-9]+$ ]] && [ "$2" -ge "$3" ] || {
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt "$3" ]; then
                 echo "Error: $1 needs a whole number $3 or more, got '$2'" >&2
                 exit 1
-            }
+            fi
         }
         while [ $# -gt 0 ]; do
             case "$1" in
@@ -379,7 +299,7 @@ case "$cmd" in
             fi
         fi
 
-        if ! run_in bash -c "$RECORD" record "$rec_bin" "$rec_tmp" "$rec_scale" "$rec_timeout" \
+        if ! run_in tools/container/in/record.sh "$rec_bin" "$rec_tmp" "$rec_scale" "$rec_timeout" \
                 "${rec_args[@]}" --realtime --seed "$rec_seed" --frames "$rec_frames" \
                 --input-script "$rec_script"; then
             rm -f "$rec_tmp"

@@ -95,7 +95,7 @@ if out="$(dev "$fake" record)"; then
     has "record build writes builds/record/sss" "-e SSS_BUILD_OUT=builds/record/sss "
     has "record build masks assets/.env" "-v $fake/builds/record/env-empty:$fake/assets/.env:Z "
     has "record build runs buildqb" "$IMAGE ./tools/buildqb sss.bas"
-    has "record plays builds/record/sss" " record $fake/builds/record/sss $fake/builds/.record-"
+    has "record plays builds/record/sss" "$IMAGE tools/container/in/record.sh $fake/builds/record/sss $fake/builds/.record-"
     if [[ "$out" == *"$fake/builds/sss "* ]]; then
         echo "FAIL: record uses the user's builds/sss: $out"
         fails=$((fails + 1))
