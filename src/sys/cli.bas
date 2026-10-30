@@ -21,6 +21,18 @@ Sub CLI_Parse()
         GAME_Usage("")
     End If
 
+    ' --input-script <file> (no spaces in the path) first: its header's flags join the line
+    $IF RELEASEBUILD = 1 THEN
+    $ELSE
+    cliVal = CLI_Value$(cliLine, "--input-script ")
+    If cliVal <> "" Then
+        ' the process runs from the executable's folder; relative paths mean the launch folder
+        If Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then cliVal = _StartDir$ + "/" + cliVal
+        If ISC_Load%(cliVal) = 0 Then GAME_Usage(iscError)
+        If ISC_MergeArgs%(Command$, (InStr(cliLine, "--script-override") > 0), cliLine) = 0 Then GAME_Usage(iscError)
+    End If
+    $END IF
+
     debugMode   = (InStr(cliLine, "--debug") > 0)
     telemOn     = (InStr(cliLine, "--no-telem") = 0)
 
@@ -50,13 +62,6 @@ Sub CLI_Parse()
         cliScene = LTrim$(RTrim$(cliScene))
     End If
 
-    ' --input-script <file> (no spaces in the path), --frames N, --seed N
-    cliVal = CLI_Value$(cliLine, "--input-script ")
-    If cliVal <> "" Then
-        ' the process runs from the executable's folder; relative paths mean the launch folder
-        If Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then cliVal = _StartDir$ + "/" + cliVal
-        If ISC_Load%(cliVal) = 0 Then GAME_Usage(iscError)
-    End If
     ' --leaderboard-file <file>: a canned top_scores response, parsed as if the poll returned it
     cliVal = CLI_Value$(cliLine, "--leaderboard-file ")
     If cliVal <> "" Then

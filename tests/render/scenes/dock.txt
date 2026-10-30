@@ -3,6 +3,7 @@
 # and its +40% rise, the next jump's need, the status box's buy ghost and need tick, and the
 # blockade news ticker.
 #! group: ui
-#! args: --scene dock2 --credits 400 --fuel 30
+#! seed: 1
+#! args: --god --no-telem --scene dock2 --credits 400 --fuel 30
 #! shots: 90
 30 30 LEFT
