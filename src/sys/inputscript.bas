@@ -6,6 +6,23 @@
 '   <from> <to> KEY [KEY ...]   hold the KEYs on frames from..to (inclusive, 0-based)
 '   # comment                   blank lines and comments are ignored
 '
+' A line can also follow the game instead of the clock (#328):
+'   @<trigger> +<offset> [<len> | *] [every <n>] KEY [KEY ...]
+' holds the KEYs <offset> frames after each entry into <trigger>, for <len> frames
+' (default 1), or with * for as long as the trigger lasts; "every <n>" repeats that hold
+' every n frames. A number after the offset is always the length, so a digit key needs
+' one first: @GS_USERNAME +3 1 7. Triggers:
+'   GS_<STATE>          a game state, named as DBG_StateName$ names it (GS_TITLE, GS_CRAWL...)
+'   label:<name>        a sequence step label from assets/sequence.txt (label:level3),
+'                       entered when the current step's label becomes <name>
+'   either + #<n>       only its nth entry (GS_TITLE#1 = the first title, not the last)
+' A triggered line holds only while its trigger is current: leaving the state or label
+' lets go, so a hold never leaks into the next screen. +0 is the first frame the game
+' runs in that state, the frame the milestone log gives it. For example:
+'   @GS_CRAWL +60 1 FIRE ESC            skip every crawl as soon as it lets you
+'   @GS_PLAYING +0 * FIRE               fire through every flight
+'   @GS_PLAYING +0 60 every 240 LEFT    LEFT for the first 60 of every 240 frames
+'
 ' A script can also say how it must be launched (#324), so it can't be paired with the
 ' wrong seed or flags:
 '   #! seed 1                   as --seed 1
@@ -47,6 +64,7 @@
 '   ok = ISC_ParseLine%(line$)      add one script line; 0 if it's malformed (see iscError)
 '   ok = ISC_Load%(path$)           load a file; 0 on any error (see iscError)
 '   ok = ISC_MergeArgs%(cli$, override, out$)  out$ = cli$ plus the header; 0 on a contradiction
+'   ISC_SetContext state$, label$   where the game is this frame, for @ lines (before ISC_Apply)
 '   ISC_Apply frame, held()         fill held() for that frame (all other keys up), queue presses
 '   down = KEY_Down%(code)          is the key down this frame (script, else _KEYDOWN)
 '   code = KEY_Hit&                 next queued key press, 0 if none (script, else _KEYHIT)
@@ -67,11 +85,28 @@ Dim Shared iscAlt(1 To ISC_MAX) As Long
 Dim Shared iscFrame As Long
 Dim Shared iscHitQ(1 To ISC_MAX) As Long, iscHitHead As Integer, iscHitTail As Integer
 Dim Shared iscHdrSeed As String, iscHdrFrames As String, iscHdrArgs As String
+' @ lines: iscTrig 0 = by frame, ISC_TRIG_STATE / ISC_TRIG_LABEL = on entry to iscTrigName
+' (its iscTrigNth entry only, 0 = every one); then iscFrom is the offset, iscLen the hold
+' (ISC_LEN_ALL = while the trigger lasts), iscEvery the repeat (0 = once). iscEntry is the
+' frame of the current entry (-1 = not in it), iscSeen the entries so far.
+Const ISC_TRIG_STATE = 1
+Const ISC_TRIG_LABEL = 2
+Const ISC_LEN_ALL = -1
+Const ISC_STATES = " GS_TITLE GS_PLAYING GS_GAMEOVER GS_PLANET GS_CINEMATIC GS_INTRO GS_CRAWL GS_OPTIONS GS_ABOUT GS_LEADIN GS_CONSENT GS_USERNAME GS_LEADERBOARD GS_CONTROLS GS_CRAWLS GS_DOCK GS_REMAP "
+Dim Shared iscTrig(1 To ISC_MAX) As Integer, iscTrigName(1 To ISC_MAX) As String, iscTrigNth(1 To ISC_MAX) As Integer
+Dim Shared iscLen(1 To ISC_MAX) As Long, iscEvery(1 To ISC_MAX) As Long
+Dim Shared iscEntry(1 To ISC_MAX) As Long, iscSeen(1 To ISC_MAX) As Integer, iscOn(1 To ISC_MAX) As Integer
+Dim Shared iscCtxState As String, iscCtxLabel As String, iscPrevState As String, iscPrevLabel As String
 
 Sub ISC_Clear
     iscCount = 0 : iscActive = 0 : iscError = ""
     iscHdrSeed = "" : iscHdrFrames = "" : iscHdrArgs = ""
     iscFrame = -1 : iscHitHead = 0 : iscHitTail = 0
+    iscCtxState = "" : iscCtxLabel = "" : iscPrevState = "" : iscPrevLabel = ""
+End Sub
+
+Sub ISC_SetContext(iscSCState As String, iscSCLabel As String)
+    iscCtxState = UCase$(iscSCState) : iscCtxLabel = UCase$(iscSCLabel)
 End Sub
 
 ' Script key name -> its _KEYDOWN code (which is also its held() slot when it has one)
@@ -165,6 +200,7 @@ Function ISC_ParseLine%(iscRaw As String)
     Loop
     If Left$(iscLine, 2) = "#!" Then ISC_ParseLine% = ISC_ParseHeader%(Mid$(iscLine, 3), iscLine) : Exit Function
     If iscLine = "" Or Left$(iscLine, 1) = "#" Then ISC_ParseLine% = -1 : Exit Function
+    If Left$(iscLine, 1) = "@" Then ISC_ParseLine% = ISC_ParseEvent%(iscLine) : Exit Function
     iscP = 1
     iscT = ISC_Token$(iscLine, iscP)
     If ISC_IsNum%(iscT) = 0 Then iscError = "bad start frame in: " + iscLine : Exit Function
@@ -180,10 +216,67 @@ Function ISC_ParseLine%(iscRaw As String)
         If iscCount >= ISC_MAX Then iscError = "more than" + Str$(ISC_MAX) + " key ranges" : Exit Function
         iscCount = iscCount + 1
         iscFrom(iscCount) = iscF : iscTo(iscCount) = iscTo2 : iscKey(iscCount) = iscK : iscAlt(iscCount) = iscK2
+        iscTrig(iscCount) = 0 : iscOn(iscCount) = 0
         iscN = iscN + 1
     Loop
     If iscN = 0 Then iscError = "no keys in: " + iscLine : Exit Function
     ISC_ParseLine% = -1
+End Function
+
+' An "@" line: @<trigger>[#n] +<offset> [<len> | *] [every <n>] KEY ...
+Function ISC_ParseEvent%(iscELine As String)
+    Dim iscEP As Integer, iscET As String, iscEKind As Integer, iscEName As String, iscENth As Integer
+    Dim iscEOff As Long, iscELen As Long, iscEEvery As Long, iscEK As Long, iscEK2 As Long, iscEN As Integer
+    Dim iscEHash As Integer
+    ISC_ParseEvent% = 0
+    iscEP = 2
+    iscET = UCase$(ISC_Token$(iscELine, iscEP))
+    iscEHash = InStr(iscET, "#")
+    If iscEHash > 0 Then
+        If ISC_IsNum%(Mid$(iscET, iscEHash + 1)) = 0 Then iscError = "bad #<entry> in: " + iscELine : Exit Function
+        iscENth = Val(Mid$(iscET, iscEHash + 1))
+        If iscENth < 1 Then iscError = "entries count from #1 in: " + iscELine : Exit Function
+        iscET = Left$(iscET, iscEHash - 1)
+    End If
+    If Left$(iscET, 6) = "LABEL:" Then
+        iscEKind = ISC_TRIG_LABEL : iscEName = Mid$(iscET, 7)
+        If iscEName = "" Then iscError = "label: needs a name in: " + iscELine : Exit Function
+    Else
+        If iscET = "" Or InStr(ISC_STATES, " " + iscET + " ") = 0 Then iscError = "unknown trigger '" + iscET + "' (a GS_ state or label:<name>) in: " + iscELine : Exit Function
+        iscEKind = ISC_TRIG_STATE : iscEName = iscET
+    End If
+    iscET = ISC_Token$(iscELine, iscEP)
+    If Left$(iscET, 1) <> "+" Or ISC_IsNum%(Mid$(iscET, 2)) = 0 Then iscError = "bad +<offset> in: " + iscELine : Exit Function
+    iscEOff = Val(Mid$(iscET, 2))
+    iscELen = 1
+    iscET = ISC_Token$(iscELine, iscEP)
+    If iscET = "*" Then
+        iscELen = ISC_LEN_ALL : iscET = ISC_Token$(iscELine, iscEP)
+    ElseIf ISC_IsNum%(iscET) Then
+        iscELen = Val(iscET) : iscET = ISC_Token$(iscELine, iscEP)
+        If iscELen < 1 Then iscError = "hold length must be at least 1 in: " + iscELine : Exit Function
+    End If
+    If UCase$(iscET) = "EVERY" Then
+        iscET = ISC_Token$(iscELine, iscEP)
+        If ISC_IsNum%(iscET) = 0 Then iscError = "every needs a frame count in: " + iscELine : Exit Function
+        iscEEvery = Val(iscET)
+        If iscELen = ISC_LEN_ALL Or iscELen >= iscEEvery Then iscError = "every <n> needs a hold shorter than n in: " + iscELine : Exit Function
+        iscET = ISC_Token$(iscELine, iscEP)
+    End If
+    Do
+        If iscET = "" Then Exit Do
+        If ISC_KeyInfo%(iscET, iscEK, iscEK2) = 0 Then iscError = "unknown key '" + iscET + "' in: " + iscELine : Exit Function
+        If iscCount >= ISC_MAX Then iscError = "more than" + Str$(ISC_MAX) + " key ranges" : Exit Function
+        iscCount = iscCount + 1
+        iscKey(iscCount) = iscEK : iscAlt(iscCount) = iscEK2
+        iscTrig(iscCount) = iscEKind : iscTrigName(iscCount) = iscEName : iscTrigNth(iscCount) = iscENth
+        iscFrom(iscCount) = iscEOff : iscLen(iscCount) = iscELen : iscEvery(iscCount) = iscEEvery
+        iscEntry(iscCount) = -1 : iscSeen(iscCount) = 0 : iscOn(iscCount) = 0
+        iscEN = iscEN + 1
+        iscET = ISC_Token$(iscELine, iscEP)
+    Loop
+    If iscEN = 0 Then iscError = "no keys (a number after the offset is the length) in: " + iscELine : Exit Function
+    ISC_ParseEvent% = -1
 End Function
 
 ' A "#!" header line: seed N, frames N or args <flags>; a colon after the key is optional.
@@ -309,14 +402,23 @@ End Function
 
 ' Scripted pad input sets the raw pad state, then runs the real pad mapping (E3D_PadMap).
 Sub ISC_Apply(iscFrameNo As Long, iscHeld() As Integer)
-    Dim iscA As Long, iscK As Long, iscKAny As Integer
+    Dim iscA As Long, iscK As Long, iscKAny As Integer, iscFirst As Integer
+    Dim iscStateIn As Integer, iscLabelIn As Integer
     iscFrame = iscFrameNo
+    iscStateIn = (iscCtxState <> iscPrevState) : iscLabelIn = (iscCtxLabel <> iscPrevLabel)
+    iscPrevState = iscCtxState : iscPrevLabel = iscCtxLabel
     iscKAny = 0
     For iscA = LBound(iscHeld) To UBound(iscHeld) : iscHeld(iscA) = 0 : Next iscA
     For iscA = 1 To E3D_PAD_MAX_AXES : padRawAxis(iscA) = 0 : Next iscA
     For iscA = 1 To E3D_PAD_MAX_BTNS : padRawBtn(iscA) = 0 : Next iscA
     For iscA = 1 To iscCount
-        If iscFrameNo >= iscFrom(iscA) And iscFrameNo <= iscTo(iscA) Then
+        If iscTrig(iscA) = 0 Then
+            iscOn(iscA) = (iscFrameNo >= iscFrom(iscA) And iscFrameNo <= iscTo(iscA))
+            iscFirst = (iscFrameNo = iscFrom(iscA))
+        Else
+            ISC_EventStep iscA, iscFrameNo, iscStateIn, iscLabelIn, iscFirst
+        End If
+        If iscOn(iscA) Then
             iscK = iscKey(iscA)
             Select Case iscK
             Case ISC_PAD_BTN - E3D_PAD_MAX_BTNS To ISC_PAD_BTN - 1     : padRawBtn(ISC_PAD_BTN - iscK) = 1
@@ -327,12 +429,40 @@ Sub ISC_Apply(iscFrameNo As Long, iscHeld() As Integer)
                 If iscK > 0 Then iscKAny = -1
             End Select
         End If
-        If iscFrameNo = iscFrom(iscA) And iscKey(iscA) > 0 And iscHitTail < ISC_MAX Then
+        If iscFirst And iscKey(iscA) > 0 And iscHitTail < ISC_MAX Then
             iscHitTail = iscHitTail + 1 : iscHitQ(iscHitTail) = iscKey(iscA)
         End If
     Next iscA
     INP_NoteKeys iscKAny
     E3D_PadMap iscHeld()
+End Sub
+
+' One @ line this frame: an entry into its trigger (its nth, if it names one) starts it and
+' leaving lets go. Sets iscOn(a), and iscESFirst on the first frame of each hold.
+Sub ISC_EventStep(iscESA As Long, iscESFrame As Long, iscESStateIn As Integer, iscESLabelIn As Integer, iscESFirst As Integer)
+    Dim iscESIn As Integer, iscESCur As String, iscESRel As Long, iscESPh As Long
+    iscESFirst = 0 : iscOn(iscESA) = 0
+    If iscTrig(iscESA) = ISC_TRIG_STATE Then
+        iscESIn = iscESStateIn : iscESCur = iscCtxState
+    Else
+        iscESIn = iscESLabelIn : iscESCur = iscCtxLabel
+    End If
+    If iscESIn Then
+        iscEntry(iscESA) = -1
+        If iscESCur = iscTrigName(iscESA) Then
+            iscSeen(iscESA) = iscSeen(iscESA) + 1
+            If iscTrigNth(iscESA) = 0 Or iscSeen(iscESA) = iscTrigNth(iscESA) Then iscEntry(iscESA) = iscESFrame
+        End If
+    End If
+    If iscEntry(iscESA) < 0 Then Exit Sub
+    iscESRel = iscESFrame - iscEntry(iscESA) - iscFrom(iscESA)
+    If iscESRel < 0 Then Exit Sub
+    If iscEvery(iscESA) > 0 Then
+        iscESPh = iscESRel Mod iscEvery(iscESA)
+        iscOn(iscESA) = (iscESPh < iscLen(iscESA)) : iscESFirst = (iscESPh = 0)
+    Else
+        iscOn(iscESA) = (iscLen(iscESA) = ISC_LEN_ALL Or iscESRel < iscLen(iscESA)) : iscESFirst = (iscESRel = 0)
+    End If
 End Sub
 
 Sub KEY_FrameBegin
@@ -358,7 +488,7 @@ Function KEY_Down%(iscDCode As Long)
     If iscActive = 0 Then KEY_Down% = _KeyDown(iscDCode) : Exit Function
     KEY_Down% = 0
     For iscDA = 1 To iscCount
-        If iscFrame >= iscFrom(iscDA) And iscFrame <= iscTo(iscDA) Then
+        If iscOn(iscDA) Then
             If iscKey(iscDA) = iscDCode Or iscAlt(iscDA) = iscDCode Then KEY_Down% = -1 : Exit Function
         End If
     Next iscDA

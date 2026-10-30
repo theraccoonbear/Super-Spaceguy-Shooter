@@ -210,7 +210,12 @@ DO
     IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : SYSTEM
     ' --- input ---
     KEY_FrameBegin
-    IF iscActive THEN ISC_Apply gameFrame, held() ELSE E3D_InputUpdate held()
+    IF iscActive THEN
+        IF seqIdx >= 0 AND seqIdx < seqCount THEN ISC_SetContext DBG_StateName$(gameState), seqLabel$(seqIdx) ELSE ISC_SetContext DBG_StateName$(gameState), ""
+        ISC_Apply gameFrame, held()
+    ELSE
+        E3D_InputUpdate held()
+    END IF
     IF KEY_Down%(34048) AND NOT fsKeyWas THEN
         settingFullscreen = 1 - settingFullscreen
         IF settingFullscreen THEN _FULLSCREEN _SQUAREPIXELS ELSE _FULLSCREEN OFF
