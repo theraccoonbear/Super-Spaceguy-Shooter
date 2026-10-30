@@ -32,7 +32,7 @@
 # its score to the real leaderboard.
 #
 # When the game changes on purpose (a stage added, a scene reordered), update
-# expected.txt, and playthrough.txt / FRAMES if the run gets longer.
+# expected.txt, and FINAL_FRAME_MAX (plus playthrough.txt / FRAMES) if the run gets longer.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -45,8 +45,10 @@ SEED=1
 # Latest frame the final title may arrive at: the measured finishing frame plus ~5%.
 # When the run gets longer on purpose, take the new "final title reached at frame N"
 # from this script's output (the CI Playthrough job log), set this to about N * 1.05,
-# and say in the PR which segments grew (compare the segment tables).
-FINAL_FRAME_MAX=20000
+# and say in the PR which segments grew (compare the segment tables). Measured: 15051
+# (4:10) on master be7b461; combat stages end on a kill count, so their length moves
+# whenever weapons, enemies or the RNG stream change.
+FINAL_FRAME_MAX=15800
 
 raw=()
 
