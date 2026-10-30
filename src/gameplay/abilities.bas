@@ -60,6 +60,7 @@ Sub ABL_Nova
             If abnDX * abnDX + abnDY * abnDY + abnDZ * abnDZ <= abnR2 Then
                 enemies(abnI).active = 0
                 score = score + SCORE_ENEMY
+                stageKills = stageKills + 1
                 TELEM_EnemyKilled
                 CR_Add crKill
                 FX_SpawnBurst enemies(abnI).px, enemies(abnI).py, enemies(abnI).pz, 12, 0.25, 18, 8, _RGB(160, 230, 255)
