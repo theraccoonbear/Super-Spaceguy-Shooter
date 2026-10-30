@@ -18,6 +18,18 @@
 #   headless [args]  builds/sss on an off-screen X server (Xvfb), no display or
 #                  audio needed; pair with --input-script/--frames/--seed for
 #                  scripted playtests
+#   record [opts] [sss args]  record a scripted run, picture and sound, to an
+#                  MP4, headless (Xvfb + a null PulseAudio sink + ffmpeg).
+#                  Default: the full playthrough to builds/playthrough.mp4.
+#                    --out FILE      output file (default builds/playthrough.mp4)
+#                    --script FILE   input script (default
+#                                    tests/playthrough/playthrough.txt)
+#                    --frames N      quit after N frames (default 20000)
+#                    --seed N        random seed (default 1)
+#                    --scale N       integer upscale, nearest-neighbour (default 2)
+#                    --timeout S     wall-clock limit (default frames/60 + 120)
+#                  Other args go to sss in place of the default --god --nerf
+#                  (e.g. --scene boss3 --god). Refuses a build with DB_URL set.
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
 # file land on the host owned by you. Only `run` touches your display/audio.
@@ -34,7 +46,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,42p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -167,6 +179,79 @@ echo "$out" | grep -qE "Super Spaceguy Shooter ${base}(-dev\+[0-9a-f]+(-dirty)?)
 echo ">>> smoke test passed"
 '
 
+# `record`, inside the container: $1 output file, $2 scale, $3 time limit, then the sss
+# args. Its own X server and a PulseAudio server whose only sink is a null sink, so the
+# game's sound goes nowhere but ffmpeg; the game runs from a fresh launch folder (no
+# saved settings or callsign), exactly as tests/playthrough/run.sh does.
+RECORD='
+set -uo pipefail
+out=$1 scale=$2 limit=$3
+shift 3
+for tool in Xvfb xdpyinfo pulseaudio pactl ffmpeg; do
+    command -v "$tool" > /dev/null || {
+        echo "Error: the dev image has no $tool; rebuild it with: tools/dev image" >&2
+        exit 1
+    }
+done
+bin="$PWD/builds/sss"
+launch=$(mktemp -d)
+export XDG_RUNTIME_DIR=$(mktemp -d) DISPLAY=:99
+pids=()
+cleanup() {
+    [ ${#pids[@]} -gt 0 ] && kill "${pids[@]}" 2> /dev/null
+    wait 2> /dev/null
+}
+trap cleanup EXIT
+
+# 320x240 is the game window, fullscreen or not
+Xvfb :99 -screen 0 320x240x24 -nolisten tcp > "$launch/xvfb.log" 2>&1 &
+pids+=($!)
+pulseaudio -n --daemonize=no --exit-idle-time=-1 \
+    --load=module-native-protocol-unix --load="module-null-sink sink_name=rec" \
+    > "$launch/pulse.log" 2>&1 &
+pids+=($!)
+for _ in $(seq 100); do
+    xdpyinfo > /dev/null 2>&1 && pactl info > /dev/null 2>&1 && break
+    sleep 0.1
+done
+xdpyinfo > /dev/null 2>&1 || { echo "Error: Xvfb did not start:" >&2; cat "$launch/xvfb.log" >&2; exit 1; }
+pactl info > /dev/null 2>&1 || { echo "Error: PulseAudio did not start:" >&2; cat "$launch/pulse.log" >&2; exit 1; }
+
+ffmpeg -nostdin -hide_banner -loglevel warning -y \
+    -thread_queue_size 1024 -f x11grab -draw_mouse 0 -framerate 60 -video_size 320x240 -i :99 \
+    -thread_queue_size 1024 -f pulse -i rec.monitor \
+    -vf "scale=iw*$scale:ih*$scale:flags=neighbor" \
+    -c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p \
+    -c:a aac -b:a 192k -movflags +faststart "$out" > "$launch/ffmpeg.log" 2>&1 &
+ff=$!
+pids+=($ff)
+
+echo ">>> recording: sss $*"
+start=$SECONDS
+(cd "$launch" && timeout -k 5 "$limit" "$bin" "$@" > game.out 2>&1)
+rc=$?
+echo ">>> game exited with $rc after $((SECONDS - start))s"
+sleep 1    # let the last sound reach the recording
+kill -TERM "$ff" 2> /dev/null
+wait "$ff" 2> /dev/null
+
+game_log() { grep -v "^ALSA lib" "$launch/game.out" | tail -n 20 >&2; }
+if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
+    echo "Error: still running after ${limit}s (hung, or an error dialog); stopped it" >&2
+    game_log
+    exit 1
+elif [ "$rc" -ne 0 ]; then
+    echo "Error: the game exited with status $rc" >&2
+    game_log
+    exit 1
+fi
+if [ ! -s "$out" ]; then
+    echo "Error: ffmpeg wrote no video:" >&2
+    cat "$launch/ffmpeg.log" >&2
+    exit 1
+fi
+'
+
 cmd="${1:-}"
 [ $# -gt 0 ] && shift
 
@@ -218,6 +303,70 @@ case "$cmd" in
         rebuild_if_stale
         # Off-screen X server; the container has no sound card, so drop ALSA's noise.
         run_in bash -c 'set -o pipefail; xvfb-run -a -s "-screen 0 1280x720x24" builds/sss "$@" 2>&1 | { grep -v "^ALSA lib" || true; }' headless "$@"
+        ;;
+    record)
+        rec_out=builds/playthrough.mp4
+        rec_script=tests/playthrough/playthrough.txt
+        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout=
+        rec_args=()
+        rec_need() {
+            [ $# -ge 2 ] && [ -n "$2" ] || { echo "Error: $1 needs a value" >&2; exit 1; }
+        }
+        rec_num() {
+            [[ "$2" =~ ^[0-9]+$ ]] && [ "$2" -ge "$3" ] || {
+                echo "Error: $1 needs a whole number $3 or more, got '$2'" >&2
+                exit 1
+            }
+        }
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --out)     rec_need "$@"; rec_out="$2"; shift 2 ;;
+                --script)  rec_need "$@"; rec_script="$2"; shift 2 ;;
+                --frames)  rec_need "$@"; rec_num "$1" "$2" 1; rec_frames="$2"; shift 2 ;;
+                --seed)    rec_need "$@"; rec_num "$1" "$2" 0; rec_seed="$2"; shift 2 ;;
+                --scale)   rec_need "$@"; rec_num "$1" "$2" 1; rec_scale="$2"; shift 2 ;;
+                --timeout) rec_need "$@"; rec_num "$1" "$2" 1; rec_timeout="$2"; shift 2 ;;
+                --)        shift; rec_args+=("$@"); break ;;
+                *)         rec_args+=("$1"); shift ;;
+            esac
+        done
+        [ ${#rec_args[@]} -eq 0 ] && rec_args=(--god --nerf)
+        [ -n "$rec_timeout" ] || rec_timeout=$((rec_frames / 60 + 120))
+
+        # The run OKs the data notice, so a build with telemetry credentials would
+        # send its telemetry and post its score to the real leaderboard.
+        if [ -f "$REPO/assets/.env" ] && grep -Eq '^DB_URL=.+' "$REPO/assets/.env"; then
+            echo "Error: assets/.env sets DB_URL, so the recording would send telemetry and post a" >&2
+            echo "leaderboard score. Build without credentials: move assets/.env aside (or empty" >&2
+            echo "DB_URL=), then run tools/dev record again; it rebuilds builds/sss first." >&2
+            exit 1
+        fi
+
+        # The container sees only the repo, so the script must be inside it.
+        case "$rec_script" in /*) ;; *) rec_script="$PWD/$rec_script" ;; esac
+        [ -f "$rec_script" ] || { echo "Error: no input script at $rec_script" >&2; exit 1; }
+        rec_script="$(cd "$(dirname "$rec_script")" && pwd)/$(basename "$rec_script")"
+        case "$rec_script" in
+            "$REPO"/*) ;;
+            *) echo "Error: the input script must be inside the repo ($REPO): $rec_script" >&2; exit 1 ;;
+        esac
+        # Record into builds/ (mounted), then move it wherever --out says.
+        case "$rec_out" in /*) ;; *) rec_out="$PWD/$rec_out" ;; esac
+        rec_tmp="$REPO/builds/.record-$$.mp4"
+
+        pick_engine; ensure_image
+        rebuild_if_stale
+        [ "$DRYRUN" = 1 ] || mkdir -p "$REPO/builds" "$(dirname "$rec_out")"
+        rec_start=$SECONDS
+        if ! run_in bash -c "$RECORD" record "$rec_tmp" "$rec_scale" "$rec_timeout" \
+                "${rec_args[@]}" --realtime --seed "$rec_seed" --frames "$rec_frames" \
+                --input-script "$rec_script"; then
+            rm -f "$rec_tmp"
+            exit 1
+        fi
+        [ "$DRYRUN" = 1 ] && exit 0
+        mv -f "$rec_tmp" "$rec_out"
+        echo ">>> wrote $rec_out ($((SECONDS - rec_start))s)"
         ;;
     -h|--help|help|"")
         usage
