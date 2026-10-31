@@ -73,8 +73,7 @@ CLI_Parse
 ' Launched from a folder we can't write to (Program Files, a shared install, cwd /):
 ' skip sss_settings.ini and sss_telemetry.csv for the session instead of raising
 ' runtime-error dialogs (#283). Module level for the same ON ERROR reason as the
-' /dev/tty probe below, and ahead of it: that probe leaves its handler without
-' RESUME, after which a second trapped error is fatal.
+' /dev/tty probe below.
 DIM ioProbe AS INTEGER : ioProbe = FREEFILE
 ON ERROR GOTO ioProbeFail
 OPEN _STARTDIR$ + "/sss_write_probe.tmp" FOR OUTPUT AS #ioProbe : CLOSE #ioProbe
@@ -98,12 +97,12 @@ $ELSE
     DIM dbgTtyProbe AS INTEGER : dbgTtyProbe = FREEFILE
     ON ERROR GOTO dbgTtyFail
     OPEN "/dev/tty" FOR APPEND AS #dbgTtyProbe : CLOSE #dbgTtyProbe
-    ON ERROR GOTO 0
     dbgTtyOK = -1
     GOTO dbgTtyDone
     dbgTtyFail:
-    ON ERROR GOTO 0
+    RESUME dbgTtyDone
     dbgTtyDone:
+    ON ERROR GOTO 0
 $END IF
 IF ioReadOnly THEN DBG_Print "IO: launch folder " + _STARTDIR$ + " is not writable; settings and local telemetry won't be saved this session"
 
