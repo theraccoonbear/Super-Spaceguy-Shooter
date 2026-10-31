@@ -7,7 +7,10 @@ export interface Env {
 
 type Row = Record<string, string | number>;
 type FieldKind = "text" | "count";
-type Schema = Record<string, { kind: FieldKind; max?: number; pattern?: RegExp }>;
+type Schema = Record<
+  string,
+  { kind: FieldKind; max?: number; pattern?: RegExp; patternName?: string; default?: string }
+>;
 
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_ROWS = 1000;
@@ -30,9 +33,12 @@ const MAX_WAVE = 100;
 // tokens included, needs UN_MIN_LEN 3 to confirm and stops at UN_MAX_LEN 32; skipping
 // gives UN_AutoName$ "PILOT-1234".
 const CALLSIGN = /^[\x20-\x7e]{3,32}$/;
+// A slug, not a fixed list, so the game can add difficulty levels without a server change.
+const DIFFICULTY = /^[a-z][a-z0-9_-]{0,15}$/;
+const DEFAULT_DIFFICULTY = "normal";
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
-const LEADERBOARD_COLUMNS = ["player_name", "score", "wave"];
+const LEADERBOARD_COLUMNS = ["player_name", "score", "wave", "difficulty"];
 
 const TELEMETRY: Schema = {
   session: { kind: "text", max: 64 },
@@ -44,10 +50,12 @@ const TELEMETRY: Schema = {
 
 const SCORES: Schema = {
   player_id: { kind: "text", max: 64 },
-  player_name: { kind: "text", max: 32, pattern: CALLSIGN },
+  player_name: { kind: "text", max: 32, pattern: CALLSIGN, patternName: "callsign" },
   score: { kind: "count", max: MAX_SCORE },
   wave: { kind: "count", max: MAX_WAVE },
   session: { kind: "text", max: 64 },
+  // Optional: game builds from before #102 don't send it.
+  difficulty: { kind: "text", max: 16, pattern: DIFFICULTY, patternName: "difficulty", default: DEFAULT_DIFFICULTY },
 };
 
 class HttpError extends Error {
@@ -153,14 +161,14 @@ function validateRow(item: unknown, schema: Schema, index: number): Row {
   }
   const row: Row = {};
   for (const [key, rule] of Object.entries(schema)) {
-    const value = obj[key];
+    const value = !(key in obj) && rule.default !== undefined ? rule.default : obj[key];
     if (rule.kind === "text") {
       if (typeof value !== "string") throw new HttpError(400, `row ${index}: ${key} must be a string`);
       if (value.length > rule.max!) {
         throw new HttpError(400, `row ${index}: ${key} longer than ${rule.max}`);
       }
       if (rule.pattern && !rule.pattern.test(value)) {
-        throw new HttpError(400, `row ${index}: ${key} is not a valid callsign`);
+        throw new HttpError(400, `row ${index}: ${key} is not a valid ${rule.patternName}`);
       }
     } else if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
       throw new HttpError(400, `row ${index}: ${key} must be a non-negative integer`);
@@ -183,6 +191,7 @@ async function insert(env: Env, table: string, schema: Schema, rows: Row[]): Pro
 async function topScores(env: Env, params: URLSearchParams): Promise<Response> {
   let limit = DEFAULT_LIMIT;
   let columns = ["player_name", "score"];
+  let difficulty: string | undefined;
   for (const [key, value] of params) {
     switch (key) {
       case "order":
@@ -203,15 +212,25 @@ async function topScores(env: Env, params: URLSearchParams): Promise<Response> {
           throw new HttpError(400, `select must be a subset of ${LEADERBOARD_COLUMNS.join(",")}`);
         }
         break;
+      case "difficulty": {
+        const slug = value.startsWith("eq.") ? value.slice(3) : "";
+        if (difficulty !== undefined || !DIFFICULTY.test(slug)) {
+          throw new HttpError(400, "difficulty must be a single eq.<difficulty> filter");
+        }
+        difficulty = slug;
+        break;
+      }
       default:
         throw new HttpError(400, `unsupported parameter ${key}`);
     }
   }
 
+  const where = difficulty === undefined ? "" : "WHERE difficulty = ? ";
+  const binds = difficulty === undefined ? [limit] : [difficulty, limit];
   const { results } = await env.DB.prepare(
-    `SELECT ${columns.join(", ")} FROM scores ORDER BY score DESC, id ASC LIMIT ?`,
+    `SELECT ${columns.join(", ")} FROM scores ${where}ORDER BY score DESC, id ASC LIMIT ?`,
   )
-    .bind(limit)
+    .bind(...binds)
     .all<Row>();
   const rows = results.map((r) => Object.fromEntries(columns.map((c) => [c, r[c]])));
   return json(rows, 200);
