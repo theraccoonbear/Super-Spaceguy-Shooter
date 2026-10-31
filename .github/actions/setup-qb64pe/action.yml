@@ -5,6 +5,9 @@ inputs:
   qb64pe-version:
     description: QB64-PE release tag to install
     required: true
+  save-cache:
+    description: save the QB64-PE cache on a miss ('true' or 'false')
+    default: 'true'
 
 runs:
   using: composite
@@ -27,15 +30,31 @@ runs:
     # Keyed on the pinned version (the release tag), so a cache hit needs no API lookup.
     # Windows' key has a suffix so its cache is re-saved once with the libqb objects the
     # test workers build (qb64test.sh copies them back, #270); bump it to re-warm.
+    # A job that runs no tests passes save-cache: false, so on a miss it can't save a
+    # cold Windows cache before a test job saves the warm one (#341).
     - name: Cache QB64-PE
+      if: inputs.save-cache == 'true'
       id: cache_qb64pe
       uses: actions/cache@v4
       with:
         path: qb64pe-bin
         key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}
 
+    - name: Restore QB64-PE cache
+      if: inputs.save-cache != 'true'
+      id: restore_qb64pe
+      uses: actions/cache/restore@v4
+      with:
+        path: qb64pe-bin
+        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}
+
+    - name: QB64-PE cache hit?
+      id: qb64pe_cache
+      shell: bash
+      run: echo "hit=${{ steps.cache_qb64pe.outputs.cache-hit == 'true' || steps.restore_qb64pe.outputs.cache-hit == 'true' }}" >> "$GITHUB_OUTPUT"
+
     - name: Resolve QB64-PE release version
-      if: steps.cache_qb64pe.outputs.cache-hit != 'true'
+      if: steps.qb64pe_cache.outputs.hit != 'true'
       id: qb64pe_release
       shell: bash
       env:
@@ -87,7 +106,7 @@ runs:
         command -v xvfb-run > /dev/null || { echo "::error::xvfb-run missing after the apt cache step"; exit 1; }
 
     - name: Install QB64-PE (Linux/macOS)
-      if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os != 'Windows'
+      if: steps.qb64pe_cache.outputs.hit != 'true' && runner.os != 'Windows'
       shell: bash
       run: |
         curl -fsSL -o qb64pe.tar.gz "${{ steps.qb64pe_release.outputs.asset_url }}"
@@ -99,7 +118,7 @@ runs:
         mv qb64pe qb64pe-bin
 
     - name: Install QB64-PE (Windows)
-      if: steps.cache_qb64pe.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      if: steps.qb64pe_cache.outputs.hit != 'true' && runner.os == 'Windows'
       shell: pwsh
       run: |
         Invoke-WebRequest "${{ steps.qb64pe_release.outputs.asset_url }}" -OutFile qb64pe.7z

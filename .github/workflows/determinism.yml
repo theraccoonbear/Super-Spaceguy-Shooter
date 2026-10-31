@@ -20,6 +20,11 @@ on:
       - 'tests/playthrough/**'
       - '.github/workflows/determinism.yml'
 
+# a newer push to a PR cancels its superseded run; nightly and dispatch runs never cancel
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', github.workflow, github.head_ref) || format('{0}-{1}', github.workflow, github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   QB64PE_VERSION: v4.5.0   # keep in step with build.yml
 

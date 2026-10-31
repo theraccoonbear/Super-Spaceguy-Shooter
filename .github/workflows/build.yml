@@ -1,19 +1,87 @@
 name: Build
 
+# One run per PR push (#294): branch pushes only build master and tags; a PR's own
+# pull_request run covers its branch.
 on:
   push:
-    branches: [ master, 'feat/**', 'bug/**', 'fix/**' ]
+    branches: [ master ]
     tags: [ 'v[0-9]*' ]
   pull_request:
     branches: [ master ]
   workflow_dispatch:
+
+# A newer push to a PR cancels its superseded run. master, tag and dispatch runs each
+# get their own group, so none is cancelled or left pending behind another.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', github.workflow, github.head_ref) || format('{0}-{1}', github.workflow, github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   # Pinned to match local dev (CLAUDE.md), tools/container and determinism.yml. Bump deliberately, all together.
   QB64PE_VERSION: v4.5.0
 
 jobs:
+  # Which halves of CI this change needs (#341). game: everything but server/ and docs;
+  # server: server/ and the leaderboard fixture its tests read. .github/ changes, pushes
+  # with no usable "before" commit, tags and dispatches run everything. build-matrix:
+  # Build Linux (the credentialed binary) only on runs that upload binaries (master,
+  # tags, dispatch).
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      game: ${{ steps.filter.outputs.game }}
+      server: ${{ steps.filter.outputs.server }}
+      build-matrix: ${{ steps.filter.outputs.build-matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+      - id: filter
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          all=1 files=""
+          if [ "$EVENT" = pull_request ]; then
+            # HEAD is the PR merged into master; its first parent is master
+            files="$(git diff --name-only HEAD^1 HEAD)" && all=0
+          elif [ "$EVENT" = push ] && [[ "$REF" == refs/heads/* ]] && ! [[ "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
+            files="$(git diff --name-only "$BEFORE" HEAD)" && all=0
+          fi
+          game=0 server=0
+          while IFS= read -r f; do
+            case "$f" in
+              '') ;;
+              .github/*) game=1 server=1 ;;
+              tests/input/leaderboard.json) game=1 server=1 ;;
+              server/*) server=1 ;;
+              assets/*) game=1 ;;
+              docs/*|*.md) ;;
+              *) game=1 ;;
+            esac
+          done <<< "$files"
+          [ "$all" = 1 ] && game=1 server=1
+          echo "changed files:"; printf '  %s\n' $files
+          tf() { [ "$1" = 1 ] && echo true || echo false; }
+          echo "game=$(tf $game)" >> "$GITHUB_OUTPUT"
+          echo "server=$(tf $server)" >> "$GITHUB_OUTPUT"
+          echo "game=$(tf $game) server=$(tf $server)"
+          mac='{"os":"macos-latest","name":"Build macOS","artifact-name":"sss-macos","artifact-path":"builds/sss","release-asset-name":"sss-macos"}'
+          win='{"os":"windows-latest","name":"Build Windows","artifact-name":"sss-windows","artifact-path":"builds/sss.exe","release-asset-name":"sss-windows.exe"}'
+          lnx='{"os":"ubuntu-latest","name":"Build Linux","artifact-name":"sss-linux","artifact-path":"builds/sss","release-asset-name":"sss-linux"}'
+          # PRs: render builds and smoke-tests the Linux binary, so only master, tags and dispatch build the credentialed one
+          if [ "$EVENT" = pull_request ] || { [ "$EVENT" = push ] && [ "$REF" != refs/heads/master ] && [[ "$REF" != refs/tags/v* ]]; }; then
+            echo "build-matrix={\"include\":[$mac,$win]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "build-matrix={\"include\":[$lnx,$mac,$win]}" >> "$GITHUB_OUTPUT"
+          fi
+
   dict-check:
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,27 +96,25 @@ jobs:
             exit 1
           }
 
-  build:
-    needs: dict-check
+  # The QB64-PE test suite, apart from the game builds so neither waits on the other.
+  # Windows is the slowest, so it runs in two shards.
+  test:
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            name: Build Linux
-            artifact-name: sss-linux
-            artifact-path: builds/sss
-            release-asset-name: sss-linux
+            name: Test Linux
           - os: macos-latest
-            name: Build macOS
-            artifact-name: sss-macos
-            artifact-path: builds/sss
-            release-asset-name: sss-macos
+            name: Test macOS
           - os: windows-latest
-            name: Build Windows
-            artifact-name: sss-windows
-            artifact-path: builds/sss.exe
-            release-asset-name: sss-windows.exe
+            name: Test Windows (1/2)
+            shard: 1/2
+          - os: windows-latest
+            name: Test Windows (2/2)
+            shard: 2/2
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -71,10 +137,32 @@ jobs:
       # script's half-the-CPUs default would leave them idle.
       - name: Build and run all tests
         shell: bash
+        env:
+          QB64_TEST_SHARD: ${{ matrix.shard }}
         run: |
           CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
           echo "vCPUs: $CPUS"
           QB64_TEST_JOBS="$CPUS" QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64test.sh
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.build-matrix) }}
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # no tests here: on a cache miss, leave saving the QB64-PE cache to the test jobs (#270)
+      - name: Set up QB64-PE
+        uses: ./.github/actions/setup-qb64pe
+        with:
+          qb64pe-version: ${{ env.QB64PE_VERSION }}
+          save-cache: 'false'
 
       # A v* tag builds the release binaries (no dev-only flags, #275); everything else is a dev build.
       - name: Build sss.bas
@@ -125,17 +213,7 @@ jobs:
       - name: Check the binary needs no libcurl symbol versions
         if: runner.os == 'Linux'
         shell: bash
-        run: |
-          ERR=$(xvfb-run -a "${{ matrix.artifact-path }}" --version 2>&1 >/dev/null)
-          if grep -q "no version information available" <<< "$ERR"; then
-            echo "::error::loader warning: $ERR"
-            exit 1
-          fi
-          if readelf -V "${{ matrix.artifact-path }}" | grep -A1 'File: libcurl'; then
-            echo "::error::binary requires libcurl symbol versions"
-            exit 1
-          fi
-          echo "ok: no libcurl symbol versions required"
+        run: bash .github/scripts/curl_symver_check.sh "${{ matrix.artifact-path }}"
 
       - name: Dump compile log on failure
         if: failure()
@@ -166,7 +244,8 @@ jobs:
   # tests is built with no telemetry credentials: the scripted run OKs the data notice,
   # so a build with them would send telemetry and a leaderboard score.
   playthrough:
-    needs: dict-check
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
     name: Playthrough smoke test
     runs-on: ubuntu-latest
 
@@ -204,7 +283,8 @@ jobs:
   # release binaries fails before a tag does. Tests, render and playthrough keep the
   # dev build: they need --scene, --input-script, --frames, --seed, --screenshot-at.
   release-smoke:
-    needs: dict-check
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
     name: Release build smoke test
     runs-on: ubuntu-latest
 
@@ -241,9 +321,11 @@ jobs:
   # Golden-screenshot render tests (tests/render/). Its own job so it runs alongside the
   # build matrix instead of adding minutes to Build Linux. Linux only: it needs Xvfb, and
   # the goldens come from the same Ubuntu toolchain (tools/dev); another OS's compiler
-  # and libm can round the rasterizer's float math differently.
+  # and libm can round the rasterizer's float math differently. Its dev build also
+  # stands in for Build Linux on PRs: the --version and libcurl checks run on it.
   render:
-    needs: dict-check
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
     name: Render tests
     runs-on: ubuntu-latest
 
@@ -258,6 +340,21 @@ jobs:
       - name: Build sss.bas
         shell: bash
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+
+      - name: Smoke test -- --version
+        shell: bash
+        run: |
+          OUT="$(xvfb-run -a builds/sss --version)"
+          echo "$OUT"
+          BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "${OUT//$'\r'/}" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
+            echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
+            exit 1
+          }
+
+      - name: Check the binary needs no libcurl symbol versions
+        shell: bash
+        run: bash .github/scripts/curl_symver_check.sh builds/sss
 
       - name: Render tests
         shell: bash
@@ -279,6 +376,8 @@ jobs:
           if-no-files-found: ignore
 
   server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     name: Server tests
     runs-on: ubuntu-latest
     steps:
@@ -363,21 +462,37 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy
 
+
   gate:
     name: All checks pass
-    # playthrough runs alongside but doesn't gate PRs; a failure shows as its own red check
-    needs: [dict-check, build, release-smoke, render, server]
+    # playthrough runs alongside but doesn't gate PRs; a failure shows as its own red check.
+    # A job the change filter skipped on purpose counts as passed; any other result fails.
+    needs: [changes, dict-check, test, build, release-smoke, render, server]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Require all jobs to succeed
+        shell: bash
+        env:
+          GAME: ${{ needs.changes.outputs.game }}
+          SERVER: ${{ needs.changes.outputs.server }}
         run: |
           fail=0
-          [[ "${{ needs.dict-check.result }}" != "success" ]] && echo "FAIL dict-check: ${{ needs.dict-check.result }}" && fail=1
-          [[ "${{ needs.build.result }}"      != "success" ]] && echo "FAIL build:      ${{ needs.build.result }}"      && fail=1
-          [[ "${{ needs.release-smoke.result }}" != "success" ]] && echo "FAIL release-smoke: ${{ needs.release-smoke.result }}" && fail=1
-          [[ "${{ needs.render.result }}"     != "success" ]] && echo "FAIL render:     ${{ needs.render.result }}"     && fail=1
-          [[ "${{ needs.server.result }}"     != "success" ]] && echo "FAIL server:     ${{ needs.server.result }}"     && fail=1
+          # <job> <result> <whether the change filter wanted it to run>
+          check() {
+            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = false ]; }; then
+              printf 'ok   %-14s %s\n' "$1" "$2"
+            else
+              printf 'FAIL %-14s %s\n' "$1" "$2"; fail=1
+            fi
+          }
+          check changes       "${{ needs.changes.result }}"       true
+          check dict-check    "${{ needs.dict-check.result }}"    "$GAME"
+          check test          "${{ needs.test.result }}"          "$GAME"
+          check build         "${{ needs.build.result }}"         "$GAME"
+          check release-smoke "${{ needs.release-smoke.result }}" "$GAME"
+          check render        "${{ needs.render.result }}"        "$GAME"
+          check server        "${{ needs.server.result }}"        "$SERVER"
           [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
 
   # gate runs if: always() but fails unless every gating job succeeded, so a red
