@@ -18,9 +18,26 @@
 #   headless [args]  builds/sss on an off-screen X server (Xvfb), no display or
 #                  audio needed; pair with --input-script/--frames/--seed for
 #                  scripted playtests
+#   record [opts] [sss args]  record a scripted run, picture and sound, to an
+#                  MP4, headless (Xvfb + a null PulseAudio sink + ffmpeg).
+#                  Default: the full playthrough to builds/playthrough.mp4.
+#                    --out FILE      output file (default builds/playthrough.mp4)
+#                    --script FILE   input script (default
+#                                    tests/playthrough/playthrough.txt)
+#                    --frames N      quit after N frames (default 20000)
+#                    --seed N        random seed (default 1)
+#                    --scale N       integer upscale, nearest-neighbour (default 2)
+#                    --timeout S     wall-clock limit (default frames/60 + 120)
+#                    --rebuild       rebuild builds/record/sss even if it's current
+#                  Other args go to sss in place of the default --god --nerf
+#                  (e.g. --scene boss3 --god). Plays its own binary,
+#                  builds/record/sss, built with assets/.env masked, so it never
+#                  sends telemetry; builds/sss and assets/.env are left alone.
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
 # file land on the host owned by you. Only `run` touches your display/audio.
+# What runs inside the container lives in tools/container/in/ (one script per
+# command that needs more than a single command line).
 #
 # Env overrides:
 #   SSS_ENGINE=podman|docker   force an engine (default: podman if found, else docker)
@@ -34,7 +51,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -67,7 +84,7 @@ build_image() {
 
 ensure_image() {
     [ "$DRYRUN" = 1 ] && return
-    if !"$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
+    if ! "$ENGINE" image inspect "$IMAGE" > /dev/null 2>&1; then
         build_image
     fi
 }
@@ -80,10 +97,10 @@ rebuild_if_stale() {
     [ "$DRYRUN" = 1 ] && return
     if [ ! -x "$REPO/builds/sss" ] || [ -n "$(cd "$REPO" && find sss.bas src assets VERSION -newer builds/sss -print -quit)" ]; then
         echo ">>> sources changed since the last build; rebuilding builds/sss..."
-        run_in bash -c "./tools/buildqb sss.bas"
-    elif ! run_in bash -c '! ldd builds/sss 2>&1 | grep -q "not found"'; then
+        run_in ./tools/buildqb sss.bas
+    elif ! run_in tools/container/in/libs-ok.sh builds/sss; then
         echo ">>> builds/sss was built outside the container; rebuilding it here..."
-        run_in bash -c "./tools/buildqb sss.bas"
+        run_in ./tools/buildqb sss.bas
     fi
 }
 
@@ -155,18 +172,6 @@ gui_args() {
     fi
 }
 
-SMOKE='
-set -euo pipefail
-out=$(xvfb-run -a builds/sss --version | tr -d "\r")
-echo "$out"
-base=$(tr -d "[:space:]" < VERSION)
-echo "$out" | grep -qE "Super Spaceguy Shooter ${base}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
-    echo "Error: --version smoke test failed: expected a version starting with ${base}" >&2
-    exit 1
-}
-echo ">>> smoke test passed"
-'
-
 cmd="${1:-}"
 [ $# -gt 0 ] && shift
 
@@ -178,9 +183,9 @@ case "$cmd" in
     build)
         pick_engine; ensure_image
         if [ "${1:-}" = --release ]; then
-            run_in bash -c "./tools/buildqb --release sss.bas && bash tests/release_build_test.sh"
+            run_in tools/container/in/build.sh --release
         else
-            run_in bash -c "./tools/buildqb sss.bas && $SMOKE"
+            run_in tools/container/in/build.sh
         fi
         ;;
     test)
@@ -197,7 +202,7 @@ case "$cmd" in
         ;;
     emit)
         pick_engine; ensure_image
-        run_in bash -c '(cd math && npm install) && node tools/emit-spline.js'
+        run_in tools/container/in/emit.sh
         ;;
     shell)
         pick_engine; ensure_image
@@ -216,8 +221,93 @@ case "$cmd" in
     headless)
         pick_engine; ensure_image
         rebuild_if_stale
-        # Off-screen X server; the container has no sound card, so drop ALSA's noise.
-        run_in bash -c 'set -o pipefail; xvfb-run -a -s "-screen 0 1280x720x24" builds/sss "$@" 2>&1 | { grep -v "^ALSA lib" || true; }' headless "$@"
+        run_in tools/container/in/headless.sh "$@"
+        ;;
+    record)
+        rec_out=builds/playthrough.mp4
+        rec_script=tests/playthrough/playthrough.txt
+        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout='' rec_rebuild=0
+        rec_args=()
+        rec_need() {
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: $1 needs a value" >&2
+                exit 1
+            fi
+        }
+        rec_num() {
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt "$3" ]; then
+                echo "Error: $1 needs a whole number $3 or more, got '$2'" >&2
+                exit 1
+            fi
+        }
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --out)     rec_need "$@"; rec_out="$2"; shift 2 ;;
+                --script)  rec_need "$@"; rec_script="$2"; shift 2 ;;
+                --frames)  rec_need "$@"; rec_num "$1" "$2" 1; rec_frames="$2"; shift 2 ;;
+                --seed)    rec_need "$@"; rec_num "$1" "$2" 0; rec_seed="$2"; shift 2 ;;
+                --scale)   rec_need "$@"; rec_num "$1" "$2" 1; rec_scale="$2"; shift 2 ;;
+                --timeout) rec_need "$@"; rec_num "$1" "$2" 1; rec_timeout="$2"; shift 2 ;;
+                --rebuild) rec_rebuild=1; shift ;;
+                --)        shift; rec_args+=("$@"); break ;;
+                *)         rec_args+=("$1"); shift ;;
+            esac
+        done
+        [ ${#rec_args[@]} -eq 0 ] && rec_args=(--god --nerf)
+        [ -n "$rec_timeout" ] || rec_timeout=$((rec_frames / 60 + 120))
+
+        # The container sees only the repo, so the script must be inside it.
+        case "$rec_script" in /*) ;; *) rec_script="$PWD/$rec_script" ;; esac
+        [ -f "$rec_script" ] || { echo "Error: no input script at $rec_script" >&2; exit 1; }
+        rec_script="$(cd "$(dirname "$rec_script")" && pwd)/$(basename "$rec_script")"
+        case "$rec_script" in
+            "$REPO"/*) ;;
+            *) echo "Error: the input script must be inside the repo ($REPO): $rec_script" >&2; exit 1 ;;
+        esac
+        # Record into builds/ (mounted), then move it wherever --out says.
+        case "$rec_out" in /*) ;; *) rec_out="$PWD/$rec_out" ;; esac
+        rec_tmp="$REPO/builds/.record-$$.mp4"
+
+        pick_engine; ensure_image
+        [ "$DRYRUN" = 1 ] || mkdir -p "$REPO/builds" "$(dirname "$rec_out")"
+        rec_start=$SECONDS
+
+        # The run OKs the data notice, so a binary with telemetry credentials would send
+        # its telemetry and post its score to the real leaderboard. Record with a binary
+        # of its own, builds/record/sss, built with an empty file mounted over
+        # assets/.env; your assets/.env and builds/sss are left alone.
+        rec_bin="$REPO/builds/record/sss"
+        rec_env="$REPO/builds/record/env-empty"
+        if [ "$rec_rebuild" = 1 ] || [ "$DRYRUN" = 1 ] || [ ! -x "$rec_bin" ] ||
+            [ -n "$(cd "$REPO" && find sss.bas src assets VERSION ! -path assets/.env -newer "$rec_bin" -print -quit)" ]; then
+            echo ">>> building $rec_bin without telemetry credentials..."
+            if [ "$DRYRUN" != 1 ]; then
+                mkdir -p "$(dirname "$rec_bin")"
+                : > "$rec_env"
+            fi
+            RUN_EXTRA=(-e SSS_BUILD_OUT=builds/record/sss)
+            [ -f "$REPO/assets/.env" ] && RUN_EXTRA+=(-v "$rec_env:$REPO/assets/.env:Z")
+            run_in ./tools/buildqb sss.bas || exit 1
+            RUN_EXTRA=()
+        fi
+        if [ "$DRYRUN" != 1 ]; then
+            rec_url="$(sed -n 's/^DB_URL=//p' "$REPO/assets/.env" 2> /dev/null | head -n 1 | tr -d '\r')"
+            if grep -aqE 'DB_(URL|KEY)=.' "$rec_bin" || { [ -n "$rec_url" ] && grep -aqF -- "$rec_url" "$rec_bin"; }; then
+                rm -f "$rec_bin"
+                echo "Error: $rec_bin has telemetry credentials embedded; deleted it, not recording" >&2
+                exit 1
+            fi
+        fi
+
+        if ! run_in tools/container/in/record.sh "$rec_bin" "$rec_tmp" "$rec_scale" "$rec_timeout" \
+                "${rec_args[@]}" --realtime --seed "$rec_seed" --frames "$rec_frames" \
+                --input-script "$rec_script"; then
+            rm -f "$rec_tmp"
+            exit 1
+        fi
+        [ "$DRYRUN" = 1 ] && exit 0
+        mv -f "$rec_tmp" "$rec_out"
+        echo ">>> wrote $rec_out ($((SECONDS - rec_start))s)"
         ;;
     -h|--help|help|"")
         usage
