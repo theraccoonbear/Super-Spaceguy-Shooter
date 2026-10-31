@@ -509,7 +509,7 @@ ST_Reset
 seqIdx = 28   ' position just before outro CRAWL (29)
 SEQ_Advance   ' advance to outro CRAWL (idx 29)
 ST_Assert seqIdx = 29 And gameState = GS_CRAWL,          "13.01  at outro CRAWL"
-score = 7777 : highScore = 0
+score = 7777 : highScore = 0 : seqRunActive = -1   ' a run was played (#331)
 SEQ_Advance   ' outro CRAWL -> SEQ_TITLE (idx 30) -> save highScore -> rewind to first TITLE
 ST_Assert gameState = GS_TITLE,                          "13.02  outro TITLE -> GS_TITLE"
 ST_Assert seqKind(seqIdx) = SEQ_TITLE,                   "13.03  parked on first SEQ_TITLE node"
