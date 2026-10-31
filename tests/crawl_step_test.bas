@@ -1,7 +1,7 @@
 ' crawl_step_test.bas — frame-by-frame crawl playback (CRAWL_Step%, src/2d/crawllayout.bas)
 '
 ' Drives CRAWL_Start / CRAWL_Step% for every named crawl with the real speech queue
-' advanced 735 output samples per 60 fps frame, as the audio fill does in game.
+' advanced one frame of speech time (SPK_Tick) per 60 fps frame, as the main loop does in game.
 '   - normal play speaks every paragraph once, in order, and finishes before the crawl exits
 '   - fast-forward runs scroll and narration CRAWL_FF_X times faster: early, mid and late in
 '     each crawl, with the length rotating across crawls (all 9 start x length pairs covered),
@@ -115,7 +115,6 @@ Sub TELEM_SessionEnd()              : End Sub
 
 Const CST_START_Y = 240 ' scrH, as CRAWL_Prep passes
 Const CST_TRIG_Y = 218 ' scrH - CRAWL_LINE_H
-Const CST_SPF = 735 ' audio output samples per 60 fps frame (44100 / 60)
 Const CST_LEVEL = 2 ' NORMAL
 Const CST_MAX_TICKS = 20000
 Const CST_TOL = 6 ' ticks of slack when matching the reference (a paragraph can start up to one fast-forward frame late)
@@ -150,19 +149,19 @@ Function CST_NowWord%
     CST_NowWord% = -1
     If SPK_IsPlaying% = 0 Then Exit Function
     For cnwW = 0 To spkWordCount - 1
-        If spkPhoneIdx >= spkWordStart(cnwW) And spkPhoneIdx <= spkWordEnd(cnwW) Then CST_NowWord% = cnwW : Exit Function
+        If spkClkIdx >= spkWordStart(cnwW) And spkClkIdx <= spkWordEnd(cnwW) Then CST_NowWord% = cnwW : Exit Function
     Next cnwW
 End Function
 
-' One frame: step the crawl, note any paragraph it started, then a frame of audio.
+' One frame: step the crawl, note any paragraph it started, then a frame of speech time.
 Sub CST_Frame(cfFF As Integer)
-    Dim cfEvt As Integer, cfS As Integer
+    Dim cfEvt As Integer
     cfEvt = CRAWL_Step%(cfFF, CST_LEVEL)
     If cfFF Then cstTick = cstTick + CRAWL_FF_X Else cstTick = cstTick + 1
     If crawlSaidCount <> cstSeen Then
         cstSaid(cstSaidN) = crawlSaidIdx : cstSaidN = cstSaidN + 1 : cstSeen = crawlSaidCount
     End If
-    For cfS = 1 To CST_SPF : SPK_Advance : Next cfS
+    SPK_Tick
 End Sub
 
 ' Same exit test as GS_CRAWL_Update.

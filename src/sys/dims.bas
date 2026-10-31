@@ -386,6 +386,7 @@ DIM SHARED dbgGraveWas AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
 DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
 DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
+DIM SHARED dbgMlogNarr AS INTEGER   ' crawl paragraphs already logged (crawlSaidCount), see DBG_MilestoneNarr
 
 ' --- engine / render ---
 DIM SHARED vpMat AS E3D_Matrix4

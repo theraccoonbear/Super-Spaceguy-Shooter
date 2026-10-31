@@ -8,7 +8,8 @@
 #   1. the game exited cleanly (exit 0) when --frames ran out, within the time limit
 #      (a crash dialog or hang under Xvfb shows up as the timeout);
 #   2. the milestone log (SSS_MILESTONE_LOG, see DBG_MilestoneInit in src/sys/debug.bas),
-#      one line per change of game state or sequence step, matches expected.txt in
+#      one line per change of game state or sequence step (NARR lines aside, see
+#      tests/playthrough/determinism.sh), matches expected.txt in
 #      order, with nothing missing or extra; reaching the final title inside the
 #      --frames budget is the "didn't stall" check;
 #   3. the local telemetry CSV agrees: one boss_defeated per boss and a session_end
@@ -84,8 +85,9 @@ normalize() {
     done
 }
 
-# QB64-PE writes CRLF line ends
-mapfile -t raw < <(tr -d "\r" < milestones.log)
+# QB64-PE writes CRLF line ends. NARR lines (narration paragraph starts) stay in
+# milestones.log for the capped-vs-uncapped comparison but aren't milestones here.
+mapfile -t raw < <(tr -d "\r" < milestones.log | grep -v '^[0-9]* NARR ')
 mapfile -t got < <(printf "%s\n" "${raw[@]}" | normalize)
 mapfile -t want < <(grep -v '^#' "$HERE/expected.txt" | grep -v '^$')
 printf "%s\n" "${got[@]}" > milestones.actual.txt
