@@ -58,6 +58,8 @@ Each release has three binaries: `sss-linux`, `sss-macos` and `sss-windows.exe`.
 chmod +x sss-linux    # or sss-macos
 ```
 
+**Linux requirements.** `sss-linux` needs glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 and later, RHEL/Rocky 9.x is 2.34 and is not covered). It is built on Ubuntu 22.04, and CI fails if a release binary needs a newer glibc (`.github/scripts/glibc_floor_check.sh`). It also needs the shared libraries it loads at run time: OpenGL (`libGL`, `libGLU`), ALSA, X11 (`libX11`, `libXext`), `libpng` and `libcurl` (on Debian/Ubuntu: `libgl1 libglu1-mesa libasound2 libx11-6 libxext6 libpng16-16 libcurl4`).
+
 macOS also quarantines files downloaded from the internet and won't open an unsigned binary. Clear the flag with `xattr -d com.apple.quarantine sss-macos`, or right-click the file in Finder, choose **Open**, and confirm.
 
 ### Building in a container
