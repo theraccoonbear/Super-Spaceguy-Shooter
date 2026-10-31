@@ -9,7 +9,9 @@
 ' the menu actions KEY_Pressed% / KEY_Confirm% / KEY_Back% (one press, not a hold), the raw
 ' pad tokens (PADBTN<n>, PADAXIS<n>+/-, PAD_DPAD_*) going through E3D_PadMap, and a d-pad +
 ' A/B walk through the title console into Settings and back, and the #! header (seed, args,
-' frames: parsing, rejects, merging into the launch line, --script-override).
+' frames: parsing, rejects, merging into the launch line, --script-override), and @ lines
+' (state and label triggers, offsets, lengths, *, every, #n, re-triggering on each entry,
+' letting go on leaving, mixed with frame lines, rejects).
 '
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
@@ -316,6 +318,119 @@ Print "      walk:" + isLog
 IS_Assert isLog = " console con1 con2 SETTINGS opt1 opt2 opt1 TITLE", "BACK opens, d-pad down x2 to SETTINGS, A opens it, d-pad down/down/up moves, B returns"
 IS_Assert gameState = GS_TITLE And escWas <> 0 And isConsole = 0, "back on the title, console shut, ESC marked seen"
 
+Print "--- @ trigger lines: parsing ---"
+ISC_Clear
+isOk = ISC_ParseLine%("@GS_CRAWL +60 1 FIRE ESC")
+IS_Assert isOk And iscCount = 2 And iscTrig(1) = ISC_TRIG_STATE And iscTrigName(1) = "GS_CRAWL" And iscFrom(1) = 60 And iscLen(1) = 1 And iscKey(2) = E3D_KEY_ESCAPE, "state trigger, offset, length, two keys"
+isOk = ISC_ParseLine%("@GS_PLAYING +0 * FIRE")
+IS_Assert isOk And iscLen(3) = ISC_LEN_ALL And iscEvery(3) = 0, "* = held while the state lasts"
+isOk = ISC_ParseLine%("  @gs_playing" + Chr$(9) + "+0 60 every 240 left ")
+IS_Assert isOk And iscTrigName(4) = "GS_PLAYING" And iscLen(4) = 60 And iscEvery(4) = 240 And iscKey(4) = E3D_KEY_LEFT, "every, any case, tabs"
+isOk = ISC_ParseLine%("@label:level3 +5 UP")
+IS_Assert isOk And iscTrig(5) = ISC_TRIG_LABEL And iscTrigName(5) = "LEVEL3" And iscLen(5) = 1, "label trigger, length defaults to 1"
+isOk = ISC_ParseLine%("@GS_TITLE#1 +0 P")
+IS_Assert isOk And iscTrigNth(6) = 1 And iscTrigName(6) = "GS_TITLE", "#n: one entry only"
+isOk = ISC_ParseLine%("@label:outro#2 +0 every 3 ENTER")
+IS_Assert isOk And iscTrigNth(7) = 2 And iscTrigName(7) = "OUTRO" And iscEvery(7) = 3, "label with #n and every"
+
+Print "--- @ trigger lines: rejects ---"
+isOk = ISC_ParseLine%("@GS_NOPE +0 FIRE")
+IS_Assert isOk = 0 And InStr(iscError, "unknown trigger 'GS_NOPE'") > 0, "unknown state named: " + iscError
+isOk = ISC_ParseLine%("@level3 +0 FIRE")
+IS_Assert isOk = 0 And InStr(iscError, "label:") > 0, "a bare label needs label:"
+isOk = ISC_ParseLine%("@ +0 FIRE")
+isOk2 = ISC_ParseLine%("@label: +0 FIRE")
+IS_Assert isOk = 0 And isOk2 = 0, "empty trigger, empty label"
+isOk = ISC_ParseLine%("@GS_TITLE 0 FIRE")
+isOk2 = ISC_ParseLine%("@GS_TITLE +x FIRE")
+isOk3 = ISC_ParseLine%("@GS_TITLE +-1 FIRE")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0 And InStr(iscError, "+<offset>") > 0, "offset must be +<n>"
+isOk = ISC_ParseLine%("@GS_TITLE +0")
+isOk2 = ISC_ParseLine%("@GS_TITLE +0 *")
+IS_Assert isOk = 0 And isOk2 = 0 And InStr(iscError, "no keys") > 0, "no keys"
+isOk = ISC_ParseLine%("@GS_TITLE +0 2 JUMP")
+IS_Assert isOk = 0 And InStr(iscError, "'JUMP'") > 0, "unknown key"
+isOk = ISC_ParseLine%("@GS_TITLE#0 +0 P")
+isOk2 = ISC_ParseLine%("@GS_TITLE#x +0 P")
+isOk3 = ISC_ParseLine%("@GS_TITLE# +0 P")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "bad #n"
+isOk = ISC_ParseLine%("@GS_TITLE +0 0 P")
+IS_Assert isOk = 0 And InStr(iscError, "at least 1") > 0, "zero-length hold"
+isOk = ISC_ParseLine%("@GS_PLAYING +0 * every 10 LEFT")
+isOk2 = ISC_ParseLine%("@GS_PLAYING +0 10 every 10 LEFT")
+isOk3 = ISC_ParseLine%("@GS_PLAYING +0 5 every LEFT")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "every needs a number above the hold"
+isOk = ISC_ParseLine%("@GS_USERNAME +3 7")
+IS_Assert isOk = 0 And InStr(iscError, "is the length") > 0, "a lone number is the length, not a digit key"
+IS_Assert iscCount = 7, "rejected lines add no keys"
+isOk = ISC_ParseLine%("@GS_USERNAME +3 1 7")
+IS_Assert isOk And iscCount = 8 And iscKey(8) = Asc("7") And iscLen(8) = 1, "a digit key after an explicit length"
+
+Print "--- @ trigger lines: playing ---"
+Dim isHits As String
+ISC_Clear
+isOk = ISC_ParseLine%("@GS_CRAWL +3 2 FIRE ESC") And ISC_ParseLine%("0 100 UP")
+isOk = isOk And ISC_ParseLine%("@GS_PLAYING +2 * TAB") And ISC_ParseLine%("@GS_PLAYING +0 2 every 5 LEFT")
+isOk = isOk And ISC_ParseLine%("@label:level3 +1 DOWN") And ISC_ParseLine%("@GS_TITLE#2 +0 P")
+IS_Assert isOk, "load: crawl skip, absolute UP, flight hold and weave, label, second title"
+iscActive = -1
+IS_Frame 0, "GS_LEADIN", ""
+IS_Assert isHeld(E3D_KEY_UP) And IS_Down% = 1 And IS_Hits$ = Str$(E3D_KEY_UP), "before any trigger: only the absolute line"
+IS_Frame 1, "GS_LEADIN", ""
+IS_Frame 2, "GS_CRAWL", "crawl0"
+IS_Frame 4, "GS_CRAWL", "crawl0"
+IS_Assert IS_Down% = 1, "entry at 2, +3: not yet at 4"
+IS_Frame 5, "GS_CRAWL", "crawl0"
+IS_Assert isHeld(E3D_KEY_SPACE) And isHeld(E3D_KEY_ESCAPE) And IS_Down% = 3, "held at entry+3 alongside the absolute line"
+IS_Assert KEY_Down%(E3D_KEY_ESCAPE) And KEY_Down%(E3D_KEY_LEFT) = 0, "KEY_Down% sees @ lines"
+IS_Assert IS_Hits$ = " 32 27", "one press per key on the hold's first frame"
+IS_Frame 6, "GS_CRAWL", "crawl0"
+IS_Assert isHeld(E3D_KEY_SPACE) And IS_Hits$ = "", "second frame held, no new press"
+IS_Frame 7, "GS_CRAWL", "crawl0"
+IS_Assert isHeld(E3D_KEY_SPACE) = 0, "released after its length"
+IS_Frame 10, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_TAB) = 0 And isHeld(E3D_KEY_DOWN) = 0, "play entered: weave starts at +0, TAB waits for +2, label waits for +1"
+IS_Frame 11, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_DOWN), "label trigger at +1"
+IS_Frame 12, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_LEFT) = 0 And isHeld(E3D_KEY_DOWN) = 0, "TAB from +2; weave off after 2 of 5"
+isHits = IS_Hits$
+IS_Frame 15, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_TAB) And IS_Hits$ = Str$(E3D_KEY_LEFT), "weave repeats every 5, pressed again"
+IS_Frame 16, "GS_PLAYING", "level4"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_LEFT), "label change alone doesn't restart a state line"
+IS_Frame 17, "GS_PLAYING", "level4"
+IS_Assert isHeld(E3D_KEY_LEFT) = 0 And isHeld(E3D_KEY_DOWN) = 0, "weave phase keeps counting from the state's entry"
+IS_Frame 500, "GS_PLAYING", "level4"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_UP) = 0, "* still held long after; absolute line ended"
+IS_Frame 501, "GS_DOCK", "level4"
+IS_Assert IS_Down% = 0, "leaving the state lets go of * and the weave"
+IS_Frame 502, "GS_CRAWL", "level4"
+IS_Frame 504, "GS_PLAYING", "level4"
+IS_Frame 505, "GS_CRAWL", "level4"
+IS_Assert IS_Down% = 0, "crawl entered again at 505"
+IS_Frame 508, "GS_CRAWL", "level4"
+IS_Assert isHeld(E3D_KEY_ESCAPE) And isHeld(E3D_KEY_SPACE), "re-triggers on each entry"
+IS_Frame 509, "GS_PLANET", "level4"
+IS_Assert IS_Down% = 0, "leaving mid-hold lets go"
+IS_Frame 510, "GS_CRAWL", "level3"
+IS_Frame 511, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_DOWN), "label entered again: fires again"
+IS_Frame 520, "GS_TITLE", "title"
+IS_Assert isHeld(E3D_KEY_P) = 0, "#2: first title ignored"
+IS_Frame 521, "GS_PLAYING", "level1"
+IS_Frame 530, "GS_TITLE", "title"
+IS_Assert isHeld(E3D_KEY_P), "#2: second title fires"
+IS_Frame 531, "GS_PLAYING", "level1"
+IS_Frame 540, "GS_TITLE", "title"
+IS_Assert isHeld(E3D_KEY_P) = 0, "#2: third title ignored"
+isHits = IS_Hits$
+ISC_Clear
+isOk = ISC_ParseLine%("@GS_TITLE +0 * P") And ISC_ParseLine%("0 5 LEFT")
+iscActive = -1
+ISC_Apply 0, isHeld()
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_P) = 0, "no ISC_SetContext (render scenes, older tests): @ lines never fire"
+
 Print "--- #! header ---"
 ISC_Clear
 isOk = ISC_ParseLine%("#! seed 1") And ISC_ParseLine%("#!frames: 20000") And ISC_ParseLine%("  #! ARGS  --god" + Chr$(9) + "--scene   boss3 ")
@@ -397,6 +512,23 @@ Kill isTmp
 Print ""
 Print "=== " + LTrim$(Str$(isPassed + isFailed)) + " tests: " + LTrim$(Str$(isPassed)) + " passed, " + LTrim$(Str$(isFailed)) + " failed ==="
 If isFailed > 0 Then System 1 Else System 0
+
+' One scripted frame at a game state and sequence label.
+Sub IS_Frame(isFfNo As Long, isFfState As String, isFfLabel As String)
+    ISC_SetContext isFfState, isFfLabel
+    ISC_Apply isFfNo, isHeld()
+End Sub
+
+' The queued presses, drained, as " code code ...".
+Function IS_Hits$
+    Dim isHk As Long, isHs As String
+    Do
+        isHk = KEY_Hit&
+        If isHk = 0 Then Exit Do
+        isHs = isHs + Str$(isHk)
+    Loop
+    IS_Hits$ = isHs
+End Function
 
 ' stub: input.bas logs devices through debug.bas, which this test doesn't include
 Sub DBG_Print(isDbgMsg As String)
