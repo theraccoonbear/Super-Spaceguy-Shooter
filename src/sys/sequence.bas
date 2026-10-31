@@ -49,6 +49,7 @@ Dim Shared seqLabel$(0 To SEQ_MAX - 1)
 Dim Shared seqCount     As Integer
 Dim Shared seqIdx       As Integer
 Dim Shared seqLastError As String
+Dim Shared seqRunActive As Integer   ' -1 from a run's first PLAY until the run ends: reaching TITLE only ends a run that started (#331)
 
 ' Named crawls: every CRAWL task in sequence.txt, plus crawls the code starts
 ' directly. SEQ_ListCrawls builds the list; --scene crawl:<key>, the --help scene
@@ -433,14 +434,34 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
     Next seqpJ
 End Sub
 
+' The run was won (the outro's TITLE, or past the end of the table): cash out, high score,
+' session end. Does nothing when no run is in progress, e.g. SPACE on the intro emperor
+' card also lands on a TITLE task (#331).
+Sub SEQ_EndRunWin()
+    If seqRunActive = 0 Then Exit Sub
+    seqRunActive = 0
+    CR_CashOutWin   ' leftover credits -> score first, so high score and leaderboard include them
+    If score > highScore Then highScore = score : SETTINGS_Save
+    telemExitReason = "win"
+    TELEM_SessionEnd
+End Sub
+
+' Quit from the pause menu: the run ends without a cash-out, and the game parks at the title.
+Sub SEQ_QuitRun()
+    telemExitReason = "quit"
+    TELEM_SessionEnd
+    seqRunActive = 0
+    SEQ_RewindToTitle
+    gameState = GS_TITLE
+    MUS_SetCue "title"
+End Sub
+
 ' Advance to the next sequence step and execute it.
 Sub SEQ_Advance()
     Dim seqaType As String, seqaMus As String, seqaTrig As Integer
     seqIdx = seqIdx + 1
     If seqIdx >= seqCount Then
-        CR_CashOutWin
-        telemExitReason = "win"
-        TELEM_SessionEnd
+        SEQ_EndRunWin
         SEQ_RewindToTitle
         gameState = GS_TITLE
         MUS_SetCue "title"
@@ -459,6 +480,7 @@ Sub SEQ_Advance()
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             If Len(seqaMus) > 0 Then MUS_SetCue seqaMus Else MUS_SetCue "emperor"
         Case SEQ_PLAY
+            seqRunActive = -1
             seqaType = LCase$(SEQ_GetKV$(seqSval$(seqIdx), "type"))
             seqaMus  = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             Select Case seqaType
@@ -524,10 +546,7 @@ Sub SEQ_Advance()
                     gameState = GS_PLAYING
             End Select
         Case SEQ_TITLE
-            CR_CashOutWin   ' leftover credits -> score first, so high score and leaderboard include them
-            If score > highScore Then highScore = score : SETTINGS_Save
-            telemExitReason = "win"
-            TELEM_SessionEnd
+            SEQ_EndRunWin
             SEQ_RewindToTitle
             gameState = GS_TITLE
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")

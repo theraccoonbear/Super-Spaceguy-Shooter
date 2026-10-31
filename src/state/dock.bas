@@ -75,6 +75,7 @@ Sub DOCK_Strand
     If score > highScore Then highScore = score : SETTINGS_Save
     telemExitReason = "stranded"
     TELEM_SessionEnd
+    seqRunActive = 0
     runStranded = -1
     crawlNextState = GS_GAMEOVER
     CRAWL_Prep SEQ_CRAWL_STRANDED, scrH

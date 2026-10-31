@@ -43,12 +43,13 @@ Boss `PLAY` lines also take per-phase lists, one comma-separated entry per HP ph
 SEQ_Load seqText$        ' parse sequence.txt (or any string in the same format) into the table; call once at startup
 SEQ_Advance               ' step forward one waypoint and execute it (sets gameState, triggers music, etc.)
 SEQ_RewindToTitle         ' jump seqIdx back to the first TITLE waypoint, without executing anything
+SEQ_QuitRun               ' pause-menu quit: session end with exit=quit, run over, park at the title
 SEQ_JumpToScene%(spec$)   ' resolve a --scene spec to a table index; returns -1 + seqLastError on failure
 SEQ_GetKV$(sval$, key$)   ' extract "key=val" from a task's key=val... string
 SEQ_PrintScenes fh        ' print all valid --scene names, for --help
 ```
 
-`SEQ_Advance` is the workhorse: it increments `seqIdx`, looks at `seqKind(seqIdx)`, and does whatever that waypoint means. It sets `gameState`, sets the music cue, and for `PLAY` specifically, resets the appropriate stage state (`levelNum`, `stageKills`, `stageKillTarget`, `levelType`, fuel for asteroid fields, `boss.warnTimer` for boss fights, and so on). Reaching past the end of the table, or landing on the outro's `TITLE` task, both mean "the run is over": `TELEM_SessionEnd` fires, `SEQ_RewindToTitle` parks `seqIdx` at the first title waypoint, and `highScore` is saved if beaten.
+`SEQ_Advance` is the workhorse: it increments `seqIdx`, looks at `seqKind(seqIdx)`, and does whatever that waypoint means. It sets `gameState`, sets the music cue, and for `PLAY` specifically, resets the appropriate stage state (`levelNum`, `stageKills`, `stageKillTarget`, `levelType`, fuel for asteroid fields, `boss.warnTimer` for boss fights, and so on). Reaching past the end of the table, or landing on the outro's `TITLE` task, both mean "the run is over" (`SEQ_EndRunWin`): leftover credits are cashed in, `highScore` is saved if beaten, and `TELEM_SessionEnd` fires with `exit=win`. That only happens while `seqRunActive` is set: the first `PLAY` of a run sets it, and every run end (win, death, stranded, `SEQ_QuitRun`) clears it. Any other landing on a `TITLE` task, such as SPACE on the intro emperor card or `--scene title`, just shows the title, the same as ESC (#331). Either way `SEQ_RewindToTitle` parks `seqIdx` at the first title waypoint.
 
 ### The title screen is a waypoint, not a mode
 

@@ -74,6 +74,7 @@ TESTS=(
   music_test
   telem_creds_test
   death_telem_test
+  run_end_test
   dbg_output_test
   mnv_load_test
   spore_test
