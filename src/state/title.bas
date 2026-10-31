@@ -2,7 +2,7 @@ Sub GS_TITLE_Update ()
     Dim gstThrobBright As Integer
     ' a pad with no built-in layout and no saved bindings: first-run setup (#266)
     IF padSetupDue AND ctrlDev > 0 AND iscActive = 0 AND titleEscConfirm = 0 THEN
-        padSetupDue = 0
+        padSetupDue = 0 : launchOpen = 0
         RMP_OpenWizard GS_TITLE
         EXIT SUB
     END IF
@@ -46,10 +46,20 @@ Sub GS_TITLE_Update ()
         END IF
     END IF
     IF titleEscConfirm = 0 THEN HUD_RunTally
+    IF launchOpen THEN
+        Dim gstLY As Integer, gstLP As String
+        UI_DrawPanel scrW\2 - 80, scrH\2 - 48, scrW\2 + 80, scrH\2 + 40, "LAUNCH NOW?"
+        gstLY = scrH\2 - 20 + launchSel * 18
+        UI_MenuHighlight scrW\2 - 66, gstLY - 3, scrW\2 + 66, gstLY + 11
+        UI_TextCentered 9, "YES", scrH\2 - 20, 255
+        UI_TextCentered 9, "NO",  scrH\2 - 2,  255
+        gstLP = UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " GO  " + UI_Tok$("ESC", E3D_ACT_BACK) + " BACK"
+        UI_PromptsAt gstLP, INP_LastDevice%, (scrW - UI_PromptsW%(gstLP, INP_LastDevice%)) \ 2, scrH\2 + 20, 8, 255, 0
+    END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
     ' gamepad Start also sets ESCAPE; on the title it means "play", not "open console" (Back opens it)
-    IF (held(E3D_KEY_ESCAPE) AND escWas = 0 AND held(E3D_KEY_PAD_START) = 0) OR KEY_Pressed%(E3D_KEY_PAD_SELECT) THEN
+    IF launchOpen = 0 AND ((held(E3D_KEY_ESCAPE) AND escWas = 0 AND held(E3D_KEY_PAD_START) = 0) OR KEY_Pressed%(E3D_KEY_PAD_SELECT)) THEN
         titleEscConfirm = 1 - titleEscConfirm : titleConSel = 0
         IF titleEscConfirm = 0 THEN uiSfx = SND_UI_BACK
     END IF
@@ -90,6 +100,6 @@ Sub GS_TITLE_Update ()
     ' (firing, skipping crawls/cinematics) and made it too easy to accidentally
     ' start a new game from the title screen. P is not bound to anything else.
     ' Gamepad Start for the same reason (A is the fire button).
-    IF (held(E3D_KEY_P) OR held(E3D_KEY_PAD_START)) AND pWas = 0 THEN GAME_NewGame
-    pWas = held(E3D_KEY_P) OR held(E3D_KEY_PAD_START)
+    ' The first start press opens LAUNCH NOW? (launchlogic.bas); nothing starts a run until it is confirmed.
+    IF LAUNCH_Input%(held(E3D_KEY_P) OR held(E3D_KEY_PAD_START)) = LAUNCH_YES THEN GAME_NewGame
 End Sub
