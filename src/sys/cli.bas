@@ -41,6 +41,7 @@ Sub CLI_Parse()
     godMode     = (InStr(cliLine, "--god")   > 0)
     settingNerf = (InStr(cliLine, "--nerf")  > 0)
     cliCrawls   = (InStr(cliLine, "--crawls") > 0)
+    cliRealtime = (InStr(cliLine, "--realtime") > 0)
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then
