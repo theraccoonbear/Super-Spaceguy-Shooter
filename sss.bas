@@ -298,6 +298,7 @@ DO
 
     END SELECT
     IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
+    SPK_Tick
 
     DBG_Overlay
 

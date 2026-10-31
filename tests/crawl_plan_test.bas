@@ -186,11 +186,15 @@ Next cptC
 
 Print "--- SPK_TextSamples& leaves current speech alone ---"
 Dim cptI As Long, cptIdx As Integer, cptCnt As Integer, cptPos As Integer, cptDur As Long, cptT As Long
+Dim cptClkIdx As Integer, cptClkPos As Long
 SPK_Say GTEXT_Get$("speech_boss_warning")
 For cptI = 1 To 20000 : SPK_Advance : Next cptI
+For cptI = 1 To 20 : SPK_Tick : Next cptI
 cptIdx = spkPhoneIdx : cptCnt = spkPhoneCount : cptPos = spkSamplePos : cptDur = SPK_PhoneDur&(SPK_AA, 1)
+cptClkIdx = spkClkIdx : cptClkPos = spkClkPos
 cptT = SPK_TextSamples&(crawlParaText$(0), 3)
 ST_Assert spkPhoneIdx = cptIdx And spkPhoneCount = cptCnt And spkSamplePos = cptPos, "queue position restored"
+ST_Assert spkClkIdx = cptClkIdx And spkClkPos = cptClkPos, "game-time position restored"
 ST_Assert SPK_PhoneDur&(SPK_AA, 1) = cptDur, "speech speed restored"
 SPK_Say crawlParaText$(0) : SPK_SetPreset 3
 ST_Assert cptT = SPK_QueueSamples&, "measured length = queued length at the same preset"

@@ -106,11 +106,17 @@ For stLvl = 1 To 3
     SPK_SetPreset stLvl
     stQ = SPK_QueueSamples&
     stN = 0
-    Do While SPK_IsPlaying%
+    Do While spkPhoneIdx < spkPhoneCount
         SPK_Advance
         stN = stN + 1
     Loop
     ST_Assert stQ = stN, "preset" + Str$(stLvl) + ": queue estimate" + Str$(stQ) + " = synthesized" + Str$(stN)
+    stN = 0
+    Do While SPK_IsPlaying%
+        SPK_Tick
+        stN = stN + 1
+    Loop
+    ST_Assert stN = (stQ + 734) \ 735, "preset" + Str$(stLvl) + ": game-time clock plays it in" + Str$(stN) + " frames (queue / 735, rounded up)"
 Next stLvl
 
 Print "--- preset words/min over all crawl text ---"

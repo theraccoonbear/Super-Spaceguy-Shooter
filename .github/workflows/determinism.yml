@@ -1,0 +1,54 @@
+name: Determinism
+
+# The scripted playthrough reaches the same state flat out and at 60 fps (#329):
+# milestones, the frame each crawl paragraph starts speaking, and telemetry. Slow (the
+# 60 fps run takes the game's length in real time), so nightly, on demand, and on PRs
+# touching the frame-rate-sensitive code. Not required for merging, like the playthrough.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'src/audio/**'
+      - 'src/2d/crawllayout.bas'
+      - 'src/state/crawl.bas'
+      - 'sss.bas'
+      - 'src/sys/inputscript.bas'
+      - 'tests/playthrough/**'
+      - '.github/workflows/determinism.yml'
+
+env:
+  QB64PE_VERSION: v4.5.0   # keep in step with build.yml
+
+jobs:
+  determinism:
+    name: Playthrough determinism (uncapped vs 60 fps)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QB64-PE
+        uses: ./.github/actions/setup-qb64pe
+        with:
+          qb64pe-version: ${{ env.QB64PE_VERSION }}
+
+      # no telemetry credentials: the scripted run OKs the data notice
+      - name: Build sss.bas (no telemetry credentials)
+        shell: bash
+        run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+
+      - name: Uncapped vs --realtime playthrough (tests/playthrough/determinism.sh)
+        timeout-minutes: 40
+        shell: bash
+        run: tests/playthrough/determinism.sh
+
+      - name: Upload playthrough logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: determinism-logs
+          path: builds/playthrough-*/
+          if-no-files-found: ignore
