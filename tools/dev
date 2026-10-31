@@ -33,6 +33,8 @@
 #                  (e.g. --scene boss3 --god). Plays its own binary,
 #                  builds/record/sss, built with assets/.env masked, so it never
 #                  sends telemetry; builds/sss and assets/.env are left alone.
+#   completion     print a bash completion function for tools/dev; enable it with
+#                  source <(path/to/tools/dev completion) in ~/.bashrc
 #
 # The repo is bind-mounted at its host path, so builds/ and every generated
 # file land on the host owned by you. Only `run` touches your display/audio.
@@ -51,7 +53,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,48p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -172,149 +174,299 @@ gui_args() {
     fi
 }
 
-cmd="${1:-}"
-[ $# -gt 0 ] && shift
-
-case "$cmd" in
-    image)
-        pick_engine
-        build_image
-        ;;
-    build)
-        pick_engine; ensure_image
-        if [ "${1:-}" = --release ]; then
-            run_in tools/container/in/build.sh --release
-        else
-            run_in tools/container/in/build.sh
-        fi
-        ;;
-    test)
-        pick_engine; ensure_image
-        run_in bash .github/scripts/qb64test.sh
-        ;;
-    render)
-        pick_engine; ensure_image
-        run_in bash tests/render/run.sh "$@"
-        ;;
-    bake)
-        pick_engine; ensure_image
-        run_in bash tools/bake_speech_dict
-        ;;
-    emit)
-        pick_engine; ensure_image
-        run_in tools/container/in/emit.sh
-        ;;
-    shell)
-        pick_engine; ensure_image
-        if [ $# -gt 0 ]; then
-            run_in "$@"
-        else
-            run_in bash
-        fi
-        ;;
-    run)
-        pick_engine; ensure_image
-        rebuild_if_stale
-        gui_args
-        run_in builds/sss "$@"
-        ;;
-    headless)
-        pick_engine; ensure_image
-        rebuild_if_stale
-        run_in tools/container/in/headless.sh "$@"
-        ;;
-    record)
-        rec_out=builds/playthrough.mp4
-        rec_script=tests/playthrough/playthrough.txt
-        rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout='' rec_rebuild=0
-        rec_args=()
-        rec_need() {
-            if [ $# -lt 2 ] || [ -z "$2" ]; then
-                echo "Error: $1 needs a value" >&2
-                exit 1
-            fi
-        }
-        rec_num() {
-            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt "$3" ]; then
-                echo "Error: $1 needs a whole number $3 or more, got '$2'" >&2
-                exit 1
-            fi
-        }
-        while [ $# -gt 0 ]; do
-            case "$1" in
-                --out)     rec_need "$@"; rec_out="$2"; shift 2 ;;
-                --script)  rec_need "$@"; rec_script="$2"; shift 2 ;;
-                --frames)  rec_need "$@"; rec_num "$1" "$2" 1; rec_frames="$2"; shift 2 ;;
-                --seed)    rec_need "$@"; rec_num "$1" "$2" 0; rec_seed="$2"; shift 2 ;;
-                --scale)   rec_need "$@"; rec_num "$1" "$2" 1; rec_scale="$2"; shift 2 ;;
-                --timeout) rec_need "$@"; rec_num "$1" "$2" 1; rec_timeout="$2"; shift 2 ;;
-                --rebuild) rec_rebuild=1; shift ;;
-                --)        shift; rec_args+=("$@"); break ;;
-                *)         rec_args+=("$1"); shift ;;
-            esac
-        done
-        [ ${#rec_args[@]} -eq 0 ] && rec_args=(--god --nerf)
-        [ -n "$rec_timeout" ] || rec_timeout=$((rec_frames / 60 + 120))
-
-        # The container sees only the repo, so the script must be inside it.
-        case "$rec_script" in /*) ;; *) rec_script="$PWD/$rec_script" ;; esac
-        [ -f "$rec_script" ] || { echo "Error: no input script at $rec_script" >&2; exit 1; }
-        rec_script="$(cd "$(dirname "$rec_script")" && pwd)/$(basename "$rec_script")"
-        case "$rec_script" in
-            "$REPO"/*) ;;
-            *) echo "Error: the input script must be inside the repo ($REPO): $rec_script" >&2; exit 1 ;;
-        esac
-        # Record into builds/ (mounted), then move it wherever --out says.
-        case "$rec_out" in /*) ;; *) rec_out="$PWD/$rec_out" ;; esac
-        rec_tmp="$REPO/builds/.record-$$.mp4"
-
-        pick_engine; ensure_image
-        [ "$DRYRUN" = 1 ] || mkdir -p "$REPO/builds" "$(dirname "$rec_out")"
-        rec_start=$SECONDS
-
-        # The run OKs the data notice, so a binary with telemetry credentials would send
-        # its telemetry and post its score to the real leaderboard. Record with a binary
-        # of its own, builds/record/sss, built with an empty file mounted over
-        # assets/.env; your assets/.env and builds/sss are left alone.
-        rec_bin="$REPO/builds/record/sss"
-        rec_env="$REPO/builds/record/env-empty"
-        if [ "$rec_rebuild" = 1 ] || [ "$DRYRUN" = 1 ] || [ ! -x "$rec_bin" ] ||
-            [ -n "$(cd "$REPO" && find sss.bas src assets VERSION ! -path assets/.env -newer "$rec_bin" -print -quit)" ]; then
-            echo ">>> building $rec_bin without telemetry credentials..."
-            if [ "$DRYRUN" != 1 ]; then
-                mkdir -p "$(dirname "$rec_bin")"
-                : > "$rec_env"
-            fi
-            RUN_EXTRA=(-e SSS_BUILD_OUT=builds/record/sss)
-            [ -f "$REPO/assets/.env" ] && RUN_EXTRA+=(-v "$rec_env:$REPO/assets/.env:Z")
-            run_in ./tools/buildqb sss.bas || exit 1
-            RUN_EXTRA=()
-        fi
-        if [ "$DRYRUN" != 1 ]; then
-            rec_url="$(sed -n 's/^DB_URL=//p' "$REPO/assets/.env" 2> /dev/null | head -n 1 | tr -d '\r')"
-            if grep -aqE 'DB_(URL|KEY)=.' "$rec_bin" || { [ -n "$rec_url" ] && grep -aqF -- "$rec_url" "$rec_bin"; }; then
-                rm -f "$rec_bin"
-                echo "Error: $rec_bin has telemetry credentials embedded; deleted it, not recording" >&2
-                exit 1
-            fi
-        fi
-
-        if ! run_in tools/container/in/record.sh "$rec_bin" "$rec_tmp" "$rec_scale" "$rec_timeout" \
-                "${rec_args[@]}" --realtime --seed "$rec_seed" --frames "$rec_frames" \
-                --input-script "$rec_script"; then
-            rm -f "$rec_tmp"
+# One cmd_<name> function per command; `tools/dev <name>` runs it, and
+# `tools/dev completion` offers the same names.
+cmd_image() {
+    pick_engine
+    build_image
+}
+cmd_build() {
+    pick_engine; ensure_image
+    if [ "${1:-}" = --release ]; then
+        run_in tools/container/in/build.sh --release
+    else
+        run_in tools/container/in/build.sh
+    fi
+}
+cmd_test() {
+    pick_engine; ensure_image
+    run_in bash .github/scripts/qb64test.sh
+}
+cmd_render() {
+    pick_engine; ensure_image
+    run_in bash tests/render/run.sh "$@"
+}
+cmd_bake() {
+    pick_engine; ensure_image
+    run_in bash tools/bake_speech_dict
+}
+cmd_emit() {
+    pick_engine; ensure_image
+    run_in tools/container/in/emit.sh
+}
+cmd_shell() {
+    pick_engine; ensure_image
+    if [ $# -gt 0 ]; then
+        run_in "$@"
+    else
+        run_in bash
+    fi
+}
+cmd_run() {
+    pick_engine; ensure_image
+    rebuild_if_stale
+    gui_args
+    run_in builds/sss "$@"
+}
+cmd_headless() {
+    pick_engine; ensure_image
+    rebuild_if_stale
+    run_in tools/container/in/headless.sh "$@"
+}
+cmd_record() {
+    rec_out=builds/playthrough.mp4
+    rec_script=tests/playthrough/playthrough.txt
+    rec_frames=20000 rec_seed=1 rec_scale=2 rec_timeout='' rec_rebuild=0
+    rec_args=()
+    rec_need() {
+        if [ $# -lt 2 ] || [ -z "$2" ]; then
+            echo "Error: $1 needs a value" >&2
             exit 1
         fi
-        [ "$DRYRUN" = 1 ] && exit 0
-        mv -f "$rec_tmp" "$rec_out"
-        echo ">>> wrote $rec_out ($((SECONDS - rec_start))s)"
-        ;;
-    -h|--help|help|"")
-        usage
-        ;;
-    *)
-        echo "Error: unknown command '$cmd'" >&2
-        usage >&2
+    }
+    rec_num() {
+        if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt "$3" ]; then
+            echo "Error: $1 needs a whole number $3 or more, got '$2'" >&2
+            exit 1
+        fi
+    }
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --out)     rec_need "$@"; rec_out="$2"; shift 2 ;;
+            --script)  rec_need "$@"; rec_script="$2"; shift 2 ;;
+            --frames)  rec_need "$@"; rec_num "$1" "$2" 1; rec_frames="$2"; shift 2 ;;
+            --seed)    rec_need "$@"; rec_num "$1" "$2" 0; rec_seed="$2"; shift 2 ;;
+            --scale)   rec_need "$@"; rec_num "$1" "$2" 1; rec_scale="$2"; shift 2 ;;
+            --timeout) rec_need "$@"; rec_num "$1" "$2" 1; rec_timeout="$2"; shift 2 ;;
+            --rebuild) rec_rebuild=1; shift ;;
+            --)        shift; rec_args+=("$@"); break ;;
+            *)         rec_args+=("$1"); shift ;;
+        esac
+    done
+    [ ${#rec_args[@]} -eq 0 ] && rec_args=(--god --nerf)
+    [ -n "$rec_timeout" ] || rec_timeout=$((rec_frames / 60 + 120))
+
+    # The container sees only the repo, so the script must be inside it.
+    case "$rec_script" in /*) ;; *) rec_script="$PWD/$rec_script" ;; esac
+    [ -f "$rec_script" ] || { echo "Error: no input script at $rec_script" >&2; exit 1; }
+    rec_script="$(cd "$(dirname "$rec_script")" && pwd)/$(basename "$rec_script")"
+    case "$rec_script" in
+        "$REPO"/*) ;;
+        *) echo "Error: the input script must be inside the repo ($REPO): $rec_script" >&2; exit 1 ;;
+    esac
+    # Record into builds/ (mounted), then move it wherever --out says.
+    case "$rec_out" in /*) ;; *) rec_out="$PWD/$rec_out" ;; esac
+    rec_tmp="$REPO/builds/.record-$$.mp4"
+
+    pick_engine; ensure_image
+    [ "$DRYRUN" = 1 ] || mkdir -p "$REPO/builds" "$(dirname "$rec_out")"
+    rec_start=$SECONDS
+
+    # The run OKs the data notice, so a binary with telemetry credentials would send
+    # its telemetry and post its score to the real leaderboard. Record with a binary
+    # of its own, builds/record/sss, built with an empty file mounted over
+    # assets/.env; your assets/.env and builds/sss are left alone.
+    rec_bin="$REPO/builds/record/sss"
+    rec_env="$REPO/builds/record/env-empty"
+    if [ "$rec_rebuild" = 1 ] || [ "$DRYRUN" = 1 ] || [ ! -x "$rec_bin" ] ||
+        [ -n "$(cd "$REPO" && find sss.bas src assets VERSION ! -path assets/.env -newer "$rec_bin" -print -quit)" ]; then
+        echo ">>> building $rec_bin without telemetry credentials..."
+        if [ "$DRYRUN" != 1 ]; then
+            mkdir -p "$(dirname "$rec_bin")"
+            : > "$rec_env"
+        fi
+        RUN_EXTRA=(-e SSS_BUILD_OUT=builds/record/sss)
+        [ -f "$REPO/assets/.env" ] && RUN_EXTRA+=(-v "$rec_env:$REPO/assets/.env:Z")
+        run_in ./tools/buildqb sss.bas || exit 1
+        RUN_EXTRA=()
+    fi
+    if [ "$DRYRUN" != 1 ]; then
+        rec_url="$(sed -n 's/^DB_URL=//p' "$REPO/assets/.env" 2> /dev/null | head -n 1 | tr -d '\r')"
+        if grep -aqE 'DB_(URL|KEY)=.' "$rec_bin" || { [ -n "$rec_url" ] && grep -aqF -- "$rec_url" "$rec_bin"; }; then
+            rm -f "$rec_bin"
+            echo "Error: $rec_bin has telemetry credentials embedded; deleted it, not recording" >&2
+            exit 1
+        fi
+    fi
+
+    if ! run_in tools/container/in/record.sh "$rec_bin" "$rec_tmp" "$rec_scale" "$rec_timeout" \
+            "${rec_args[@]}" --realtime --seed "$rec_seed" --frames "$rec_frames" \
+            --input-script "$rec_script"; then
+        rm -f "$rec_tmp"
         exit 1
+    fi
+    [ "$DRYRUN" = 1 ] && exit 0
+    mv -f "$rec_tmp" "$rec_out"
+    echo ">>> wrote $rec_out ($((SECONDS - rec_start))s)"
+}
+cmd_help() {
+    usage
+}
+
+# The game's command-line options, as GAME_Usage in src/sys/game.bas lists them
+# (tests/tools_dev_test.sh checks the two match).
+GAME_FLAGS="--version --help --scene --crawls --god --nerf --debug --no-telem --input-script
+    --leaderboard-file --frames --realtime --seed --credits --ships --shields --fuel --pup
+    --screenshot-at"
+
+# Prints a bash completion function for tools/dev. The command list is every cmd_*
+# function, the same names the dispatch below runs.
+cmd_completion() {
+    local cmds
+    cmds="$(declare -F | sed -n 's/^declare -f cmd_//p' | tr '\n' ' ')"
+    printf '_sss_dev_commands=%q\n' "${cmds% }"
+    printf '_sss_dev_game_flags=%q\n' "${GAME_FLAGS//$'\n'    / }"
+    cat << 'EOF'
+# Plain bash 3.2 (macOS) and zsh-bashcompinit compatible: no mapfile, BASH_REMATCH
+# or ${!array[@]}.
+
+# Scene names for --scene: the "Scene names:" list from the repo's builds/sss --help
+# (it prints and exits before the game opens a window), else the scene types.
+_sss_dev_scenes() {
+    local bin="$1/builds/sss" out="" line w base inner n hi found=0 inlist=0
+    if [ -x "$bin" ]; then
+        if command -v timeout > /dev/null 2>&1; then
+            out="$(timeout 3 "$bin" --help 2> /dev/null)"
+        else
+            out="$("$bin" --help 2> /dev/null)"
+        fi
+    fi
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+        if [ "$inlist" = 0 ]; then
+            [ "$line" = "Scene names:" ] && inlist=1
+            continue
+        fi
+        w="${line#"${line%%[![:space:]]*}"}"
+        w="${w%%[[:space:]]*}"
+        [ -n "$w" ] || continue
+        found=1
+        case "$w" in
+            *\[*\])
+                # crawl[0-6] or dock[1,2,3]
+                base="${w%%\[*}" inner="${w#*\[}"
+                inner="${inner%\]}"
+                case "$inner" in
+                    *-*)
+                        n="${inner%-*}" hi="${inner#*-}"
+                        while [ "$n" -le "$hi" ]; do
+                            echo "$base$n"
+                            n=$((n + 1))
+                        done
+                        ;;
+                    *)
+                        for n in ${inner//,/ }; do
+                            echo "$base$n"
+                        done
+                        ;;
+                esac
+                ;;
+            *) echo "$w" ;;
+        esac
+    done <<< "$out"
+    [ "$found" = 1 ] || printf '%s\n' title crawl playing boss dock consent username
+}
+
+# COMPREPLY=(compgen "$@"), one candidate per line, so file names keep their spaces.
+_sss_dev_reply() {
+    local out
+    out="$(compgen "$@")"
+    local IFS=$'\n'
+    # shellcheck disable=SC2206
+    COMPREPLY=($out)
+}
+
+_sss_dev() {
+    local i=$COMP_CWORD cur="${COMP_WORDS[COMP_CWORD]}" prev sub repo f c words="" joined=0
+    # bash splits crawl:key at the colon (COMP_WORDBREAKS); join it back up.
+    while [ "$i" -gt 1 ] && { [ "${COMP_WORDS[i]}" = : ] || [ "${COMP_WORDS[i-1]}" = : ]; }; do
+        i=$((i - 1))
+        cur="${COMP_WORDS[i]}$cur"
+        joined=1
+    done
+    prev="${COMP_WORDS[i-1]}"
+    sub="${COMP_WORDS[1]}"
+    COMPREPLY=()
+
+    if [ "$i" -le 1 ]; then
+        _sss_dev_reply -W "$_sss_dev_commands" -- "$cur"
+        return 0
+    fi
+
+    repo="${COMP_WORDS[0]/#\~/$HOME}"
+    repo="$(cd "$(dirname "$repo")/.." 2> /dev/null && pwd)"
+
+    case "$sub:$prev" in
+        build:*)
+            words="--release" ;;
+        record:--out | record:--script | *:--input-script | *:--leaderboard-file)
+            compopt -o filenames 2> /dev/null
+            _sss_dev_reply -f -- "$cur"
+            return 0 ;;
+        record:--scale | record:--timeout | render:--repeat | *:--frames | *:--seed | \
+        *:--credits | *:--ships | *:--shields | *:--fuel | *:--screenshot-at)
+            return 0 ;;
+        *:--scene)
+            words="$(_sss_dev_scenes "$repo")" ;;
+        *:--pup)
+            words="shield fuel points" ;;
+        render:*)
+            [ "$prev" = --update ] && words="ui gameplay all"
+            words="$words --update --no-build --repeat"
+            for f in "$repo"/tests/render/scenes/*.txt; do
+                [ -e "$f" ] || continue
+                f="${f##*/}"
+                words="$words ${f%.txt}"
+            done
+            ;;
+        record:*)
+            # record sets --frames, --seed and --input-script itself
+            words="--frames --seed --scale --out --script --rebuild --timeout"
+            for f in $_sss_dev_game_flags; do
+                case "$f" in --frames | --seed | --input-script) ;; *) words="$words $f" ;; esac
+            done
+            ;;
+        run:* | headless:*)
+            words="$_sss_dev_game_flags" ;;
+        *)
+            return 0 ;;
+    esac
+    _sss_dev_reply -W "$words" -- "$cur"
+    # bash replaces only the part after the last colon, so hand back just that part.
+    if [ "$joined" = 1 ] && [ "${#COMPREPLY[@]}" -gt 0 ]; then
+        words=""
+        for c in "${COMPREPLY[@]}"; do
+            words="$words ${c##*:}"
+        done
+        _sss_dev_reply -W "$words" -- ""
+    fi
+    return 0
+}
+EOF
+    printf 'complete -F _sss_dev ./tools/dev tools/dev %q\n' "$REPO/tools/dev"
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+    -h | --help | "") usage ;;
+    *)
+        if [[ "$cmd" =~ ^[a-z]+$ ]] && declare -F "cmd_$cmd" > /dev/null; then
+            "cmd_$cmd" "$@"
+        else
+            echo "Error: unknown command '$cmd'" >&2
+            usage >&2
+            exit 1
+        fi
         ;;
 esac
