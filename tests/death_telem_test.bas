@@ -109,6 +109,7 @@ Dim Shared leaderboardPlayerID As String
 Dim Shared telemPlayerName     As String
 Dim Shared settingNerf         As Integer
 Dim Shared godMode             As Integer
+Dim Shared seqRunActive        As Integer   ' sequence.bas
 
 Dim Shared dtEnds As Integer, dtScorePosts As Integer, dtPostBody As String
 

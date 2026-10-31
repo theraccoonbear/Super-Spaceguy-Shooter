@@ -14,12 +14,8 @@ Sub GS_PLAYING_Update ()
     IF gameState = GS_PLAYING OR gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
         SELECT CASE PAUSE_Input%
             CASE PAUSE_QUIT
-                telemExitReason = "quit"
-                TELEM_SessionEnd
-                SEQ_RewindToTitle
-                gameState = GS_TITLE
+                SEQ_QuitRun
                 planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
-                MUS_SetCue "title"
             CASE PAUSE_CONTROLS
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
             CASE PAUSE_REMAP

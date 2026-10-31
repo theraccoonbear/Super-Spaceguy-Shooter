@@ -238,6 +238,7 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
             CR_CashOut   ' leftover credits become score before the high score and the score POST
             telemExitReason = "death"
             TELEM_SessionEnd
+            seqRunActive = 0
         Else
             lives = shieldMax : fuelLevel = fuelMax : fuelStranded = 0
         End If
