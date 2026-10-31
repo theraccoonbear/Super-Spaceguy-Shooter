@@ -13,7 +13,8 @@ if [ "${1:-}" = --release ]; then
 fi
 
 ./tools/buildqb sss.bas
-out=$(xvfb-run -a builds/sss --version | tr -d "\r")
+out=$(xvfb-run -a builds/sss --version)
+[[ "$out" != *$'\r'* ]] || { echo "Error: --version output contains a carriage return (#252)" >&2; exit 1; }
 echo "$out"
 base=$(tr -d "[:space:]" < VERSION)
 grep -qE "Super Spaceguy Shooter ${base}(-dev\+[0-9a-f]+(-dirty)?)?$" <<< "$out" || {
