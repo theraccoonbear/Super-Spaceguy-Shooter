@@ -216,6 +216,14 @@ completes "dock1 dock2" "$fake/tools/dev" record --scene "do"
 rm "$fake/builds/sss"
 completes "consent crawl" "$fake/tools/dev" run --scene c
 
+completes "easy hard normal" "$fake/tools/dev" run --difficulty ""
+mkdir -p "$fake/assets/config"
+printf '; levels=no\nlevels=calm,brutal\ndefault=calm\n' > "$fake/assets/config/difficulty.ini"
+completes "brutal calm" "$fake/tools/dev" headless --difficulty ""
+completes "brutal" "$fake/tools/dev" record --difficulty b
+rm -r "$fake/assets/config"
+completes "easy hard normal" "$REPO/tools/dev" run --difficulty ""
+
 mkdir -p "$fake/tests/input"
 : > "$fake/tests/input/boss-hold-left.txt"
 : > "$fake/tests/input/boss two.txt"
