@@ -21,7 +21,7 @@ Sub CLI_Emit(ceFH As Integer, ceMsg As String)
     If InStr(_OS$, "WIN") Then
         Print ceMsg
     Else
-        Print #ceFH, ceMsg
+        Print #ceFH, ceMsg; Chr$(10);
     End If
 End Sub
 

@@ -187,6 +187,10 @@ jobs:
             OUT=$("${{ matrix.artifact-path }}" --version)
           fi
           echo "$OUT"
+          if [ "${{ runner.os }}" != "Windows" ] && [[ "$OUT" == *$'\r'* ]]; then
+            echo "::error::--version output contains a carriage return on ${{ runner.os }} (#252)"
+            exit 1
+          fi
           OUT="${OUT//$'\r'/}"
           BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
           # A tag build must print exactly the tag's version (v0.1.0-rc1 -> 0.1.0-rc1), and
@@ -265,7 +269,7 @@ jobs:
           OUT="$(xvfb-run -a builds/sss --version)"
           echo "$OUT"
           BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
-          echo "${OUT//$'\r'/}" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
+          [[ "$OUT" != *$'\r'* ]] && echo "$OUT" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
             echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
             exit 1
           }
