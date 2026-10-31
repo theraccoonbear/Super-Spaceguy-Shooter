@@ -82,6 +82,8 @@ Dim Shared seqCount As Integer, seqIdx As Integer
 Dim Shared gameFrame As Long
 Dim Shared dbgMlogPath As String
 Dim Shared dbgMlogState As Integer, dbgMlogSeq As Integer
+Dim Shared dbgMlogNarr As Integer
+Dim Shared crawlSaidCount As Integer
 
 '$INCLUDE:'../src/sys/debug.bas'
 '$INCLUDE:'../src/sys/config.bas'
@@ -153,7 +155,11 @@ ST_Assert dbgMlogPath = mlFile, "set: absolute path used as is"
 gameState = GS_CONSENT : seqIdx = -1 : gameFrame = 0 : DBG_MilestoneLog
 gameFrame = 1 : DBG_MilestoneLog
 gameState = GS_CRAWL : seqIdx = 0 : gameFrame = 7 : DBG_MilestoneLog
+dbgMlogNarr = 0 : crawlSaidCount = 0 : DBG_MilestoneNarr
 gameFrame = 8 : DBG_MilestoneLog
+crawlSaidCount = 1 : DBG_MilestoneNarr
+gameFrame = 9 : DBG_MilestoneNarr
+gameFrame = 30 : crawlSaidCount = 3 : DBG_MilestoneNarr
 seqIdx = 1 : gameState = GS_PLAYING : gameFrame = 40 : DBG_MilestoneLog
 gameState = GS_PLANET : gameFrame = 90 : DBG_MilestoneLog
 DBG_MilestoneWrite "120 EXIT"
@@ -166,12 +172,15 @@ Do While Not EOF(mlFH)
 Loop
 Close #mlFH
 Kill mlFile
-ST_Assert mlN = 5, "one line per change, plus EXIT (got" + Str$(mlN) + ")"
+ST_Assert mlN = 8, "one line per change and narrated paragraph, plus EXIT (got" + Str$(mlN) + ")"
 ST_Assert mlLines(1) = "0 GS_CONSENT -1", "before the sequence starts: frame, state, -1"
 ST_Assert mlLines(2) = "7 GS_CRAWL 0 level1 CRAWL txt=stage1 mus=crawl", "sequence step: label, task, args"
-ST_Assert mlLines(3) = "40 GS_PLAYING 1 level1 PLAY type=combat mus=game trigger=10", "trailing space trimmed"
-ST_Assert mlLines(4) = "90 GS_PLANET 1 level1 PLAY type=combat mus=game trigger=10", "state change alone logs"
-ST_Assert mlLines(5) = "120 EXIT", "EXIT line"
+ST_Assert mlLines(3) = "8 NARR level1 0", "paragraph start: frame, NARR, crawl label, paragraph"
+ST_Assert mlLines(4) = "30 NARR level1 1", "two paragraphs in one frame (fast-forward): both logged, in order"
+ST_Assert mlLines(5) = "30 NARR level1 2", "two paragraphs in one frame: second"
+ST_Assert mlLines(6) = "40 GS_PLAYING 1 level1 PLAY type=combat mus=game trigger=10", "trailing space trimmed"
+ST_Assert mlLines(7) = "90 GS_PLANET 1 level1 PLAY type=combat mus=game trigger=10", "state change alone logs"
+ST_Assert mlLines(8) = "120 EXIT", "EXIT line"
 Environ "SSS_MILESTONE_LOG=dbg_milestone_rel.log"
 DBG_MilestoneInit
 ST_Assert dbgMlogPath = _StartDir$ + "/dbg_milestone_rel.log", "relative path: the launch folder"

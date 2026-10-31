@@ -79,10 +79,15 @@ SPK_QueueSamples&()               ' samples the queued utterance will take at th
 SPK_TextSamples&(text$, level)   ' samples text$ would take at a preset, without disturbing current speech
 SPK_PhoneDur&(phone, stress)      ' scaled duration of one phoneme
 SPK_Advance                       ' once per audio sample; result lands in spkSampleOut
-SPK_IsPlaying%()                  ' -1 while an utterance is still playing, 0 when done
-SPK_CurWord$()                    ' word currently being spoken, "" between words (for UI highlight)
+SPK_Tick                          ' once per game frame (main loop): moves the game-time position
+SPK_IsPlaying%()                  ' -1 while an utterance is still playing (game time), 0 when done
+SPK_CurWord$()                    ' word currently being spoken (game time), "" between words (for UI highlight)
 SPK_CurWordOcc%()                 ' 0-based occurrence index, for highlighting repeated words correctly
 ```
+
+### Game time vs. audio time (#329)
+
+The synthesizer (`spkPhoneIdx` / `spkSamplePos`) runs as fast as the audio device drains the buffer, which depends on the machine, the audio device, and whether the run is capped at 60 fps. Nothing the game decides reads it. `SPK_Tick` moves a second position (`spkClkIdx` / `spkClkPos`) by `SAMPLE_RATE / 60` output samples (times `spkTimeScale`) every frame, and `SPK_IsPlaying%`, `SPK_CurWord$` and `SPK_CurWordOcc%` report that one, so when the crawl starts each paragraph and which word it highlights depend on the frame count alone. At 60 fps the two positions move together. When frames run slower than real time the voice finishes first and the highlight catches up; when they run faster (an uncapped scripted run) the next `SPK_Say` cuts off audio nobody hears. `tests/narr_drain_test.bas` checks this with the audio drain starved, normal, flooded and jittery.
 
 ## Known limitations and gotchas
 
