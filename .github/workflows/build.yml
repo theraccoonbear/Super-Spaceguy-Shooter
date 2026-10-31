@@ -61,8 +61,9 @@ jobs:
         with:
           qb64pe-version: ${{ env.QB64PE_VERSION }}
 
-      # tools/dev run must hand the container the display, GPU and controllers (#223).
-      - name: Check tools/dev run passes devices into the container
+      # tools/dev run must hand the container the display, GPU and controllers (#223);
+      # tools/dev record must parse its options and refuse a build with DB_URL (#321).
+      - name: Check tools/dev run and record container commands
         if: runner.os == 'Linux'
         run: bash tests/tools_dev_test.sh
 
