@@ -44,6 +44,34 @@ describe("POST /scores", () => {
     expect(await rows("SELECT player_name FROM scores")).toEqual([{ player_name: name }]);
   });
 
+  it("stores a score from a game build without difficulty as normal", async () => {
+    expect((await post("/scores", GAME_SCORE)).status).toBe(201);
+    expect(await rows("SELECT difficulty FROM scores")).toEqual([{ difficulty: "normal" }]);
+  });
+
+  it.each(["easy", "normal", "hard", "nightmare", "x", "very-hard", "lvl_5", "a234567890123456"])(
+    "stores difficulty %s",
+    async (difficulty) => {
+      expect((await post("/scores", JSON.stringify(score({ difficulty })))).status).toBe(201);
+      expect(await rows("SELECT difficulty FROM scores")).toEqual([{ difficulty }]);
+    },
+  );
+
+  it.each([
+    ["an empty difficulty", ""],
+    ["an uppercase difficulty", "Hard"],
+    ["a difficulty starting with a digit", "5"],
+    ["a difficulty over 16 chars", "a2345678901234567"],
+    ["a difficulty with a space", "very hard"],
+    ["a difficulty with punctuation", "hard!"],
+    ["a non-ASCII difficulty", "härd"],
+    ["a numeric difficulty", 3],
+    ["a null difficulty", null],
+  ])("rejects %s with 400", async (_name, difficulty) => {
+    expect((await post("/scores", JSON.stringify(score({ difficulty })))).status).toBe(400);
+    expect(await rows("SELECT id FROM scores")).toHaveLength(0);
+  });
+
   it("accepts score and wave at their ceilings", async () => {
     expect((await post("/scores", JSON.stringify(score({ score: 250000, wave: 100 })))).status).toBe(201);
   });
