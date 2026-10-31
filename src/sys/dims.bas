@@ -317,6 +317,7 @@ DIM SHARED httpLastTag     AS STRING
 Const LBRD_MAX = 10
 DIM SHARED lbrdName(1 To LBRD_MAX)  AS STRING
 DIM SHARED lbrdScore(1 To LBRD_MAX) AS LONG
+DIM SHARED lbrdDiff(1 To LBRD_MAX)  AS STRING   ' the row's difficulty level (#102)
 DIM SHARED lbrdCount  AS INTEGER
 DIM SHARED lbrdPollDone AS INTEGER
 

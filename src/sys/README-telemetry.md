@@ -24,8 +24,8 @@ Events fired today (see call sites in `gameplay/`, `state/`, `sys/sequence.bas`)
 The tables are defined in [`server/migrations/`](../../server/migrations/) and the routes and validation in [`server/src/index.ts`](../../server/src/index.ts), with tests in `server/test/`:
 
 - **`sss_telemetry`** (POST target for the batched event array): `session` (text, max 64 chars), `ev_time` (non-negative integer), `event` (text, max 64), `player_id` (text, max 64), `data` (text, max 1024), one row per event.
-- **`scores`** (POST target for score submission, only sent if `DB_URL`/`DB_KEY` are set, consent was given, and `score > 0`): `player_id` (max 64), `player_name` (max 32), `score`, `wave` (non-negative integers), `session` (max 64), and optionally `difficulty` (lowercase slug, max 16, stored as `normal` when absent).
-- **`top_scores`** (GET target for the leaderboard poll, `?order=score.desc&limit=N&select=player_name,score`): a read-only route over `scores`, highest score first, ties broken by earlier submission. `select` may also name `wave` and `difficulty`, and `difficulty=eq.<slug>` limits it to one difficulty. It's public; the two POSTs need `DB_KEY`.
+- **`scores`** (POST target for score submission, only sent if `DB_URL`/`DB_KEY` are set, consent was given, and `score > 0`): `player_id` (max 64), `player_name` (max 32), `score`, `wave` (non-negative integers), `session` (max 64), and optionally `difficulty` (lowercase slug, max 16, stored as `normal` when absent). The game sends the run's level (`runDifficulty`, a `levels` name from `assets/config/difficulty.ini`).
+- **`top_scores`** (GET target for the leaderboard poll, `?order=score.desc&limit=N&select=player_name,score,difficulty`): a read-only route over `scores`, highest score first, ties broken by earlier submission. `select` may also name `wave`, and `difficulty=eq.<slug>` limits it to one difficulty. It's public; the two POSTs need `DB_KEY`.
 
 The Worker rejects anything outside these shapes with a 400, so a payload change in `telemetry.bas` needs a matching change (and test) in `server/`.
 
@@ -33,9 +33,12 @@ The Worker rejects anything outside these shapes with a 400, so a payload change
 
 ```basic
 LBRD_Poll               ' enqueue a GET for the top N scores; call once per title-screen entry
-LBRD_Parse body$         ' parse the backend's JSON array response into lbrdName$()/lbrdScore()
+LBRD_Parse body$         ' parse the backend's JSON array response into lbrdName$()/lbrdScore()/lbrdDiff$()
+LBRD_DisplayName$(rank, name$, level$)  ' the board's name text: rank color, name, the level's tag
 LBRD_Rank%(score)        ' 1-based rank a given score would have on the current board, or 0
 ```
+
+The board ranks every difficulty together and marks each row with its level's `<level>_tag` from `difficulty.ini` (`DLV_Tag$`), in gray after the name; a level with an empty tag (Normal) shows none. A row without a `difficulty` counts as the default level; a level this build doesn't know shows no tag.
 
 `LBRD_Parse` is a linear string scan tailored to the exact flat-object array shape the backend returns for this query (`server/test/top_scores.test.ts` checks the Worker returns `tests/input/leaderboard.json`, the saved response `--leaderboard-file` loads, byte for byte), not a general JSON parser. If the query's `select=` list ever changes, this parser needs to change with it.
 
