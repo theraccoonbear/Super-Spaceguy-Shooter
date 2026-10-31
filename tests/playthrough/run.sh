@@ -13,7 +13,11 @@
 #      order, with nothing missing or extra; reaching the final title inside the
 #      --frames budget is the "didn't stall" check;
 #   3. the local telemetry CSV agrees: one boss_defeated per boss and a session_end
-#      with exit=win.
+#      with exit=win;
+#   4. the final title arrives no later than FINAL_FRAME_MAX (#325), so added dead time
+#      or a slower scene fails here instead of going unnoticed until --frames runs out.
+# It then prints the finishing frame and a per-segment timing table (frames and m:ss at
+# 60 fps for each milestone span), also printed when a check fails.
 #
 # Usage (from anywhere; needs an X display, or xvfb-run when DISPLAY is unset):
 #   tests/playthrough/run.sh [extra sss args...]   e.g. --screenshot-at 3000,9000
@@ -29,7 +33,7 @@
 # its score to the real leaderboard.
 #
 # When the game changes on purpose (a stage added, a scene reordered), update
-# expected.txt, and playthrough.txt / its "#! frames" if the run gets longer.
+# expected.txt, FINAL_FRAME_MAX, and playthrough.txt / its "#! frames" if the run gets longer.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -37,10 +41,61 @@ HERE="$REPO/tests/playthrough"
 BIN="${SSS_BIN:-$REPO/builds/sss}"
 OUT="${PLAYTHROUGH_OUT:-$REPO/builds/playthrough}"
 TIME_LIMIT="${PLAYTHROUGH_TIMEOUT:-900}"
+# Latest frame the final title may arrive at: the measured finishing frame plus ~5%.
+# When the run gets longer on purpose, take the new "final title reached at frame N"
+# from this script's output (the CI Playthrough job log), set this to about N * 1.05,
+# and say in the PR which segments grew (compare the segment tables). Measured: 12617
+# (3:30) on master with #339/#340 (the event-driven script, #330, plus the stage tuning);
+# combat stages end on a kill count, so their length moves whenever weapons, enemies
+# or the RNG stream change.
+FINAL_FRAME_MAX=13250
+
+raw=()
+
+# m:ss of a frame count at 60 fps
+mss() { printf '%d:%02d' $(($1 / 3600)) $(($1 / 60 % 60)); }
+
+# Final title frame and how long each milestone span lasted, from milestones.log.
+timing_report() {
+    local i fr nfr st sq lab task rest name line final="" played=0
+    [ "${#raw[@]}" -gt 1 ] || return 0
+    # the final title is the first title after any gameplay
+    for line in "${raw[@]}"; do
+        read -r fr st _ <<< "$line"
+        [ "$st" = GS_PLAYING ] && played=1
+        if [ "$st" = GS_TITLE ] && [ "$played" -eq 1 ]; then final=$fr; break; fi
+    done
+    echo "--- segment timings (60 fps: frames / m:ss) ---"
+    printf '%6s %6s %6s  %s\n' start frames m:ss segment
+    declare -A tot=()
+    local order=()
+    for ((i = 0; i < ${#raw[@]} - 1; i++)); do
+        read -r fr st sq lab task rest <<< "${raw[$i]}"
+        read -r nfr _ <<< "${raw[$((i + 1))]}"
+        name="$st"
+        [ -n "$lab" ] && name+=" $lab $task"
+        [[ " $rest " =~ \ (type=[a-z]+)\  ]] && name+=" ${BASH_REMATCH[1]}"
+        [ "$fr" = "$final" ] && name+=" (final title, idle until --frames)"
+        printf '%6d %6d %6s  %s\n' "$fr" $((nfr - fr)) "$(mss $((nfr - fr)))" "$name"
+        [ "$fr" = "$final" ] && continue
+        [ -z "${tot[$st]+x}" ] && order+=("$st")
+        tot[$st]=$((${tot[$st]:-0} + nfr - fr))
+    done
+    echo "--- time per state, up to the final title ---"
+    for st in "${order[@]}"; do
+        printf '%-16s %6d %6s\n' "$st" "${tot[$st]}" "$(mss "${tot[$st]}")"
+    done
+    if [ -n "$final" ]; then
+        echo "FINAL TITLE: reached at frame $final ($(mss "$final") at 60 fps; limit FINAL_FRAME_MAX=$FINAL_FRAME_MAX)"
+    else
+        echo "FINAL TITLE: not reached"
+    fi
+}
 # seed, flags and frames come from playthrough.txt's "#!" header (#324); the checks need frames
 FRAMES="$(sed -n 's/^#! *frames:\{0,1\} *\([0-9][0-9]*\) *$/\1/p' "$HERE/playthrough.txt")"
 
 fail() {
+    timing_report
     echo "PLAYTHROUGH FAILED: $*" >&2
     echo "  launch folder (milestones.log, game.out, sss_telemetry.csv): $OUT" >&2
     exit 1
@@ -128,4 +183,9 @@ defeated=$(grep -c ',boss_defeated,' sss_telemetry.csv 2> /dev/null)
 grep -q ',session_end,exit=win|' sss_telemetry.csv || fail "sss_telemetry.csv has no session_end with exit=win"
 
 title_frame=$(read -r fr _ <<< "${raw[-2]}"; echo "$fr")
+
+# 4. the run didn't get longer
+[ "$title_frame" -le "$FINAL_FRAME_MAX" ] || fail "the final title arrived at frame $title_frame ($(mss "$title_frame")), later than FINAL_FRAME_MAX=$FINAL_FRAME_MAX ($(mss "$FINAL_FRAME_MAX")); compare the segment table with the last passing run, and raise FINAL_FRAME_MAX only if the longer run is intended"
+
+timing_report
 echo "PLAYTHROUGH PASSED: $n milestones in order, back at the title by frame $title_frame of $FRAMES, $bosses bosses defeated, ${elapsed}s wall time"
