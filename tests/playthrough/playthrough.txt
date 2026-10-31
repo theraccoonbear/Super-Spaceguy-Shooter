@@ -1,7 +1,7 @@
 # Full-playthrough input script for tests/playthrough/run.sh (#100), played with
 #! seed 1
 #! args --god --nerf
-#! frames 12900
+#! frames 13200
 # from a launch folder with no sss_settings.ini. The outro returns to the title at
 # frame 12377; run.sh checks the milestones against
 # expected.txt. Every line reacts to the screen it is on (@ lines, #328), taking each
@@ -19,8 +19,18 @@
 @GS_LEADIN +0 SPACE
 @GS_LEADIN +1 SPACE
 @GS_LEADIN +2 SPACE
-# Every crawl: SPACE + ESC skips it once it is 60 frames old.
-@GS_CRAWL +60 FIRE ESC
+# The intro crawl fast-forwards (FIRE) for 240 frames before the skip, so its first
+# paragraphs start speaking: tests/playthrough/determinism.sh compares those NARR lines.
+@GS_CRAWL#1 +60 240 FIRE
+@GS_CRAWL#1 +300 FIRE ESC
+# Every other crawl: SPACE + ESC skips it once it is 60 frames old.
+@GS_CRAWL#2 +60 FIRE ESC
+@GS_CRAWL#3 +60 FIRE ESC
+@GS_CRAWL#4 +60 FIRE ESC
+@GS_CRAWL#5 +60 FIRE ESC
+@GS_CRAWL#6 +60 FIRE ESC
+@GS_CRAWL#7 +60 FIRE ESC
+@GS_CRAWL#8 +60 FIRE ESC
 # Emperor card: a fresh ESC skips to the title. The crawl skip just held ESC, so it
 # waits a frame for the card to see ESC up first.
 @GS_INTRO +1 ESC
