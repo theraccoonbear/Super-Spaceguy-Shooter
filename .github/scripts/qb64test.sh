@@ -6,6 +6,8 @@
 #
 #   QB64_TEST_JOBS=N   parallel workers (default: half the logical CPUs, at least 2 --
 #                      compiles are CPU-bound and hyperthreads mostly just contend)
+#   QB64_TEST_SHARD=I/N  run only shard I of N (1-based): every Nth test and tool,
+#                      http_queue_test in shard 1. CI splits the slow Windows suite (#341).
 #
 # Each test is built and run by one worker; its output is printed in suite order once
 # everything has finished, followed by a pass/fail summary with timings.
@@ -110,6 +112,21 @@ TOOLS=(
   musicplayer
   tools/musrender
 )
+
+RUN_HTTP=1
+if [ -n "${QB64_TEST_SHARD:-}" ]; then
+  SHARD_I="${QB64_TEST_SHARD%/*}" SHARD_N="${QB64_TEST_SHARD#*/}"
+  if ! [[ "$SHARD_I" =~ ^[1-9][0-9]*$ && "$SHARD_N" =~ ^[1-9][0-9]*$ ]] || [ "$SHARD_I" -gt "$SHARD_N" ]; then
+    echo "ERROR: QB64_TEST_SHARD must be I/N with 1 <= I <= N, got '$QB64_TEST_SHARD'"
+    exit 1
+  fi
+  # alternate down the longest-first lists so each shard gets a share of the slow tests
+  pick_shard() { local i=0 x; for x in "$@"; do [ $((i++ % SHARD_N + 1)) -eq "$SHARD_I" ] && echo "$x"; done; return 0; }
+  mapfile -t TESTS < <(pick_shard "${TESTS[@]}")
+  mapfile -t TOOLS < <(pick_shard "${TOOLS[@]}")
+  [ "$SHARD_I" -eq 1 ] || RUN_HTTP=0
+  echo "==> Shard $QB64_TEST_SHARD: ${#TESTS[@]} tests, ${#TOOLS[@]} tools$([ "$RUN_HTTP" = 1 ] && echo ', http_queue_test')"
+fi
 
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 JOBS="${QB64_TEST_JOBS:-$((CPUS / 2))}"
@@ -335,12 +352,16 @@ run_http_test() {
   kill "$mock_pid" 2>/dev/null || true
   echo "$((SECONDS - t0))s build+run" > "$WORK/$name.time"
 }
-run_http_test http_queue_test
-[ "$(cat "$WORK/http_queue_test.result")" = "PASS" ] || FAILED+=(http_queue_test)
+HTTP_TESTS=()
+if [ "$RUN_HTTP" = 1 ]; then
+  HTTP_TESTS=(http_queue_test)
+  run_http_test http_queue_test
+  [ "$(cat "$WORK/http_queue_test.result")" = "PASS" ] || FAILED+=(http_queue_test)
+fi
 
 echo ""
 echo "==> Summary ($((SECONDS - SUITE_T0))s, $JOBS workers)"
-for name in "${TESTS[@]}" "${TOOLS[@]}" http_queue_test; do
+for name in "${TESTS[@]}" "${TOOLS[@]}" ${HTTP_TESTS[@]+"${HTTP_TESTS[@]}"}; do
   printf '    %-24s %-6s %s\n' "$name" "$(cut -d' ' -f1 < "$WORK/$name.result")" "$(cat "$WORK/$name.time" 2> /dev/null || true)"
 done
 
