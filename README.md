@@ -39,7 +39,7 @@ You need:
 tools/buildqb sss.bas
 ```
 
-This generates the spline math, bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows).
+This generates the spline math, bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows), or wherever `SSS_BUILD_OUT=<path>` says.
 
 ```bash
 # smoke test
@@ -73,6 +73,8 @@ tools/dev emit    # regenerate spline math (npm install in math/ + node tools/em
 tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` runs one command
 tools/dev run     # play the game in the container on your display; args pass through to sss
 tools/dev headless  # run the game on an off-screen display (Xvfb), e.g. for scripted playtests (below)
+tools/dev record  # record the scripted playthrough, with sound, to builds/playthrough.mp4 (below)
+tools/dev completion  # print the bash tab-completion function (below)
 ```
 
 Typical workflow:
@@ -87,7 +89,40 @@ tools/dev test                      # full suite before you commit (pre-commit c
 
 The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
 
+**Tab completion.** `tools/dev completion` prints a bash completion function. To turn it on, add this line to `~/.bashrc` (use your checkout's path):
+
+```bash
+source <(~/code/Super-Spaceguy-Shooter/tools/dev completion)
+```
+
+Then Tab completes the command (`tools/dev bu` gives `build`, `tools/dev re` offers `record` and `render`) and each command's options: `build --release`, `record`'s own options plus the game flags it passes on, the game flags for `run` and `headless`, and `render`'s options, groups and scene names. After `--scene` it offers the scene names from `builds/sss --help`, which prints and exits before the game opens a window (without a `builds/sss`, or with a release build, it offers the scene types). `--input-script`, `--leaderboard-file`, `--out` and `--script` complete file names. It is registered for `./tools/dev`, `tools/dev` and that checkout's absolute path. In zsh, run `autoload -U +X bashcompinit && bashcompinit` before the `source` line.
+
+`tools/dev` itself only picks the engine, mounts and image. Anything that runs inside the container and is more than one command line is a script in `tools/container/in/`, called by path through the mount: `build.sh` (build plus the `--version` smoke test, or `--release` plus `tests/release_build_test.sh`), `headless.sh`, `record.sh`, `emit.sh` and `libs-ok.sh` (can the container load `builds/sss`?). Each one starts with a usage comment and can be run on its own in `tools/dev shell`, e.g. `tools/dev shell tools/container/in/headless.sh --scene title --frames 60`.
+
 `tools/dev run` and `tools/dev headless` rebuild `builds/sss` if it is missing, older than any file in `sss.bas`, `src/`, `assets/` or `VERSION` (so a `git pull` or a branch switch never plays a stale build), or was built natively on a host with a newer glibc than the container, then runs it with your desktop passed through: the X11 socket and `DISPLAY`/`XAUTHORITY` (XWayland on Wayland desktops), the PulseAudio/PipeWire socket from `$XDG_RUNTIME_DIR`, `/dev/dri` for GPU rendering, and `/dev/input` so the game sees your controllers (bind-mounted, so a pad plugged in after launch works too). For that container only, SELinux labeling is turned off (`--security-opt label=disable`) so it can share the sockets, and `--ipc=host` lets X11 shared memory work. If no audio socket is found it warns and runs silently. Every other command stays headless. You can also run a container-built `builds/sss` directly on the host if it has the GL/X11/ALSA runtime libraries.
+
+#### Recording a video
+
+`tools/dev record` makes an MP4, picture and sound, of a scripted run. With no options it records the [full playthrough](#testing) (`--god --nerf --seed 1 --frames 20000`, input `tests/playthrough/playthrough.txt`) to `builds/playthrough.mp4`, which takes about 6 minutes (the run plays at normal speed). Nothing appears on your desktop or comes out of your speakers: inside the container the game runs on its own Xvfb display at 320x240, its sound goes to a PulseAudio server whose only output is a null sink, and `ffmpeg` records the display (`x11grab`, 60 fps) and that sink's monitor into H.264/AAC. The game starts from a fresh, empty launch folder, as the playthrough test does, so your saved settings and callsign don't change what the script does, and the same seed gives the same run.
+
+```bash
+tools/dev record                                   # the playthrough -> builds/playthrough.mp4
+tools/dev record --out ~/Videos/boss3.mp4 --script tests/input/boss-hold-left.txt --frames 1500 --scene boss3 --god
+```
+
+| Option | Default | |
+|---|---|---|
+| `--out FILE` | `builds/playthrough.mp4` | where the MP4 goes (relative to where you run it) |
+| `--script FILE` | `tests/playthrough/playthrough.txt` | the input script; it must be inside the repo |
+| `--frames N` | `20000` | stop after N frames |
+| `--seed N` | `1` | random seed |
+| `--scale N` | `2` | whole-number upscale, nearest-neighbour (2 gives 640x480) |
+| `--timeout S` | frames / 60 + 120 | wall-clock limit; a hung game is stopped and the command fails |
+| `--rebuild` | | rebuild `builds/record/sss` even if it is up to date |
+
+Any other arguments (or everything after `--`) go to `sss` in place of the default `--god --nerf`. The recording stops when the game exits at `--frames`. `record` adds `--realtime`, a dev-only flag that keeps the 60 fps throttle a scripted run otherwise skips, so the video plays at normal speed and the sound lines up with it.
+
+`record` never sends telemetry or posts a score, even when your `assets/.env` has real credentials. The playthrough script OKs the data notice, so `record` plays its own binary, `builds/record/sss`. It builds that binary in the container with an empty file mounted over `assets/.env`, so the credentials never get embedded. Before every recording it checks that the binary contains no `DB_URL`/`DB_KEY` value and no copy of your `DB_URL`, and it deletes the binary and stops if it finds one. Your `assets/.env` and `builds/sss` are never touched. The record binary is reused while it is newer than every source file; `--rebuild` forces a fresh build. It needs `ffmpeg` and PulseAudio in the dev image, so an image built before `record` existed needs a `tools/dev image` first (it tells you).
 
 ### CLI options
 
@@ -106,6 +141,7 @@ sss [options]
   --script-override      Let flags differ from the input script's `#!` header (the command line wins)
   --leaderboard-file <file>  Show a saved top_scores JSON response on the leaderboard instead of polling (offline testing)
   --frames N             Quit after N frames (60 per second)
+  --realtime             Keep 60 frames per second in --input-script runs (for recordings, see tools/dev record)
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
   --ships N              Start every run with N ships (testing)
@@ -117,7 +153,7 @@ sss [options]
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
 
-**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE` (or `SPACE`) `ESC TAB ENTER BACKSPACE BACKTICK F1`-`F12`, any letter `A`-`Z` (either case counts), any digit `0`-`9`, and `#<code>` for any other `_KEYDOWN` code (e.g. `#21248` for Delete). The gamepad is `PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT`, the left stick `PAD_LEFT PAD_RIGHT PAD_UP PAD_DOWN` and the d-pad `PAD_DPAD_UP PAD_DPAD_DOWN PAD_DPAD_LEFT PAD_DPAD_RIGHT` (an Xbox 360 layout), or raw: `PADBTN<n>` holds button n and `PADAXIS<n>-` / `PADAXIS<n>+` push axis n fully. These set the pad's raw state and go through the same mapping as a real controller (so `PAD_A` and `PAD_B` fire but are not the SPACE key to a menu that reads the keyboard). Every screen and dialog sees them, so menus can be scripted too: a key press registers once, on the first frame of its range. A line starting with `#` is a comment. A script can say how it must be launched in a `#!` header: `#! seed 1`, `#! args --god --nerf` (launch flags; repeatable) and `#! frames 20000` act as `--seed 1 --god --nerf --frames 20000` (`tests/playthrough/playthrough.txt` has one). Giving the same flag on the command line is fine when the values match; a different value (`--seed 7` against `#! seed 1`) is an error, unless `--script-override` lets the command line win. Scripts without a header run as before. A line can also react to the game instead of the clock: `@<trigger> +<offset> [<len> | *] [every <n>] KEY ...` holds the keys `<offset>` frames after each entry into a game state (`@GS_CRAWL +60 FIRE ESC` skips every crawl) or a sequence label (`@label:level3 ...`), for `<len>` frames (default 1), for as long as the trigger lasts (`*`), or repeating `every <n>` frames; `@GS_TITLE#1` fires on the first entry only. A held key lets go when its trigger ends. `tests/playthrough/playthrough.txt` is written this way; the full syntax is in the header of `src/sys/inputscript.bas`. Scripted runs skip the 60 fps throttle and go as fast as the machine allows. Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
+**Scripted playtests:** `--input-script <file>` replaces the keyboard and gamepad with a per-frame script. Each line is `<from> <to> KEY [KEY ...]`: hold those keys on frames from..to (inclusive, 60 per second). The keys are `LEFT RIGHT UP DOWN FIRE` (or `SPACE`) `ESC TAB ENTER BACKSPACE BACKTICK F1`-`F12`, any letter `A`-`Z` (either case counts), any digit `0`-`9`, and `#<code>` for any other `_KEYDOWN` code (e.g. `#21248` for Delete). The gamepad is `PAD_A PAD_B PAD_X PAD_Y PAD_START PAD_SELECT`, the left stick `PAD_LEFT PAD_RIGHT PAD_UP PAD_DOWN` and the d-pad `PAD_DPAD_UP PAD_DPAD_DOWN PAD_DPAD_LEFT PAD_DPAD_RIGHT` (an Xbox 360 layout), or raw: `PADBTN<n>` holds button n and `PADAXIS<n>-` / `PADAXIS<n>+` push axis n fully. These set the pad's raw state and go through the same mapping as a real controller (so `PAD_A` and `PAD_B` fire but are not the SPACE key to a menu that reads the keyboard). Every screen and dialog sees them, so menus can be scripted too: a key press registers once, on the first frame of its range. A line starting with `#` is a comment. A script can say how it must be launched in a `#!` header: `#! seed 1`, `#! args --god --nerf` (launch flags; repeatable) and `#! frames 20000` act as `--seed 1 --god --nerf --frames 20000` (`tests/playthrough/playthrough.txt` has one). Giving the same flag on the command line is fine when the values match; a different value (`--seed 7` against `#! seed 1`) is an error, unless `--script-override` lets the command line win. Scripts without a header run as before. A line can also react to the game instead of the clock: `@<trigger> +<offset> [<len> | *] [every <n>] KEY ...` holds the keys `<offset>` frames after each entry into a game state (`@GS_CRAWL +60 FIRE ESC` skips every crawl) or a sequence label (`@label:level3 ...`), for `<len>` frames (default 1), for as long as the trigger lasts (`*`), or repeating `every <n>` frames; `@GS_TITLE#1` fires on the first entry only. A held key lets go when its trigger ends. `tests/playthrough/playthrough.txt` is written this way; the full syntax is in the header of `src/sys/inputscript.bas`. Scripted runs skip the 60 fps throttle and go as fast as the machine allows (unless `--realtime` is given). Gameplay steps per frame, so the result doesn't change. With `--seed`, the same script plays the same fight every time. Example (`tests/input/boss-hold-left.txt` holds left and fires for 25 s):
 
 ```bash
 tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input-script tests/input/boss-hold-left.txt
@@ -139,7 +175,7 @@ QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical 
 #   tools/dev shell bash -c "tools/buildqb tests/spore_test.bas && builds/spore_test")
 tools/buildqb tests/spore_test.bas && builds/spore_test
 tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
-bash tests/tools_dev_test.sh  # checks the container command `tools/dev run` builds (display, GPU, controllers)
+bash tests/tools_dev_test.sh  # checks the container commands `tools/dev run` and `record` build (display, GPU, controllers; options, DB_URL refusal) and its tab completion
 ```
 
 The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name in `TESTS` in `.github/scripts/qb64test.sh`.

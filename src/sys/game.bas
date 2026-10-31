@@ -135,6 +135,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --script-override      Let flags here differ from the input script's #! header (this line wins)"
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
+    CLI_Emit guFH, "  --realtime             Keep 60 frames per second in --input-script runs (for recordings)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
     CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"
@@ -145,8 +146,6 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"
     SEQ_PrintScenes guFH
-    CLI_Emit guFH, "  consent"
-    CLI_Emit guFH, "  username"
     $END IF
     If InStr(_OS$, "WIN") = 0 Then Close #guFH
     If guErr <> "" Then System 1 Else System 0
