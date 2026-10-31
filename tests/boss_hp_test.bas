@@ -13,11 +13,13 @@ Option _Explicit
 $CONSOLE:ONLY
 $EMBED:'assets/config/bosses.ini':'CFGBOSSES'
 $EMBED:'assets/sequence.txt':'SEQTXT'
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Sub DBG_Print (bttDbg As String) : End Sub
 Sub TELEM_UpgradeBought (btuItem As String, btuLevel As Integer, btuPrice As Long) : End Sub
 Sub TELEM_CreditBonus (btcC As Long, btcR As Double, btcP As Long) : End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
@@ -149,6 +151,31 @@ BT_Assert BHP_ShieldFrames&(735 * 120) = 150, "a 2 s callout: 120 + 30 = 150 fra
 BT_Assert BHP_ShieldFrames&(735 * 120 + 1) = 151, "part of a frame counts as a frame"
 
 Print ""
+Print "--- difficulty levels (#102): boss hit points x boss_hp, then --nerf ---"
+Dim btdLv As Integer, btdAll As Integer, btdOk As Integer
+cfgBosses = CFG_Parse$(_EMBEDDED$("CFGBOSSES"))
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+BT_Assert DLV_Load% <> 0, "difficulty.ini loads " + dlvLoadErr
+btdAll = -1
+For btdLv = 1 To DLV_Count%
+    DLV_Use DLV_LevelAt$(btdLv)
+    btdOk = BHP_Load%
+    If btdOk = 0 Then btdAll = 0
+    If BHP_MaxHP%(btHp(2), 0) <> Int(90 * DLV_M!("boss_hp") + 0.501) Or BHP_PhaseStart%(BHP_MaxHP%(btHp(2), 0), 3) < 1 Then btdAll = 0 : Print "  " + DLV_LevelAt$(btdLv) + ": boss 2 has" + Str$(BHP_MaxHP%(btHp(2), 0))
+Next btdLv
+BT_Assert btdAll, "every level: bosses.ini loads, boss 2 has 90 x boss_hp and three phases"
+DLV_Use "normal"
+btdOk = BHP_Load% : BT_Assert btdOk <> 0 And BHP_MaxHP%(btHp(1), 0) = 30 And BHP_MaxHP%(btHp(2), 0) = 90 And BHP_MaxHP%(btHp(3), 0) = 130 And BHP_MaxHP%(btHp(3), -1) = 13, "normal: 30, 90, 130 (--nerf 13), as without difficulty.ini"
+DLV_Use "easy"
+btdOk = BHP_Load% : BT_Assert btdOk <> 0 And BHP_MaxHP%(btHp(1), 0) = 21 And BHP_MaxHP%(btHp(2), 0) = 63 And BHP_MaxHP%(btHp(3), 0) = 91, "easy x0.7: 21, 63, 91"
+BT_Assert BHP_MaxHP%(btHp(3), -1) = 9 And BHP_MaxHP%(btHp(1), -1) = 3, "easy --nerf: 91 -> 9, 21 -> 3 (the minimum)"
+DLV_Use "hard"
+btdOk = BHP_Load% : BT_Assert btdOk <> 0 And BHP_MaxHP%(btHp(1), 0) = 39 And BHP_MaxHP%(btHp(2), 0) = 117 And BHP_MaxHP%(btHp(3), 0) = 169 And BHP_MaxHP%(0, 0) = 39, "hard x1.3: 39, 117, 169 (no hp=: 30 -> 39)"
+BT_Assert BHP_PhaseStart%(117, 2) = 77 And BHP_PhaseStart%(117, 3) = 39, "hard boss 2: phase 2 at 77, phase 3 at 39 (the same 66% / 33%)"
+DLV_Use "normal"
+BT_Assert BHP_Load% <> 0, "back to normal"
+
+
 Print "passed:" + Str$(btPassed) + "  failed:" + Str$(btFailed)
 If btFailed > 0 Then System 1
 System 0

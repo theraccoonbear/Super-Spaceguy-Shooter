@@ -9,6 +9,7 @@
 '   assets/config/powerups.ini    power-up odds, amounts, spawn lane and grab size (cfgPowerups)
 '   assets/config/waves.ini       combat waves: timing, size, spawn distance, enemy fire, the clear-out (cfgWaves)
 '   assets/config/bosses.ini      boss hit points, phases and the phase-change shield (cfgBosses)
+'   assets/config/difficulty.ini  difficulty levels and their multipliers (cfgDifficulty, in difficulty.bas)
 ' sss.bas parses each embedded file once at startup:
 '   store$ = CFG_Parse$(text$)     parsed lookup: key + Chr$(1) + value + Chr$(2) + ...
 '   v$ = CFG_Get$(store$, key$)    the value, or "" when the key is missing

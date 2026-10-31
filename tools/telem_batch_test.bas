@@ -66,7 +66,7 @@ Dim tbPlayer As String : tbPlayer = TB_UUID$
 Dim tbT      As Long   : tbT      = Int(Timer)
 
 Dim tbBatch As String
-tbBatch = tbBatch + JSON_Obj$(JSON_S$("session", tbSession) + "," + JSON_N$("ev_time", LTrim$(Str$(tbT)))     + "," + JSON_S$("event", "session_start") + "," + JSON_S$("player_id", tbPlayer) + "," + JSON_S$("data", "player_id=" + tbPlayer + "|version=0.1.0-test|nerf=0"))
+tbBatch = tbBatch + JSON_Obj$(JSON_S$("session", tbSession) + "," + JSON_N$("ev_time", LTrim$(Str$(tbT)))     + "," + JSON_S$("event", "session_start") + "," + JSON_S$("player_id", tbPlayer) + "," + JSON_S$("data", "player_id=" + tbPlayer + "|version=0.1.0-test|nerf=0|difficulty=normal"))
 tbBatch = tbBatch + "," + JSON_Obj$(JSON_S$("session", tbSession) + "," + JSON_N$("ev_time", LTrim$(Str$(tbT+5))) + "," + JSON_S$("event", "enemy_killed")   + "," + JSON_S$("player_id", tbPlayer) + "," + JSON_S$("data", "score=100|kills=1|wave=0"))
 tbBatch = tbBatch + "," + JSON_Obj$(JSON_S$("session", tbSession) + "," + JSON_N$("ev_time", LTrim$(Str$(tbT+20)))+ "," + JSON_S$("event", "player_death")    + "," + JSON_S$("player_id", tbPlayer) + "," + JSON_S$("data", "score=100|kills=1|wave=0|boss=0|cause=test"))
 tbBatch = tbBatch + "," + JSON_Obj$(JSON_S$("session", tbSession) + "," + JSON_N$("ev_time", LTrim$(Str$(tbT+20)))+ "," + JSON_S$("event", "session_end")     + "," + JSON_S$("player_id", tbPlayer) + "," + JSON_S$("data", "score=100|kills=1|boss=0|shots=5|hits=3|misses=2|escapes=0"))

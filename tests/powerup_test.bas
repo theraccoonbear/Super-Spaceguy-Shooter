@@ -11,11 +11,13 @@
 Option _Explicit
 $CONSOLE:ONLY
 $EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Sub DBG_Print (pttDbg As String) : End Sub
 Sub TELEM_UpgradeBought (ptuItem As String, ptuLevel As Integer, ptuPrice As Long) : End Sub
 Sub TELEM_CreditBonus (ptcC As Long, ptcR As Double, ptcP As Long) : End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
@@ -162,6 +164,30 @@ PT_Assert PT_Near%(ptAmt, 15) And PT_Near%(fuelLevel, 115) And score = 0, "a big
 shieldMax = 150 : lives = 100
 ptAmt = PUP_Apply!(PUP_SHIELD, 1)
 PT_Assert PT_Near%(ptAmt, 45) And lives = 145, "a bigger shield (150) has room: +45"
+
+Print ""
+Print "--- difficulty levels (#102): chance and amounts ---"
+Dim ptdLv As Integer, ptdAll As Integer, ptdOk As Integer
+cfgPowerups = CFG_Parse$(_EMBEDDED$("CFGPOWERUPS"))
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+PT_Assert DLV_Load% <> 0, "difficulty.ini loads " + dlvLoadErr
+ptdAll = -1
+For ptdLv = 1 To DLV_Count%
+    DLV_Use DLV_LevelAt$(ptdLv)
+    ptdOk = PUP_Load%
+    If ptdOk = 0 Then ptdAll = 0 : Print "  " + pupLoadErr
+    If PT_Near%(pupChance, 0.15 * DLV_M!("pup_chance")) = 0 Or PT_Near%(PUP_Amount!(PUP_FUEL, 3), 15 * DLV_M!("pup_fuel")) = 0 Then ptdAll = 0 : Print "  " + DLV_LevelAt$(ptdLv) + ": chance or fuel off"
+    If pupShield <> Int(45 * DLV_M!("pup_shield") + 0.501) Or pupPoints <> 500 Or PT_Near%(pupW(PUP_FUEL), 15) = 0 Then ptdAll = 0 : Print "  " + DLV_LevelAt$(ptdLv) + ": shield, points or weights off"
+Next ptdLv
+PT_Assert ptdAll, "every level: chance x pup_chance, fuel x pup_fuel, shield x pup_shield; points and the mix as they are"
+DLV_Use "normal"
+ptdOk = PUP_Load% : PT_Assert ptdOk <> 0 And pupChance = 0.15! And pupShield = 45 And PUP_Amount!(PUP_FUEL, 1) = 15, "normal: 0.15, shield 45, fuel 15 as without difficulty.ini"
+DLV_Use "easy"
+ptdOk = PUP_Load% : PT_Assert ptdOk <> 0 And PT_Near%(pupChance, 0.195) And pupShield = 60 And PT_Near%(PUP_Amount!(PUP_FUEL, 1), 19.95), "easy: 19.5% a wave, shield 60, fuel 19.95"
+DLV_Use "hard"
+ptdOk = PUP_Load% : PT_Assert ptdOk <> 0 And PT_Near%(pupChance, 0.1275) And pupShield = 41 And PT_Near%(PUP_Amount!(PUP_FUEL, 1), 15), "hard: 12.75% a wave, shield 41, fuel 15"
+DLV_Use "normal"
+PT_Assert PUP_Load% <> 0, "back to normal"
 
 Print ""
 Print "passed:" + Str$(ptPassed) + "  failed:" + Str$(ptFailed)

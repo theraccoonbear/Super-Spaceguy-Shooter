@@ -107,6 +107,11 @@ Sub CLI_Parse()
         Loop
         If cliI > 3 Then GAME_Usage("--pup takes at most 3 kinds")
     End If
+    cliVal = CLI_Value$(cliLine, "--difficulty ")
+    If cliVal <> "" Or InStr(cliLine, "--difficulty") > 0 Then
+        If DLV_Index%(cliVal) = 0 Then GAME_Usage("--difficulty takes " + DLV_List$ + ", got '" + cliVal + "'")
+        cliDifficulty = cliVal
+    End If
     cliVal = CLI_Value$(cliLine, "--seed ")
     If cliVal <> "" Then
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--seed needs a whole number, got '" + cliVal + "'")

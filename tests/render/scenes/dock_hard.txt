@@ -1,0 +1,6 @@
+# The dock scene (dock.txt) at --difficulty hard (#102): fuel at $3.50/U (2 x the +40% rise
+# x 1.25), the jump's need at Hard's burn, and the upgrade prices x1.15.
+#! group: gameplay
+#! args: --scene dock2 --credits 400 --fuel 30 --difficulty hard
+#! shots: 60
+30 30 LEFT

@@ -313,7 +313,7 @@ Function ISC_ArgKind%(iscAK As String)
     Select Case iscAK
     Case "--god", "--nerf", "--crawls", "--debug", "--no-telem"
         ISC_ArgKind% = 1
-    Case "--scene", "--credits", "--ships", "--shields", "--fuel", "--pup", "--screenshot-at", "--leaderboard-file", "--seed", "--frames"
+    Case "--scene", "--difficulty", "--credits", "--ships", "--shields", "--fuel", "--pup", "--screenshot-at", "--leaderboard-file", "--seed", "--frames"
         ISC_ArgKind% = 2
     Case Else
         ISC_ArgKind% = 0

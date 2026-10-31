@@ -1,3 +1,4 @@
+'$INCLUDE:'gameplay/difficulty.bas'
 '$INCLUDE:'sys/inputscript.bas'
 '$INCLUDE:'sys/menunav.bas'
 '$INCLUDE:'sys/cli.bas'

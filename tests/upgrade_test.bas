@@ -17,6 +17,7 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Sub DBG_Print (upgtDbg As String) : End Sub
 
@@ -43,6 +44,7 @@ Sub SEQ_NextLeg (snlK As Long, snlBS As Single, snlB As Integer, snlA As Integer
     snlK = utLegKills : snlBS = utLegBossSecs : snlB = utLegBoss : snlA = utLegAst
 End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
@@ -480,6 +482,41 @@ Print ""
 Print "--- new game resets the run ---"
 UPG_Reset
 UT_Assert credits = 0 And upgLevel(UPG_ROLL) = 0 And upgLevel(UPG_REGEN) = 0 And rollCoolMax = 0 And regenEvery = 0, "credits and upgrades cleared"
+
+Print ""
+Print "--- difficulty levels (#102): credits earned and upgrade prices ---"
+Dim utdLv As Integer, utdAll As Integer, utdOk As Integer, utdId As Integer, utdL As Integer, utdBase(1 To UPG_COUNT, 1 To UPG_MAX_LV) As Long
+cfgEconomy = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
+cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
+cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
+UT_Assert UPG_Load% <> 0, "the real table again"
+For utdId = 1 To UPG_COUNT
+    For utdL = 1 To upgMax(utdId) : utdBase(utdId, utdL) = upgPrice(utdId, utdL) : Next utdL
+Next utdId
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+UT_Assert DLV_Load% <> 0, "difficulty.ini loads " + dlvLoadErr
+utdAll = -1
+For utdLv = 1 To DLV_Count%
+    DLV_Use DLV_LevelAt$(utdLv)
+    utdOk = UPG_Load%
+    If utdOk = 0 Then utdAll = 0
+    For utdId = 1 To UPG_COUNT
+        For utdL = 1 To upgMax(utdId)
+            If upgPrice(utdId, utdL) <> DLV_Round&(utdBase(utdId, utdL), DLV_M!("upgrade_price")) Then utdAll = 0
+        Next utdL
+    Next utdId
+    If crKill <> DLV_Round&(25, DLV_M!("credits")) Or crBoss <> DLV_Round&(600, DLV_M!("credits")) Or crAstNear <> DLV_Round&(20, DLV_M!("credits")) Then utdAll = 0
+    If UT_Near%(crBonusRate, 1) = 0 Or UT_Near%(upgFxA(UPG_LASER, 3), 180) = 0 Or UT_Near%(upgFxA(UPG_FUEL, 2), 160) = 0 Then utdAll = 0
+Next utdLv
+UT_Assert utdAll, "every level: every price x upgrade_price, credits x credits; the cash-in rate and the upgrades' effects as they are"
+DLV_Use "normal"
+utdOk = UPG_Load% : UT_Assert utdOk <> 0 And upgPrice(UPG_LASER, 3) = 250 And crKill = 25 And crBoss = 600, "normal: laser 250, kill 25, boss 600 as without difficulty.ini"
+DLV_Use "easy"
+utdOk = UPG_Load% : UT_Assert utdOk <> 0 And upgPrice(UPG_LASER, 1) = 68 And upgPrice(UPG_NOVA, 3) = 255 And crKill = 30 And crStage = 240, "easy: laser 68, nova lv3 255, kill 30, stage 240"
+DLV_Use "hard"
+utdOk = UPG_Load% : UT_Assert utdOk <> 0 And upgPrice(UPG_LASER, 1) = 92 And upgPrice(UPG_NOVA, 3) = 345 And crKill = 21 And crBoss = 510, "hard: laser 92, nova lv3 345, kill 21, boss 510"
+DLV_Use "normal"
+UT_Assert UPG_Load% <> 0, "back to normal"
 
 Print ""
 Print "=== " + LTrim$(Str$(utPassed + utFailed)) + " tests: " + LTrim$(Str$(utPassed)) + " passed, " + LTrim$(Str$(utFailed)) + " failed ==="

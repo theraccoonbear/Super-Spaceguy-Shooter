@@ -14,11 +14,13 @@ Option _Explicit
 $CONSOLE:ONLY
 $EMBED:'assets/config/waves.ini':'CFGWAVES'
 $EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Sub DBG_Print (wttDbg As String) : End Sub
 Sub TELEM_UpgradeBought (wtuItem As String, wtuLevel As Integer, wtuPrice As Long) : End Sub
 Sub TELEM_CreditBonus (wtcC As Long, wtcR As Double, wtcP As Long) : End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
@@ -214,6 +216,40 @@ WT_Assert wtOk, "every power-up still 15 or more ahead is pulled in and caught, 
 WT_Assert wtMax < wvtClearMax, "every power-up is caught or gone past before the cap (slowest" + Str$(wtMax) + " frames)"
 
 Print ""
+Print "--- difficulty levels (#102): pacing, not more enemies ---"
+Dim wtdLv As Integer, wtdL As String, wtdAll As Integer, wtdOk As Integer
+Dim wtdFirst As Long, wtdOpen As Long, wtdGap As Long, wtdF As Long
+cfgWaves = CFG_Parse$(_EMBEDDED$("CFGWAVES"))
+WT_Assert WVT_Load% <> 0, "the real waves.ini again"
+wtdFirst = WT_FramesTo&(0, 0, 1) : wtdOpen = WT_FramesTo&(1, 0, 1) : wtdGap = WT_FramesTo&(5, 0, 3)
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+WT_Assert DLV_Load% <> 0, "difficulty.ini loads " + dlvLoadErr
+wtdAll = -1
+For wtdLv = 1 To DLV_Count%
+    wtdL = DLV_LevelAt$(wtdLv)
+    DLV_Use wtdL
+    wtdOk = WVT_Load%
+    If wtdOk = 0 Then wtdAll = 0 : Print "  " + wtdL + ": " + wvtLoadErr
+    wtdF = WT_FramesTo&(0, 0, 1)
+    If Abs(wtdF - (wtdFirst - 1) * DLV_M!("wave_first") - 1) > 1 Then wtdAll = 0 : Print "  " + wtdL + ": first wave at" + Str$(wtdF)
+    wtdF = WT_FramesTo&(1, 0, 1)
+    If Abs(wtdF - (wtdOpen - 1) * DLV_M!("wave_open_gap") - 1) > 1 Then wtdAll = 0 : Print "  " + wtdL + ": opening gap" + Str$(wtdF)
+    wtdF = WT_FramesTo&(5, 0, 3)
+    If Abs(wtdF - (wtdGap - 1) * DLV_M!("wave_gap") - 1) > 1 Then wtdAll = 0 : Print "  " + wtdL + ": regular gap" + Str$(wtdF)
+    If WVT_WaveSize%(0, 1, 3) <> 1 Or WVT_WaveSize%(0, 2, 3) <> 2 Or WVT_WaveSize%(5, 6, 3) <> 3 Then wtdAll = 0 : Print "  " + wtdL + ": wave sizes changed"
+    If WVT_DistMin!(0) <> 55 Or WVT_DistMin!(5) <> 70 Or WT_Near%(WVT_FireScale!(6), 0.7) = 0 Then wtdAll = 0 : Print "  " + wtdL + ": spawn distance or per-stage fire changed"
+Next wtdLv
+WT_Assert wtdAll, "every level: first wave, opening and regular gaps x wave_first / wave_open_gap / wave_gap; wave sizes, spawn distance and per-stage fire as they are"
+DLV_Use "normal"
+wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_FramesTo&(0, 0, 1) = wtdFirst And WT_FramesTo&(1, 0, 1) = wtdOpen And WT_FramesTo&(5, 0, 3) = wtdGap, "normal: the same frames as without difficulty.ini"
+DLV_Use "easy"
+wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_Near%(WVT_GapTicks!(5, 0, 3), 280 * WVT_TICK) And WT_Near%(WVT_GapTicks!(0, 0, 1), 60 * WVT_TICK), "easy: normal's pace, regular gap 280 frames in stage 3, first wave at 60"
+DLV_Use "hard"
+wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_Near%(WVT_GapTicks!(5, 0, 3), 238 * WVT_TICK) And WT_Near%(WVT_GapTicks!(5, 1, 3), 170 * WVT_TICK), "hard: regular gap 238 frames at difficulty 0, 170 at full"
+DLV_Use "normal"
+WT_Assert WVT_Load% <> 0, "back to normal"
+
+
 Print "passed:" + Str$(wtPassed) + "  failed:" + Str$(wtFailed)
 If wtFailed > 0 Then System 1
 System 0
