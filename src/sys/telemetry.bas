@@ -84,7 +84,7 @@ Sub TELEM_Row(tlEvent As String, tlData As String)
     If Len(DB_URL) > 0 And Len(telemSession) > 0 Then
         Dim tlRowJson As String
         tlRowJson = JSON_Obj$(JSON_S$("session", telemSession) _
-                 + "," + JSON_N$("ev_time", LTrim$(Str$(TELEM_Elapsed&(Timer, telemT0)))) _
+                 + "," + JSON_N$("ev_time", LTrim$(Str$(TELEM_Elapsed&(gameFrame, telemT0)))) _
                  + "," + JSON_S$("event", tlEvent) _
                  + "," + JSON_S$("player_id", telemPlayerID) _
                  + "," + JSON_S$("data", tlData))
@@ -95,11 +95,10 @@ Sub TELEM_Row(tlEvent As String, tlData As String)
     End If
 End Sub
 
-' Whole seconds from the session start (tleT0) to tleNow, both Timer values; Timer wraps at midnight.
-Function TELEM_Elapsed& (tleNow As Double, tleT0 As Double)
-    Dim tleD As Double : tleD = tleNow - tleT0
-    If tleD < 0 Then tleD = tleD + 86400
-    TELEM_Elapsed& = Int(tleD)
+' Whole seconds from the session's first frame (tleF0) to tleNow, 60 frames to the second. Counted
+' in frames, not wall time, so a scripted run reports the same figures at any speed.
+Function TELEM_Elapsed& (tleNow As Long, tleF0 As Long)
+    TELEM_Elapsed& = (tleNow - tleF0) \ 60
 End Function
 
 ' The chapter and how far into its stage: kills made of the kills the stage needs.
@@ -123,7 +122,7 @@ Sub TELEM_SessionStart()
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0 : telemBatch = ""
-    telemExitReason = "" : telemBatchRows = 0 : telemT0 = Timer
+    telemExitReason = "" : telemBatchRows = 0 : telemT0 = gameFrame
     TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty + "|flags=" + telemFlags
 End Sub
 
@@ -232,7 +231,7 @@ Sub TELEM_SessionEnd()
            + "|boss=" + LTrim$(Str$(telemBossReached)) _
            + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes)) _
-           + "|secs=" + LTrim$(Str$(TELEM_Elapsed&(Timer, telemT0))) + "|" + TELEM_At$
+           + "|secs=" + LTrim$(Str$(TELEM_Elapsed&(gameFrame, telemT0))) + "|" + TELEM_At$
     If telemExitReason = "quit" Then tlData = tlData + "|state=" + DBG_StateName$(gameState)
     TELEM_Row "session_end", tlData  ' also appends to telemBatch
     DBG_Print "TELEM: SessionEnd rows=" + LTrim$(Str$(Len(telemBatch))) + " bytes"

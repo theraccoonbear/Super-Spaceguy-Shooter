@@ -126,7 +126,8 @@ Dim Shared telemShotsHit     As Long
 Dim Shared telemEscapes      As Long
 Dim Shared telemBatch        As String
 Dim Shared telemBatchRows    As Long
-Dim Shared telemT0           As Double
+Dim Shared telemT0           As Long
+Dim Shared gameFrame         As Long
 Dim Shared telemFlags        As String
 Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
 Dim Shared telemExitReason   As String

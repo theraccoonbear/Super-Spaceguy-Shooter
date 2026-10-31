@@ -103,7 +103,8 @@ Dim Shared telemShotsHit     As Long
 Dim Shared telemEscapes      As Long
 Dim Shared telemBatch        As String
 Dim Shared telemBatchRows    As Long
-Dim Shared telemT0           As Double
+Dim Shared telemT0           As Long
+Dim Shared gameFrame         As Long
 Dim Shared telemFlags        As String
 Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
 Dim Shared telemExitReason   As String
@@ -332,13 +333,14 @@ TC_Assert InStr(DT_AllRows$, "|state=") = 0 And InStr(DT_AllRows$, "|secs=") > 0
 Print ""
 
 Print "--- 12. ev_time counts whole seconds from the session start (#346) ---"
-TC_Assert TELEM_Elapsed&(100.9, 40.2) = 60,   "12.01  whole seconds, rounded down"
-TC_Assert TELEM_Elapsed&(5, 86395) = 10,      "12.02  across midnight"
+TC_Assert TELEM_Elapsed&(3659, 0) = 60,      "12.01  60 frames to the second, rounded down"
+TC_Assert TELEM_Elapsed&(9000, 5400) = 60,   "12.02  counted from the session's first frame"
 TC_Assert TELEM_Elapsed&(7, 7) = 0,           "12.03  zero at the start"
-DT_Telem
+gameFrame = 5000 : DT_Telem
 TELEM_EnemyKilled
-_Delay 1.2
+gameFrame = gameFrame + 90
 TELEM_EnemyKilled
+gameFrame = gameFrame + 3600
 TELEM_SessionEnd
 dtAll = DT_AllRows$
 Dim dtP As Long, dtPrev As Long, dtV As Long, dtMono As Integer, dtRows As Long
@@ -353,7 +355,7 @@ Do While dtP > 0
     dtPrev = dtV
     dtP = InStr(dtP + 8, dtAll, "ev_time:")
 Loop
-TC_Assert dtMono And dtRows = 5 And dtPrev >= 1 And dtPrev < 10, "12.05  never decreases, and the last rows show elapsed seconds, not the time of day"
+TC_Assert dtMono And dtRows = 5 And dtPrev = 61 And InStr(dtAll, "|secs=61|") > 0, "12.05  never decreases and ends at the elapsed seconds (61), not the time of day"
 Print ""
 
 Print "--- 13. long sessions go out in chunks the Worker accepts (#346) ---"
