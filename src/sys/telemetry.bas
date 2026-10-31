@@ -96,7 +96,7 @@ Sub TELEM_SessionStart()
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0 : telemBatch = ""
     telemExitReason = ""
-    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf))
+    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty
 End Sub
 
 Sub TELEM_EnemyKilled()

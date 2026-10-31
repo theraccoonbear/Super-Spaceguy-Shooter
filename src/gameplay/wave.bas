@@ -51,7 +51,7 @@ Sub WAVE_Spawn
             spawnTimer = 0  ' hold — empty space (normal mode only)
         ElseIf wvAstElapsed < 12.0 And settingNerf = 0 Then
             ' approach phase (normal): spawn far so asteroids appear as distant 2D blobs
-            If spawnTimer > 3.5 And gameState = GS_PLAYING Then
+            If spawnTimer > 3.5 * dlvFAstInterval And gameState = GS_PLAYING Then
                 spawnTimer = 0
                 astSpawnXBias = 200.0 * (1.0 - (wvAstElapsed - 3.0) / 9.0)
                 WAVE_SpawnAsteroidField
@@ -59,7 +59,7 @@ Sub WAVE_Spawn
             End If
         ElseIf wvAstElapsed < 0.9 And settingNerf Then
             ' approach phase (nerf): brief blob lead-in at compressed interval
-            If spawnTimer > 0.35 And gameState = GS_PLAYING Then
+            If spawnTimer > 0.35 * dlvFAstInterval And gameState = GS_PLAYING Then
                 spawnTimer = 0
                 astSpawnXBias = 200.0 * (1.0 - wvAstElapsed / 0.9)
                 WAVE_SpawnAsteroidField
@@ -78,7 +78,7 @@ Sub WAVE_Spawn
             ElseIf wvAstProg > 0.82 Then
                 wvAstInterval = 1.0 + ((wvAstProg - 0.82) / 0.18) * 3.0
             End If
-            If spawnTimer > wvAstInterval And gameState = GS_PLAYING Then
+            If spawnTimer > wvAstInterval * dlvFAstInterval And gameState = GS_PLAYING Then
                 spawnTimer = 0
                 WAVE_SpawnAsteroidField
             End If
@@ -133,7 +133,7 @@ Sub WAVE_Spawn
         Case 4    : wvVX = -(0.13 + RNG!(RNG_GAME) * 0.05)
         Case Else : wvVX = -(0.14 + RNG!(RNG_GAME) * 0.06)
         End Select
-        wvVX = wvVX * (1.0 + diffScale * DIFF_SPEED_SCALE)
+        wvVX = wvVX * (1.0 + diffScale * DIFF_SPEED_SCALE) * dlvFEnemySpeed
         spawnFlashPX = wvCX : spawnFlashPY = wvCY : spawnFlashPZ = wvCZ
         spawnFlashTimer = 9
 
@@ -175,7 +175,7 @@ Sub WAVE_Spawn
                     enemies(wvI).dry = 0
                     enemies(wvI).scl = 0.9 + RNG!(RNG_GAME) * 0.4
                     enemies(wvI).strafeCool = ENEMY_STRAFE_COOL + Int(RNG!(RNG_GAME) * 60)
-                    enemyFireTimer(wvI) = (EFIRE_INIT_MIN + RNG!(RNG_GAME) * EFIRE_INIT_VAR) * WVT_FireScale!(levelNum)
+                    enemyFireTimer(wvI) = (EFIRE_INIT_MIN + RNG!(RNG_GAME) * EFIRE_INIT_VAR) * WVT_FireScale!(levelNum) * dlvFEnemyFire
                     Exit For
                 End If
             Next wvI

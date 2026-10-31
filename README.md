@@ -135,6 +135,7 @@ sss [options]
   --crawls               Crawl browser: list every named crawl with its scroll speed, play any of them
   --god                  God mode: shields, health, and laser never deplete
   --nerf                 Nerf mode: shorter stages, weaker bosses (for testing/streaming)
+  --difficulty <level>   Play every run at this level (easy, normal or hard; assets/config/difficulty.ini), whatever Settings says
   --debug                Enable the debug HUD overlay and diagnostic console output
   --no-telem             Disable gameplay telemetry for this session (on by default; see below)
   --input-script <file>  Play from a script instead of the keyboard/gamepad (see below)

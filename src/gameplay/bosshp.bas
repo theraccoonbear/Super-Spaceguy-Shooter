@@ -3,7 +3,8 @@
 ' Tuning comes from assets/config/bosses.ini and each fight's hp= in assets/sequence.txt (see
 ' the comments in bosses.ini). No game state here, so tests drive it directly:
 '   ok = BHP_Load%                     read the tuning (after CFG_Parse$ of bosses.ini); 0 + bhpLoadErr
-'   m = BHP_MaxHP%(hp, nerf)           a fight's hit points from its hp= (0 = none given)
+'   m = BHP_MaxHP%(hp, nerf)           a fight's hit points from its hp= (0 = none given),
+'                                      x the difficulty's boss_hp, then x0.1 under --nerf
 '   t = BHP_PhaseStart%(maxHp, phase)  hit points at which phase 2 or 3 starts
 '   p = BHP_Phase%(hp, maxHp)          the phase (1..3) at hp hit points left
 '   h = BHP_Damage%(hp, maxHp, dmg, shield)  hit points left after a hit of dmg: none while
@@ -14,6 +15,7 @@
 Dim Shared bhpDefault As Integer, bhpNerfMin As Integer
 Dim Shared bhpPct2 As Single, bhpPct3 As Single
 Dim Shared bhpShieldPad As Long, bhpShieldMin As Long
+Dim Shared bhpHpMult As Single : bhpHpMult = 1
 Dim Shared bhpLoadErr As String
 
 Function BHP_Load%
@@ -24,6 +26,7 @@ Function BHP_Load%
     bhpNerfMin = Val(CFG_Get$(cfgBosses, "boss_nerf_min"))
     bhpShieldPad = Val(CFG_Get$(cfgBosses, "boss_shield_pad"))
     bhpShieldMin = Val(CFG_Get$(cfgBosses, "boss_shield_min"))
+    bhpHpMult = DLV_M!("boss_hp")
     If bhpDefault < 3 Or bhpNerfMin < 3 Then bhpLoadErr = "config/bosses.ini needs boss_hp_default and boss_nerf_min of 3 or more (one per phase)" : Exit Function
     If bhpShieldPad < 0 Or bhpShieldMin < 0 Then bhpLoadErr = "config/bosses.ini boss_shield_pad and boss_shield_min can't be negative" : Exit Function
     UPG_Split CFG_Get$(cfgBosses, "boss_phase"), ",", bhplV(), bhplN
@@ -37,6 +40,10 @@ Function BHP_MaxHP% (bhpmHp As Integer, bhpmNerf As Integer)
     Dim bhpmM As Integer
     bhpmM = bhpmHp
     If bhpmM <= 0 Then bhpmM = bhpDefault
+    If bhpHpMult <> 1 Then
+        bhpmM = DLV_Round&(CLng(bhpmM), bhpHpMult)
+        If bhpmM < 3 Then bhpmM = 3
+    End If
     If bhpmNerf Then
         bhpmM = Int(bhpmM * NERF_FACTOR + 0.5)
         If bhpmM < bhpNerfMin Then bhpmM = bhpNerfMin

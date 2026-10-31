@@ -16,6 +16,7 @@ $CONSOLE:ONLY
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Sub DBG_Print (dktDbg As String) : End Sub
 Sub TELEM_UpgradeBought (dtuItem As String, dtuLevel As Integer, dtuPrice As Long) : End Sub
@@ -25,11 +26,12 @@ Sub TELEM_ShieldBought (dtsbA As Integer, dtsbP As Long, dtsbC As Integer) : End
 ' SEQ_NextLeg (sequence.bas) reports this stub leg: dtLegKills kills (and a boss with no secs= when
 ' dtLegBoss is 1). At the dock after chapter 2: 10 kills x 4.1 s x 1.32 x 1.15 = 62.2 fuel; with
 ' the boss (+25 s) 100.2, just over the base tank
-Dim Shared dtLegKills As Long, dtLegBoss As Integer
+Dim Shared dtLegKills As Long, dtLegBoss As Integer, dtLegBossSecs As Single
 Sub SEQ_NextLeg (dtnK As Long, dtnBS As Single, dtnB As Integer, dtnA As Integer)
-    dtnK = dtLegKills : dtnBS = 0 : dtnB = dtLegBoss : dtnA = 0
+    dtnK = dtLegKills : dtnBS = dtLegBossSecs : dtnB = dtLegBoss : dtnA = 0
 End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
@@ -284,6 +286,37 @@ E3D_KeyDefaults
 keyBind(E3D_ACT_NOVA) = Asc("k")
 DT_Assert Left$(UI_PromptsKeyText$(UPG_Info$(UPG_NOVA)), 2) = "K:", "nova rebound to K: the dock's nova line reads K: (" + UI_PromptsKeyText$(UPG_Info$(UPG_NOVA)) + ")"
 E3D_KeyDefaults
+
+Print ""
+Print "--- difficulty levels: prices and an honest leg need at every level (#102) ---"
+Dim dtdNormNeed As Single, dtdNormUnit As Single, dtdNormShield As Single, dtdNormMult As Single, dtdNeed As Single, dtdWant As Single
+Dim dtdLv As Integer, dtdL As String, dtdOk As Integer
+levelNum = 2 : dtLegKills = 10 : dtLegBoss = 1 : dtLegBossSecs = 40
+dtdNormNeed = SUP_LegNeed! : dtdNormUnit = SUP_UnitPrice!(SUP_FUEL, levelNum) : dtdNormShield = SUP_UnitPrice!(SUP_SHIELD, levelNum) : dtdNormMult = SUP_Mult!(levelNum)
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+DT_Assert DLV_Load% <> 0, "difficulty.ini loads " + dlvLoadErr
+For dtdLv = 1 To DLV_Count%
+    dtdL = DLV_LevelAt$(dtdLv)
+    DLV_Use dtdL
+    DT_Assert SUP_Load% <> 0, dtdL + ": supply prices load"
+    ' 10 kills x 4.1 s (chapter 3) at the cadence, a boss with secs=40 and one without (25 s), both
+    ' at the boss's hit points; burned at the level's rate, x the 1.15 margin
+    dtdWant = (10 * 4.1 * DLV_M!("wave_gap") + 40 * DLV_M!("boss_hp") + 25 * DLV_M!("boss_hp")) * 1.32 * DLV_M!("fuel_burn") * 1.15
+    dtdNeed = SUP_LegNeed!
+    DT_Assert Abs(dtdNeed - dtdWant) < 0.01, dtdL + ": the next leg needs" + Str$(dtdNeed) + " fuel (want" + Str$(dtdWant) + ")"
+    DT_Assert Abs(SUP_UnitPrice!(SUP_FUEL, levelNum) - dtdNormUnit * DLV_M!("fuel_price")) < 0.0001, dtdL + ": fuel $" + LTrim$(Str$(SUP_UnitPrice!(SUP_FUEL, levelNum))) + " a unit after chapter 2"
+    DT_Assert SUP_Mult!(levelNum) = dtdNormMult, dtdL + ": the per-dock surcharge is the same at every level"
+    DT_Assert Abs(SUP_UnitPrice!(SUP_SHIELD, levelNum) - dtdNormShield * DLV_M!("shield_price")) < 0.0001, dtdL + ": shields $" + LTrim$(Str$(SUP_UnitPrice!(SUP_SHIELD, levelNum))) + " a point"
+Next dtdLv
+DLV_Use "normal"
+dtdOk = SUP_Load% : DT_Assert dtdOk <> 0 And SUP_LegNeed! = dtdNormNeed And SUP_UnitPrice!(SUP_FUEL, levelNum) = dtdNormUnit, "normal: exactly the need and price without difficulty.ini"
+DLV_Use "easy"
+dtdOk = SUP_Load% : DT_Assert dtdOk <> 0 And Abs(SUP_UnitPrice!(SUP_FUEL, levelNum) - 2.1) < 0.0001, "easy: fuel 2 x 1.4 x 0.75 = $2.10 a unit"
+DLV_Use "hard"
+dtdOk = SUP_Load% : DT_Assert dtdOk <> 0 And Abs(SUP_UnitPrice!(SUP_FUEL, levelNum) - 3.5) < 0.0001, "hard: fuel 2 x 1.4 x 1.25 = $3.50 a unit"
+DLV_Use "normal"
+DT_Assert SUP_Load% <> 0, "back to normal"
+dtLegBoss = 0 : dtLegBossSecs = 0
 
 Print ""
 Print "=== " + LTrim$(Str$(dtPassed + dtFailed)) + " tests: " + LTrim$(Str$(dtPassed)) + " passed, " + LTrim$(Str$(dtFailed)) + " failed ==="
