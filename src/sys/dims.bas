@@ -303,6 +303,9 @@ DIM SHARED telemShotsFired   AS LONG
 DIM SHARED telemShotsHit     AS LONG
 DIM SHARED telemEscapes      AS LONG
 DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP POST
+DIM SHARED telemBatchRows    AS LONG    ' rows in telemBatch, flushed at TELEM_MAX_ROWS
+DIM SHARED telemT0           AS DOUBLE  ' Timer at session start: ev_time counts seconds from here
+DIM SHARED telemFlags        AS STRING  ' dev flags in use, comma-separated (empty in a release build)
 DIM SHARED telemExitReason   AS STRING  ' "death", "quit", "win" or "stranded" -- set before TELEM_SessionEnd
 DIM SHARED telemLegFuel      AS SINGLE  ' fuel burned this leg (stage_clear telemetry, #277)
 DIM SHARED telemLegFrames    AS LONG    ' frames flown this leg

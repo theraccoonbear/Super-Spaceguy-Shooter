@@ -206,3 +206,11 @@ Sub GAME_DevPups
     Loop
     $END IF
 End Sub
+
+' Leave the program from the title's QUIT or the window's close button: a run in progress ends
+' as exit=quit, then queued telemetry gets a short, bounded chance to go out.
+Sub GAME_Quit
+    SEQ_QuitProcess
+    HTTP_Flush 1.5
+    System
+End Sub

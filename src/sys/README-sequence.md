@@ -44,6 +44,7 @@ SEQ_Load seqText$        ' parse sequence.txt (or any string in the same format)
 SEQ_Advance               ' step forward one waypoint and execute it (sets gameState, triggers music, etc.)
 SEQ_RewindToTitle         ' jump seqIdx back to the first TITLE waypoint, without executing anything
 SEQ_QuitRun               ' pause-menu quit: session end with exit=quit, run over, park at the title
+SEQ_QuitProcess           ' window close / title QUIT: a run in progress ends once as exit=quit (no run, nothing)
 SEQ_JumpToScene%(spec$)   ' resolve a --scene spec to a table index; returns -1 + seqLastError on failure
 SEQ_GetKV$(sval$, key$)   ' extract "key=val" from a task's key=val... string
 SEQ_PrintScenes fh        ' print all valid --scene names, for --help

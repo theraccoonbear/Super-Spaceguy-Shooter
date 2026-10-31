@@ -137,6 +137,7 @@ Sub CLI_Parse()
 
     ' seed every random stream before anything draws (sound tables, the player id)
     If cliSeedSet Then RNG_Seed cliSeed Else RNG_Seed RNG_ClockSeed~&
+    telemFlags = CLI_FlagList$
 End Sub
 
 ' The word after cvFlag$ (which includes its trailing space) in cvLine$, or "".
@@ -149,4 +150,21 @@ Function CLI_Value$(cvLine As String, cvFlag As String)
     cvPos = InStr(cvV, " ")
     If cvPos > 0 Then cvV = Left$(cvV, cvPos - 1)
     CLI_Value$ = cvV
+End Function
+
+' The dev flags in effect, comma-separated, for session_start's flags= field. A release build
+' compiles the flags out, so every variable read here stays at its default and this is empty.
+Function CLI_FlagList$
+    Dim cflOut As String
+    If godMode Then cflOut = cflOut + ",god"
+    If settingNerf Then cflOut = cflOut + ",nerf"
+    If cliScene <> "" Then cflOut = cflOut + ",scene"
+    If cliCredits > 0 Then cflOut = cflOut + ",credits"
+    If cliShips > 0 Then cflOut = cflOut + ",ships"
+    If cliShields > 0 Then cflOut = cflOut + ",shields"
+    If cliFuel > 0 Then cflOut = cflOut + ",fuel"
+    If cliPup <> "" Then cflOut = cflOut + ",pup"
+    If cliSeedSet Then cflOut = cflOut + ",seed"
+    If iscActive Then cflOut = cflOut + ",script"
+    CLI_FlagList$ = Mid$(cflOut, 2)
 End Function

@@ -102,6 +102,10 @@ Dim Shared telemShotsFired   As Long
 Dim Shared telemShotsHit     As Long
 Dim Shared telemEscapes      As Long
 Dim Shared telemBatch        As String
+Dim Shared telemBatchRows    As Long
+Dim Shared telemT0           As Double
+Dim Shared telemFlags        As String
+Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
 Dim Shared telemExitReason   As String
 Dim Shared score             As Long
 Dim Shared waveType          As Integer
@@ -109,15 +113,20 @@ Dim Shared leaderboardPlayerID As String
 Dim Shared telemPlayerName     As String
 Dim Shared settingNerf         As Integer
 Dim Shared godMode             As Integer
+Dim Shared levelNum            As Integer
+Dim Shared stageKills          As Long
+Dim Shared stageKillTarget     As Long
 Dim Shared seqRunActive        As Integer   ' sequence.bas
 
 Dim Shared dtEnds As Integer, dtScorePosts As Integer, dtPostBody As String
+Dim Shared dtBatchN As Integer, dtBatch(1 To 20) As String
 
 Sub DBG_Print (msg As String)
     If Left$(msg, 18) = "TELEM: SessionEnd " Then dtEnds = dtEnds + 1
 End Sub
 Sub HTTP_Post (u As String, k As String, b As String, t As String)
     If t = "score_post" Then dtScorePosts = dtScorePosts + 1 : dtPostBody = b
+    If t = "telem_batch" And dtBatchN < 20 Then dtBatchN = dtBatchN + 1 : dtBatch(dtBatchN) = b
 End Sub
 Function JSON_Obj$ (s As String) : JSON_Obj$ = "{" + s + "}" : End Function
 Function JSON_S$   (k As String, v As String) : JSON_S$ = k + ":" + v : End Function
@@ -252,6 +261,118 @@ DT_NewGame 1
 runDifficulty = ""
 TELEM_SessionEnd
 TC_Assert dtScorePosts = 1 And InStr(dtPostBody, "difficulty") = 0 And Right$(dtPostBody, 1) = "}", "8.02  no level: no difficulty field (the server stores the default)"
+Print ""
+
+Function DT_Count& (dtcHay As String, dtcNeedle As String)
+    Dim dtcPos As Long, dtcN As Long
+    dtcPos = InStr(dtcHay, dtcNeedle)
+    Do While dtcPos > 0
+        dtcN = dtcN + 1
+        dtcPos = InStr(dtcPos + Len(dtcNeedle), dtcHay, dtcNeedle)
+    Loop
+    DT_Count& = dtcN
+End Function
+
+' The batch the session posted so far plus what's still queued, as one string.
+Function DT_AllRows$
+    Dim dtaI As Integer, dtaOut As String
+    For dtaI = 1 To dtBatchN : dtaOut = dtaOut + dtBatch(dtaI) + ",": Next dtaI
+    DT_AllRows$ = dtaOut + telemBatch
+End Function
+
+Sub DT_Telem
+    dtBatchN = 0 : dtEnds = 0 : dtScorePosts = 0 : dtPostBody = ""
+    telemOn = -1 : ioReadOnly = -1
+    gameState = GS_PLAYING : lives = 100 : shipLives = 1 : score = 500 : credits = 0
+    TELEM_SessionStart
+End Sub
+
+Print "--- 9. session_start lists the dev flags in use (#346) ---"
+telemFlags = "god,fuel,script"
+DT_Telem
+TC_Assert InStr(telemBatch, "|flags=god,fuel,script") > 0, "9.01  flags= carries the list"
+telemFlags = ""
+DT_Telem
+TC_Assert InStr(telemBatch, "|flags=" + Chr$(34)) > 0 Or InStr(telemBatch, "|flags=}") > 0, "9.02  no flags: the field is empty"
+TELEM_SessionEnd
+Print ""
+
+Print "--- 10. gameplay events say where they happened (#346) ---"
+levelNum = 3 : stageKills = 7 : stageKillTarget = 20
+DT_Telem
+TELEM_EnemyKilled
+TELEM_PowerupCollected "fuel", 10
+TELEM_PowerupMissed "shield"
+TELEM_EnemyEscaped
+TELEM_FuelExhausted
+TELEM_PlayerDamaged
+TELEM_PlayerDeath
+TELEM_BossReached
+TELEM_BossPhase 2
+TELEM_BossDefeated
+Dim dtAt As String : dtAt = "chapter=3|stage_kills=7|stage_target=20"
+TC_Assert DT_Count&(telemBatch, dtAt) = 10, "10.01  all ten gameplay events carry chapter and stage progress"
+TELEM_UpgradeBought "armour", 2, 300
+TC_Assert InStr(telemBatch, "credits_left=0|chapter=3") > 0, "10.02  upgrade_bought carries the chapter"
+TELEM_SessionEnd
+Print ""
+
+Print "--- 11. session_end: quit state, chapter, progress and duration (#346) ---"
+levelNum = 4 : stageKills = 2 : stageKillTarget = 15
+DT_Telem
+telemExitReason = "quit"
+TELEM_SessionEnd
+Dim dtAll As String : dtAll = DT_AllRows$
+TC_Assert InStr(dtAll, "exit=quit") > 0 And InStr(dtAll, "|state=GS_TEST") > 0, "11.01  exit=quit names the state it happened in"
+TC_Assert InStr(dtAll, "|secs=0|chapter=4|stage_kills=2|stage_target=15") > 0, "11.02  duration, chapter and progress on session_end"
+DT_Telem
+telemExitReason = "death"
+TELEM_SessionEnd
+TC_Assert InStr(DT_AllRows$, "|state=") = 0 And InStr(DT_AllRows$, "|secs=") > 0, "11.03  other exits: duration but no state"
+Print ""
+
+Print "--- 12. ev_time counts whole seconds from the session start (#346) ---"
+TC_Assert TELEM_Elapsed&(100.9, 40.2) = 60,   "12.01  whole seconds, rounded down"
+TC_Assert TELEM_Elapsed&(5, 86395) = 10,      "12.02  across midnight"
+TC_Assert TELEM_Elapsed&(7, 7) = 0,           "12.03  zero at the start"
+DT_Telem
+TELEM_EnemyKilled
+_Delay 1.2
+TELEM_EnemyKilled
+TELEM_SessionEnd
+dtAll = DT_AllRows$
+Dim dtP As Long, dtPrev As Long, dtV As Long, dtMono As Integer, dtRows As Long
+dtMono = -1 : dtP = InStr(dtAll, "ev_time:")
+If dtP > 0 Then
+    dtV = Val(Mid$(dtAll, dtP + 8, 6))
+    TC_Assert dtV = 0, "12.04  the first row (session_start) is at 0"
+End If
+Do While dtP > 0
+    dtV = Val(Mid$(dtAll, dtP + 8, 6)) : dtRows = dtRows + 1
+    If dtV < dtPrev Then dtMono = 0
+    dtPrev = dtV
+    dtP = InStr(dtP + 8, dtAll, "ev_time:")
+Loop
+TC_Assert dtMono And dtRows = 5 And dtPrev >= 1 And dtPrev < 10, "12.05  never decreases, and the last rows show elapsed seconds, not the time of day"
+Print ""
+
+Print "--- 13. long sessions go out in chunks the Worker accepts (#346) ---"
+DT_Telem
+Dim dtK As Long
+For dtK = 1 To 2500 : TELEM_EnemyKilled : Next dtK
+TC_Assert dtBatchN >= 2, "13.01  full chunks were posted before the session ended"
+TELEM_SessionEnd
+Dim dtOk As Integer, dtTotal As Long, dtI As Integer
+dtOk = -1
+For dtI = 1 To dtBatchN
+    dtRows = DT_Count&(dtBatch(dtI), "ev_time:")
+    dtTotal = dtTotal + dtRows
+    If dtRows > 1000 Or Len(dtBatch(dtI)) > 131072 Then dtOk = 0
+Next dtI
+TC_Assert dtOk, "13.02  no post over 1000 rows or the 128 KB body cap"
+TC_Assert dtTotal = 2503 And telemBatch = "", "13.03  every row posted once: start + 2500 + credits_earned + end (" + LTrim$(Str$(dtTotal)) + ")"
+TC_Assert Left$(dtBatch(1), 1) = "[" And Right$(dtBatch(dtBatchN), 1) = "]", "13.04  each post is a JSON array"
+telemOn = 0 : ioReadOnly = 0
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _
