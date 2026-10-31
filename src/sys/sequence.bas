@@ -479,6 +479,15 @@ Sub SEQ_QuitRun()
     MUS_SetCue "title"
 End Sub
 
+' The process is being closed (window close, title QUIT): a run still in progress ends once as
+' exit=quit, like the pause menu's quit but without parking at the title. No run, no session end.
+Sub SEQ_QuitProcess()
+    If seqRunActive = 0 Then Exit Sub
+    seqRunActive = 0
+    telemExitReason = "quit"
+    TELEM_SessionEnd
+End Sub
+
 ' Advance to the next sequence step and execute it.
 Sub SEQ_Advance()
     Dim seqaType As String, seqaMus As String, seqaTrig As Integer

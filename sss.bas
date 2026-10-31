@@ -221,6 +221,7 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
+    IF _EXIT THEN GAME_Quit
     IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : SYSTEM
     ' --- input ---
     KEY_FrameBegin

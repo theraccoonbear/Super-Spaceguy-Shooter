@@ -10,6 +10,9 @@
 '
 ' Local variable prefix: tl*
 
+Const TELEM_MAX_ROWS = 1000   ' the Worker rejects a batch over 1000 rows
+Const TELEM_MAX_BYTES = 100000 ' under the 128 KB POST body cap in curl_qb64.h
+
 Function TELEM_NewUUID$
     Dim uuidStr As String
     Dim uuidByte As Integer
@@ -77,17 +80,41 @@ Sub TELEM_Row(tlEvent As String, tlData As String)
         Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData
         Close #tlF
     End If
-    ' accumulate for bulk HTTP POST in TELEM_SessionEnd
+    ' accumulate for bulk HTTP POST; sent in chunks the Worker accepts
     If Len(DB_URL) > 0 And Len(telemSession) > 0 Then
         Dim tlRowJson As String
         tlRowJson = JSON_Obj$(JSON_S$("session", telemSession) _
-                 + "," + JSON_N$("ev_time", LTrim$(Str$(Int(Timer)))) _
+                 + "," + JSON_N$("ev_time", LTrim$(Str$(TELEM_Elapsed&(gameFrame, telemT0)))) _
                  + "," + JSON_S$("event", tlEvent) _
                  + "," + JSON_S$("player_id", telemPlayerID) _
                  + "," + JSON_S$("data", tlData))
         If Len(telemBatch) > 0 Then telemBatch = telemBatch + ","
         telemBatch = telemBatch + tlRowJson
+        telemBatchRows = telemBatchRows + 1
+        If telemBatchRows >= TELEM_MAX_ROWS Or Len(telemBatch) >= TELEM_MAX_BYTES Then TELEM_FlushBatch
     End If
+End Sub
+
+' Whole seconds from the session's first frame (tleF0) to tleNow, 60 frames to the second. Counted
+' in frames, not wall time, so a scripted run reports the same figures at any speed.
+Function TELEM_Elapsed& (tleNow As Long, tleF0 As Long)
+    TELEM_Elapsed& = (tleNow - tleF0) \ 60
+End Function
+
+' The chapter and how far into its stage: kills made of the kills the stage needs.
+Function TELEM_At$
+    TELEM_At$ = "chapter=" + LTrim$(Str$(levelNum)) + "|stage_kills=" + LTrim$(Str$(stageKills)) _
+              + "|stage_target=" + LTrim$(Str$(stageKillTarget))
+End Function
+
+' Queue the rows gathered so far as one POST; the Worker takes at most 1000 rows per batch and
+' the HTTP layer 128 KB per body. Never blocks.
+Sub TELEM_FlushBatch
+    If Len(telemBatch) = 0 Then Exit Sub
+    If Len(DB_URL) = 0 Or Len(DB_KEY) = 0 Then Exit Sub
+    DBG_Print "TELEM: POST batch " + LTrim$(Str$(telemBatchRows)) + " rows " + LTrim$(Str$(Len(telemBatch) + 2)) + " bytes"
+    HTTP_Post DB_URL + "/sss_telemetry", DB_KEY, "[" + telemBatch + "]", "telem_batch"
+    telemBatch = "" : telemBatchRows = 0
 End Sub
 
 Sub TELEM_SessionStart()
@@ -95,66 +122,66 @@ Sub TELEM_SessionStart()
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0 : telemBatch = ""
-    telemExitReason = ""
-    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty
+    telemExitReason = "" : telemBatchRows = 0 : telemT0 = gameFrame
+    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty + "|flags=" + telemFlags
 End Sub
 
 Sub TELEM_EnemyKilled()
     telemKills = telemKills + 1
-    TELEM_Row "enemy_killed", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|wave=" + LTrim$(Str$(waveType))
+    TELEM_Row "enemy_killed", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|wave=" + LTrim$(Str$(waveType)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_PowerupCollected(tlpKind As String, tlpAmt As Single)
     TELEM_Row "powerup_collected", "kind=" + tlpKind + "|amount=" + LTrim$(Str$(Int(tlpAmt + 0.5))) _
             + "|score=" + LTrim$(Str$(score)) + "|shield=" + LTrim$(Str$(lives)) _
-            + "|fuel=" + LTrim$(Str$(Int(fuelLevel))) + "|wave=" + LTrim$(Str$(waveType))
+            + "|fuel=" + LTrim$(Str$(Int(fuelLevel))) + "|wave=" + LTrim$(Str$(waveType)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_PowerupMissed(tlpmKind As String)
-    TELEM_Row "powerup_missed", "kind=" + tlpmKind + "|wave=" + LTrim$(Str$(waveType))
+    TELEM_Row "powerup_missed", "kind=" + tlpmKind + "|wave=" + LTrim$(Str$(waveType)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_EnemyEscaped()
     telemEscapes = telemEscapes + 1
     TELEM_Row "enemy_escaped", "score=" + LTrim$(Str$(score)) + "|wave=" + LTrim$(Str$(waveType)) _
-            + "|escapes=" + LTrim$(Str$(telemEscapes))
+            + "|escapes=" + LTrim$(Str$(telemEscapes)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_FuelExhausted()
     TELEM_Row "fuel_exhausted", "score=" + LTrim$(Str$(score)) + "|shield=" + LTrim$(Str$(lives)) _
-            + "|wave=" + LTrim$(Str$(waveType))
+            + "|wave=" + LTrim$(Str$(waveType)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_PlayerDamaged()
     TELEM_Row "player_damaged", "cause=" + telemDeathCause + "|score=" + LTrim$(Str$(score)) _
             + "|shield=" + LTrim$(Str$(lives)) + "|fuel=" + LTrim$(Str$(Int(fuelLevel))) _
-            + "|laser=" + LTrim$(Str$(Int(laserEnergy)))
+            + "|laser=" + LTrim$(Str$(Int(laserEnergy))) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_PlayerDeath()
     TELEM_Row "player_death", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
             + "|wave=" + LTrim$(Str$(waveType)) + "|boss=" + LTrim$(Str$(telemBossReached)) _
-            + "|cause=" + telemDeathCause
+            + "|cause=" + telemDeathCause + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_BossReached()
     telemBossReached = -1
-    TELEM_Row "boss_reached", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills))
+    TELEM_Row "boss_reached", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_BossPhase(tlPhase As Integer)
     TELEM_Row "boss_phase", "phase=" + LTrim$(Str$(tlPhase)) + "|score=" + LTrim$(Str$(score)) _
-            + "|boss_hp=" + LTrim$(Str$(boss.hp))
+            + "|boss_hp=" + LTrim$(Str$(boss.hp)) + "|" + TELEM_At$
 End Sub
 
 Sub TELEM_BossDefeated()
-    TELEM_Row "boss_defeated", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills))
+    TELEM_Row "boss_defeated", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|" + TELEM_At$
 End Sub
 
 ' A dock purchase (#268): which upgrade, the level it reached, what it cost, what's left.
 Sub TELEM_UpgradeBought(tlubItem As String, tlubLevel As Integer, tlubPrice As Long)
     TELEM_Row "upgrade_bought", "item=" + tlubItem + "|level=" + LTrim$(Str$(tlubLevel)) _
-            + "|price=" + LTrim$(Str$(tlubPrice)) + "|credits_left=" + LTrim$(Str$(credits))
+            + "|price=" + LTrim$(Str$(tlubPrice)) + "|credits_left=" + LTrim$(Str$(credits)) + "|chapter=" + LTrim$(Str$(levelNum))
 End Sub
 
 ' Fuel bought at the dock by the amount (#277): units, total price, price per unit, the
@@ -203,15 +230,12 @@ Sub TELEM_SessionEnd()
            + "|wave=" + LTrim$(Str$(waveType)) _
            + "|boss=" + LTrim$(Str$(telemBossReached)) _
            + "|shots=" + LTrim$(Str$(telemShotsFired)) + "|hits=" + LTrim$(Str$(telemShotsHit)) _
-           + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes))
+           + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes)) _
+           + "|secs=" + LTrim$(Str$(TELEM_Elapsed&(gameFrame, telemT0))) + "|" + TELEM_At$
+    If telemExitReason = "quit" Then tlData = tlData + "|state=" + DBG_StateName$(gameState)
     TELEM_Row "session_end", tlData  ' also appends to telemBatch
     DBG_Print "TELEM: SessionEnd rows=" + LTrim$(Str$(Len(telemBatch))) + " bytes"
-    If Len(DB_URL) > 0 And Len(DB_KEY) > 0 And Len(telemBatch) > 0 Then
-        Dim tlJson As String
-        tlJson = "[" + telemBatch + "]"
-        DBG_Print "TELEM: POST batch " + LTrim$(Str$(Len(tlJson))) + " bytes"
-        HTTP_Post DB_URL + "/sss_telemetry", DB_KEY, tlJson, "telem_batch"
-    End If
+    TELEM_FlushBatch
     If Len(DB_URL) = 0 Or Len(DB_KEY) = 0 Then
         DBG_Print "LBRD: score POST skipped -- DB_URL/DB_KEY not set in .env"
     ElseIf telemConsent = 0 Then

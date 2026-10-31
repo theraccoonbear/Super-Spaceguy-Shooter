@@ -86,7 +86,7 @@ Sub GS_TITLE_Update ()
             CASE 3
                 gameState = GS_LEADERBOARD : titleEscConfirm = 0
             CASE 4
-                SYSTEM
+                GAME_Quit
             CASE 5
                 titleEscConfirm = 0
         END SELECT

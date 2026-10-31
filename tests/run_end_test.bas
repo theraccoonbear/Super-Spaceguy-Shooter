@@ -125,6 +125,11 @@ Dim Shared telemShotsFired   As Long
 Dim Shared telemShotsHit     As Long
 Dim Shared telemEscapes      As Long
 Dim Shared telemBatch        As String
+Dim Shared telemBatchRows    As Long
+Dim Shared telemT0           As Long
+Dim Shared gameFrame         As Long
+Dim Shared telemFlags        As String
+Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
 Dim Shared telemExitReason   As String
 Dim Shared score             As Long
 Dim Shared waveType          As Integer
@@ -366,6 +371,38 @@ reN = SEQ_JumpToScene("playing6") : SEQ_Advance
 RE_Assert seqRunActive <> 0,                  "7.03  --scene playing6: the PLAY starts a run"
 reN = RE_AdvanceTo%(GS_TITLE, 16)
 RE_Assert reN > 0 And credits = 0 And crBonusPts = 100, "7.04  its win cashes out once"
+Print ""
+
+Print "--- 8. closing the window or QUIT on the title (#346) ---"
+RE_Boot
+SEQ_QuitProcess
+RE_Assert reEnds = 0 And telemExitReason = "",  "8.01  no run (title, boot): no session end"
+RE_Boot
+SEQ_Advance : SEQ_Advance : SEQ_Advance
+RE_NewGame
+SEQ_Advance                                   ' chapter-1 PLAY
+credits = 200 : score = 500
+SEQ_QuitProcess
+RE_Assert reEnds = 1 And reLastExit = "quit", "8.02  a run in progress ends once as exit=quit"
+RE_Assert credits = 200 And score = 500,      "8.03  no cash-out"
+RE_Assert seqRunActive = 0,                   "8.04  run over"
+SEQ_QuitProcess
+RE_Assert reEnds = 1,                         "8.05  closing again ends nothing more"
+RE_Boot
+SEQ_Advance : SEQ_Advance : SEQ_Advance
+RE_NewGame
+SEQ_Advance
+SEQ_QuitRun
+SEQ_QuitProcess
+RE_Assert reEnds = 1,                         "8.06  pause-menu quit then close: still one session end"
+RE_Boot
+SEQ_Advance : SEQ_Advance : SEQ_Advance
+RE_NewGame
+SEQ_Advance
+PLAYER_TakeDamage DMG_COLLISION * 6, SHAKE_COLLISION, FLASH_COLLISION
+PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
+SEQ_QuitProcess
+RE_Assert reEnds = 1 And reLastExit = "death", "8.07  a run that already died: close adds nothing"
 Print ""
 
 Print "=== " + LTrim$(Str$(rePass + reFail)) + " tests: " _

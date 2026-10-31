@@ -54,6 +54,15 @@ Dim Shared telemShotsFired   As Long
 Dim Shared telemShotsHit     As Long
 Dim Shared telemEscapes      As Long
 Dim Shared telemBatch        As String
+Dim Shared telemBatchRows    As Long
+Dim Shared telemT0           As Long
+Dim Shared gameFrame         As Long
+Dim Shared telemFlags        As String
+Dim Shared levelNum          As Integer
+Dim Shared stageKills        As Long
+Dim Shared stageKillTarget   As Long
+Dim Shared gameState         As Integer
+Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
 Dim Shared telemExitReason   As String
 Dim Shared score             As Long
 Dim Shared waveType          As Integer
