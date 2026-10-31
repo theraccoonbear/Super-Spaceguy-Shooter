@@ -22,6 +22,8 @@ Const PUP_KINDS  = 3
 Const PUP_MAX_CH = 16
 Const PUP_TRACTOR_DX_MIN = -2   ' the tractor beam reaches from just behind the ship...
 Const PUP_TRACTOR_DX_MAX = 45   ' ...to this far ahead
+Const PUP_CLEAR_SPEED = 0.5     ' a stage's clear-out (waves.ini) pulls power-ups in: units per frame...
+Const PUP_CLEAR_PULL  = 0.1     ' ...and this share of the sideways gap per frame, so each is caught
 
 Dim Shared pupChance As Single, pupW(1 To PUP_KINDS) As Single, pupWTotal As Single
 Dim Shared pupPoints As Long, pupShield As Integer, pupOverflow As Long

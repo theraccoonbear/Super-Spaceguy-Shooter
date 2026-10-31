@@ -86,18 +86,21 @@ Sub SEQ_ListCrawls()
 End Sub
 
 ' The leg after the current task (the dock): its PLAY tasks up to the next ARRIVE, as the
-' combat kill triggers summed, boss fights and asteroid fields (SUP_LegNeed!'s fuel need).
+' combat kill triggers summed, the boss fights' secs= summed (#90), the boss fights with no
+' secs= (economy.ini fuel_boss_secs each) and asteroid fields (SUP_LegNeed!'s fuel need).
 ' All zero when no leg follows.
-Sub SEQ_NextLeg(seqnKills As Long, seqnBoss As Integer, seqnAst As Integer)
-    Dim seqnI As Integer, seqnType As String
-    seqnKills = 0 : seqnBoss = 0 : seqnAst = 0
+Sub SEQ_NextLeg(seqnKills As Long, seqnBossSecs As Single, seqnBoss As Integer, seqnAst As Integer)
+    Dim seqnI As Integer, seqnType As String, seqnSecs As String
+    seqnKills = 0 : seqnBossSecs = 0 : seqnBoss = 0 : seqnAst = 0
     For seqnI = seqIdx + 1 To seqCount - 1
         If seqKind(seqnI) = SEQ_ARRIVE Or seqKind(seqnI) = SEQ_TITLE Then Exit For
         If seqKind(seqnI) = SEQ_PLAY Then
             seqnType = LCase$(SEQ_GetKV$(seqSval$(seqnI), "type"))
             Select Case seqnType
                 Case "combat" : seqnKills = seqnKills + Val(SEQ_GetKV$(seqSval$(seqnI), "trigger"))
-                Case "boss" : seqnBoss = seqnBoss + 1
+                Case "boss"
+                    seqnSecs = SEQ_GetKV$(seqSval$(seqnI), "secs")
+                    If Len(seqnSecs) > 0 Then seqnBossSecs = seqnBossSecs + Val(seqnSecs) Else seqnBoss = seqnBoss + 1
                 Case "asteroid" : seqnAst = seqnAst + 1
             End Select
         End If
@@ -469,6 +472,8 @@ Sub SEQ_Advance()
                     seqaTrig  = Val(SEQ_GetKV$(seqSval$(seqIdx), "trigger"))
                     If seqaTrig = 0 Then seqaTrig = 10
                     stageKills      = 0
+                    spawnTimer      = 0
+                    waveStageN      = 0
                     planetTimer     = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR       = 3.0
                     planetBgAlpha   = 245.0
@@ -497,6 +502,7 @@ Sub SEQ_Advance()
                     SEQ_SplitCSV SEQ_GetKV$(seqSval$(seqIdx), "mus"), bossMusList$(), bossMusCnt
                     SEQ_SplitCSV SEQ_GetKV$(seqSval$(seqIdx), "speech"), bossSpeechList$(), bossSpeechCnt
                     bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))   ' bullet homing strength
+                    bossCfgHp   = Val(SEQ_GetKV$(seqSval$(seqIdx), "hp"))     ' 0 = bosses.ini boss_hp_default
                     Dim seqaMnvStr As String : seqaMnvStr = SEQ_GetKV$(seqSval$(seqIdx), "maneuver")
                     If Len(seqaMnvStr) = 0 Then seqaMnvStr = "flyover"
                     SEQ_SplitCSV seqaMnvStr, bossManeuverList$(), bossManeuverCnt

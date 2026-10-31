@@ -2,7 +2,7 @@
 #! group: gameplay
 #! seed: 1
 #! args: --god --no-telem --scene playing2
-#! shots: 900
+#! shots: 800
 0 900 FIRE
 100 160 LEFT
 300 340 UP
