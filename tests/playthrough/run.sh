@@ -29,7 +29,7 @@
 # its score to the real leaderboard.
 #
 # When the game changes on purpose (a stage added, a scene reordered), update
-# expected.txt, and playthrough.txt / FRAMES if the run gets longer.
+# expected.txt, and playthrough.txt / its "#! frames" if the run gets longer.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -37,8 +37,8 @@ HERE="$REPO/tests/playthrough"
 BIN="${SSS_BIN:-$REPO/builds/sss}"
 OUT="${PLAYTHROUGH_OUT:-$REPO/builds/playthrough}"
 TIME_LIMIT="${PLAYTHROUGH_TIMEOUT:-900}"
-FRAMES=20000
-SEED=1
+# seed, flags and frames come from playthrough.txt's "#!" header (#324); the checks need frames
+FRAMES="$(sed -n 's/^#! *frames:\{0,1\} *\([0-9][0-9]*\) *$/\1/p' "$HERE/playthrough.txt")"
 
 fail() {
     echo "PLAYTHROUGH FAILED: $*" >&2
@@ -47,6 +47,7 @@ fail() {
 }
 
 [ -x "$BIN" ] || fail "no game binary at $BIN (build it first: tools/dev build)"
+[ -n "$FRAMES" ] || fail "no '#! frames N' line in $HERE/playthrough.txt"
 case "$BIN" in /*) ;; *) BIN="$(pwd)/$BIN" ;; esac
 if [ -f "$REPO/assets/.env" ] && grep -Eq '^DB_URL=.+' "$REPO/assets/.env"; then
     fail "assets/.env sets DB_URL, so $BIN may send telemetry and a leaderboard score; rebuild with an empty assets/.env"
@@ -62,10 +63,10 @@ if [ -z "${DISPLAY:-}" ]; then
     XVFB=(xvfb-run -a -s "-screen 0 1280x720x24")
 fi
 
-echo "=== playthrough: --god --nerf --seed $SEED --frames $FRAMES, input $HERE/playthrough.txt ==="
+echo "=== playthrough: input $HERE/playthrough.txt ($(grep '^#!' "$HERE/playthrough.txt" | tr '\n' ' ')) ==="
 start=$SECONDS
 SSS_MILESTONE_LOG=milestones.log timeout "$TIME_LIMIT" "${XVFB[@]}" "$BIN" \
-    --god --nerf --seed "$SEED" --frames "$FRAMES" --input-script "$HERE/playthrough.txt" "$@" \
+    --input-script "$HERE/playthrough.txt" "$@" \
     > game.out 2>&1
 rc=$?
 elapsed=$((SECONDS - start))

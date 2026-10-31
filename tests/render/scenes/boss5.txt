@@ -1,6 +1,7 @@
 # Boss 5: a cut's warning lines (340), then its beam (360).
 #! group: gameplay
-#! args: --scene boss5
+#! seed: 1
+#! args: --god --no-telem --scene boss5
 #! shots: 340,360
 0 360 FIRE
 100 160 LEFT
