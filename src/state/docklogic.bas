@@ -6,6 +6,9 @@
 ' input) or DOCK_Step% (plain flags) directly.
 '   DOCK_Open                      entering the dock: cursor on the first row, per-visit refills
 '   r = DOCK_Step%(up, dn, lf, rt, buy, back)
+'   w = DOCK_TankWarn%(over, tick) -1 on the frames the fuel line shows DOCK_TankWarnText$(tank)
+'                                  instead of NEXT JUMP NEEDS (only when the jump is longer
+'                                  than the tank: SUP_OverTank%)
 '   r = DOCK_Input%                reads up/down/left/right (arrows, W/S/A/D, stick, d-pad),
 '                                  ENTER / pad A to buy, ESC / pad B / pad Start to leave
 ' A supply row's amount (dockAmt) starts at what the credits fill, and goes back there after
@@ -31,6 +34,7 @@ Const DOCK_FULL    = 5
 Const DOCK_LEAVE   = 6
 Const DOCK_ASK     = 7
 Const DOCK_STRANDED = 8
+Const DOCK_TANKWARN_FRAMES = 90   ' a jump longer than the tank: NEXT JUMP NEEDS and UPGRADE TANK take turns this long
 
 Dim Shared dockSel As Integer, dockTop As Integer
 Dim Shared dockMsg As String, dockMsgTimer As Integer, dockMsgBad As Integer
@@ -150,4 +154,14 @@ Function DOCK_Input%
     dkiBuy = KEY_Confirm%
     dkiBack = KEY_Back%
     DOCK_Input% = DOCK_Step%(dkiUp, dkiDn, dkiLf, dkiRt, dkiBuy, dkiBack)
+End Function
+
+Function DOCK_TankWarn% (dtwOver As Integer, dtwTick As Long)
+    DOCK_TankWarn% = 0
+    If dtwOver = 0 Then Exit Function
+    If (dtwTick \ DOCK_TANKWARN_FRAMES) Mod 2 = 1 Then DOCK_TankWarn% = -1
+End Function
+
+Function DOCK_TankWarnText$ (dtsMax As Single)
+    DOCK_TankWarnText$ = "TANK " + LTrim$(Str$(Int(dtsMax))) + ": UPGRADE TANK"
 End Function

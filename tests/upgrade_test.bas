@@ -38,9 +38,9 @@ Sub TELEM_ShieldBought (tsbA As Integer, tsbP As Long, tsbC As Integer)
     utShieldBuys = utShieldBuys + 1 : utShieldAmt = tsbA : utShieldPrice = tsbP : utShieldCh = tsbC
 End Sub
 ' SEQ_NextLeg (sequence.bas) reports this stub leg
-Dim Shared utLegKills As Long, utLegBoss As Integer, utLegAst As Integer
-Sub SEQ_NextLeg (snlK As Long, snlB As Integer, snlA As Integer)
-    snlK = utLegKills : snlB = utLegBoss : snlA = utLegAst
+Dim Shared utLegKills As Long, utLegBossSecs As Single, utLegBoss As Integer, utLegAst As Integer
+Sub SEQ_NextLeg (snlK As Long, snlBS As Single, snlB As Integer, snlA As Integer)
+    snlK = utLegKills : snlBS = utLegBossSecs : snlB = utLegBoss : snlA = utLegAst
 End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
@@ -66,6 +66,11 @@ End Sub
 
 Function UT_Near% (utnA As Single, utnB As Single)
     UT_Near% = (Abs(utnA - utnB) < 0.0001)
+End Function
+
+' Fuel needs multiply several decimal settings: compare them to the hundredth.
+Function UT_Close% (utcA As Single, utcB As Single)
+    UT_Close% = (Abs(utcA - utcB) < 0.01)
 End Function
 
 Dim utOk As Integer, utR As Integer, utI As Integer, utJ As Integer
@@ -319,32 +324,62 @@ UT_Assert SUP_Buy%(SUP_SHIELD, 5, 4) = SUP_FULL, "full shields: refused"
 Print ""
 Print "--- the next jump's fuel need, and stranded (#277) ---"
 UPG_Reset : settingNerf = 0 : godMode = 0
-utLegKills = 10 : utLegBoss = 1 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 55), "10-kill combat + a boss: 10 x 3 + 25 = 55"
-utLegKills = 24 : utLegBoss = 1 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 97), "the last leg (chapter 6): 24 x 3 + 25 = 97, under the base tank"
-utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
-UT_Assert UT_Near%(SUP_LegNeed!, 90), "the asteroid field: 90 (it burns ~89)"
-utLegKills = 40 : utLegBoss = 1
+UT_Assert UT_Near%(supBurn, 1.32) And UT_Near%(supMargin, 1.15), "real burn 1.32 fuel a second, x1.15 margin"
+UT_Assert supKillSecsCnt = 6 And UT_Near%(supKillSecs(1), 4.4) And UT_Near%(supKillSecs(6), 1.6), "seconds a kill per chapter: 4.4 .. 1.6"
+UT_Assert UT_Near%(supBossSecs, 25) And UT_Near%(supAstSecs, 80), "a boss with no secs= 25 s, the asteroid field 80 s"
+levelNum = 0 : utLegKills = 12 : utLegBoss = 0 : utLegBossSecs = 0 : utLegAst = 0
+UT_Assert UT_Close%(SUP_LegNeed!, 80.15), "chapter 1: 12 kills x 4.4 s = 52.8 s x 1.32 x 1.15 = 80.2"
+levelNum = 1 : utLegKills = 18
+UT_Assert UT_Close%(SUP_LegNeed!, 106.56), "chapter 2: 18 x 3.9 s = 70.2 s -> 106.6, more than the base tank"
+levelNum = 2 : utLegKills = 12 : utLegBossSecs = 22
+UT_Assert UT_Close%(SUP_LegNeed!, 108.08), "chapter 3: 12 x 4.1 s + boss 1's secs=22 = 71.2 s -> 108.1"
+levelNum = 3 : utLegKills = 0 : utLegBossSecs = 0 : utLegAst = 1
+UT_Assert UT_Close%(SUP_LegNeed!, 121.44), "chapter 4: the asteroid field, 80 s -> 121.4"
+levelNum = 4 : utLegKills = 18 : utLegBossSecs = 25 : utLegAst = 0
+UT_Assert UT_Close%(SUP_LegNeed!, 89.87), "chapter 5: 18 x 1.9 s + boss 2's secs=25 = 59.2 s -> 89.9"
+levelNum = 5 : utLegKills = 24 : utLegBossSecs = 32
+UT_Assert UT_Close%(SUP_LegNeed!, 106.87), "chapter 6: 24 x 1.6 s + boss 3's secs=32 = 70.4 s -> 106.9"
+levelNum = 2 : utLegKills = 12 : utLegBossSecs = 0 : utLegBoss = 1
+UT_Assert UT_Close%(SUP_LegNeed!, 112.64), "a boss with no secs= uses fuel_boss_secs: 49.2 + 25 s -> 112.6"
+UT_Assert SUP_OverTank% And UT_Near%(SUP_LegReach!, 100), "longer than the base tank: over the tank, the tank can take 100 of it"
+levelNum = 3 : utLegKills = 0 : utLegBoss = 0 : utLegAst = 1
 credits = 10000 : utR = UPG_Buy%(UPG_FUEL) : utR = UPG_Buy%(UPG_FUEL)
-UT_Assert UT_Near%(SUP_LegNeed!, 100), "a long leg is capped at the base tank (100), even with a bigger tank"
+UT_Assert UT_Close%(SUP_LegNeed!, 121.44) And SUP_OverTank% = 0 And UT_Close%(SUP_LegReach!, 121.44), "never capped: a 160 tank takes all 121.4"
 UPG_Reset
-utLegKills = 10 : utLegBoss = 1 : utLegAst = 0 : settingNerf = -1
-UT_Assert UT_Near%(SUP_LegNeed!, 5.5), "--nerf: 55 x 0.1"
+credits = 10000 : utR = UPG_Buy%(UPG_FUEL)
+UT_Assert SUP_OverTank% = 0, "the first tank upgrade (130) holds the longest leg"
+UPG_Reset
+settingNerf = -1
+UT_Assert UT_Close%(SUP_LegNeed!, 12.14) And SUP_OverTank% = 0, "--nerf: 121.4 x 0.1"
 settingNerf = 0
 utLegKills = 0 : utLegBoss = 0 : utLegAst = 0
-UT_Assert UT_Near%(SUP_LegNeed!, 0), "no leg ahead: needs nothing"
+UT_Assert UT_Near%(SUP_LegNeed!, 0) And SUP_OverTank% = 0, "no leg ahead: needs nothing"
 fuelLevel = 0 : credits = 0
 UT_Assert SUP_Stranded% = 0, "the last dock (no leg ahead) never strands"
-utLegKills = 10 : utLegBoss = 1 : levelNum = 2
-fuelLevel = 30 : credits = 70
-UT_Assert SUP_Stranded% = 0, "30 in the tank + $70 = 25 units at $2.80: exactly 55, not stranded"
-credits = 69
-UT_Assert SUP_Stranded% <> 0, "$69 buys 24: 54 < 55, stranded"
+
+' stranded asks only for min(need, tank)
+levelNum = 2 : utLegKills = 12 : utLegBossSecs = 22 : utLegBoss = 0
+fuelLevel = 30 : credits = 196
+UT_Assert SUP_Stranded% = 0, "chapter 3 (108) on a 100 tank: 30 + $196 = 70 units at $2.80 fills it to 100, not stranded"
+credits = 195
+UT_Assert SUP_Stranded% <> 0, "$195 buys 69: 99 < 100, stranded"
+fuelLevel = 100 : credits = 0
+UT_Assert SUP_Stranded% = 0, "a full base tank is never stranded by a leg longer than the tank"
+credits = 10000 : utR = UPG_Buy%(UPG_FUEL)
+fuelLevel = 30 : credits = 221
+UT_Assert SUP_Stranded% = 0, "with a 130 tank the whole 108 is asked: 30 + 79 units ($221) = 109, not stranded"
+credits = 220
+UT_Assert SUP_Stranded% <> 0, "$220 buys 78: 108 < 108.1, stranded"
+UPG_Reset
+levelNum = 4 : utLegKills = 18 : utLegBossSecs = 25
+fuelLevel = 30 : credits = 264
+UT_Assert SUP_Stranded% = 0, "chapter 5 (89.9) fits the tank: 30 + 60 units at $4.40 ($264) = 90, not stranded"
+credits = 263
+UT_Assert SUP_Stranded% <> 0, "$263 buys 59: 89 < 89.9, stranded"
 godMode = -1
 UT_Assert SUP_Stranded% = 0, "god mode is never stranded"
 godMode = 0
-fuelLevel = 55 : credits = 0
+fuelLevel = 90 : credits = 0
 UT_Assert SUP_Stranded% = 0, "enough in the tank already, broke: not stranded"
 fuelLevel = 100 : credits = 10000
 
