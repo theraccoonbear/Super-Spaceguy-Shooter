@@ -45,10 +45,10 @@ SEED=1
 # Latest frame the final title may arrive at: the measured finishing frame plus ~5%.
 # When the run gets longer on purpose, take the new "final title reached at frame N"
 # from this script's output (the CI Playthrough job log), set this to about N * 1.05,
-# and say in the PR which segments grew (compare the segment tables). Measured: 15051
-# (4:10) on master be7b461; combat stages end on a kill count, so their length moves
+# and say in the PR which segments grew (compare the segment tables). Measured: 17502
+# (4:51) on master 2deea1f (#318's tuning lengthened the stages); combat stages end on a kill count, so their length moves
 # whenever weapons, enemies or the RNG stream change.
-FINAL_FRAME_MAX=15800
+FINAL_FRAME_MAX=18400
 
 raw=()
 
