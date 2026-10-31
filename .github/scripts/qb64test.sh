@@ -70,6 +70,7 @@ TESTS=(
   seq_trace_test
   scene_jump_planet_test
   spk_timing_test
+  narr_drain_test
   snd_init_test
   music_test
   telem_creds_test
