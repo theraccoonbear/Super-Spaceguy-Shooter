@@ -14,12 +14,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 # First line: CI's apt list. Second: what setup_lnx.sh would sudo-install.
 # Third: tools the repo scripts call (make-version, http mock, xvfb-run, emit).
 # Fourth: runtime for `tools/dev run` (Mesa GL drivers for /dev/dri, Pulse client for audio).
+# Fifth: `tools/dev record` (a null-sink PulseAudio server to capture the game's sound, ffmpeg).
 RUN apt-get update -qq \
  && apt-get install -y --no-install-recommends \
       libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev \
       build-essential x11-utils mesa-common-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
       ca-certificates curl git python3 xauth xz-utils \
       libgl1-mesa-dri libglx-mesa0 libpulse0 \
+      pulseaudio pulseaudio-utils ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
