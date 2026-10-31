@@ -89,7 +89,7 @@ Sub DOCK_DrawStrandAsk
     Const DSA_X2 = 275
     Const DSA_Y2 = 172
     Dim dsaNeed As Single, dsaCan As Long
-    dsaNeed = SUP_LegNeed!
+    dsaNeed = SUP_LegReach!
     dsaCan = Int(fuelLevel) + SUP_MaxAffordable%(SUP_FUEL, levelNum)
     Line (DSA_X1, DSA_Y1)-(DSA_X2, DSA_Y2), _RGBA(0, 0, 8, 200), BF
     UI_Panel DSA_X1, DSA_Y1, DSA_X2, DSA_Y2
@@ -252,8 +252,12 @@ Sub DOCK_DrawSupplyInfo (dsiK As Integer, dsiY As Integer)
         If dsiNeed <= 0 Then
             UI_Text 8, "NO JUMP AHEAD", DOCK_PX1 + 8, dsiY + 16, 255
         Else
-            If fuelLevel + dockAmt(SUP_FUEL) < dsiNeed Then dsiPal = 12 Else dsiPal = 14
-            UI_Text dsiPal, "NEXT JUMP NEEDS " + LTrim$(Str$(-Int(-dsiNeed))) + " FU", DOCK_PX1 + 8, dsiY + 16, 255
+            If fuelLevel + dockAmt(SUP_FUEL) < SUP_LegReach! Then dsiPal = 12 Else dsiPal = 14
+            If DOCK_TankWarn%(SUP_OverTank%, dockNewsTick) Then
+                UI_Text 12, DOCK_TankWarnText$(fuelMax), DOCK_PX1 + 8, dsiY + 16, 255
+            Else
+                UI_Text dsiPal, "NEXT JUMP NEEDS " + LTrim$(Str$(-Int(-dsiNeed))) + " FU", DOCK_PX1 + 8, dsiY + 16, 255
+            End If
         End If
     Else
         UI_Text 15, DOCK_Money$(SUP_UnitPrice!(SUP_SHIELD, levelNum)) + "/U  FLAT RATE", DOCK_PX1 + 8, dsiY, 255
@@ -306,7 +310,13 @@ Sub DOCK_StatusRow (dksLbl As String, dksVal As Single, dksMax As Single, dksX A
     End If
     If dksSup = SUP_FUEL Then
         dksNeed = SUP_LegNeed!
-        If dksNeed > 0 Then
+        If dksNeed > dksMax Then
+            ' the jump is longer than the tank: a red arrow off the bar's end
+            dksTx = dksX + 3 + UPG_BarLen%(dksMax)
+            Line (dksTx, dksY + 14)-(dksTx, dksY + 22), _RGB(255, 85, 85)
+            Line (dksTx + 2, dksY + 15)-(dksTx + 5, dksY + 18), _RGB(255, 85, 85)
+            Line (dksTx + 5, dksY + 18)-(dksTx + 2, dksY + 21), _RGB(255, 85, 85)
+        ElseIf dksNeed > 0 Then
             dksTx = dksX + 1 + UPG_BarFill%(dksNeed, dksMax)
             Line (dksTx, dksY + 14)-(dksTx, dksY + 22), _RGB(255, 255, 255)
         End If
