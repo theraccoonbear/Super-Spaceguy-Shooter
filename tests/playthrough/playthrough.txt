@@ -1,9 +1,9 @@
 # Full-playthrough input script for tests/playthrough/run.sh (#100), played with
 #! seed 1
 #! args --god --nerf
-#! frames 13200
+#! frames 13100
 # from a launch folder with no sss_settings.ini. The outro returns to the title at
-# frame 12377; run.sh checks the milestones against
+# frame 12617; run.sh checks the milestones against
 # expected.txt. Every line reacts to the screen it is on (@ lines, #328), taking each
 # screen's quickest way out, so no screen waits on a retry.
 #
