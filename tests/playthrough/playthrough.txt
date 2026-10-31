@@ -3,7 +3,7 @@
 #! args --god --nerf
 #! frames 13100
 # from a launch folder with no sss_settings.ini. The outro returns to the title at
-# frame 12617; run.sh checks the milestones against
+# frame 12622; run.sh checks the milestones against
 # expected.txt. Every line reacts to the screen it is on (@ lines, #328), taking each
 # screen's quickest way out, so no screen waits on a retry.
 #
@@ -34,8 +34,10 @@
 # Emperor card: a fresh ESC skips to the title. The crawl skip just held ESC, so it
 # waits a frame for the card to see ESC up first.
 @GS_INTRO +1 ESC
-# Title: P plays. Only the first time; the outro's return to the title ends the run.
+# Title: P opens LAUNCH NOW?, a second P five frames later launches. Only the first time;
+# the outro's return to the title ends the run.
 @GS_TITLE#1 +0 P
+@GS_TITLE#1 +5 P
 # Flight: fire throughout, and weave LEFT, UP, RIGHT, DOWN (60 frames each) so aim
 # assist finds targets and the asteroid field gets crossed.
 @GS_PLAYING +0 * FIRE

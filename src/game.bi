@@ -12,6 +12,7 @@
 '$INCLUDE:'state/docklogic.bas'
 '$INCLUDE:'state/pauselogic.bas'
 '$INCLUDE:'state/consentlogic.bas'
+'$INCLUDE:'state/launchlogic.bas'
 '$INCLUDE:'state/remaplogic.bas'
 '$INCLUDE:'audio/speech.bas'
 '$INCLUDE:'2d/effects.bas'
