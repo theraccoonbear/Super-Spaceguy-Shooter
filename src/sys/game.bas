@@ -146,7 +146,8 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
     CLI_Emit guFH, "  --script-override      Let flags here differ from the input script's #! header (this line wins)"
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
-    CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
+    CLI_Emit guFH, "  --settings-dir <path>  Keep sss_settings.ini in this folder (relative: to the launch folder) instead of the per-user one; --input-script runs use the launch folder"
+    CLI_Emit guFH, "  --frames N           Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --realtime             Keep 60 frames per second in --input-script runs (for recordings)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
@@ -211,6 +212,7 @@ End Sub
 ' as exit=quit, then queued telemetry gets a short, bounded chance to go out.
 Sub GAME_Quit
     SEQ_QuitProcess
+    TELEM_FlushCsv
     HTTP_Flush 1.5
     System
 End Sub

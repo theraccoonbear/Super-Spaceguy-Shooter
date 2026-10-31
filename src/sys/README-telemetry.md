@@ -14,7 +14,7 @@ The author wants aggregate, anonymous gameplay data (where do players die, how f
 ## Event schema
 
 Every event goes through `TELEM_Row(event$, data$)`, which:
-- Appends a CSV row to `sss_telemetry.csv` in the working directory: `time,session,event,data` (`time` = seconds since midnight (local file only), `session` = `YYYYMMDDHHMMSS` boot timestamp, `data` = pipe-separated `key=value` pairs).
+- Buffers a CSV row in memory (`telemCsvBuf`); `TELEM_FlushCsv` writes the buffer to `sss_telemetry.csv` in the launch folder (`telemCsvDir`; no CSV when it is not writable or under `--no-telem`) once, from `TELEM_SessionEnd` (the same moment the network batch goes out, so also on window close or title QUIT via `GAME_Quit`) and on a `--frames` exit, so a kill never touches the disk and a crash loses the unwritten rows. Row format: `time,session,event,data` (`time` = seconds since midnight (local file only), `session` = `YYYYMMDDHHMMSS` boot timestamp, `data` = pipe-separated `key=value` pairs).
 - If `DB_URL` is set, also appends a JSON object to an in-memory batch (`telemBatch`) via [`json.bas`](../sys/json.bas)'s minimal encoder, sent as POSTs of at most 1000 rows (and about 100 KB) each: a full chunk goes out as soon as it fills, the rest when the session ends. In the JSON, `ev_time` is whole seconds since the session started, counted in frames at 60 a second so a scripted run agrees at any speed (`session_start` is 0, never the time of day), which is the integer the Worker requires.
 
 Where it happened: `enemy_killed`, `powerup_collected`, `powerup_missed`, `enemy_escaped`, `fuel_exhausted`, `player_damaged`, `player_death`, `boss_reached`, `boss_phase`, `boss_defeated` and `session_end` end with `chapter=N|stage_kills=K|stage_target=T` (`TELEM_At$`: `levelNum`, and the kills made of the kills the stage needs); `upgrade_bought` carries `chapter`, and the dock purchases and `stage_clear` already had their own.
@@ -46,7 +46,7 @@ The board ranks every difficulty together and marks each row with its level's `<
 
 ## How to query the data locally
 
-Without a configured backend, `sss_telemetry.csv` in the game's working directory is the only telemetry output. It's plain CSV, so any spreadsheet tool or `awk`/`csvkit`/pandas works directly. With a backend configured, the same events also land in the D1 database, queryable with `npx wrangler d1 execute sss --remote --command "SELECT ..."` from `server/` or in the Cloudflare dashboard.
+Without a configured backend, `sss_telemetry.csv` in the launch folder is the only telemetry output. It's plain CSV, so any spreadsheet tool or `awk`/`csvkit`/pandas works directly. With a backend configured, the same events also land in the D1 database, queryable with `npx wrangler d1 execute sss --remote --command "SELECT ..."` from `server/` or in the Cloudflare dashboard.
 
 ## Known limitations and gotchas
 
@@ -62,4 +62,4 @@ Without a configured backend, `sss_telemetry.csv` in the game's working director
 tools/buildqb tests/telem_creds_test.bas && builds/telem_creds_test
 ```
 
-`tests/death_telem_test.bas` covers the batch contents (flags, chapter and progress, quit state, duration, `ev_time`, chunking at 1000 rows) and `tests/run_end_test.bas` the one-session-end rule for window close. Nothing there checks the CSV file itself. The backend side of the payloads is tested in `server/` (`npm test`) against copies of the JSON the game builds; if you change the event schema, update those tests too.
+`tests/death_telem_test.bas` covers the batch contents (flags, chapter and progress, quit state, duration, `ev_time`, chunking at 1000 rows) and `tests/run_end_test.bas` the one-session-end rule for window close. `tests/settings_dir_test.bas` checks the CSV file: nothing is written while rows are logged, and one write at session end or on quit. The backend side of the payloads is tested in `server/` (`npm test`) against copies of the JSON the game builds; if you change the event schema, update those tests too.

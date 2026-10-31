@@ -105,7 +105,7 @@ for scene in "${SCENES[@]}"; do
         mkdir -p "$rd"
         # its own launch folder: screenshots and a fresh sss_settings.ini land there
         if ! (cd "$rd" && xvfb-run -a -s "-screen 0 1280x720x24" "$REPO/builds/sss" \
-                --frames "$((last + 1))" --screenshot-at "$shots" --input-script "$sf" > sss.log 2>&1); then
+                --frames "$((last + 1))" --screenshot-at "$shots" --settings-dir . --input-script "$sf" > sss.log 2>&1); then
             fail "sss exited non-zero (run $run); see $rd/sss.log" "$scene"; ok=0; break
         fi
         for fr in "${frames[@]}"; do

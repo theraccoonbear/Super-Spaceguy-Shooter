@@ -45,7 +45,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 |---|---|---|
 | *(main loop)* | `sss.bas` | Entry point, CLI parsing, main game loop, HTTP_Pump dispatch |
 | `SEQ_` | `src/sys/sequence.bas` | Data-driven scene sequencer (`assets/sequence.txt`); see `src/sys/README-sequence.md` |
-| `SET_` | `src/sys/settingsio.bas` | Persistent INI settings (volumes, consent, callsign); the options screen is `settings.bas` |
+| `SETTINGS_` | `src/sys/settingsio.bas`, `src/sys/settingsprobe.bas` | Persistent INI settings (volumes, consent, callsign) in the per-user dir (#284); the options screen is `settings.bas` |
 | `CFG_` | `src/sys/config.bas` | The one key=value parser for every embedded .ini (gamevalues.ini and `assets/config/*.ini`) |
 | `DBG_` | `src/sys/debug.bas` | Debug HUD overlay and diagnostic console output (`--debug`) |
 | `HTTP_` | `src/sys/http.bas` | Non-blocking HTTP queue via libcurl; see `src/sys/README-http.md` |
@@ -124,7 +124,7 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 
 ## Architectural invariants — never violate these
 
-1. **No runtime file I/O.** Assets are baked via `$EMBED`. The only files a player's game touches are `sss_settings.ini` (written/read by `settingsio.bas` for persistence) and `sss_telemetry.csv` (written by `telemetry.bas` for local logging), both in the launch folder. Both are skipped for the session when the startup probe in `sss.bas` finds the launch folder unwritable (`ioReadOnly`, #283). Dev builds also read `--input-script` / `--leaderboard-file` files and write `--screenshot-at` PNGs and the `SSS_MILESTONE_LOG` file.
+1. **No runtime file I/O.** Assets are baked via `$EMBED`. The only files a player's game touches are `sss_settings.ini` (written/read by `settingsio.bas`) in the per-user settings dir (`$XDG_CONFIG_HOME/sss` or `~/.config/sss`, `%APPDATA%\sss`, `~/Library/Application Support/sss`; `SETTINGS_DirFor$`, #284) and `sss_telemetry.csv` (buffered in memory by `telemetry.bas`, written once at session end or quit) in the launch folder. `src/sys/settingsprobe.bas` (run from `sss.bas`) creates the settings dir, migrates a launch-folder `sss_settings.ini` on first run, and falls back to the launch folder, then to a read-only session (`ioReadOnly`, #283); the CSV is skipped when the launch folder is unwritable. Dev builds also read `--input-script` / `--leaderboard-file` files and write `--screenshot-at` PNGs and the `SSS_MILESTONE_LOG` file. Hermetic runs: `--settings-dir <path>` pins the settings dir, and `--input-script` runs use the launch folder, so tests, render, record, playthrough and determinism never touch a developer's own settings.
 2. **Single compiled binary.** No DLLs, no plugins, no dynamic loading.
 3. **Single thread.** The frame loop is: input → update → render → `_Display`. `HTTP_Pump` must be called once per frame from the main loop for async transfers to make progress.
 4. **All state is module-global.** `src/sys/dims.bas` declares the game-wide state; most modules also declare their own `DIM SHARED` variables at the top of the file (about 60% of all `Dim Shared` lines live outside `dims.bas`). Either way every shared variable is global: no module has private state that another module cannot read.

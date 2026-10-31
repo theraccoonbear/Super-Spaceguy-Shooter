@@ -1,6 +1,6 @@
 ' telemetry.bas — gameplay event logger
 '
-' Writes one CSV row per game event to sss_telemetry.csv in _STARTDIR$.
+' Buffers one CSV row per game event (telemCsvBuf) and writes sss_telemetry.csv in telemCsvDir once, at session end (#284).
 ' telemOn (DIM SHARED in sss.bas) gates all writes; disabled by --no-telem flag.
 '
 ' Format: time,session,event,data
@@ -62,23 +62,28 @@ Sub TELEM_Init()
     Else
         DBG_Print "TELEM: HTTP telemetry local only (no DB_URL configured)"
     End If
-    If ioReadOnly Then Exit Sub
-    Dim tlF As Integer : tlF = FreeFile
-    If Not _FileExists(_StartDir$ + "/sss_telemetry.csv") Then
-        Open _StartDir$ + "/sss_telemetry.csv" For Output As #tlF
-        Print #tlF, "time,session,event,data"
-        Close #tlF
-    End If
+End Sub
+
+' Write the buffered CSV rows (header first when the file is new) in one open/close. Called once
+' per session at its end, and on a --frames exit, so a kill never touches the disk.
+Sub TELEM_FlushCsv
+    Dim tlF As Integer, tlNew As Integer, tlPath As String
+    If Len(telemCsvBuf) = 0 Then Exit Sub
+    If Len(telemCsvDir) = 0 Then telemCsvBuf = "" : Exit Sub
+    tlPath = telemCsvDir + "/sss_telemetry.csv"
+    tlNew = (_FileExists(tlPath) = 0)
+    tlF = FreeFile
+    Open tlPath For Append As #tlF
+    If tlNew Then Print #tlF, "time,session,event,data"
+    Print #tlF, telemCsvBuf;
+    Close #tlF
+    telemCsvBuf = ""
 End Sub
 
 Sub TELEM_Row(tlEvent As String, tlData As String)
     If telemOn = 0 Then Exit Sub
-    Dim tlF As Integer
-    If ioReadOnly = 0 Then
-        tlF = FreeFile
-        Open _StartDir$ + "/sss_telemetry.csv" For Append As #tlF
-        Print #tlF, LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData
-        Close #tlF
+    If Len(telemCsvDir) > 0 Then
+        telemCsvBuf = telemCsvBuf + LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData + Chr$(10)
     End If
     ' accumulate for bulk HTTP POST; sent in chunks the Worker accepts
     If Len(DB_URL) > 0 And Len(telemSession) > 0 Then
@@ -236,6 +241,7 @@ Sub TELEM_SessionEnd()
     TELEM_Row "session_end", tlData  ' also appends to telemBatch
     DBG_Print "TELEM: SessionEnd rows=" + LTrim$(Str$(Len(telemBatch))) + " bytes"
     TELEM_FlushBatch
+    TELEM_FlushCsv
     If Len(DB_URL) = 0 Or Len(DB_KEY) = 0 Then
         DBG_Print "LBRD: score POST skipped -- DB_URL/DB_KEY not set in .env"
     ElseIf telemConsent = 0 Then

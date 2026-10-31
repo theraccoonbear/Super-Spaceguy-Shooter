@@ -11,7 +11,7 @@ echo "=== tools_dev_test ==="
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE=localhost/sss-dev:test
 
-cmdline="$(SSS_DEV_DRYRUN=1 SSS_ENGINE=podman SSS_IMAGE="$IMAGE" DISPLAY=:0 \
+cmdline="$(SSS_DEV_DRYRUN=1 SSS_ENGINE=podman SSS_IMAGE="$IMAGE" DISPLAY=:0 XDG_CONFIG_HOME=/tmp/sss-xdg-test \
     "$REPO/tools/dev" run --version)"
 echo "$cmdline"
 
@@ -26,6 +26,8 @@ expect() {
 }
 
 expect "-e DISPLAY"
+expect "-e XDG_CONFIG_HOME=/tmp/sss-config"
+expect "-v /tmp/sss-xdg-test/sss:/tmp/sss-config/sss"
 expect "-v /tmp/.X11-unix:/tmp/.X11-unix"
 if [ -e /dev/dri ]; then
     expect "--device /dev/dri"
