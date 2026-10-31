@@ -156,8 +156,6 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, ""
     CLI_Emit guFH, "Scene names:"
     SEQ_PrintScenes guFH
-    CLI_Emit guFH, "  consent"
-    CLI_Emit guFH, "  username"
     $END IF
     If InStr(_OS$, "WIN") = 0 Then Close #guFH
     If guErr <> "" Then System 1 Else System 0
