@@ -24,8 +24,8 @@ Events fired today (see call sites in `gameplay/`, `state/`, `sys/sequence.bas`)
 The tables are defined in [`server/migrations/`](../../server/migrations/) and the routes and validation in [`server/src/index.ts`](../../server/src/index.ts), with tests in `server/test/`:
 
 - **`sss_telemetry`** (POST target for the batched event array): `session` (text, max 64 chars), `ev_time` (non-negative integer), `event` (text, max 64), `player_id` (text, max 64), `data` (text, max 1024), one row per event.
-- **`scores`** (POST target for score submission, only sent if `DB_URL`/`DB_KEY` are set, consent was given, and `score > 0`): `player_id` (max 64), `player_name` (max 32), `score`, `wave` (non-negative integers), `session` (max 64).
-- **`top_scores`** (GET target for the leaderboard poll, `?order=score.desc&limit=N&select=player_name,score`): a read-only route over `scores`, highest score first, ties broken by earlier submission. It's public; the two POSTs need `DB_KEY`.
+- **`scores`** (POST target for score submission, only sent if `DB_URL`/`DB_KEY` are set, consent was given, and `score > 0`): `player_id` (max 64), `player_name` (max 32), `score`, `wave` (non-negative integers), `session` (max 64), and optionally `difficulty` (lowercase slug, max 16, stored as `normal` when absent).
+- **`top_scores`** (GET target for the leaderboard poll, `?order=score.desc&limit=N&select=player_name,score`): a read-only route over `scores`, highest score first, ties broken by earlier submission. `select` may also name `wave` and `difficulty`, and `difficulty=eq.<slug>` limits it to one difficulty. It's public; the two POSTs need `DB_KEY`.
 
 The Worker rejects anything outside these shapes with a 400, so a payload change in `telemetry.bas` needs a matching change (and test) in `server/`.
 
