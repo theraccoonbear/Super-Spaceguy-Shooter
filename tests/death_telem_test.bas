@@ -3,7 +3,8 @@
 ' Drives the real PLAYER_TakeDamage (player.bas) and TELEM_SessionEnd
 ' (telemetry.bas) and checks that one death ends the session exactly once:
 ' two lethal hits in the same frame cost one ship and log one session end,
-' and a repeated TELEM_SessionEnd call does nothing.
+' and a repeated TELEM_SessionEnd call does nothing. The score post carries
+' the run's difficulty level (#102).
 '
 ' Session ends are counted through the real code's DBG_Print/HTTP_Post calls,
 ' so telemOn stays 0 and no sss_telemetry.csv is written.
@@ -240,6 +241,17 @@ Next dtBI
 TC_Assert telemShotsFired = 3 And fireTimer > 0 And laserEnergy < 100, "7.03  a 3-shot volley fires with every slot taken"
 TC_Assert dtBNew = 3 And dtBOld = 0, "7.04  it took 3 slots, all still active"
 TC_Assert bullets(77).life > 300 And bullets(200).life > 300 And bullets(40).life > 300, "7.05  the three oldest (77, 200, 40) were the ones reused"
+Print ""
+
+Print "--- 8. the score post carries the run's difficulty level (#102) ---"
+DT_NewGame 1
+runDifficulty = "hard"
+TELEM_SessionEnd
+TC_Assert dtScorePosts = 1 And Right$(dtPostBody, 17) = ",difficulty:hard}", "8.01  difficulty:hard is the post's last field"
+DT_NewGame 1
+runDifficulty = ""
+TELEM_SessionEnd
+TC_Assert dtScorePosts = 1 And InStr(dtPostBody, "difficulty") = 0 And Right$(dtPostBody, 1) = "}", "8.02  no level: no difficulty field (the server stores the default)"
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _

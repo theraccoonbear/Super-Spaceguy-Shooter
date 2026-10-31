@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest";
 import fixture from "../../tests/input/leaderboard.json?raw";
 import { gameHeaders, get, post, seedScores } from "./helpers";
 
-const GAME_QUERY = "/top_scores?order=score.desc&limit=10&select=player_name,score";
+const GAME_QUERY = "/top_scores?order=score.desc&limit=10&select=player_name,score,difficulty";
+// what game builds from before #102 still ask for
+const OLD_GAME_QUERY = "/top_scores?order=score.desc&limit=10&select=player_name,score";
 
-function lbrdParse(body: string): [string, number][] {
+function lbrdParse(body: string): [string, number, string][] {
   return (JSON.parse(body) as Record<string, unknown>[]).map((row) => {
-    expect(Object.keys(row)).toEqual(["player_name", "score"]);
-    return [row.player_name as string, row.score as number];
+    expect(Object.keys(row)).toEqual(["player_name", "score", "difficulty"]);
+    return [row.player_name as string, row.score as number, row.difficulty as string];
   });
 }
 
 describe("GET /top_scores", () => {
-  it("answers the game's exact query with flat player_name,score objects, best first", async () => {
+  it("answers the game's exact query with flat player_name,score,difficulty objects, best first", async () => {
     await seedScores([
       ["BOB", 500, 2],
       ["ACE", 1234, 4],
@@ -23,12 +25,12 @@ describe("GET /top_scores", () => {
     expect(res.headers.get("Content-Type")).toBe("application/json");
     const body = await res.text();
     expect(body).toBe(
-      '[{"player_name":"ACE","score":1234},{"player_name":"CAT","score":900},{"player_name":"BOB","score":500}]',
+      '[{"player_name":"ACE","score":1234,"difficulty":"normal"},{"player_name":"CAT","score":900,"difficulty":"normal"},{"player_name":"BOB","score":500,"difficulty":"normal"}]',
     );
     expect(lbrdParse(body)).toEqual([
-      ["ACE", 1234],
-      ["CAT", 900],
-      ["BOB", 500],
+      ["ACE", 1234, "normal"],
+      ["CAT", 900, "normal"],
+      ["BOB", 500, "normal"],
     ]);
   });
 
@@ -44,7 +46,7 @@ describe("GET /top_scores", () => {
 
   it("accepts the old /rest/v1 prefix", async () => {
     await seedScores([["ACE", 10, 1]]);
-    expect(await (await get("/rest/v1" + GAME_QUERY)).json()).toEqual([{ player_name: "ACE", score: 10 }]);
+    expect(await (await get("/rest/v1" + OLD_GAME_QUERY)).json()).toEqual([{ player_name: "ACE", score: 10 }]);
   });
 
   it("breaks ties by earlier insert", async () => {
@@ -88,7 +90,7 @@ describe("GET /top_scores", () => {
     expect(await (await get("/top_scores?select=player_name,score,difficulty")).text()).toBe(
       '[{"player_name":"NEW","score":1200,"difficulty":"hard"},{"player_name":"OLD","score":900,"difficulty":"normal"}]',
     );
-    expect(await (await get(GAME_QUERY)).text()).toBe(
+    expect(await (await get(OLD_GAME_QUERY)).text()).toBe(
       '[{"player_name":"NEW","score":1200},{"player_name":"OLD","score":900}]',
     );
   });
@@ -117,9 +119,9 @@ describe("GET /top_scores", () => {
   it("reads back a score posted the way the game posts it", async () => {
     await post(
       "/scores",
-      '{"player_id":"9b8a7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d","player_name":"ACE","score":1450,"wave":3,"session":"20261027143005"}',
+      '{"player_id":"9b8a7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d","player_name":"ACE","score":1450,"wave":3,"session":"20261027143005","difficulty":"hard"}',
     );
-    expect(lbrdParse(await (await get(GAME_QUERY)).text())).toEqual([["ACE", 1450]]);
+    expect(lbrdParse(await (await get(GAME_QUERY)).text())).toEqual([["ACE", 1450, "hard"]]);
   });
 
   it.each([
@@ -148,8 +150,15 @@ describe("GET /top_scores", () => {
 
   it("serves the leaderboard fixture LBRD_Parse is tested against, byte for byte", async () => {
     const expected = fixture.trim();
-    for (const row of JSON.parse(expected) as { player_name: string; score: number }[]) {
-      const body = JSON.stringify({ player_id: "p", player_name: row.player_name, score: row.score, wave: 1, session: "s" });
+    for (const row of JSON.parse(expected) as { player_name: string; score: number; difficulty: string }[]) {
+      const body = JSON.stringify({
+        player_id: "p",
+        player_name: row.player_name,
+        score: row.score,
+        wave: 1,
+        session: "s",
+        difficulty: row.difficulty,
+      });
       expect((await post("/scores", body)).status).toBe(201);
     }
     expect(await (await get(GAME_QUERY)).text()).toBe(expected);
