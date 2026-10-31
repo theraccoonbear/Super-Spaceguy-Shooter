@@ -81,6 +81,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `DLV_` | `src/gameplay/difficulty.bas` | Difficulty levels (`assets/config/difficulty.ini`): the ordered level list, each level's name, leaderboard tag and knob multipliers; scales the other loaders' values (re-run per run by `GAME_LoadTuning`) and, through `dlvF*` factors, hard-coded constants at their use sites. Chosen in Settings (`settingDifficulty`) or by dev `--difficulty` (`cliDifficulty`), locked per run in `runDifficulty` at `GAME_ResetState` |
 | `RMP_` | `src/state/remaplogic.bas`, `src/state/remap.bas` | Controls remap page (Settings > Controls, pause dialog K) and the pad setup wizard; the binding table itself (`keyBind` / `padBind`, `E3D_ACT_*`, built-in pad layouts, saved per pad name in `sss_settings.ini`) lives in `src/3d/input.bas` |
 | `PAUSE_` | `src/state/pauselogic.bas` | The in-flight ABORT MISSION (pause) dialog's input |
+| `LAUNCH_` | `src/state/launchlogic.bas` | The title's LAUNCH NOW? confirm: the first start press opens it, a second press, ENTER or pad A on YES starts the run; nothing starts (or logs) until then |
 
 ---
 

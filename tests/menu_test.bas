@@ -22,8 +22,10 @@ Sub DBG_Print (mtDbg As String) : End Sub
 '$INCLUDE:'../src/sys/menunav.bas'
 '$INCLUDE:'../src/state/pauselogic.bas'
 '$INCLUDE:'../src/state/consentlogic.bas'
+'$INCLUDE:'../src/state/launchlogic.bas'
 
 Dim Shared mtPassed As Integer, mtFailed As Integer
+Dim Shared mtNoCount As Integer   ' LAUNCH_NO results MT_Launch% saw
 Dim Shared mtSfx As String   ' the UI sounds the frames asked for (uiSfx), as "id,id,"
 
 Function MT_I$ (mtiId As Integer)
@@ -90,6 +92,25 @@ Function MT_Consent% (mtcScript As String, mtcLast As Long)
         If uiSfx Then mtSfx = mtSfx + MT_I$(uiSfx) : uiSfx = 0
         If mtcR <> CONSENT_NONE Then MT_Consent% = mtcR : Exit Function
     Next mtcF
+End Function
+
+' Title LAUNCH NOW? from a closed dialog and no start key held; returns the first result
+' (LAUNCH_NONE if none), stopping there. The start key is P or pad Start, as title.bas passes it.
+Function MT_Launch% (mtlScript As String, mtlLast As Long)
+    Dim mtlF As Long, mtlR As Integer, mtlFirst As Integer
+    MT_Script mtlScript
+    launchOpen = 0 : launchSel = LAUNCH_ROW_YES : pWas = 0
+    mtSfx = "" : uiSfx = 0 : mtNoCount = 0
+    mtlFirst = LAUNCH_NONE
+    For mtlF = 0 To mtlLast
+        MT_Frame mtlF
+        mtlR = LAUNCH_Input%(held(E3D_KEY_P) Or held(E3D_KEY_PAD_START))
+        If uiSfx Then mtSfx = mtSfx + MT_I$(uiSfx) : uiSfx = 0
+        If mtlR <> LAUNCH_NONE And mtlFirst = LAUNCH_NONE Then mtlFirst = mtlR
+        If mtlR = LAUNCH_NO Then mtNoCount = mtNoCount + 1
+        If mtlR = LAUNCH_YES Then Exit For
+    Next mtlF
+    MT_Launch% = mtlFirst
 End Function
 
 Print "=== menu_test ==="
@@ -257,6 +278,50 @@ mtR = MT_Consent%("2 2 ESC", 4)
 MT_Assert mtSfx = MT_I$(SND_UI_BACK), "consent: ESC is back"
 mtR = MT_Consent%("2 2 PAD_B", 4)
 MT_Assert mtSfx = MT_I$(SND_UI_BACK), "consent: pad B is back"
+
+' ---- title LAUNCH NOW? ----
+Print ""
+Print "--- title launch confirm ---"
+mtR = MT_Launch%("2 2 P", 10)
+MT_Assert mtR = LAUNCH_NONE And launchOpen <> 0 And launchSel = LAUNCH_ROW_YES, "P opens the dialog on YES; nothing launches"
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE), "opening it plays the move sound"
+mtR = MT_Launch%("2 2 PAD_START", 10)
+MT_Assert mtR = LAUNCH_NONE And launchOpen <> 0, "pad Start opens it too"
+mtR = MT_Launch%("2 12 P", 20)
+MT_Assert mtR = LAUNCH_NONE And launchOpen <> 0, "P held through the dialog never confirms"
+mtR = MT_Launch%("2 12 PAD_START", 20)
+MT_Assert mtR = LAUNCH_NONE And launchOpen <> 0, "pad Start held through the dialog never confirms (its ESC doesn't cancel either)"
+mtR = MT_Launch%("2 2 P/5 5 P", 8)
+MT_Assert mtR = LAUNCH_YES And launchOpen = 0, "a second P press launches"
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_OK), "double press: open (move) then confirm sounds"
+mtR = MT_Launch%("2 2 PAD_START/5 5 PAD_START", 8)
+MT_Assert mtR = LAUNCH_YES, "a second pad Start press launches"
+mtR = MT_Launch%("2 2 P/5 5 ENTER", 8)
+MT_Assert mtR = LAUNCH_YES, "ENTER on YES launches"
+mtR = MT_Launch%("2 2 P/5 5 PAD_A", 8)
+MT_Assert mtR = LAUNCH_YES, "pad A on YES launches"
+mtR = MT_Launch%("2 2 P ENTER", 8)
+MT_Assert mtR = LAUNCH_NONE And launchOpen <> 0, "an ENTER pressed with the opening P doesn't confirm"
+mtR = MT_Launch%("2 2 P/5 5 DOWN", 8)
+MT_Assert mtR = LAUNCH_NONE And launchSel = LAUNCH_ROW_NO, "DOWN moves the cursor to NO"
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE), "cursor move plays the move sound"
+mtR = MT_Launch%("2 2 P/5 5 PAD_DPAD_DOWN/8 8 PAD_A", 12)
+MT_Assert mtR = LAUNCH_NO And launchOpen = 0, "d-pad down then pad A on NO cancels"
+MT_Assert Right$(mtSfx, Len(MT_I$(SND_UI_BACK))) = MT_I$(SND_UI_BACK), "cancel plays the back sound"
+mtR = MT_Launch%("2 2 P/5 5 DOWN/8 8 ENTER", 12)
+MT_Assert mtR = LAUNCH_NO And launchOpen = 0, "ENTER on NO cancels"
+mtR = MT_Launch%("2 2 P/5 5 DOWN/8 8 UP/10 10 ENTER", 14)
+MT_Assert mtR = LAUNCH_YES, "UP returns the cursor to YES"
+mtR = MT_Launch%("2 2 P/5 5 ESC", 8)
+MT_Assert mtR = LAUNCH_NO And launchOpen = 0, "ESC cancels"
+mtR = MT_Launch%("2 2 P/5 5 PAD_B", 8)
+MT_Assert mtR = LAUNCH_NO And launchOpen = 0, "pad B cancels"
+mtR = MT_Launch%("2 2 P/5 5 PAD_B/8 8 ENTER/10 10 SPACE", 14)
+MT_Assert mtR = LAUNCH_NO And mtNoCount = 1 And launchOpen = 0, "after a cancel, ENTER / SPACE on the title launch nothing"
+mtR = MT_Launch%("2 2 P/5 5 ESC/8 8 P", 12)
+MT_Assert mtR = LAUNCH_NO And mtNoCount = 1 And launchOpen <> 0, "after a cancel, P opens it again (and still has not launched)"
+mtR = MT_Launch%("2 2 P/5 5 DOWN/6 6 PAD_START", 8)
+MT_Assert mtR = LAUNCH_YES, "a second start press launches whatever row the cursor is on"
 
 ' ---- last-used device (prompts show only its buttons) ----
 Print ""

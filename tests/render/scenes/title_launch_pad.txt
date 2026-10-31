@@ -1,0 +1,9 @@
+# The title with the LAUNCH NOW? dialog open after pad Start: pad prompts (A GO, B BACK).
+#! group: ui
+#! seed: 1
+#! args: --god --no-telem --scene title
+#! shots: 100
+# the version string (bottom right) changes with every commit
+#! mask: 120,224,200,16
+50 50 PAD_DPAD_DOWN
+80 80 PAD_START

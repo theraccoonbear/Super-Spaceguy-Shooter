@@ -1,0 +1,10 @@
+# The title with the LAUNCH NOW? dialog open after P, keyboard prompts (ENTER GO, ESC BACK),
+# then with the cursor moved down to NO.
+#! group: ui
+#! seed: 1
+#! args: --god --no-telem --scene title
+#! shots: 100,140
+# the version string (bottom right) changes with every commit
+#! mask: 120,224,200,16
+80 80 P
+120 120 DOWN
