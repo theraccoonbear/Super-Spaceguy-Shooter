@@ -29,10 +29,28 @@ Sub BOSS_Update
     Dim bssOldPhase As Integer
     Dim bssMusCue As String, bssSpeechKey As String
     Dim bssAtk As Integer
+    Dim bssLeftE As Integer, bssLeftP As Integer, bssClear As Integer
 
-    ' combat phase complete: hold off one second so the kill explosion plays out, then advance
+    ' combat phase complete: clear the field (waves.ini wave_clear), then advance to the boss or planet
     If gameState = GS_PLAYING And boss.active = 0 And boss.warnTimer = 0 And SEQ_StageCleared% And planetTransitionTimer = 0 Then
-        planetTransitionTimer = 75
+        stageClearT = stageClearT + 1
+        bssLeftE = 0 : bssLeftP = 0
+        For bssJ = 1 To MAX_ENEMIES
+            If enemies(bssJ).active Then bssLeftE = bssLeftE + 1
+        Next bssJ
+        For bssJ = 1 To MAX_POWERUPS
+            If powerups(bssJ).active Then bssLeftP = bssLeftP + 1
+        Next bssJ
+        bssClear = WVT_ClearDone%(stageClearT, bssLeftE, bssLeftP, scorePopTimer)
+        If bssClear = WVT_CLEAR_FORCE Then
+            For bssJ = 1 To MAX_ENEMIES : enemies(bssJ).active = 0 : Next bssJ
+            For bssJ = 1 To MAX_POWERUPS : powerups(bssJ).active = 0 : Next bssJ
+        End If
+        If bssClear <> WVT_CLEAR_WAIT Then
+            If debugMode Then DBG_Print "[clear] done after" + Str$(stageClearT) + " frames  forced=" + LTrim$(Str$(bssClear = WVT_CLEAR_FORCE))
+            stageClearT = 0
+            planetTransitionTimer = 1
+        End If
     End If
 
     If boss.warnTimer > 0 Then
@@ -47,7 +65,9 @@ Sub BOSS_Update
             boss.pz = player.pz
             boss.vx = -0.05
             boss.scl = 1.0
-            If settingNerf Then boss.hp = BOSS_MAX_HP_NERF Else boss.hp = BOSS_MAX_HP
+            bossMaxHP = BHP_MaxHP%(bossCfgHp, settingNerf)
+            boss.hp = bossMaxHP
+            bossShieldT = 0
             boss.phase       = 1
             boss.fireTimer   = BOSS_FIRE_INIT
             boss.moveTimer   = 0
@@ -66,15 +86,10 @@ Sub BOSS_Update
 
     ' phase thresholds
     bssOldPhase = boss.phase
-    If boss.hp > 20 Then
-        boss.phase = 1
-    ElseIf boss.hp > 10 Then
-        boss.phase = 2
-    Else
-        boss.phase = 3
-    End If
+    boss.phase = BHP_Phase%(boss.hp, bossMaxHP)
+    If bossShieldT > 0 Then bossShieldT = bossShieldT - 1
 
-    ' phase transition: music tick and speech
+    ' phase transition: music tick and speech; the boss stays shielded until the callout ends
     If boss.phase <> bssOldPhase Then
         TELEM_BossPhase boss.phase
         telemBossPhaseLog = boss.phase
@@ -83,9 +98,13 @@ Sub BOSS_Update
             bssMusCue = bossMusList$(bssPhaseIdx)
             If Len(bssMusCue) > 0 Then MUS_SetCue bssMusCue
         End If
+        bossShieldT = BHP_ShieldFrames&(0)
         If bssPhaseIdx < bossSpeechCnt Then
             bssSpeechKey = bossSpeechList$(bssPhaseIdx)
-            If Len(bssSpeechKey) > 0 Then SPK_Say GTEXT_Get$(bssSpeechKey)
+            If Len(bssSpeechKey) > 0 Then
+                SPK_Say GTEXT_Get$(bssSpeechKey)
+                bossShieldT = BHP_ShieldFrames&(SPK_QueueSamples&)
+            End If
         End If
     ElseIf boss.phase <> telemBossPhaseLog Then
         TELEM_BossPhase boss.phase
@@ -212,7 +231,11 @@ Sub BOSS_Update
             If bssHit Then
                 bullets(bssJ).active = 0
                 telemShotsHit = telemShotsHit + 1
-                boss.hp = boss.hp - 1
+                If bossShieldT > 0 Then
+                    FX_SpawnBurst bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, 4, 0.12, 10, 5, _RGB(140, 230, 255)
+                    _Continue
+                End If
+                BOSS_Hit 1
                 fxShakeTimer = 2
                 SND_Boom
                 If boss.hp <= 0 Then
@@ -224,6 +247,16 @@ Sub BOSS_Update
             End If
         End If
     Next bssJ
+End Sub
+
+' Takes bshDmg hit points off the boss (bosshp.bas: none while shielded, never past the next
+' phase's start). Reaching a new phase shields it at once, so the rest of this frame's shots
+' bounce off too; BOSS_Update stretches the shield over the phase callout next frame.
+Sub BOSS_Hit (bshDmg As Integer)
+    Dim bshOld As Integer
+    bshOld = boss.hp
+    boss.hp = BHP_Damage%(boss.hp, bossMaxHP, bshDmg, bossShieldT)
+    If boss.hp > 0 And BHP_Phase%(boss.hp, bossMaxHP) <> BHP_Phase%(bshOld, bossMaxHP) Then bossShieldT = BHP_ShieldFrames&(0)
 End Sub
 
 ' The boss is beaten (by lasers or a nova pulse): score, credits, telemetry, the stage transition.

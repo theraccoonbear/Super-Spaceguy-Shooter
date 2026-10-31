@@ -21,7 +21,7 @@ Sub GAME_ResetState
     fuelLevel = fuelMax : fuelStranded = 0 : runStranded = 0
     If cliFuel > 0 And cliFuel < fuelMax Then fuelLevel = cliFuel
     telemLegFuel = 0 : telemLegFrames = 0
-    tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1
+    tt = 0 : spawnTimer = 0 : fireTimer = 0 : waveCount = 0 : wavePrev = -1 : stageClearT = 0 : bossShieldT = 0
     scorePopTimer = 0 : fxShakeTimer = 0 : fxFlashTimer = 0 : spawnFlashTimer = 0
     pupPopTimer = 0 : hudFlashTimer = 0
     thrusterScale = 0.30 : invTimer = 120 : deathTimer = 0 : escConfirm = 0 : titleEscConfirm = 0

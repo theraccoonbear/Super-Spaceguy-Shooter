@@ -1,8 +1,10 @@
 # The upgrade dock after chapter 2 (#277): REFUEL selected with 30 fuel and $400, its amount
 # stepped down once from "fill the tank" (+70) to +60 with its live cost, the $2.80/U price
-# and its +40% rise, the next jump's need, the status box's buy ghost and need tick, and the
-# blockade news ticker.
+# and its +40% rise, the status box's buy ghost, and the blockade news ticker. The next jump
+# (chapter 3, 109 FU) is longer than the 100 tank (#90): at frame 60 the line reads NEXT JUMP
+# NEEDS 109 FU, at 90 it has turned to TANK 100: UPGRADE TANK, and the need marker is a red
+# arrow off the end of the FU bar.
 #! group: ui
 #! args: --scene dock2 --credits 400 --fuel 30
-#! shots: 90
+#! shots: 60,90
 30 30 LEFT
