@@ -68,6 +68,9 @@ Dim Shared bltActive    As Integer
 Dim Shared settingNerf  As Integer
 Dim Shared diffTime     As Single
 Dim Shared diffScale    As Single
+Dim Shared spawnTimer   As Single
+Dim Shared waveStageN   As Integer
+Dim Shared bossCfgHp    As Integer
 Dim Shared astFieldStart As Single
 Dim Shared astDestName  As String
 Dim Shared planetCurrent As Integer
@@ -655,22 +658,22 @@ ST_Assert planetTimer = 0,                        "20.06  combat PLAY clears sta
 
 Print ""
 Print "--- 21. SEQ_NextLeg: the leg after each dock (fuel need, #277) ---"
-Dim st21K As Long, st21B As Integer, st21A As Integer, st21R As Integer
+Dim st21K As Long, st21F As Single, st21B As Integer, st21A As Integer, st21R As Integer
 ST_Reset
-st21R = ST_Jump%("dock1") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 18 And st21B = 0 And st21A = 0, "21.01  after dock1: chapter 2, an 18-kill combat"
+st21R = ST_Jump%("dock1") : SEQ_NextLeg st21K, st21F, st21B, st21A
+ST_Assert st21K = 18 And st21F = 0 And st21B = 0 And st21A = 0, "21.01  after dock1: chapter 2, an 18-kill combat"
 ST_Reset
-st21R = ST_Jump%("dock2") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 12 And st21B = 1 And st21A = 0, "21.02  after dock2: chapter 3, 12 kills and a boss"
+st21R = ST_Jump%("dock2") : SEQ_NextLeg st21K, st21F, st21B, st21A
+ST_Assert st21K = 12 And st21F = 22 And st21B = 0 And st21A = 0, "21.02  after dock2: chapter 3, 12 kills and boss 1 (secs=22)"
 ST_Reset
-st21R = ST_Jump%("dock3") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 0 And st21B = 0 And st21A = 1, "21.03  after dock3: chapter 4, the asteroid field"
+st21R = ST_Jump%("dock3") : SEQ_NextLeg st21K, st21F, st21B, st21A
+ST_Assert st21K = 0 And st21F = 0 And st21B = 0 And st21A = 1, "21.03  after dock3: chapter 4, the asteroid field"
 ST_Reset
-st21R = ST_Jump%("dock5") : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 24 And st21B = 1 And st21A = 0, "21.04  after dock5: chapter 6, 24 kills and a boss"
+st21R = ST_Jump%("dock5") : SEQ_NextLeg st21K, st21F, st21B, st21A
+ST_Assert st21K = 24 And st21F = 32 And st21B = 0 And st21A = 0, "21.04  after dock5: chapter 6, 24 kills and boss 3 (secs=32)"
 ST_Reset
-st21R = ST_Jump%("boss6") : SEQ_Advance : SEQ_NextLeg st21K, st21B, st21A
-ST_Assert st21K = 0 And st21B = 0 And st21A = 0, "21.05  after the last arrival: no leg ahead"
+st21R = ST_Jump%("boss6") : SEQ_Advance : SEQ_NextLeg st21K, st21F, st21B, st21A
+ST_Assert st21K = 0 And st21F = 0 And st21B = 0 And st21A = 0, "21.05  after the last arrival: no leg ahead"
 
 Print ""
 Print "--- 24. the stage ends on kills, not score (#312) ---"
