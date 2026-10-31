@@ -79,6 +79,41 @@ describe("GET /top_scores", () => {
     expect(await (await get("/top_scores?select=score")).text()).toBe('[{"score":1234}]');
   });
 
+  it("selects difficulty, defaulting to normal for scores posted without one", async () => {
+    await post("/scores", JSON.stringify({ player_id: "p", player_name: "OLD", score: 900, wave: 2, session: "s" }));
+    await post(
+      "/scores",
+      JSON.stringify({ player_id: "p", player_name: "NEW", score: 1200, wave: 3, session: "s", difficulty: "hard" }),
+    );
+    expect(await (await get("/top_scores?select=player_name,score,difficulty")).text()).toBe(
+      '[{"player_name":"NEW","score":1200,"difficulty":"hard"},{"player_name":"OLD","score":900,"difficulty":"normal"}]',
+    );
+    expect(await (await get(GAME_QUERY)).text()).toBe(
+      '[{"player_name":"NEW","score":1200},{"player_name":"OLD","score":900}]',
+    );
+  });
+
+  it("filters by difficulty=eq.<slug>", async () => {
+    for (const [name, score, difficulty] of [
+      ["EASY1", 3000, "easy"],
+      ["HARD1", 800, "hard"],
+      ["NORM1", 1500, undefined],
+      ["HARD2", 1100, "hard"],
+    ] as const) {
+      const body = { player_id: "p", player_name: name, score, wave: 1, session: "s", difficulty };
+      expect((await post("/scores", JSON.stringify(body))).status).toBe(201);
+    }
+    const names = async (q: string) =>
+      ((await (await get("/top_scores?select=player_name&" + q)).json()) as { player_name: string }[]).map(
+        (r) => r.player_name,
+      );
+    expect(await names("difficulty=eq.hard")).toEqual(["HARD2", "HARD1"]);
+    expect(await names("difficulty=eq.normal")).toEqual(["NORM1"]);
+    expect(await names("difficulty=eq.nightmare")).toEqual([]);
+    expect(await names("difficulty=eq.hard&limit=1")).toEqual(["HARD2"]);
+    expect(await names("limit=10")).toEqual(["EASY1", "NORM1", "HARD2", "HARD1"]);
+  });
+
   it("reads back a score posted the way the game posts it", async () => {
     await post(
       "/scores",
@@ -99,6 +134,14 @@ describe("GET /top_scores", () => {
     "/top_scores?select=",
     "/top_scores?offset=5",
     "/top_scores?score=gt.5",
+    "/top_scores?difficulty=hard",
+    "/top_scores?difficulty=neq.hard",
+    "/top_scores?difficulty=eq.",
+    "/top_scores?difficulty=eq.Hard",
+    "/top_scores?difficulty=eq.hard,easy",
+    "/top_scores?difficulty=in.(hard,easy)",
+    "/top_scores?difficulty=eq.hard&difficulty=eq.easy",
+    "/top_scores?select=player_name,player_id,difficulty",
   ])("rejects %s with 400", async (path) => {
     expect((await get(path)).status).toBe(400);
   });
