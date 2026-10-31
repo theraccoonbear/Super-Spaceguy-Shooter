@@ -4,6 +4,7 @@ name: Determinism
 # milestones, the frame each crawl paragraph starts speaking, and telemetry. Slow (the
 # 60 fps run takes the game's length in real time), so nightly, on demand, and on PRs
 # touching the frame-rate-sensitive code. Not required for merging, like the playthrough.
+# One build, the two runs in parallel, then a compare job (#341).
 on:
   schedule:
     - cron: '17 6 * * *'
@@ -23,8 +24,8 @@ env:
   QB64PE_VERSION: v4.5.0   # keep in step with build.yml
 
 jobs:
-  determinism:
-    name: Playthrough determinism (uncapped vs 60 fps)
+  build:
+    name: Build sss (no telemetry credentials)
     runs-on: ubuntu-latest
 
     steps:
@@ -40,15 +41,103 @@ jobs:
         shell: bash
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
-      - name: Uncapped vs --realtime playthrough (tests/playthrough/determinism.sh)
-        timeout-minutes: 40
+      # tar keeps the exec bit, which upload-artifact drops
+      - name: Pack binary
         shell: bash
-        run: tests/playthrough/determinism.sh
+        run: tar cf sss.tar -C builds sss
 
-      - name: Upload playthrough logs on failure
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sss-linux
+          path: sss.tar
+          retention-days: 3
+
+  run:
+    name: Playthrough (${{ matrix.mode }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [ uncapped, realtime ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # the libraries sss links against and xvfb; same list and version as
+      # setup-qb64pe, so it shares that cache
+      - name: Refresh apt package index
+        shell: bash
+        run: sudo apt-get update -qq
+
+      - name: Install Linux dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
+          version: 2
+
+      - name: Check Linux dependencies are installed
+        shell: bash
+        run: |
+          sudo ldconfig
+          command -v xvfb-run > /dev/null || { echo "::error::xvfb-run missing after the apt cache step"; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sss-linux
+
+      - name: Unpack binary
+        shell: bash
+        run: mkdir -p builds && tar xf sss.tar -C builds && builds/sss --version
+
+      - name: Playthrough (tests/playthrough/determinism.sh run ${{ matrix.mode }})
+        timeout-minutes: 30
+        shell: bash
+        run: tests/playthrough/determinism.sh run ${{ matrix.mode }} builds/playthrough-${{ matrix.mode }}
+
+      - name: Upload playthrough log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playthrough-${{ matrix.mode }}
+          path: |
+            builds/playthrough-${{ matrix.mode }}/milestones.log
+            builds/playthrough-${{ matrix.mode }}/sss_telemetry.csv
+            builds/playthrough-${{ matrix.mode }}/telemetry.normalized.csv
+            builds/playthrough-${{ matrix.mode }}/game.out
+          if-no-files-found: ignore
+
+  compare:
+    name: Compare uncapped vs 60 fps
+    needs: run
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: playthrough-uncapped
+          path: playthrough-uncapped
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: playthrough-realtime
+          path: playthrough-realtime
+
+      - name: Compare (tests/playthrough/determinism.sh compare)
+        shell: bash
+        run: |
+          set -o pipefail
+          tests/playthrough/determinism.sh compare playthrough-uncapped playthrough-realtime 2>&1 | tee determinism-diff.txt
+
+      - name: Upload logs and diff on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: determinism-logs
-          path: builds/playthrough-*/
+          path: |
+            playthrough-uncapped/
+            playthrough-realtime/
+            determinism-diff.txt
           if-no-files-found: ignore
