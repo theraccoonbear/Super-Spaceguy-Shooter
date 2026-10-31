@@ -264,7 +264,7 @@ Dim st8I As Integer
 For st8I = seqCount - 1 To 0 Step -1
     If seqKind(st8I) = SEQ_TITLE Then seqIdx = st8I - 1 : Exit For
 Next st8I
-score = 5000 : highScore = 0
+score = 5000 : highScore = 0 : seqRunActive = -1   ' a run was played (#331)
 SEQ_Advance
 ST_Assert gameState = GS_TITLE,   "8a  lands on GS_TITLE after outro"
 ST_Assert highScore = 5000,        "8b  highScore updated when score beats it"
@@ -273,7 +273,7 @@ ST_LoadSeq
 For st8I = seqCount - 1 To 0 Step -1
     If seqKind(st8I) = SEQ_TITLE Then seqIdx = st8I - 1 : Exit For
 Next st8I
-score = 1000 : highScore = 5000
+score = 1000 : highScore = 5000 : seqRunActive = -1
 SEQ_Advance
 ST_Assert highScore = 5000,        "8c  highScore unchanged when score is lower"
 
