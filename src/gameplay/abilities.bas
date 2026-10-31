@@ -80,7 +80,7 @@ Sub ABL_Nova
     If boss.active Then
         abnDX = boss.px - player.px : abnDY = boss.py - player.py : abnDZ = boss.pz - player.pz
         If abnDX * abnDX + abnDY * abnDY + abnDZ * abnDZ <= abnR2 Then
-            boss.hp = boss.hp - novaBossDmg
+            BOSS_Hit novaBossDmg
             If boss.hp <= 0 Then BOSS_Defeat
         End If
     End If
