@@ -8,7 +8,8 @@
 ' names (same held() slots as a real controller, invisible to KEY_Down%/KEY_Hit&), and
 ' the menu actions KEY_Pressed% / KEY_Confirm% / KEY_Back% (one press, not a hold), the raw
 ' pad tokens (PADBTN<n>, PADAXIS<n>+/-, PAD_DPAD_*) going through E3D_PadMap, and a d-pad +
-' A/B walk through the title console into Settings and back.
+' A/B walk through the title console into Settings and back, and the #! header (seed, args,
+' frames: parsing, rejects, merging into the launch line, --script-override).
 '
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
@@ -315,9 +316,83 @@ Print "      walk:" + isLog
 IS_Assert isLog = " console con1 con2 SETTINGS opt1 opt2 opt1 TITLE", "BACK opens, d-pad down x2 to SETTINGS, A opens it, d-pad down/down/up moves, B returns"
 IS_Assert gameState = GS_TITLE And escWas <> 0 And isConsole = 0, "back on the title, console shut, ESC marked seen"
 
+Print "--- #! header ---"
+ISC_Clear
+isOk = ISC_ParseLine%("#! seed 1") And ISC_ParseLine%("#!frames: 20000") And ISC_ParseLine%("  #! ARGS  --god" + Chr$(9) + "--scene   boss3 ")
+IS_Assert isOk And iscCount = 0, "seed, frames, args: parsed, no key ranges"
+IS_Assert iscHdrSeed = "1" And iscHdrFrames = "20000" And iscHdrArgs = "--god --scene boss3", "header values stored (any case, colon, spacing)"
+isOk = ISC_ParseLine%("#! args: --nerf")
+IS_Assert isOk And iscHdrArgs = "--god --scene boss3 --nerf", "args lines add up"
+isOk = ISC_ParseLine%("#! group: gameplay") And ISC_ParseLine%("#! shots: 220,250") And ISC_ParseLine%("#! mask: 1,2,3,4")
+IS_Assert isOk And iscHdrArgs = "--god --scene boss3 --nerf", "render harness keys skipped"
+
+isOk = ISC_ParseLine%("#! colour red")
+IS_Assert isOk = 0 And InStr(iscError, "unknown header key 'colour'") > 0, "unknown key rejected: " + iscError
+isOk = ISC_ParseLine%("#!")
+IS_Assert isOk = 0 And InStr(iscError, "unknown header key") > 0, "bare #! rejected"
+isOk = ISC_ParseLine%("#! seed one")
+isOk2 = ISC_ParseLine%("#! frames")
+isOk3 = ISC_ParseLine%("#! frames 1 2")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0 And InStr(iscError, "whole number") > 0, "seed/frames need one whole number"
+isOk = ISC_ParseLine%("#! seed 2")
+IS_Assert isOk = 0 And InStr(iscError, "twice") > 0 And iscHdrSeed = "1", "second seed rejected"
+isOk = ISC_ParseLine%("#! args --fly")
+IS_Assert isOk = 0 And InStr(iscError, "can't take '--fly'") > 0, "unknown flag rejected: " + iscError
+isOk = ISC_ParseLine%("#! args god")
+isOk2 = ISC_ParseLine%("#! args --input-script x.txt")
+isOk3 = ISC_ParseLine%("#! args --script-override")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "non-flags, --input-script, --script-override rejected"
+isOk = ISC_ParseLine%("#! args --seed 3")
+IS_Assert isOk = 0 And InStr(iscError, "'#! seed'") > 0, "--seed in args points at '#! seed': " + iscError
+isOk = ISC_ParseLine%("#! args --scene")
+isOk2 = ISC_ParseLine%("#! args --scene --god")
+IS_Assert isOk = 0 And isOk2 = 0 And InStr(iscError, "needs a value") > 0, "value flag without its value rejected"
+isOk = ISC_ParseLine%("#! args")
+IS_Assert isOk = 0 And InStr(iscError, "empty") > 0, "empty args rejected"
+IS_Assert iscHdrArgs = "--god --scene boss3 --nerf", "rejected lines leave the header as it was"
+
+Print "--- header merged into the launch line ---"
+Dim isMerged As String
+ISC_Clear
+isOk = ISC_ParseLine%("#! seed 1") And ISC_ParseLine%("#! frames 20000") And ISC_ParseLine%("#! args --god --nerf --scene playing1")
+isOk = isOk And ISC_MergeArgs%("--input-script p.txt", 0, isMerged)
+IS_Assert isOk And isMerged = "--input-script p.txt --god --nerf --scene playing1 --seed 1 --frames 20000", "header applied: " + isMerged
+isOk = ISC_MergeArgs%("--seed 1 --god --frames 20000 --input-script p.txt --debug", 0, isMerged)
+IS_Assert isOk And isMerged = "--seed 1 --god --frames 20000 --input-script p.txt --debug --nerf --scene playing1", "matching CLI values kept, not doubled; extra CLI flags kept: " + isMerged
+isOk = ISC_MergeArgs%("--input-script p.txt --seed 7", 0, isMerged)
+IS_Assert isOk = 0 And InStr(iscError, "header says --seed 1 but the command line says --seed 7") > 0 And InStr(iscError, "--script-override") > 0, "seed mismatch is an error: " + iscError
+isOk = ISC_MergeArgs%("--frames 300 --input-script p.txt", 0, isMerged)
+IS_Assert isOk = 0 And InStr(iscError, "--frames 20000") > 0, "frames mismatch is an error"
+isOk = ISC_MergeArgs%("--scene boss3 --input-script p.txt", 0, isMerged)
+IS_Assert isOk = 0 And InStr(iscError, "--scene playing1") > 0, "args value mismatch is an error"
+isOk = ISC_MergeArgs%("--input-script p.txt --seed 7 --scene boss3 --script-override", -1, isMerged)
+IS_Assert isOk And isMerged = "--input-script p.txt --seed 7 --scene boss3 --script-override --god --nerf --frames 20000", "--script-override: command line wins, rest of header added: " + isMerged
+ISC_Clear
+isOk = ISC_ParseLine%("# a plain comment") And ISC_ParseLine%("0 5 LEFT")
+isOk = isOk And ISC_MergeArgs%("--input-script p.txt --seed 7 --god", 0, isMerged)
+IS_Assert isOk And isMerged = "--input-script p.txt --seed 7 --god", "no header: launch line unchanged"
+
 Print "--- files ---"
 isOk = ISC_Load%("no/such/script.txt")
 IS_Assert isOk = 0 And InStr(iscError, "not found") > 0 And iscActive = 0, "missing file: error, not active"
+Dim isTmp As String, isTmpFH As Integer
+isTmp = "inputscript_test_header.tmp"
+isTmpFH = FreeFile
+Open isTmp For Output As #isTmpFH
+Print #isTmpFH, "# header test"
+Print #isTmpFH, "#! seed 1"
+Print #isTmpFH, "#! args --god --nerf"
+Print #isTmpFH, "#! frames 20000"
+Print #isTmpFH, "0 1 FIRE"
+Close #isTmpFH
+isOk = ISC_Load%(isTmp)
+IS_Assert isOk And iscActive And iscCount = 1 And iscHdrSeed = "1" And iscHdrFrames = "20000" And iscHdrArgs = "--god --nerf", "file with a header loads it"
+Open isTmp For Output As #isTmpFH
+Print #isTmpFH, "#! sede 1"
+Close #isTmpFH
+isOk = ISC_Load%(isTmp)
+IS_Assert isOk = 0 And iscActive = 0 And InStr(iscError, "'sede'") > 0, "file with a bad header key fails to load"
+Kill isTmp
 
 Print ""
 Print "=== " + LTrim$(Str$(isPassed + isFailed)) + " tests: " + LTrim$(Str$(isPassed)) + " passed, " + LTrim$(Str$(isFailed)) + " failed ==="

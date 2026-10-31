@@ -1,7 +1,8 @@
 # The pause dialog played with a pad: opened with Start, so the prompts are the pad's button
 # badges; then the d-pad moves the cursor up to REMAP CONTROLS.
 #! group: gameplay
-#! args: --scene playing1
+#! seed: 1
+#! args: --god --no-telem --scene playing1
 #! shots: 220,250
 200 200 PAD_START
 230 230 PAD_DPAD_UP

@@ -6,6 +6,16 @@
 '   <from> <to> KEY [KEY ...]   hold the KEYs on frames from..to (inclusive, 0-based)
 '   # comment                   blank lines and comments are ignored
 '
+' A script can also say how it must be launched (#324), so it can't be paired with the
+' wrong seed or flags:
+'   #! seed 1                   as --seed 1
+'   #! args --god --nerf        launch flags (repeatable); not --seed, --frames, --input-script
+'   #! frames 20000             as --frames 20000
+' The header's flags are added to the command line's. Giving one there too is fine when
+' the values match; a different value (--seed 7 against "#! seed 1") is an error unless
+' --script-override, and then the command line wins. A colon after the key is allowed;
+' the render harness's group / shots / mask keys are skipped; any other key is an error.
+'
 ' KEYs: LEFT RIGHT UP DOWN FIRE (= SPACE) ESC TAB ENTER BACKSPACE BACKTICK F1-F12,
 ' any letter A-Z (held as both its upper- and lower-case code), any digit 0-9, and
 ' #<code> for any other _KEYDOWN code (e.g. #21248 = Delete). Example
@@ -36,6 +46,7 @@
 ' No rendering or game state here, so tests can drive it:
 '   ok = ISC_ParseLine%(line$)      add one script line; 0 if it's malformed (see iscError)
 '   ok = ISC_Load%(path$)           load a file; 0 on any error (see iscError)
+'   ok = ISC_MergeArgs%(cli$, override, out$)  out$ = cli$ plus the header; 0 on a contradiction
 '   ISC_Apply frame, held()         fill held() for that frame (all other keys up), queue presses
 '   down = KEY_Down%(code)          is the key down this frame (script, else _KEYDOWN)
 '   code = KEY_Hit&                 next queued key press, 0 if none (script, else _KEYHIT)
@@ -55,9 +66,11 @@ Dim Shared iscFrom(1 To ISC_MAX) As Long, iscTo(1 To ISC_MAX) As Long, iscKey(1 
 Dim Shared iscAlt(1 To ISC_MAX) As Long
 Dim Shared iscFrame As Long
 Dim Shared iscHitQ(1 To ISC_MAX) As Long, iscHitHead As Integer, iscHitTail As Integer
+Dim Shared iscHdrSeed As String, iscHdrFrames As String, iscHdrArgs As String
 
 Sub ISC_Clear
     iscCount = 0 : iscActive = 0 : iscError = ""
+    iscHdrSeed = "" : iscHdrFrames = "" : iscHdrArgs = ""
     iscFrame = -1 : iscHitHead = 0 : iscHitTail = 0
 End Sub
 
@@ -150,6 +163,7 @@ Function ISC_ParseLine%(iscRaw As String)
     Do While iscP > 0
         Mid$(iscLine, iscP, 1) = " " : iscP = InStr(iscLine, Chr$(9))
     Loop
+    If Left$(iscLine, 2) = "#!" Then ISC_ParseLine% = ISC_ParseHeader%(Mid$(iscLine, 3), iscLine) : Exit Function
     If iscLine = "" Or Left$(iscLine, 1) = "#" Then ISC_ParseLine% = -1 : Exit Function
     iscP = 1
     iscT = ISC_Token$(iscLine, iscP)
@@ -170,6 +184,111 @@ Function ISC_ParseLine%(iscRaw As String)
     Loop
     If iscN = 0 Then iscError = "no keys in: " + iscLine : Exit Function
     ISC_ParseLine% = -1
+End Function
+
+' A "#!" header line: seed N, frames N or args <flags>; a colon after the key is optional.
+' group, shots and mask are tests/render/run.sh's, so the game skips them.
+Function ISC_ParseHeader%(iscHBody As String, iscHWhole As String)
+    Dim iscHP As Integer, iscHKey As String, iscHRest As String, iscHArgs As String
+    ISC_ParseHeader% = 0
+    iscHP = 1
+    iscHKey = LCase$(ISC_Token$(iscHBody, iscHP))
+    If Right$(iscHKey, 1) = ":" Then iscHKey = Left$(iscHKey, Len(iscHKey) - 1)
+    iscHRest = LTrim$(Mid$(iscHBody, iscHP))
+    Select Case iscHKey
+    Case "seed", "frames"
+        If ISC_IsNum%(iscHRest) = 0 Then iscError = "header " + iscHKey + " needs one whole number in: " + iscHWhole : Exit Function
+        If iscHKey = "seed" Then
+            If iscHdrSeed <> "" Then iscError = "header seed given twice in: " + iscHWhole : Exit Function
+            iscHdrSeed = iscHRest
+        Else
+            If iscHdrFrames <> "" Then iscError = "header frames given twice in: " + iscHWhole : Exit Function
+            iscHdrFrames = iscHRest
+        End If
+    Case "args"
+        If ISC_CheckArgs%(iscHRest, iscHArgs) = 0 Then iscError = iscError + " in: " + iscHWhole : Exit Function
+        iscHdrArgs = LTrim$(iscHdrArgs + " " + iscHArgs)
+    Case "group", "shots", "mask"
+    Case Else
+        iscError = "unknown header key '" + iscHKey + "' (seed, args or frames) in: " + iscHWhole : Exit Function
+    End Select
+    ISC_ParseHeader% = -1
+End Function
+
+' A launch flag in "#! args": 1 = takes no value, 2 = takes one, 0 = not allowed there.
+Function ISC_ArgKind%(iscAK As String)
+    Select Case iscAK
+    Case "--god", "--nerf", "--crawls", "--debug", "--no-telem"
+        ISC_ArgKind% = 1
+    Case "--scene", "--credits", "--ships", "--shields", "--fuel", "--pup", "--screenshot-at", "--leaderboard-file", "--seed", "--frames"
+        ISC_ArgKind% = 2
+    Case Else
+        ISC_ArgKind% = 0
+    End Select
+End Function
+
+' Checks a "#! args" value and returns it single-spaced in iscCAOut; 0 (see iscError) if bad.
+Function ISC_CheckArgs%(iscCA As String, iscCAOut As String)
+    Dim iscCAP As Integer, iscCAT As String, iscCAV As String, iscCAK As Integer
+    ISC_CheckArgs% = 0
+    iscCAOut = "" : iscCAP = 1
+    Do
+        iscCAT = ISC_Token$(iscCA, iscCAP)
+        If iscCAT = "" Then Exit Do
+        If iscCAT = "--seed" Or iscCAT = "--frames" Then iscError = "header args: use '#! " + Mid$(iscCAT, 3) + "' for " + iscCAT : Exit Function
+        iscCAK = ISC_ArgKind%(iscCAT)
+        If iscCAK = 0 Then iscError = "header args can't take '" + iscCAT + "'" : Exit Function
+        iscCAOut = iscCAOut + " " + iscCAT
+        If iscCAK = 2 Then
+            iscCAV = ISC_Token$(iscCA, iscCAP)
+            If iscCAV = "" Or Left$(iscCAV, 2) = "--" Then iscError = "header args: " + iscCAT + " needs a value" : Exit Function
+            iscCAOut = iscCAOut + " " + iscCAV
+        End If
+    Loop
+    If iscCAOut = "" Then iscError = "header args is empty" : Exit Function
+    iscCAOut = Mid$(iscCAOut, 2)
+    ISC_CheckArgs% = -1
+End Function
+
+' Is the token iscFF on the launch line iscFL? iscFV gets the token after it.
+Function ISC_FindArg%(iscFL As String, iscFF As String, iscFV As String)
+    Dim iscFP As Integer, iscFT As String
+    ISC_FindArg% = 0
+    iscFV = "" : iscFP = 1
+    Do
+        iscFT = ISC_Token$(iscFL, iscFP)
+        If iscFT = "" Then Exit Function
+        If iscFT = iscFF Then iscFV = ISC_Token$(iscFL, iscFP) : ISC_FindArg% = -1 : Exit Function
+    Loop
+End Function
+
+' iscMOut = the launch line iscMCli plus the loaded header's seed, frames and args. A flag
+' the launch line already has is kept as it is; one it gives a different value is an error
+' unless iscMOverride (--script-override), and then the launch line's value wins.
+Function ISC_MergeArgs%(iscMCli As String, iscMOverride As Integer, iscMOut As String)
+    Dim iscMHdr As String, iscMP As Integer, iscMF As String, iscMV As String, iscMCV As String
+    ISC_MergeArgs% = 0
+    iscMOut = iscMCli
+    iscMHdr = iscHdrArgs
+    If iscHdrSeed <> "" Then iscMHdr = iscMHdr + " --seed " + iscHdrSeed
+    If iscHdrFrames <> "" Then iscMHdr = iscMHdr + " --frames " + iscHdrFrames
+    iscMP = 1
+    Do
+        iscMF = ISC_Token$(iscMHdr, iscMP)
+        If iscMF = "" Then Exit Do
+        iscMV = ""
+        If ISC_ArgKind%(iscMF) = 2 Then iscMV = ISC_Token$(iscMHdr, iscMP)
+        If ISC_FindArg%(iscMCli, iscMF, iscMCV) Then
+            If iscMV <> "" And iscMCV <> iscMV And iscMOverride = 0 Then
+                iscError = "the input script's header says " + iscMF + " " + iscMV + " but the command line says " + iscMF + " " + iscMCV + "; drop " + iscMF + " from the command line, or add --script-override to use its value"
+                Exit Function
+            End If
+        Else
+            iscMOut = iscMOut + " " + iscMF
+            If iscMV <> "" Then iscMOut = iscMOut + " " + iscMV
+        End If
+    Loop
+    ISC_MergeArgs% = -1
 End Function
 
 Function ISC_Load%(iscPath As String)
