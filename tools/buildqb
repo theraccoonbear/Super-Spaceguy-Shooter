@@ -12,7 +12,8 @@ if [ ! -f "$1" ]; then
 fi
 
 base=$(basename "$1" .bas)
-old_exe="./builds/$base"
+# SSS_BUILD_OUT=<path>: write the executable there instead of builds/<name>
+old_exe="${SSS_BUILD_OUT:-./builds/$base}"
 
 if [ "$1" == "sss.bas" ]; then
     echo ">>> Generating spline math from DSL..."
@@ -70,7 +71,8 @@ esac
 rm -f "$old_exe"
 echo ">>> Building $1..."
 # -o, not -s:ExeDefaultDir: -s saves into QB64-PE's config.ini on every build
-mkdir -p ./builds
+mkdir -p ./builds "$(dirname "$old_exe")"
+out_abs="$(cd "$(dirname "$old_exe")" && pwd -P)/$(basename "$old_exe")"
 # Linux: link against an unversioned libcurl stub, as CI does, so the binary loads cleanly on Fedora too (#303)
 link_flags=()
 if [ "$(uname -s)" = Linux ]; then
@@ -78,7 +80,7 @@ if [ "$(uname -s)" = Linux ]; then
     curl_link_flags=$("$(dirname "$0")/curl-link-stub" "$curl_stub_dir") || exit 1
     link_flags=("-f:ExtraLinkerFlags=$curl_link_flags")
 fi
-build_output=$(qb64pe -w -x "$1" ${link_flags[@]+"${link_flags[@]}"} -o "$(realpath .)/builds/$base" 2>&1)
+build_output=$(qb64pe -w -x "$1" ${link_flags[@]+"${link_flags[@]}"} -o "$out_abs" 2>&1)
 
 build_status=$?
 [ -n "${curl_stub_dir:-}" ] && rm -rf "$curl_stub_dir"
