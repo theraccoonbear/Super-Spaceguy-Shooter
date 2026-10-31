@@ -127,6 +127,47 @@ Function DLT_Lines$ (dltjS As String)
     DLT_Lines$ = dltjOut
 End Function
 
+' A stage's length at a level, from its wave pacing: the frames until wave n spawns, summed
+' over the gaps (wave sizes don't change with the level, so equal kills mean equal waves).
+Const DLT_PACE_WAVES = 40
+Dim Shared dltNormDur(1 To 6, 0 To 2, 1 To DLT_PACE_WAVES) As Single, dltNormKill(1 To 16) As Single
+
+Sub DLT_PaceSnap (dltpsOut() As Single)
+    Dim dltpsSt As Integer, dltpsD As Integer, dltpsN As Integer, dltpsT As Single
+    For dltpsSt = 1 To 6
+        For dltpsD = 0 To 2
+            dltpsT = 0
+            For dltpsN = 1 To DLT_PACE_WAVES
+                dltpsT = dltpsT + WVT_GapTicks!(dltpsN - 1, dltpsD / 2, dltpsSt)
+                dltpsOut(dltpsSt, dltpsD, dltpsN) = dltpsT
+            Next dltpsN
+        Next dltpsD
+    Next dltpsSt
+End Sub
+
+' -1 when, with the loaders at the level in use, no stage takes longer than Normal's at equal
+' kills (and the dock's seconds per kill aren't longer either): fuel burns by time, so slower
+' pacing would be a fuel penalty.
+Function DLT_PaceOk%
+    Dim dltpoDur(1 To 6, 0 To 2, 1 To DLT_PACE_WAVES) As Single
+    Dim dltpoSt As Integer, dltpoD As Integer, dltpoN As Integer
+    DLT_PaceOk% = -1
+    DLT_PaceSnap dltpoDur()
+    For dltpoSt = 1 To 6
+        For dltpoD = 0 To 2
+            For dltpoN = 1 To DLT_PACE_WAVES
+                If dltpoDur(dltpoSt, dltpoD, dltpoN) > dltNormDur(dltpoSt, dltpoD, dltpoN) + 0.0001 Then
+                    Print "  " + runDifficulty + ": stage" + Str$(dltpoSt) + " wave" + Str$(dltpoN) + " later than normal's"
+                    DLT_PaceOk% = 0 : Exit Function
+                End If
+            Next dltpoN
+        Next dltpoD
+    Next dltpoSt
+    For dltpoSt = 1 To supKillSecsCnt
+        If supKillSecs(dltpoSt) > dltNormKill(dltpoSt) + 0.0001 Then Print "  " + runDifficulty + ": the dock's seconds per kill longer than normal's" : DLT_PaceOk% = 0 : Exit Function
+    Next dltpoSt
+End Function
+
 Dim dltBase As String, dltI As Integer, dltL As String, dltOk As Integer, dltAll As Integer
 Dim dltSeq As String, dltCur As String
 
@@ -169,7 +210,7 @@ Print "--- easy ---"
 DLV_Use "easy"
 dltOk = DLT_LoadAll% : DLT_Assert dltOk <> 0 And runDifficulty = "easy", "loads"
 DLT_Assert DLT_Snap$ <> dltBase, "differs from normal"
-DLT_Assert DLT_Near%(wvtFirst, 90) And DLT_Near%(wvtGap0, 350) And DLT_Near%(wvtGap1, 250) And DLT_Near%(wvtOpenGap(1), 252), "waves: first at 90 frames, regular gap 350..250, opening gap 252 in stage 1"
+DLT_Assert DLT_Near%(wvtFirst, 60) And DLT_Near%(wvtGap0, 280) And DLT_Near%(wvtGap1, 200) And DLT_Near%(wvtOpenGap(1), 210), "waves at normal's pace: first at 60 frames, regular gap 280..200, opening gap 210 in stage 1"
 DLT_Assert DLT_Near%(wvtGapPct(1), 110) And wvtOpenSize(1) = 1 And wvtOpen = 3, "wave sizes and per-stage % untouched (no more enemies)"
 DLT_Assert DLT_Near%(pupChance, 0.195) And pupShield = 60 And DLT_Near%(pupFuel(1), 19.95) And pupPoints = 500, "power-ups: 19.5% a wave, shield 60, fuel 19.95, points 500"
 DLT_Assert crKill = 30 And crBoss = 720 And crStage = 240 And crAstSurvive = 480 And DLT_Near%(crBonusRate, 1), "credits x1.2: kill 30, boss 720, stage 240, asteroid field 480; cash-in rate stays 1"
@@ -192,6 +233,22 @@ DLT_Assert DLT_Near%(supFuelPrice, 2.5) And DLT_Near%(supShieldPrice, 1.25) And 
 DLT_Assert BHP_MaxHP%(30, 0) = 39 And BHP_MaxHP%(90, 0) = 117 And BHP_MaxHP%(130, 0) = 169 And BHP_MaxHP%(90, -1) = 12, "boss hit points x1.3: 39, 117, 169; --nerf 117 -> 12"
 DLT_Assert DLV_Dmg%(5) = 6 And DLV_Dmg%(17) = 21 And DLV_Dmg%(100) = 125, "damage x1.25: laser 5 -> 6, collision 17 -> 21"
 DLT_Assert DLT_Near%(dlvFEnemyLead, 1.25) And DLT_Near%(dlvFEnemyFire, 0.8) And DLT_Near%(dlvFBossFire, 0.85), "in-play factors: lead 1.25, fire 0.8, boss fire 0.85"
+
+Print ""
+Print "--- no level paces a stage slower than normal (equal kills, fuel burns by time) ---"
+DLV_Use "normal"
+dltOk = DLT_LoadAll%
+DLT_PaceSnap dltNormDur()
+For dltI = 1 To supKillSecsCnt : dltNormKill(dltI) = supKillSecs(dltI) : Next dltI
+dltAll = -1
+For dltI = 1 To DLV_Count%
+    DLV_Use DLV_LevelAt$(dltI)
+    dltOk = DLT_LoadAll%
+    If dltOk = 0 Or DLT_PaceOk% = 0 Then dltAll = 0
+Next dltI
+DLT_Assert dltAll, "every level: each stage's waves come no later than normal's, at every in-run ramp point"
+DLV_Use "normal"
+dltOk = DLT_LoadAll%
 
 Print ""
 Print "--- which level a run plays ---"
@@ -237,6 +294,7 @@ Next dltI
 DLT_Assert dltAll, "every one of the 5 levels loads every config file"
 DLV_Use "a1"
 dltOk = DLT_LoadAll% : DLT_Assert dltOk <> 0 And DLT_Near%(wvtGap0, 560) And DLT_Near%(DLV_M!("credits"), 1), "a1: wave_gap x2 (560), a knob it doesn't set is 1"
+DLT_Assert DLT_PaceOk% = 0, "a1: the pacing guard catches a level that paces slower than normal"
 DLV_Use "e5"
 DLT_Assert DLV_Dmg%(5) = 15 And DLT_Near%(DLV_M!("wave_gap"), 1), "e5: damage x3, wave_gap 1"
 DLV_Use "c3"

@@ -243,7 +243,7 @@ WT_Assert wtdAll, "every level: first wave, opening and regular gaps x wave_firs
 DLV_Use "normal"
 wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_FramesTo&(0, 0, 1) = wtdFirst And WT_FramesTo&(1, 0, 1) = wtdOpen And WT_FramesTo&(5, 0, 3) = wtdGap, "normal: the same frames as without difficulty.ini"
 DLV_Use "easy"
-wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_Near%(WVT_GapTicks!(5, 0, 3), 350 * WVT_TICK) And WT_Near%(WVT_GapTicks!(0, 0, 1), 90 * WVT_TICK), "easy: regular gap 350 frames in stage 3 (280 x 1.25), first wave at 90"
+wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_Near%(WVT_GapTicks!(5, 0, 3), 280 * WVT_TICK) And WT_Near%(WVT_GapTicks!(0, 0, 1), 60 * WVT_TICK), "easy: normal's pace, regular gap 280 frames in stage 3, first wave at 60"
 DLV_Use "hard"
 wtdOk = WVT_Load% : WT_Assert wtdOk <> 0 And WT_Near%(WVT_GapTicks!(5, 0, 3), 238 * WVT_TICK) And WT_Near%(WVT_GapTicks!(5, 1, 3), 170 * WVT_TICK), "hard: regular gap 238 frames at difficulty 0, 170 at full"
 DLV_Use "normal"
