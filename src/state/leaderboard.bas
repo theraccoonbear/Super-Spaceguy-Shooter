@@ -37,7 +37,7 @@ Sub GS_LEADERBOARD_Update ()
             End If
             lbdRank = LTrim$(Str$(lbdI)) + "."  ' right-aligned so "10." clears the name column
             FONT_PrintAlpha    fontPalette(8), backBuffer, lbdRank, lbdNameX - 2 - Len(lbdRank) * FONT_CHAR_W, lbdRowY, 200
-            FONT_PrintRichAlpha fontPalette(), backBuffer, LBRD_DisplayName$(lbdI, lbrdName(lbdI)), lbdNameX, lbdRowY, 255
+            FONT_PrintRichAlpha fontPalette(), backBuffer, LBRD_DisplayName$(lbdI, lbrdName(lbdI), lbrdDiff(lbdI)), lbdNameX, lbdRowY, 255
             FONT_PrintAlpha    lbdClr,         backBuffer, LTrim$(Str$(lbrdScore(lbdI))), lbdScoreX, lbdRowY, 255
         Next lbdI
     End If

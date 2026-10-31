@@ -82,6 +82,7 @@ Sub E3D_BindsWrite (bwFH As Integer) : roBindsWrites = roBindsWrites + 1 : End S
 Function E3D_BindsLoadLine% (blKey As String, blRaw As String) : E3D_BindsLoadLine% = 0 : End Function
 Sub E3D_PadReselect : End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/sys/settingsio.bas'

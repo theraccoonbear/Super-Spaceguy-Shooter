@@ -96,6 +96,7 @@ TESTS=(
   boss_hp_test
   readonly_io_test
   cam_default_test
+  difficulty_test
 )
 
 # Dev tools (path from the repo root, no .bas): compiled only (they're interactive), so an engine change

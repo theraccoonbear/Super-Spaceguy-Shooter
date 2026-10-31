@@ -19,7 +19,7 @@ Sub OPTS_Update ()
     ' navigate: edge-detect on up/down
     Dim oSel0 As Integer, oNav As Integer
     oSel0 = optSel
-    oNav = MENU_Nav%(optSel, 7, oUp And optUpWas = 0, oDn And optDnWas = 0, 0)
+    oNav = MENU_Nav%(optSel, 8, oUp And optUpWas = 0, oDn And optDnWas = 0, 0)
     If optSel <> oSel0 Then optLfRpt = 0 : optRtRpt = 0
 
     ' adjust: immediate press + hold repeat every 6 frames
@@ -34,7 +34,8 @@ Sub OPTS_Update ()
                         If settingNarrSpeed > 1 Then settingNarrSpeed = settingNarrSpeed - 1 Else settingNarration = 0
                     End If
                 Case 4 : settingFullscreen = 0 : _FULLSCREEN OFF
-                Case 5 : ' callsign -- no left/right action
+                Case 5 : If Not optLfWas Then settingDifficulty = DLV_Step$(settingDifficulty, -1) : uiSfx = SND_UI_MOVE
+                Case 6 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
             If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
@@ -60,7 +61,8 @@ Sub OPTS_Update ()
                         settingNarrSpeed = settingNarrSpeed + 1
                     End If
                 Case 4 : settingFullscreen = 1 : _FULLSCREEN _SQUAREPIXELS
-                Case 5 : ' callsign -- no left/right action
+                Case 5 : If Not optRtWas Then settingDifficulty = DLV_Step$(settingDifficulty, 1) : uiSfx = SND_UI_MOVE
+                Case 6 : ' callsign -- no left/right action
             End Select
             If optSel = 1 Then SND_Pup
             If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
@@ -80,7 +82,7 @@ Sub OPTS_Update ()
 
     ' a press, not a hold: the A that picked SETTINGS on the console is still down here
     Dim oEnter As Integer : oEnter = (KEY_Confirm% Or KEY_Pressed%(E3D_KEY_SPACE)) And KEY_Pressed%(E3D_KEY_PAD_B) = 0
-    If oEnter And optSel = 5 Then
+    If oEnter And optSel = 6 Then
         SETTINGS_Save
         unSavedName    = telemPlayerName
         unFromSettings = -1
@@ -88,7 +90,7 @@ Sub OPTS_Update ()
         GS_USERNAME_Init : uiSfx = SND_UI_OK
         gameState      = GS_USERNAME
     End If
-    If oEnter And optSel = 6 Then
+    If oEnter And optSel = 7 Then
         SETTINGS_Save
         RMP_Open GS_OPTIONS : uiSfx = SND_UI_OK
     End If
@@ -117,11 +119,11 @@ Sub OPTS_Update ()
     ' main content panel
     UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
 
-    Dim oLabels(0 To 6) As String
-    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "CALLSIGN" : oLabels(6) = "CONTROLS"
+    Dim oLabels(0 To 7) As String
+    oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "DIFFICULTY" : oLabels(6) = "CALLSIGN" : oLabels(7) = "CONTROLS"
 
-    For oI = 0 To 6
-        oY = 36 + oI * 24
+    For oI = 0 To 7
+        oY = 34 + oI * 21
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
@@ -165,7 +167,13 @@ Sub OPTS_Update ()
                 oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
             End If
             FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
-        ElseIf oI = 6 Then
+        ElseIf oI = 5 Then
+            If oI = optSel Then
+                FONT_PrintAlpha fontPalette(15), backBuffer, "< " + DLV_Name$(DLV_Valid$(settingDifficulty)) + " >", OPT_BAR_X, oY, 255
+            Else
+                FONT_PrintAlpha fontPalette(9),  backBuffer, DLV_Name$(DLV_Valid$(settingDifficulty)), OPT_BAR_X, oY, 200
+            End If
+        ElseIf oI = 7 Then
             If oI = optSel Then
                 UI_Prompts "REMAP " + UI_Tok$("[ENTER]", E3D_ACT_CONFIRM), OPT_BAR_X, oY, 15, 255
             Else

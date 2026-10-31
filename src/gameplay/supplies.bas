@@ -29,6 +29,7 @@ Dim Shared supFuelPrice As Single, supShieldPrice As Single, supStepPct As Singl
 Dim Shared supMult(1 To SUP_MAX_CH) As Single, supMultCnt As Integer
 Dim Shared supBurn As Single, supMargin As Single, supBossSecs As Single, supAstSecs As Single
 Dim Shared supKillSecs(1 To SUP_MAX_CH) As Single, supKillSecsCnt As Integer
+Dim Shared supBossHpMult As Single : supBossHpMult = 1
 Dim Shared supLoadErr As String
 
 Function SUP_Load%
@@ -44,14 +45,20 @@ Function SUP_Load%
     supAstSecs = Val(CFG_Get$(cfgEconomy, "fuel_asteroid_secs"))
     If supBurn <= 0 Or supMargin < 1 Then supLoadErr = "config/economy.ini needs fuel_burn above 0 and fuel_margin 1 or more" : Exit Function
     If supBossSecs <= 0 Or supAstSecs <= 0 Then supLoadErr = "config/economy.ini needs fuel_boss_secs and fuel_asteroid_secs above 0" : Exit Function
+    supBurn = supBurn * DLV_M!("fuel_burn")
+    supBossHpMult = DLV_M!("boss_hp")
+    supBossSecs = supBossSecs * supBossHpMult
     UPG_Split CFG_Get$(cfgEconomy, "fuel_kill_secs"), ",", suplV(), supKillSecsCnt
     If supKillSecsCnt < 1 Then supLoadErr = "config/economy.ini has no fuel_kill_secs" : Exit Function
     For suplI = 1 To supKillSecsCnt
         supKillSecs(suplI) = Val(suplV(suplI))
         If supKillSecs(suplI) <= 0 Then supLoadErr = "config/economy.ini fuel_kill_secs: every value above 0" : Exit Function
+        supKillSecs(suplI) = supKillSecs(suplI) * DLV_M!("wave_gap")
     Next suplI
     UPG_Split CFG_Get$(cfgEconomy, "fuel_mult"), ",", suplV(), supMultCnt
     If supFuelPrice <= 0 Or supShieldPrice <= 0 Then supLoadErr = "config/economy.ini needs fuel_price and shield_price above 0" : Exit Function
+    supFuelPrice = supFuelPrice * DLV_M!("fuel_price")
+    supShieldPrice = supShieldPrice * DLV_M!("shield_price")
     If supStepPct <= 0 Then supLoadErr = "config/economy.ini needs supply_step_pct above 0" : Exit Function
     If supMultCnt < 1 Then supLoadErr = "config/economy.ini has no fuel_mult" : Exit Function
     For suplI = 1 To supMultCnt
@@ -146,7 +153,7 @@ Function SUP_LegNeed!
     supnCh = levelNum + 1
     If supnCh < 1 Then supnCh = 1
     If supnCh > supKillSecsCnt Then supnCh = supKillSecsCnt
-    supnSecs = supnKills * supKillSecs(supnCh) + supnBossSecs + supnBoss * supBossSecs + supnAst * supAstSecs
+    supnSecs = supnKills * supKillSecs(supnCh) + supnBossSecs * supBossHpMult + supnBoss * supBossSecs + supnAst * supAstSecs
     supnNeed = supnSecs * supBurn * supMargin
     If settingNerf Then supnNeed = supnNeed * NERF_FACTOR
     SUP_LegNeed! = supnNeed

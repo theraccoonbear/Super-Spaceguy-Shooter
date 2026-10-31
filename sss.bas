@@ -35,6 +35,7 @@ $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 $EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
 $EMBED:'assets/config/waves.ini':'CFGWAVES'
 $EMBED:'assets/config/bosses.ini':'CFGBOSSES'
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
@@ -61,6 +62,10 @@ TELEM_LoadCredentials _EMBEDDED$("ENVCONFIG")
 
 ' --- load sequence before CLI so GAME_Usage can enumerate valid scene names ---
 SEQ_Load _EMBEDDED$("SEQTXT")
+
+' --- difficulty levels before CLI, so --difficulty can be checked against them ---
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+IF DLV_Load% = 0 THEN GAME_Usage dlvLoadErr
 
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 CLI_Parse
@@ -118,11 +123,14 @@ cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 cfgPowerups  = CFG_Parse$(_EMBEDDED$("CFGPOWERUPS"))
 cfgWaves     = CFG_Parse$(_EMBEDDED$("CFGWAVES"))
 cfgBosses    = CFG_Parse$(_EMBEDDED$("CFGBOSSES"))
-IF UPG_Load% = 0 THEN GAME_Usage upgLoadErr
-IF SUP_Load% = 0 THEN GAME_Usage supLoadErr
-IF PUP_Load% = 0 THEN GAME_Usage pupLoadErr
-IF WVT_Load% = 0 THEN GAME_Usage wvtLoadErr
-IF BHP_Load% = 0 THEN GAME_Usage bhpLoadErr
+' every level must load, not just the one this run starts on
+DIM dlvBootI AS INTEGER
+FOR dlvBootI = 1 TO DLV_Count%
+    DLV_Use DLV_LevelAt$(dlvBootI)
+    GAME_LoadTuning
+NEXT dlvBootI
+DLV_Begin
+GAME_LoadTuning
 UPG_Reset
 bsmManeuverName = "flyover"      ' cold-start fallback for --scene bypassing SEQ_Advance
 bossManeuverList$(0) = "flyover"

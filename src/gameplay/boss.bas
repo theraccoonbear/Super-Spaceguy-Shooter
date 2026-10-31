@@ -69,7 +69,7 @@ Sub BOSS_Update
             boss.hp = bossMaxHP
             bossShieldT = 0
             boss.phase       = 1
-            boss.fireTimer   = BOSS_FIRE_INIT
+            boss.fireTimer   = BOSS_FIRE_INIT * dlvFBossFire
             boss.moveTimer   = 0
             boss.targetY     = player.py
             boss.targetZ     = player.pz
@@ -149,9 +149,9 @@ Sub BOSS_Update
             If bssAtk = ATK_CUT Then CUT_Start boss.phase, (RNG!(RNG_GAME) < 0.5), player.px, player.py, player.pz, playerVY, playerVZ
             If bssAtk = ATK_DEVOUR Then DEV_Start boss.phase
             Select Case boss.phase
-            Case 1 : boss.fireTimer = BOSS_FIRE1
-            Case 2 : boss.fireTimer = BOSS_FIRE2
-            Case Else : boss.fireTimer = BOSS_FIRE3
+            Case 1 : boss.fireTimer = BOSS_FIRE1 * dlvFBossFire
+            Case 2 : boss.fireTimer = BOSS_FIRE2 * dlvFBossFire
+            Case Else : boss.fireTimer = BOSS_FIRE3 * dlvFBossFire
             End Select
             BOSS_SetEvasion boss.phase
         Else
@@ -170,7 +170,7 @@ Sub BOSS_Update
                         bssShots = bssShots + 1
                     End If
                 Next bssEJ
-                boss.fireTimer = BOSS_FIRE1
+                boss.fireTimer = BOSS_FIRE1 * dlvFBossFire
                 BOSS_SetEvasion boss.phase
     
             Case 2  ' 5-shot aimed cross
@@ -192,7 +192,7 @@ Sub BOSS_Update
                         bssShots = bssShots + 1
                     End If
                 Next bssEJ
-                boss.fireTimer = BOSS_FIRE2
+                boss.fireTimer = BOSS_FIRE2 * dlvFBossFire
                 BOSS_SetEvasion boss.phase
     
             Case 3  ' 7-shot diagonal fan, fast
@@ -209,7 +209,7 @@ Sub BOSS_Update
                         bssShots = bssShots + 1
                     End If
                 Next bssEJ
-                boss.fireTimer = BOSS_FIRE3
+                boss.fireTimer = BOSS_FIRE3 * dlvFBossFire
                 BOSS_SetEvasion boss.phase
             End Select
         End If
@@ -220,7 +220,7 @@ Sub BOSS_Update
     boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), bssHit
     If bssHit And invTimer = 0 Then
         telemDeathCause = "boss_col"
-        PLAYER_TakeHit DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+        PLAYER_TakeHit DLV_Dmg%(DMG_COLLISION), SHAKE_COLLISION, FLASH_COLLISION
     End If
 
     ' player bullets vs boss

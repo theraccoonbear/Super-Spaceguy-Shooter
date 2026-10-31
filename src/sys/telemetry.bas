@@ -96,7 +96,7 @@ Sub TELEM_SessionStart()
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0 : telemBatch = ""
     telemExitReason = ""
-    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf))
+    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty
 End Sub
 
 Sub TELEM_EnemyKilled()
@@ -219,12 +219,15 @@ Sub TELEM_SessionEnd()
     ElseIf score = 0 Then
         DBG_Print "LBRD: score POST skipped -- score=0"
     Else
-        Dim tlScoreJson As String
+        Dim tlScoreJson As String, tlDiffJson As String
+        ' no level (difficulty.ini never loaded) leaves it out: the server stores those as normal
+        If Len(runDifficulty) > 0 Then tlDiffJson = "," + JSON_S$("difficulty", runDifficulty) Else tlDiffJson = ""
         tlScoreJson = JSON_Obj$(JSON_S$("player_id",   leaderboardPlayerID) + "," _
                               + JSON_S$("player_name", telemPlayerName) + "," _
                               + JSON_N$("score",       LTrim$(Str$(score))) + "," _
                               + JSON_N$("wave",        LTrim$(Str$(waveType))) + "," _
-                              + JSON_S$("session",     telemSession))
+                              + JSON_S$("session",     telemSession) _
+                              + tlDiffJson)
         DBG_Print "LBRD: POST score=" + LTrim$(Str$(score)) + " player=" + telemPlayerName
         HTTP_Post DB_URL + "/scores", DB_KEY, tlScoreJson, "score_post"
     End If
