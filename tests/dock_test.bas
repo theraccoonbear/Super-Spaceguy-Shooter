@@ -22,10 +22,12 @@ Sub TELEM_UpgradeBought (dtuItem As String, dtuLevel As Integer, dtuPrice As Lon
 Sub TELEM_CreditBonus (dtcC As Long, dtcR As Double, dtcP As Long) : End Sub
 Sub TELEM_FuelBought (dtfA As Integer, dtfP As Long, dtfU As Single, dtfM As Single, dtfC As Integer) : End Sub
 Sub TELEM_ShieldBought (dtsbA As Integer, dtsbP As Long, dtsbC As Integer) : End Sub
-' SEQ_NextLeg (sequence.bas) reports this stub leg: 10 kills and a boss, 55 fuel
+' SEQ_NextLeg (sequence.bas) reports this stub leg: dtLegKills kills (and a boss with no secs= when
+' dtLegBoss is 1). At the dock after chapter 2: 10 kills x 4.1 s x 1.32 x 1.15 = 62.2 fuel; with
+' the boss (+25 s) 100.2, just over the base tank
 Dim Shared dtLegKills As Long, dtLegBoss As Integer
-Sub SEQ_NextLeg (dtnK As Long, dtnB As Integer, dtnA As Integer)
-    dtnK = dtLegKills : dtnB = dtLegBoss : dtnA = 0
+Sub SEQ_NextLeg (dtnK As Long, dtnBS As Single, dtnB As Integer, dtnA As Integer)
+    dtnK = dtLegKills : dtnBS = 0 : dtnB = dtLegBoss : dtnA = 0
 End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
@@ -109,7 +111,7 @@ cfgUpgrades = CFG_Parse$(_EMBEDDED$("CFGUPGRADES"))
 cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 DT_Assert UPG_Load% <> 0, "upgrade table loads"
 DT_Assert SUP_Load% <> 0, "supply prices load"
-levelNum = 2 : dtLegKills = 10 : dtLegBoss = 1   ' the dock after chapter 2: fuel $2.80 a unit
+levelNum = 2 : dtLegKills = 10 : dtLegBoss = 0   ' the dock after chapter 2: fuel $2.80 a unit
 DT_Assert DOCK_REFUEL = 1 And DOCK_SHIELDS = 2 And DOCK_LAUNCH = UPG_COUNT + 3, "rows: REFUEL, SHIELDS, the" + Str$(UPG_COUNT) + " upgrades, LAUNCH"
 
 Print ""
@@ -209,20 +211,20 @@ Print ""
 Print "--- stranded: no fuel, no credits, no way out (#277) ---"
 DT_ScriptAt 0, 10, -1, "2 2 UP/4 4 ENTER/6 6 ESC/8 8 UP/10 10 DOWN/12 12 LEFT/14 14 PAD_B/16 16 PAD_START/18 18 RIGHT/20 20 ENTER"
 dtLeft = DT_Run%(24)
-DT_Assert dtRes(4) = DOCK_ASK And dockAsk <> 0, "LAUNCH with 10 fuel, $0 and a 55-fuel jump ahead: the stranded dialog"
+DT_Assert dtRes(4) = DOCK_ASK And dockAsk <> 0, "LAUNCH with 10 fuel, $0 and a 62-fuel jump ahead: the stranded dialog"
 DT_Assert dtRes(6) = DOCK_NONE And dtRes(14) = DOCK_NONE And dtRes(16) = DOCK_NONE, "ESC, pad B and pad Start do nothing there"
 DT_Assert dtRes(8) = DOCK_NONE And dtRes(10) = DOCK_NONE And dtRes(12) = DOCK_NONE And dtRes(18) = DOCK_NONE And dockSel = DOCK_LAUNCH, "nor do up, down, left or right"
 DT_Assert dtRes(20) = DOCK_STRANDED And dtLeft = -1, "ENTER on [ YES ] ends the run (the dock never just leaves)"
 DT_ScriptAt 0, 10, -1, "2 2 PAD_B/4 4 PAD_A"
 dtLeft = DT_Run%(6)
 DT_Assert dtRes(2) = DOCK_ASK And dtRes(4) = DOCK_STRANDED, "leaving with pad B asks too; pad A answers YES"
-DT_ScriptAt 126, 10, -1, "2 2 ESC"
-DT_Assert DT_Run%(4) = 2, "10 fuel + $126 (45 units at $2.80) reaches 55 exactly: leaves"
-DT_ScriptAt 125, 10, -1, "2 2 ESC"
+DT_ScriptAt 148, 10, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "10 fuel + $148 (53 units at $2.80) reaches 63 of 62.2: leaves"
+DT_ScriptAt 147, 10, -1, "2 2 ESC"
 dtLeft = DT_Run%(4)
-DT_Assert dtRes(2) = DOCK_ASK, "$125 buys only 44: stranded"
-DT_ScriptAt 0, 60, -1, "2 2 ESC"
-DT_Assert DT_Run%(4) = 2, "broke but 60 in the tank: leaves"
+DT_Assert dtRes(2) = DOCK_ASK, "$147 buys only 52: 62 < 62.2, stranded"
+DT_ScriptAt 0, 70, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "broke but 70 in the tank: leaves"
 godMode = -1
 DT_ScriptAt 0, 0, -1, "2 2 ESC"
 DT_Assert DT_Run%(4) = 2, "god mode: never stranded"
@@ -230,11 +232,30 @@ godMode = 0
 dtLegKills = 0 : dtLegBoss = 0
 DT_ScriptAt 0, 0, -1, "2 2 ESC"
 DT_Assert DT_Run%(4) = 2, "no jump ahead (the last dock): never stranded"
-dtLegKills = 10 : dtLegBoss = 1
+dtLegKills = 10 : dtLegBoss = 0
 DT_ScriptAt 0, 10, -1, "2 2 ESC"
 dtLeft = DT_Run%(4)
 DOCK_Open
 DT_Assert dockAsk = 0, "the next dock opens without the dialog"
+
+Print ""
+Print "--- a jump longer than the tank (#90) ---"
+dtLegBoss = 1
+DT_Assert SUP_OverTank% And SUP_LegNeed! > 100, "10 kills + a boss after chapter 2: 100.2 fuel, more than the 100 tank"
+DT_Assert DOCK_TankWarn%(SUP_OverTank%, 0) = 0 And DOCK_TankWarn%(SUP_OverTank%, 89) = 0, "frames 0-89: the line shows NEXT JUMP NEEDS"
+DT_Assert DOCK_TankWarn%(SUP_OverTank%, 90) <> 0 And DOCK_TankWarn%(SUP_OverTank%, 179) <> 0, "frames 90-179: it shows the tank warning"
+DT_Assert DOCK_TankWarn%(SUP_OverTank%, 180) = 0, "then back, taking turns"
+DT_Assert DOCK_TankWarnText$(fuelMax) = "TANK 100: UPGRADE TANK", "the warning: " + DOCK_TankWarnText$(fuelMax)
+DT_ScriptAt 0, -1, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "a full 100 tank, broke: leaves (the rest of the leg is flown dry, not refused)"
+DT_ScriptAt 196, 30, -1, "2 2 ESC"
+DT_Assert DT_Run%(4) = 2, "30 fuel + $196 fills the tank to 100 (all it can take): leaves"
+DT_ScriptAt 195, 30, -1, "2 2 ESC"
+dtLeft = DT_Run%(4)
+DT_Assert dtRes(2) = DOCK_ASK, "$195 reaches only 99 of the tank's 100: stranded"
+dtLegBoss = 0
+DT_Assert SUP_OverTank% = 0 And DOCK_TankWarn%(SUP_OverTank%, 90) = 0, "a jump the tank holds: never the warning"
+DOCK_Open
 
 Print ""
 Print "--- skip in one press ---"

@@ -7,6 +7,8 @@
 '   assets/config/upgrades.ini    the dock's upgrade table and descriptions (cfgUpgrades)
 '   assets/config/abilities.ini   nova / roll behaviour and their launch hints (cfgAbilities)
 '   assets/config/powerups.ini    power-up odds, amounts, spawn lane and grab size (cfgPowerups)
+'   assets/config/waves.ini       combat waves: timing, size, spawn distance, enemy fire, the clear-out (cfgWaves)
+'   assets/config/bosses.ini      boss hit points, phases and the phase-change shield (cfgBosses)
 ' sss.bas parses each embedded file once at startup:
 '   store$ = CFG_Parse$(text$)     parsed lookup: key + Chr$(1) + value + Chr$(2) + ...
 '   v$ = CFG_Get$(store$, key$)    the value, or "" when the key is missing
@@ -18,6 +20,8 @@ Dim Shared cfgEconomy As String
 Dim Shared cfgUpgrades As String
 Dim Shared cfgAbilities As String
 Dim Shared cfgPowerups As String
+Dim Shared cfgWaves As String
+Dim Shared cfgBosses As String
 
 Function CFG_Parse$ (cfgpSrc As String)
     Dim cfgpP As Long, cfgpQ As Long, cfgpE As Long, cfgpL As String, cfgpOut As String

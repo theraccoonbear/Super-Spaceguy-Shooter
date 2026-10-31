@@ -200,6 +200,22 @@ Sub COMBAT_OverlayDraw()
     Dim cbtOBdbMinX As Single, cbtOBdbMaxX As Single
     Dim cbtOBdbMinY As Single, cbtOBdbMaxY As Single
     Dim cbtOBdbHx As Single, cbtOBdbHy As Single, cbtOBdbHz As Single
+    Dim cbtShX As Single, cbtShY As Single, cbtShX2 As Single, cbtShY2 As Single
+    Dim cbtShOk As Integer, cbtShOk2 As Integer, cbtShR As Single, cbtShA As Integer
+
+    ' phase-change shield (bosshp.bas): a pulsing bubble round the boss while shots bounce off
+    If boss.active And bossShieldT > 0 Then
+        COMBAT_Project boss.px, boss.py, boss.pz, cbtShX, cbtShY, cbtShOk
+        COMBAT_Project boss.px, boss.py + 4.5, boss.pz, cbtShX2, cbtShY2, cbtShOk2
+        If cbtShOk And cbtShOk2 Then
+            cbtShR = Abs(cbtShY - cbtShY2)
+            If cbtShR > 200 Then cbtShR = 200
+            cbtShA = 110 + Int(70 * Sin(tt * 12))
+            _Dest backBuffer
+            Circle (cbtShX, cbtShY), cbtShR, _RGBA(120, 220, 255, cbtShA)
+            Circle (cbtShX, cbtShY), cbtShR * 0.93, _RGBA(170, 240, 255, cbtShA \ 2)
+        End If
+    End If
 
     ' [DEBUG] yellow AABB box overlay around boss
     If debugMode And boss.active Then
