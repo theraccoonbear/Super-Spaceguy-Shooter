@@ -159,9 +159,12 @@ Sub HUD_Draw
     ' boss HP bar
     If boss.active Then
         FONT_PrintAlpha fontPalette(14), backBuffer, "BOSS", scrW\2 - 88, scrH - 18, 255
-        hdBossHPBar = INT((boss.hp / BOSS_MAX_HP) * 100)
+        IF bossMaxHP > 0 THEN hdBossHPBar = INT((boss.hp / bossMaxHP) * 100)
         LINE (scrW/2 - 52, scrH - 14)-(scrW/2 + 52, scrH - 5), _RGB(15, 20, 30), BF
-        If hdBossHPBar > 0 Then
+        If hdBossHPBar > 0 And bossShieldT > 0 Then
+            LINE (scrW/2 - 51, scrH - 13)-(scrW/2 - 51 + hdBossHPBar, scrH - 6), _RGB(40, 170, 230), BF
+            LINE (scrW/2 - 51, scrH - 13)-(scrW/2 - 51 + hdBossHPBar, scrH - 12), _RGB(170, 235, 255), BF
+        ElseIf hdBossHPBar > 0 Then
             LINE (scrW/2 - 51, scrH - 13)-(scrW/2 - 51 + hdBossHPBar, scrH - 6), _RGB(220, 40, 40), BF
             LINE (scrW/2 - 51, scrH - 13)-(scrW/2 - 51 + hdBossHPBar, scrH - 12), _RGB(255, 110, 110), BF
         End If
