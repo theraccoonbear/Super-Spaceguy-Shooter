@@ -8,6 +8,9 @@ inputs:
   save-cache:
     description: save the QB64-PE cache on a miss ('true' or 'false')
     default: 'true'
+  cache-suffix:
+    description: appended to the QB64-PE cache key, so a job on another base image (e.g. -ubuntu2204) doesn't reuse objects built on this one
+    default: ''
 
 runs:
   using: composite
@@ -38,7 +41,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: qb64pe-bin
-        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}
+        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}${{ inputs.cache-suffix }}
 
     - name: Restore QB64-PE cache
       if: inputs.save-cache != 'true'
@@ -46,7 +49,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: qb64pe-bin
-        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}
+        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}${{ inputs.cache-suffix }}
 
     - name: QB64-PE cache hit?
       id: qb64pe_cache

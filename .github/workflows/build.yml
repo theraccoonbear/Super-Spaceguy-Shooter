@@ -71,7 +71,7 @@ jobs:
           echo "game=$(tf $game) server=$(tf $server)"
           mac='{"os":"macos-latest","name":"Build macOS","artifact-name":"sss-macos","artifact-path":"builds/sss","release-asset-name":"sss-macos"}'
           win='{"os":"windows-latest","name":"Build Windows","artifact-name":"sss-windows","artifact-path":"builds/sss.exe","release-asset-name":"sss-windows.exe"}'
-          lnx='{"os":"ubuntu-latest","name":"Build Linux","artifact-name":"sss-linux","artifact-path":"builds/sss","release-asset-name":"sss-linux"}'
+          lnx='{"os":"ubuntu-22.04","cache-suffix":"-ubuntu2204","name":"Build Linux","artifact-name":"sss-linux","artifact-path":"builds/sss","release-asset-name":"sss-linux"}'
           # PRs: build-dev covers Linux, so only master, tags and dispatch build the credentialed binary
           if [ "$EVENT" = pull_request ] || { [ "$EVENT" = push ] && [ "$REF" != refs/heads/master ] && [[ "$REF" != refs/tags/v* ]]; }; then
             echo "build-matrix={\"include\":[$mac,$win]}" >> "$GITHUB_OUTPUT"
@@ -163,6 +163,7 @@ jobs:
         with:
           qb64pe-version: ${{ env.QB64PE_VERSION }}
           save-cache: 'false'
+          cache-suffix: ${{ matrix.cache-suffix }}
 
       # A v* tag builds the release binaries (no dev-only flags, #275); everything else is a dev build.
       - name: Build sss.bas
@@ -218,6 +219,12 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: bash .github/scripts/curl_symver_check.sh "${{ matrix.artifact-path }}"
+
+      # The Linux release is built on ubuntu-22.04 (glibc 2.35, binary needs 2.34) so it runs on older distros (#306)
+      - name: Check the binary's glibc floor
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash .github/scripts/glibc_floor_check.sh "${{ matrix.artifact-path }}"
 
       - name: Dump compile log on failure
         if: failure()
@@ -336,15 +343,18 @@ jobs:
     needs: changes
     if: needs.changes.outputs.game == 'true'
     name: Release build smoke test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v4
 
+      # ubuntu-22.04, not latest: the Linux release binary is built on glibc 2.35 (#306),
+      # with its own QB64-PE cache since the cached libqb objects embed the build's glibc
       - name: Set up QB64-PE
         uses: ./.github/actions/setup-qb64pe
         with:
           qb64pe-version: ${{ env.QB64PE_VERSION }}
+          cache-suffix: -ubuntu2204
 
       # Rehearses the tag path on every push and PR: a local, never-pushed rc tag makes
       # make-version.sh embed the tag's version, and release_build_test.sh expects it.
@@ -362,6 +372,10 @@ jobs:
       - name: Release build smoke test
         shell: bash
         run: bash tests/release_build_test.sh builds/sss
+
+      - name: Check the binary's glibc floor
+        shell: bash
+        run: bash .github/scripts/glibc_floor_check.sh builds/sss
 
       - name: Dump compile log on failure
         if: failure()
