@@ -315,7 +315,7 @@ cmd_help() {
 
 # The game's command-line options, as GAME_Usage in src/sys/game.bas lists them
 # (tests/tools_dev_test.sh checks the two match).
-GAME_FLAGS="--version --help --scene --crawls --god --nerf --debug --no-telem --input-script
+GAME_FLAGS="--version --help --scene --crawls --god --nerf --difficulty --debug --no-telem --input-script
     --leaderboard-file --frames --realtime --seed --credits --ships --shields --fuel --pup
     --screenshot-at"
 
