@@ -14,6 +14,7 @@ Sub GS_CRAWL_Update ()
     IF crawlTimer = 0 THEN
         StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
         MUS_SetCue "crawl"
+        dbgMlogNarr = 0
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
@@ -22,6 +23,7 @@ Sub GS_CRAWL_Update ()
         CASE 1 : crawlFFVolSave = volMusic : volMusic = 0
         CASE 2 : volMusic = crawlFFVolSave
     END SELECT
+    DBG_MilestoneNarr
 
     cam.POS.x = -CAM_OFFSET_X : cam.POS.y = CAM_OFFSET_Y : cam.POS.z = 0
     cam.target.x = CAM_LEAD_X : cam.target.y = 0 : cam.target.z = 0

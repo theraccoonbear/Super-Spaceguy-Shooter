@@ -43,6 +43,11 @@ DIM SHARED spkPhoneCount AS INTEGER
 DIM SHARED spkPhoneIdx   AS INTEGER
 DIM SHARED spkSamplePos  AS INTEGER
 DIM SHARED spkSampleOut  AS SINGLE  ' current sample; written by SPK_Advance, read by snd.bas
+' The utterance's position in game time (SPK_Tick, once per frame), which SPK_IsPlaying%
+' and SPK_CurWord$ report. The synth position above moves as fast as the audio device
+' drains, so state read from it would depend on frame rate (#329).
+DIM SHARED spkClkIdx AS INTEGER
+DIM SHARED spkClkPos AS LONG
 
 ' Formant synthesis
 ' F1/F2 per phoneme (Hz, Peterson & Barney 1952 for vowels; Klatt 1980 for consonants)
@@ -212,7 +217,7 @@ SUB SPK_Init()
 
         spkTimeScale = 1
         SPK_SetSpeed 1.0
-        spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
+        spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0 : spkClkIdx = 0 : spkClkPos = 0
         spkWavePhase = 0.0 : spkWaveStep = 0.0
         spkPrevPhoneID = SPK_SIL
 
@@ -455,10 +460,23 @@ SUB SPK_Init()
         SPK_PhoneStr$ = pfsOut
     END FUNCTION
 
-    ' Returns -1 if speech is still playing, 0 if done.
+    ' Returns -1 if speech is still playing (in game time, SPK_Tick), 0 if done.
     FUNCTION SPK_IsPlaying%()
-        SPK_IsPlaying% = (spkPhoneIdx < spkPhoneCount)
+        SPK_IsPlaying% = (spkClkIdx < spkPhoneCount)
     END FUNCTION
+
+    ' One game frame of speech: SAMPLE_RATE / 60 output samples (spkTimeScale synth samples
+    ' each), however much audio the fill synthesised this frame.
+    SUB SPK_Tick()
+        DIM sptLeft AS LONG, sptD AS LONG
+        sptLeft = (SAMPLE_RATE \ 60) * spkTimeScale
+        DO WHILE sptLeft > 0 AND spkClkIdx < spkPhoneCount
+            sptD = SPK_PhoneDur&(spkPhones(spkClkIdx), spkStress(spkClkIdx)) - spkClkPos
+            IF sptD < 1 THEN sptD = 1
+            IF sptLeft < sptD THEN spkClkPos = spkClkPos + sptLeft : EXIT DO
+            sptLeft = sptLeft - sptD : spkClkPos = 0 : spkClkIdx = spkClkIdx + 1
+        LOOP
+    END SUB
 
     ' Speed factor k: 1.0 = natural spkDur table, >1 faster. Pauses scale ~k^1.6,
     ' vowels ~k^1.15, consonants ~k^0.35.
@@ -507,8 +525,10 @@ SUB SPK_Init()
         DIM stsWT(0 TO SPK_MAX_WORDS - 1) AS STRING, stsWO(0 TO SPK_MAX_WORDS - 1) AS INTEGER
         DIM stsN AS INTEGER, stsIdx AS INTEGER, stsPos AS INTEGER, stsWN AS INTEGER, stsI AS INTEGER
         DIM stsPhase AS SINGLE, stsPrev AS INTEGER, stsSil AS SINGLE, stsVow AS SINGLE, stsCons AS SINGLE
+        DIM stsClkIdx AS INTEGER, stsClkPos AS LONG
 
         stsN = spkPhoneCount : stsIdx = spkPhoneIdx : stsPos = spkSamplePos : stsWN = spkWordCount
+        stsClkIdx = spkClkIdx : stsClkPos = spkClkPos
         stsPhase = spkWavePhase : stsPrev = spkPrevPhoneID
         stsSil = spkScaleSil : stsVow = spkScaleVow : stsCons = spkScaleCons
         FOR stsI = 0 TO stsN - 1 : stsPh(stsI) = spkPhones(stsI) : stsSt(stsI) = spkStress(stsI) : NEXT stsI
@@ -522,6 +542,7 @@ SUB SPK_Init()
         SPK_TextSamples& = SPK_QueueSamples&
 
         spkPhoneCount = stsN : spkPhoneIdx = stsIdx : spkSamplePos = stsPos : spkWordCount = stsWN
+        spkClkIdx = stsClkIdx : spkClkPos = stsClkPos
         spkWavePhase = stsPhase : spkPrevPhoneID = stsPrev
         spkScaleSil = stsSil : spkScaleVow = stsVow : spkScaleCons = stsCons
         FOR stsI = 0 TO stsN - 1 : spkPhones(stsI) = stsPh(stsI) : spkStress(stsI) = stsSt(stsI) : NEXT stsI
@@ -535,7 +556,7 @@ SUB SPK_Init()
     FUNCTION SPK_CurWord$()
         DIM cwI AS INTEGER
         FOR cwI = 0 TO spkWordCount - 1
-            IF spkPhoneIdx >= spkWordStart(cwI) AND spkPhoneIdx <= spkWordEnd(cwI) THEN
+            IF spkClkIdx >= spkWordStart(cwI) AND spkClkIdx <= spkWordEnd(cwI) THEN
                 SPK_CurWord$ = spkWordText$(cwI) : EXIT FUNCTION
             END IF
         NEXT cwI
@@ -547,7 +568,7 @@ SUB SPK_Init()
     FUNCTION SPK_CurWordOcc%()
         DIM cwI AS INTEGER
         FOR cwI = 0 TO spkWordCount - 1
-            IF spkPhoneIdx >= spkWordStart(cwI) AND spkPhoneIdx <= spkWordEnd(cwI) THEN
+            IF spkClkIdx >= spkWordStart(cwI) AND spkClkIdx <= spkWordEnd(cwI) THEN
                 SPK_CurWordOcc% = spkWordOcc(cwI) : EXIT FUNCTION
             END IF
         NEXT cwI
@@ -569,7 +590,7 @@ SUB SPK_Init()
         DIM spkStem AS STRING, spkStemIdx AS INTEGER, spkStemFound AS INTEGER, spkLastPh AS INTEGER
 
         SPK_SetSpeed 1.0  ' every utterance starts at natural speed; the crawl applies the narration preset after this
-        spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0
+        spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0 : spkClkIdx = 0 : spkClkPos = 0
         spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
         spkWordCount = 0
         DIM spkTs AS LONG : spkTs = CLNG(TIMER * 1000) MOD 3600000  ' ms since last hour
