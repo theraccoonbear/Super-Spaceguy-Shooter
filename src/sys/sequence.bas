@@ -62,6 +62,27 @@ Dim Shared seqCrawlUse$(0 To SEQ_MAX - 1)   ' sequence label, or what triggers i
 Dim Shared seqCrawlAt(0 To SEQ_MAX - 1) As Integer   ' sequence index; -1 = started by code
 Dim Shared seqJumpCrawl$   ' set by SEQ_JumpToScene when --scene names a code-started crawl
 
+' Every --scene type (#334). CLI_Parse accepts exactly these (plus crawl:<key>) and
+' SEQ_SceneList$ can only list these, so --help and the parser cannot drift apart.
+' consent and username are started by sss.bas itself, not by the sequence.
+Const SEQ_SCENE_TYPES = " crawl playing boss dock title emperor consent username "
+
+' The scene type of a --scene name: trailing digits stripped, lowercased; "crawl:" for crawl:<key>.
+Function SEQ_SceneType$(sstSpec As String)
+    Dim sstI As Integer
+    If LCase$(Left$(sstSpec, 6)) = "crawl:" Then SEQ_SceneType$ = "crawl:" : Exit Function
+    sstI = Len(sstSpec)
+    Do While sstI > 0
+        If Mid$(sstSpec, sstI, 1) >= "0" And Mid$(sstSpec, sstI, 1) <= "9" Then sstI = sstI - 1 Else Exit Do
+    Loop
+    SEQ_SceneType$ = LCase$(Left$(sstSpec, sstI))
+End Function
+
+Function SEQ_SceneTypeOk%(sstoType As String)
+    If sstoType = "crawl:" Then SEQ_SceneTypeOk% = -1 : Exit Function
+    SEQ_SceneTypeOk% = (sstoType <> "" And InStr(SEQ_SCENE_TYPES, " " + sstoType + " ") > 0)
+End Function
+
 Sub SEQ_AddCrawl(seqacKey As String, seqacUse As String, seqacAt As Integer)
     Dim seqacI As Integer
     If Len(seqacKey) = 0 Or seqCrawlCount >= SEQ_MAX Then Exit Sub
@@ -335,16 +356,32 @@ Function SEQ_JumpToScene%(seqjSpec As String)
     SEQ_JumpToScene% = -1
 End Function
 
-' Print valid --scene names to file handle fh, grouped as ranges or lists.
-Sub SEQ_PrintScenes(seqpFH As Integer)
+' Format a sorted number list as [min-max] if contiguous (and seqfnRange), else [n,n,...].
+Function SEQ_FmtNums$(seqfnNums() As Integer, seqfnCnt As Integer, seqfnRange As Integer)
+    Dim seqfnJ As Integer, seqfnOut As String
+    If seqfnRange And seqfnNums(seqfnCnt - 1) - seqfnNums(0) + 1 = seqfnCnt Then
+        SEQ_FmtNums$ = "[" + LTrim$(Str$(seqfnNums(0))) + "-" + LTrim$(Str$(seqfnNums(seqfnCnt - 1))) + "]"
+        Exit Function
+    End If
+    seqfnOut = "["
+    For seqfnJ = 0 To seqfnCnt - 1
+        If seqfnJ > 0 Then seqfnOut = seqfnOut + ","
+        seqfnOut = seqfnOut + LTrim$(Str$(seqfnNums(seqfnJ)))
+    Next seqfnJ
+    SEQ_FmtNums$ = seqfnOut + "]"
+End Function
+
+' Valid --scene names for --help, one per line (each ending in Chr$(10)), grouped as
+' ranges or lists. Walks SEQ_SCENE_TYPES, so it can only list types CLI_Parse accepts.
+Function SEQ_SceneList$()
     Dim seqpI As Integer, seqpN As Integer, seqpLabel As String
     Dim seqpCNums(0 To SEQ_MAX - 1) As Integer, seqpCCnt As Integer
     Dim seqpPNums(0 To SEQ_MAX - 1) As Integer, seqpPCnt As Integer
     Dim seqpBNums(0 To SEQ_MAX - 1) As Integer, seqpBCnt As Integer
     Dim seqpDNums(0 To SEQ_MAX - 1) As Integer, seqpDCnt As Integer
     Dim seqpHasTitle As Integer, seqpHasEmp As Integer
-    Dim seqpMin As Integer, seqpMax As Integer, seqpJ As Integer
-    Dim seqpOut As String
+    Dim seqpJ As Integer, seqpTypes As String, seqpType As String
+    Dim seqpOut As String, seqpLine As String
 
     For seqpI = 0 To seqCount - 1
         seqpLabel = seqLabel$(seqpI)
@@ -372,65 +409,48 @@ Sub SEQ_PrintScenes(seqpFH As Integer)
         End If
     Next seqpI
 
-    ' format each group: [min-max] if contiguous, else [n,n,...]
-    If seqpCCnt > 0 Then
-        seqpMin = seqpCNums(0) : seqpMax = seqpCNums(seqpCCnt - 1)
-        If seqpMax - seqpMin + 1 = seqpCCnt Then
-            seqpOut = "[" + LTrim$(Str$(seqpMin)) + "-" + LTrim$(Str$(seqpMax)) + "]"
-        Else
-            seqpOut = "["
-            For seqpJ = 0 To seqpCCnt - 1
-                If seqpJ > 0 Then seqpOut = seqpOut + ","
-                seqpOut = seqpOut + LTrim$(Str$(seqpCNums(seqpJ)))
-            Next seqpJ
-            seqpOut = seqpOut + "]"
-        End If
-        CLI_Emit seqpFH, "  crawl" + seqpOut
-    End If
-    If seqpPCnt > 0 Then
-        seqpMin = seqpPNums(0) : seqpMax = seqpPNums(seqpPCnt - 1)
-        If seqpMax - seqpMin + 1 = seqpPCnt Then
-            seqpOut = "[" + LTrim$(Str$(seqpMin)) + "-" + LTrim$(Str$(seqpMax)) + "]"
-        Else
-            seqpOut = "["
-            For seqpJ = 0 To seqpPCnt - 1
-                If seqpJ > 0 Then seqpOut = seqpOut + ","
-                seqpOut = seqpOut + LTrim$(Str$(seqpPNums(seqpJ)))
-            Next seqpJ
-            seqpOut = seqpOut + "]"
-        End If
-        CLI_Emit seqpFH, "  playing" + seqpOut
-    End If
-    If seqpBCnt > 0 Then
-        seqpMin = seqpBNums(0) : seqpMax = seqpBNums(seqpBCnt - 1)
-        If seqpMax - seqpMin + 1 = seqpBCnt Then
-            seqpOut = "[" + LTrim$(Str$(seqpMin)) + "-" + LTrim$(Str$(seqpMax)) + "]"
-        Else
-            seqpOut = "["
-            For seqpJ = 0 To seqpBCnt - 1
-                If seqpJ > 0 Then seqpOut = seqpOut + ","
-                seqpOut = seqpOut + LTrim$(Str$(seqpBNums(seqpJ)))
-            Next seqpJ
-            seqpOut = seqpOut + "]"
-        End If
-        CLI_Emit seqpFH, "  boss" + seqpOut
-    End If
-    If seqpDCnt > 0 Then
-        seqpOut = "["
-        For seqpJ = 0 To seqpDCnt - 1
-            If seqpJ > 0 Then seqpOut = seqpOut + ","
-            seqpOut = seqpOut + LTrim$(Str$(seqpDNums(seqpJ)))
-        Next seqpJ
-        CLI_Emit seqpFH, "  dock" + seqpOut + "]"
-    End If
-    If seqpHasTitle Then CLI_Emit seqpFH, "  title"
-    If seqpHasEmp Then CLI_Emit seqpFH, "  emperor"
+    seqpTypes = LTrim$(SEQ_SCENE_TYPES)
+    Do While seqpTypes <> ""
+        seqpJ = InStr(seqpTypes, " ")
+        seqpType = Left$(seqpTypes, seqpJ - 1)
+        seqpTypes = LTrim$(Mid$(seqpTypes, seqpJ + 1))
+        seqpLine = ""
+        Select Case seqpType
+            Case "crawl"
+                If seqpCCnt > 0 Then seqpLine = seqpType + SEQ_FmtNums$(seqpCNums(), seqpCCnt, -1)
+            Case "playing"
+                If seqpPCnt > 0 Then seqpLine = seqpType + SEQ_FmtNums$(seqpPNums(), seqpPCnt, -1)
+            Case "boss"
+                If seqpBCnt > 0 Then seqpLine = seqpType + SEQ_FmtNums$(seqpBNums(), seqpBCnt, -1)
+            Case "dock"
+                If seqpDCnt > 0 Then seqpLine = seqpType + SEQ_FmtNums$(seqpDNums(), seqpDCnt, 0)
+            Case "title"
+                If seqpHasTitle Then seqpLine = seqpType
+            Case "emperor"
+                If seqpHasEmp Then seqpLine = seqpType
+            Case Else
+                seqpLine = seqpType
+        End Select
+        If seqpLine <> "" Then seqpOut = seqpOut + "  " + seqpLine + Chr$(10)
+    Loop
     SEQ_ListCrawls
     For seqpJ = 0 To seqCrawlCount - 1
-        seqpOut = "  crawl:" + seqCrawlKey$(seqpJ)
-        If Len(seqpOut) < 24 Then seqpOut = seqpOut + Space$(24 - Len(seqpOut))
-        CLI_Emit seqpFH, seqpOut + "(" + seqCrawlUse$(seqpJ) + ")"
+        seqpLine = "  crawl:" + seqCrawlKey$(seqpJ)
+        If Len(seqpLine) < 24 Then seqpLine = seqpLine + Space$(24 - Len(seqpLine))
+        seqpOut = seqpOut + seqpLine + "(" + seqCrawlUse$(seqpJ) + ")" + Chr$(10)
     Next seqpJ
+    SEQ_SceneList$ = seqpOut
+End Function
+
+' Print valid --scene names to file handle fh.
+Sub SEQ_PrintScenes(seqpFH As Integer)
+    Dim seqpsList As String, seqpsPos As Integer
+    seqpsList = SEQ_SceneList$
+    Do While seqpsList <> ""
+        seqpsPos = InStr(seqpsList, Chr$(10))
+        CLI_Emit seqpFH, Left$(seqpsList, seqpsPos - 1)
+        seqpsList = Mid$(seqpsList, seqpsPos + 1)
+    Loop
 End Sub
 
 ' Advance to the next sequence step and execute it.
