@@ -45,7 +45,7 @@ Sub ENEMY_Update
             ' sinusoidal drift far out; home on player when close
             enOldPY = enemies(enI).py
             enOldPZ = enemies(enI).pz
-            enHomingLerp  = 0.008 + diffScale * (ENEMY_HOMING_SCALE - 0.008)
+            enHomingLerp  = (0.008 + diffScale * (ENEMY_HOMING_SCALE - 0.008)) * dlvFEnemyHoming
             enHomingRange = 30 + diffScale * ENEMY_HOMING_REXT
             If enemies(enI).px < player.px + enHomingRange Then
                 enemies(enI).py = enemies(enI).py + (player.py - enemies(enI).py) * enHomingLerp + enemies(enI).vy
@@ -59,8 +59,8 @@ Sub ENEMY_Update
             ' strafe burst
             enemies(enI).strafeCool = enemies(enI).strafeCool - 1
             If enemies(enI).strafeCool <= 0 And diffScale > 0.05 Then
-                enemies(enI).vy = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
-                enemies(enI).vz = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale
+                enemies(enI).vy = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale * dlvFEnemyHoming
+                enemies(enI).vz = (RNG!(RNG_GAME) - 0.5) * ENEMY_STRAFE_MAG * 2 * diffScale * dlvFEnemyHoming
                 enemies(enI).strafeCool = ENEMY_STRAFE_COOL + Int(RNG!(RNG_GAME) * 60)
             End If
 
@@ -91,7 +91,7 @@ Sub ENEMY_Update
                 enDZ = player.pz - enemies(enI).pz
                 enMag = SQR(enDX * enDX + enDY * enDY + enDZ * enDZ)
                 If enMag > 0.1 Then
-                    enLead = (enMag / EBULLET_SPEED) * EFIRE_LEAD
+                    If EFIRE_LEAD * dlvFEnemyLead > 1 Then enLead = enMag / EBULLET_SPEED Else enLead = (enMag / EBULLET_SPEED) * EFIRE_LEAD * dlvFEnemyLead
                     enDY = (player.py + playerVY * enLead) - enemies(enI).py
                     enDZ = (player.pz + playerVZ * enLead) - enemies(enI).pz
                     enMag = SQR(enDX * enDX + enDY * enDY + enDZ * enDZ)
@@ -111,7 +111,7 @@ Sub ENEMY_Update
                         End If
                     Next enEJ
                 End If
-                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum)
+                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum) * dlvFEnemyFire
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped
@@ -172,7 +172,7 @@ Sub ENEMY_Update
                 SND_Boom
                 FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
                 telemDeathCause = "enemy_col"
-                PLAYER_TakeHit DMG_COLLISION, SHAKE_COLLISION, FLASH_COLLISION
+                PLAYER_TakeHit DLV_Dmg%(DMG_COLLISION), SHAKE_COLLISION, FLASH_COLLISION
             End If
         End If
     Next enI
@@ -207,7 +207,7 @@ Sub EBULLET_Update
             If ebHit And invTimer = 0 Then
                 ebullets(ebI).active = 0
                 telemDeathCause = "ebullet"
-                PLAYER_TakeDamage DMG_LASER, SHAKE_LASER, FLASH_LASER
+                PLAYER_TakeDamage DLV_Dmg%(DMG_LASER), SHAKE_LASER, FLASH_LASER
             ElseIf Not ebHit Then
                 ' near-miss: fired past player's X plane within a tight lateral window
                 If ebullets(ebI).px < player.px And ebullets(ebI).px >= player.px - 0.42 Then

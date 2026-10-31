@@ -84,7 +84,7 @@ Function UPG_ParseLine% (upgpId As Integer, upgpKey As String, upgpLine As Strin
     If upgpVals < 1 Or upgpVals > UPG_MAX_LV Then upgLoadErr = "upg_" + upgpKey + ": 1 to" + Str$(UPG_MAX_LV) + " prices" : Exit Function
     upgMax(upgpId) = upgpVals
     For upgpI = 1 To upgpVals
-        upgPrice(upgpId, upgpI) = Val(upgpVal(upgpI))
+        upgPrice(upgpId, upgpI) = DLV_Round&(Val(upgpVal(upgpI)), DLV_M!("upgrade_price"))
     Next upgpI
     If upgpParts >= 3 Then
         UPG_Split upgpPart(3), ",", upgpVal(), upgpVals
@@ -119,12 +119,12 @@ Function UPG_Load%
     If upglOk = 0 Then Exit Function
     upglOk = UPG_FillFxA%(UPG_ROLL, "roll_cooldown")
     If upglOk = 0 Then Exit Function
-    crKill = Val(CFG_Get$(cfgEconomy, "cr_kill"))
-    crBoss = Val(CFG_Get$(cfgEconomy, "cr_boss"))
-    crStage = Val(CFG_Get$(cfgEconomy, "cr_stage"))
-    crAstNear = Val(CFG_Get$(cfgEconomy, "cr_ast_near"))
-    crAstKill = Val(CFG_Get$(cfgEconomy, "cr_ast_kill"))
-    crAstSurvive = Val(CFG_Get$(cfgEconomy, "cr_ast_survive"))
+    crKill = DLV_Round&(Val(CFG_Get$(cfgEconomy, "cr_kill")), DLV_M!("credits"))
+    crBoss = DLV_Round&(Val(CFG_Get$(cfgEconomy, "cr_boss")), DLV_M!("credits"))
+    crStage = DLV_Round&(Val(CFG_Get$(cfgEconomy, "cr_stage")), DLV_M!("credits"))
+    crAstNear = DLV_Round&(Val(CFG_Get$(cfgEconomy, "cr_ast_near")), DLV_M!("credits"))
+    crAstKill = DLV_Round&(Val(CFG_Get$(cfgEconomy, "cr_ast_kill")), DLV_M!("credits"))
+    crAstSurvive = DLV_Round&(Val(CFG_Get$(cfgEconomy, "cr_ast_survive")), DLV_M!("credits"))
     If Len(CFG_Get$(cfgEconomy, "credit_bonus_rate")) > 0 Then crBonusRate = Val(CFG_Get$(cfgEconomy, "credit_bonus_rate")) Else crBonusRate = 1
     novaRadius = Val(CFG_Get$(cfgAbilities, "nova_radius"))
     novaBossDmg = Val(CFG_Get$(cfgAbilities, "nova_boss_dmg"))

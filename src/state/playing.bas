@@ -135,9 +135,9 @@ Sub GS_PLAYING_Update ()
             PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
 
             IF gameState = GS_PLAYING THEN
-                fuelLevel = fuelLevel - FUEL_DRAIN
-                telemLegFuel = telemLegFuel + FUEL_DRAIN : telemLegFrames = telemLegFrames + 1
-                IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST : telemLegFuel = telemLegFuel + FUEL_DRAIN_BOOST
+                fuelLevel = fuelLevel - FUEL_DRAIN * dlvFFuelBurn
+                telemLegFuel = telemLegFuel + FUEL_DRAIN * dlvFFuelBurn : telemLegFrames = telemLegFrames + 1
+                IF isManeuver THEN fuelLevel = fuelLevel - FUEL_DRAIN_BOOST * dlvFFuelBurn : telemLegFuel = telemLegFuel + FUEL_DRAIN_BOOST * dlvFFuelBurn
                 IF fuelLevel <= 0 THEN
                     fuelLevel = 0
                     IF fuelStranded = 0 THEN TELEM_FuelExhausted
@@ -224,9 +224,9 @@ Sub GS_PLAYING_Update ()
             BOSS_Update
             EBULLET_Update
             spDmg = SPORE_Update%(player.px, player.py, player.pz)
-            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "spore" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
+            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "spore" : PLAYER_TakeDamage DLV_Dmg%(spDmg), SHAKE_LASER, FLASH_LASER
             spDmg = CUT_Update%(player.px, player.py, player.pz, playerVY, playerVZ)
-            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "cut" : PLAYER_TakeDamage spDmg, SHAKE_LASER, FLASH_LASER
+            IF spDmg > 0 AND invTimer = 0 THEN telemDeathCause = "cut" : PLAYER_TakeDamage DLV_Dmg%(spDmg), SHAKE_LASER, FLASH_LASER
             DEV_Update
             DEV_Pull player.py, player.pz, boss.py, boss.pz
             player.py = player.py + devPullY : player.pz = player.pz + devPullZ

@@ -12,6 +12,12 @@ Sub GS_TITLE_Update ()
     LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
     gstThrobBright = INT(170 + 85 * SIN(tt * 5))
     UI_PromptsCentered "PRESS " + UI_Tok$("P", E3D_ACT_PAUSE) + " TO PLAY", 200, 15, gstThrobBright
+    IF DLV_Chosen$ <> DLV_Default$ AND titleEscConfirm = 0 AND crTallyTimer <= 0 THEN
+        Dim gstDiff As String
+        gstDiff = "DIFFICULTY: " + DLV_Name$(DLV_Chosen$)
+        UI_Panel scrW \ 2 - LEN(gstDiff) * FONT_CHAR_W \ 2 - 6, 172, scrW \ 2 + LEN(gstDiff) * FONT_CHAR_W \ 2 + 5, 193
+        UI_TextCentered 14, gstDiff, 175, 255
+    END IF
     UI_Prompts UI_Tok$("ESC", E3D_ACT_CAMERA) + "  OPTIONS", 2, scrH - FONT_CHAR_H, 8, 255
     FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
     IF titleEscConfirm THEN
