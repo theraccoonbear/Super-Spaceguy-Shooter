@@ -53,6 +53,7 @@ Sub CLI_Parse()
     godMode     = (InStr(cliLine, "--god")   > 0)
     settingNerf = (InStr(cliLine, "--nerf")  > 0)
     cliCrawls   = (InStr(cliLine, "--crawls") > 0)
+    cliRealtime = (InStr(cliLine, "--realtime") > 0)
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then
@@ -123,17 +124,9 @@ Sub CLI_Parse()
         cliVal = Mid$(cliVal, cliPos + 1)
     Loop
 
-    If LCase$(Left$(cliScene, 6)) = "crawl:" Then
-        cliSceneType = "crawl:"
-    ElseIf cliScene <> "" Then
-        cliI = Len(cliScene)
-        Do While cliI > 0
-            If Mid$(cliScene, cliI, 1) >= "0" And Mid$(cliScene, cliI, 1) <= "9" Then cliI = cliI - 1 Else Exit Do
-        Loop
-        cliSceneType = LCase$(Left$(cliScene, cliI))
-        If cliSceneType <> "title" And cliSceneType <> "crawl" And cliSceneType <> "playing" And cliSceneType <> "boss" And cliSceneType <> "dock" And cliSceneType <> "consent" And cliSceneType <> "username" Then
-            GAME_Usage("unknown scene type '" + cliSceneType + "'")
-        End If
+    If cliScene <> "" Then
+        cliSceneType = SEQ_SceneType$(cliScene)
+        If SEQ_SceneTypeOk%(cliSceneType) = 0 Then GAME_Usage("unknown scene type '" + cliSceneType + "'")
     End If
     $END IF
 
