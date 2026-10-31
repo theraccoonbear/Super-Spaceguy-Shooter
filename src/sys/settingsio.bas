@@ -1,16 +1,21 @@
 ' settingsio.bas -- persistent settings: sss_settings.ini in the launch folder
 
 Sub SETTINGS_Save ()
+    SETTINGS_SaveFile _STARTDIR$ + "/sss_settings.ini"
+End Sub
+
+Sub SETTINGS_SaveFile (sfsPath As String)
     Dim sfH As Integer
     If ioReadOnly Then Exit Sub
     sfH = FreeFile
-    Open _STARTDIR$ + "/sss_settings.ini" For Output As #sfH
+    Open sfsPath For Output As #sfH
     Print #sfH, "music="      + LTrim$(Str$(volMusic))
     Print #sfH, "sfx="        + LTrim$(Str$(volSfx))
     Print #sfH, "speech="     + LTrim$(Str$(volSpeech))
     Print #sfH, "narration="  + LTrim$(Str$(settingNarration))
     Print #sfH, "narration_speed=" + LTrim$(Str$(settingNarrSpeed))
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
+    Print #sfH, "difficulty=" + DLV_Valid$(settingDifficulty)
     Print #sfH, "highscore="  + LTrim$(Str$(highScore))
     If Len(telemPlayerID) > 0 Then Print #sfH, "player_id=" + telemPlayerID
     If Len(leaderboardPlayerID) > 0 Then Print #sfH, "lb_player_id=" + leaderboardPlayerID
@@ -76,6 +81,8 @@ Sub SETTINGS_LoadFile (sfPath As String)
                         camF.orbitR = sfVal
                     Case "highscore"
                         If sfVal >= 0 Then highScore = CLng(sfVal)
+                    Case "difficulty"
+                        settingDifficulty = DLV_Valid$(sfRaw)
                     Case "narration_speed"
                         settingNarrSpeed = Int(sfVal + 0.5)
                         If settingNarrSpeed < 1 Or settingNarrSpeed > 3 Then settingNarrSpeed = 2

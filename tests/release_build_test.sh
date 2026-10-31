@@ -30,8 +30,8 @@ run_bin() {
 }
 timed_out() { [ "$1" -eq 124 ] || [ "$1" -eq 137 ]; }
 
-DEV_FLAGS=(--scene --crawls --god --nerf --credits --ships --shields --fuel --pup --input-script
-           --frames --realtime --seed --screenshot-at --leaderboard-file --debug)
+DEV_FLAGS=(--scene --crawls --god --nerf --difficulty --credits --ships --shields --fuel --pup --input-script
+           --script-override --frames --realtime --seed --screenshot-at --leaderboard-file --debug)
 
 fails=0
 fail() { echo "FAIL: $1"; fails=$((fails + 1)); }

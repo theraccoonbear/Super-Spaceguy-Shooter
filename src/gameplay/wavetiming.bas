@@ -58,9 +58,11 @@ Function WVT_Load%
     wvtFirst = Val(CFG_Get$(cfgWaves, "wave_first"))
     wvtOpen = Val(CFG_Get$(cfgWaves, "wave_open"))
     If wvtFirst < 0 Or wvtOpen < 0 Then wvtLoadErr = "config/waves.ini needs wave_first and wave_open 0 or more" : Exit Function
+    wvtFirst = wvtFirst * DLV_M!("wave_first")
 
     wvtOpenGapN = WVT_LoadList%("wave_open_gap", wvtOpenGap())
     If wvtOpenGapN = 0 Then wvtLoadErr = "config/waves.ini wave_open_gap: one or more values, each above 0" : Exit Function
+    For wvtlI = 1 To wvtOpenGapN : wvtOpenGap(wvtlI) = wvtOpenGap(wvtlI) * DLV_M!("wave_open_gap") : Next wvtlI
     wvtGapPctN = WVT_LoadList%("wave_gap_pct", wvtGapPct())
     If wvtGapPctN = 0 Then wvtLoadErr = "config/waves.ini wave_gap_pct: one or more values, each above 0" : Exit Function
     wvtFirePctN = WVT_LoadList%("wave_fire_pct", wvtFirePct())
@@ -73,6 +75,7 @@ Function WVT_Load%
     If wvtlN <> 2 Then wvtLoadErr = "config/waves.ini wave_gap needs 2 values (difficulty 0, full)" : Exit Function
     wvtGap0 = Val(wvtlV(1)) : wvtGap1 = Val(wvtlV(2))
     If wvtGap0 <= 0 Or wvtGap1 <= 0 Then wvtLoadErr = "config/waves.ini wave_gap: both values above 0" : Exit Function
+    wvtGap0 = wvtGap0 * DLV_M!("wave_gap") : wvtGap1 = wvtGap1 * DLV_M!("wave_gap")
 
     UPG_Split CFG_Get$(cfgWaves, "wave_open_dist"), ",", wvtlV(), wvtlN
     If wvtlN <> 2 Then wvtLoadErr = "config/waves.ini wave_open_dist needs min,variance" : Exit Function

@@ -2,5 +2,6 @@
 # off-screen (edge arrow); halos, crossing reticles, then the grab's pop (god mode: SH is full,
 # so it pays FULL +250).
 #! group: gameplay
-#! args: --scene playing2 --pup shield,fuel,points
+#! seed: 1
+#! args: --god --no-telem --scene playing2 --pup shield,fuel,points
 #! shots: 15,70

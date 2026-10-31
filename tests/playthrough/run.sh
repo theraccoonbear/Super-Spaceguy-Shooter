@@ -8,7 +8,8 @@
 #   1. the game exited cleanly (exit 0) when --frames ran out, within the time limit
 #      (a crash dialog or hang under Xvfb shows up as the timeout);
 #   2. the milestone log (SSS_MILESTONE_LOG, see DBG_MilestoneInit in src/sys/debug.bas),
-#      one line per change of game state or sequence step, matches expected.txt in
+#      one line per change of game state or sequence step (NARR lines aside, see
+#      tests/playthrough/determinism.sh), matches expected.txt in
 #      order, with nothing missing or extra; reaching the final title inside the
 #      --frames budget is the "didn't stall" check;
 #   3. the local telemetry CSV agrees: one boss_defeated per boss and a session_end
@@ -32,7 +33,7 @@
 # its score to the real leaderboard.
 #
 # When the game changes on purpose (a stage added, a scene reordered), update
-# expected.txt, and FINAL_FRAME_MAX (plus playthrough.txt / FRAMES) if the run gets longer.
+# expected.txt, FINAL_FRAME_MAX, and playthrough.txt / its "#! frames" if the run gets longer.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -40,8 +41,6 @@ HERE="$REPO/tests/playthrough"
 BIN="${SSS_BIN:-$REPO/builds/sss}"
 OUT="${PLAYTHROUGH_OUT:-$REPO/builds/playthrough}"
 TIME_LIMIT="${PLAYTHROUGH_TIMEOUT:-900}"
-FRAMES=20000
-SEED=1
 # Latest frame the final title may arrive at: the measured finishing frame plus ~5%.
 # When the run gets longer on purpose, take the new "final title reached at frame N"
 # from this script's output (the CI Playthrough job log), set this to about N * 1.05,
@@ -91,6 +90,8 @@ timing_report() {
         echo "FINAL TITLE: not reached"
     fi
 }
+# seed, flags and frames come from playthrough.txt's "#!" header (#324); the checks need frames
+FRAMES="$(sed -n 's/^#! *frames:\{0,1\} *\([0-9][0-9]*\) *$/\1/p' "$HERE/playthrough.txt")"
 
 fail() {
     timing_report
@@ -100,6 +101,7 @@ fail() {
 }
 
 [ -x "$BIN" ] || fail "no game binary at $BIN (build it first: tools/dev build)"
+[ -n "$FRAMES" ] || fail "no '#! frames N' line in $HERE/playthrough.txt"
 case "$BIN" in /*) ;; *) BIN="$(pwd)/$BIN" ;; esac
 if [ -f "$REPO/assets/.env" ] && grep -Eq '^DB_URL=.+' "$REPO/assets/.env"; then
     fail "assets/.env sets DB_URL, so $BIN may send telemetry and a leaderboard score; rebuild with an empty assets/.env"
@@ -115,10 +117,10 @@ if [ -z "${DISPLAY:-}" ]; then
     XVFB=(xvfb-run -a -s "-screen 0 1280x720x24")
 fi
 
-echo "=== playthrough: --god --nerf --seed $SEED --frames $FRAMES, input $HERE/playthrough.txt ==="
+echo "=== playthrough: input $HERE/playthrough.txt ($(grep '^#!' "$HERE/playthrough.txt" | tr '\n' ' ')) ==="
 start=$SECONDS
 SSS_MILESTONE_LOG=milestones.log timeout "$TIME_LIMIT" "${XVFB[@]}" "$BIN" \
-    --god --nerf --seed "$SEED" --frames "$FRAMES" --input-script "$HERE/playthrough.txt" "$@" \
+    --input-script "$HERE/playthrough.txt" "$@" \
     > game.out 2>&1
 rc=$?
 elapsed=$((SECONDS - start))
@@ -138,8 +140,9 @@ normalize() {
     done
 }
 
-# QB64-PE writes CRLF line ends
-mapfile -t raw < <(tr -d "\r" < milestones.log)
+# QB64-PE writes CRLF line ends. NARR lines (narration paragraph starts) stay in
+# milestones.log for the capped-vs-uncapped comparison but aren't milestones here.
+mapfile -t raw < <(tr -d "\r" < milestones.log | grep -v '^[0-9]* NARR ')
 mapfile -t got < <(printf "%s\n" "${raw[@]}" | normalize)
 mapfile -t want < <(grep -v '^#' "$HERE/expected.txt" | grep -v '^$')
 printf "%s\n" "${got[@]}" > milestones.actual.txt

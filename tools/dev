@@ -315,7 +315,7 @@ cmd_help() {
 
 # The game's command-line options, as GAME_Usage in src/sys/game.bas lists them
 # (tests/tools_dev_test.sh checks the two match).
-GAME_FLAGS="--version --help --scene --crawls --god --nerf --debug --no-telem --input-script
+GAME_FLAGS="--version --help --scene --crawls --god --nerf --difficulty --debug --no-telem --input-script --script-override
     --leaderboard-file --frames --realtime --seed --credits --ships --shields --fuel --pup
     --screenshot-at"
 
@@ -377,6 +377,24 @@ _sss_dev_scenes() {
     [ "$found" = 1 ] || printf '%s\n' title crawl playing boss dock consent username
 }
 
+# Level names for --difficulty: the levels= line of the repo's difficulty.ini.
+_sss_dev_difficulties() {
+    local line found=0
+    if [ -r "$1/assets/config/difficulty.ini" ]; then
+        while IFS= read -r line; do
+            line="${line%$'\r'}"
+            case "$line" in
+                levels=*)
+                    line="${line#levels=}"
+                    printf '%s\n' ${line//,/ }
+                    found=1
+                    break ;;
+            esac
+        done < "$1/assets/config/difficulty.ini"
+    fi
+    [ "$found" = 1 ] || printf '%s\n' easy normal hard
+}
+
 # COMPREPLY=(compgen "$@"), one candidate per line, so file names keep their spaces.
 _sss_dev_reply() {
     local out
@@ -420,6 +438,8 @@ _sss_dev() {
             words="$(_sss_dev_scenes "$repo")" ;;
         *:--pup)
             words="shield fuel points" ;;
+        *:--difficulty)
+            words="$(_sss_dev_difficulties "$repo")" ;;
         render:*)
             [ "$prev" = --update ] && words="ui gameplay all"
             words="$words --update --no-build --repeat"

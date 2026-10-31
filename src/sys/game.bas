@@ -9,6 +9,8 @@
 Sub GAME_ResetState
     Dim grI As Integer
 
+    DLV_Begin
+    GAME_LoadTuning
     UPG_Reset
     CR_ResetRun
     credits = cliCredits
@@ -48,6 +50,15 @@ Sub GAME_ResetState
     StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
+End Sub
+
+' Every config loader, at the difficulty level in use (DLV_Use / DLV_Begin first).
+Sub GAME_LoadTuning
+    If UPG_Load% = 0 Then GAME_Usage upgLoadErr
+    If SUP_Load% = 0 Then GAME_Usage supLoadErr
+    If PUP_Load% = 0 Then GAME_Usage pupLoadErr
+    If WVT_Load% = 0 Then GAME_Usage wvtLoadErr
+    If BHP_Load% = 0 Then GAME_Usage bhpLoadErr
 End Sub
 
 Sub GAME_NewGame
@@ -129,9 +140,11 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --crawls               Crawl browser: list, play and time every named crawl"
     CLI_Emit guFH, "  --god                  God mode: shields, health, and laser never deplete"
     CLI_Emit guFH, "  --nerf                 Nerf mode: 1 kill triggers boss (was 10), boss has 10 HP (was 30), asteroid field 10% length"
+    CLI_Emit guFH, "  --difficulty <level>   Play every run at this level (" + DLV_List$ + "), whatever Settings says"
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"
     CLI_Emit guFH, "  --no-telem             Disable gameplay telemetry for this session"
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
+    CLI_Emit guFH, "  --script-override      Let flags here differ from the input script's #! header (this line wins)"
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
     CLI_Emit guFH, "  --frames N             Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --realtime             Keep 60 frames per second in --input-script runs (for recordings)"

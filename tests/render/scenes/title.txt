@@ -1,6 +1,7 @@
 # Title screen, then the ESC command console over it.
 #! group: ui
-#! args: --scene title
+#! seed: 1
+#! args: --god --no-telem --scene title
 #! shots: 100,160
 # the version string (bottom right) changes with every commit
 #! mask: 120,224,200,16

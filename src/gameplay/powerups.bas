@@ -47,7 +47,9 @@ Function PUP_Load%
     pupGrabR = Val(CFG_Get$(cfgPowerups, "pup_grab_r"))
     pupGrabDX = Val(CFG_Get$(cfgPowerups, "pup_grab_dx"))
     pupMarkerFrames = Val(CFG_Get$(cfgPowerups, "pup_marker_frames"))
-    If pupChance < 0 Or pupChance > 1 Then pupLoadErr = "config/powerups.ini pup_chance must be 0..1" : Exit Function
+    pupChance = pupChance * DLV_M!("pup_chance")
+    pupShield = DLV_Round&(CLng(pupShield), DLV_M!("pup_shield"))
+    If pupChance < 0 Or pupChance > 1 Then pupLoadErr = "config/powerups.ini pup_chance (x the difficulty's pup_chance) must be 0..1" : Exit Function
     If pupPoints <= 0 Or pupShield <= 0 Or pupOverflow < 0 Then pupLoadErr = "config/powerups.ini needs pup_points and pup_shield above 0" : Exit Function
     If pupSpeed <= 0 Or pupGrabR <= 0 Or pupGrabDX <= 0 Then pupLoadErr = "config/powerups.ini needs pup_speed, pup_grab_r and pup_grab_dx above 0" : Exit Function
     If pupMarkerFrames < 0 Then pupLoadErr = "config/powerups.ini pup_marker_frames can't be negative" : Exit Function
@@ -67,6 +69,7 @@ Function PUP_Load%
     For puplI = 1 To pupFuelCnt
         pupFuel(puplI) = Val(puplV(puplI))
         If pupFuel(puplI) <= 0 Then pupLoadErr = "config/powerups.ini pup_fuel: every value above 0" : Exit Function
+        pupFuel(puplI) = pupFuel(puplI) * DLV_M!("pup_fuel")
     Next puplI
 
     UPG_Split CFG_Get$(cfgPowerups, "pup_spawn_x"), ",", puplV(), puplN

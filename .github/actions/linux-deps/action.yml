@@ -1,0 +1,33 @@
+name: Install Linux dependencies
+description: The libraries QB64-PE and sss link against, and Xvfb, from a cache of .debs. Enough to run a prebuilt sss.
+
+runs:
+  using: composite
+  steps:
+    # On a QB64-PE cache hit setup_lnx.sh is skipped, so everything QB64-PE links against must be listed here.
+    # The Xrandr/Xcursor/Xinerama/Xi set is needed by the GLFW backend (v4.7+).
+    # Cached .debs instead of downloading and installing them every run (that step took
+    # 12-123 s). The action doesn't refresh the package index itself: on a cache miss a
+    # stale index 404s, the action still reports success and caches nothing, so update
+    # first, and check the libraries are really there afterwards (bump `version` to
+    # discard a bad cache).
+    - name: Refresh apt package index
+      shell: bash
+      run: sudo apt-get update -qq
+
+    - name: Install Linux dependencies
+      uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        packages: libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
+        version: 2
+
+    # A cache restore unpacks the .debs without running ldconfig, so refresh the
+    # linker cache before checking (and before anything links against them).
+    - name: Check Linux dependencies are installed
+      shell: bash
+      run: |
+        sudo ldconfig
+        for lib in libGL.so.1 libGLU.so.1 libasound.so.2 libX11.so.6 libXext.so.6 libpng16.so.16 libcurl.so.4 libXrandr.so.2 libXcursor.so.1 libXinerama.so.1 libXi.so.6; do
+          ldconfig -p | grep -q "$lib" || { echo "::error::$lib missing after the apt cache step"; exit 1; }
+        done
+        command -v xvfb-run > /dev/null || { echo "::error::xvfb-run missing after the apt cache step"; exit 1; }

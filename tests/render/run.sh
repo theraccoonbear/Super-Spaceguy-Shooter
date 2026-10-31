@@ -9,10 +9,11 @@
 #                (determinism check; --update uses at least 3)
 #   scene ...    only these scenes (names of tests/render/scenes/*.txt); default all
 #
-# Each scene is an input script, tests/render/scenes/<scene>.txt, whose "#!" comment lines say
+# Each scene is an input script, tests/render/scenes/<scene>.txt, whose "#!" lines say
 # how to run it:
 #   #! group: gameplay            ui (the default) or gameplay; see GAMEPLAY_GATING below
-#   #! args: --scene boss3        extra sss options (always added: --god --no-telem --seed 1)
+#   #! seed: 1                    the game reads seed and args itself (src/sys/inputscript.bas)
+#   #! args: --god --no-telem --scene boss3
 #   #! shots: 360,440             frames to screenshot; the run stops after the last
 #   #! mask: x,y,w,h              rectangle left out of the comparison (repeatable)
 # Every screenshot is compared with tests/render/golden/<scene>-<frame>.png by tools/imgdiff.bas.
@@ -35,7 +36,6 @@ RDIR="$REPO/tests/render"
 OUT="$RDIR/out"
 TOL="${RENDER_TOL:-0}"
 MAXFRAC="${RENDER_MAX_FRAC:-0}"
-COMMON_ARGS=(--god --no-telem --seed 1)
 
 # directive value(s) from a scene file: directive <file> <name>
 directive() { sed -n "s/^#! *$2: *//p" "$1"; }
@@ -90,7 +90,6 @@ for scene in "${SCENES[@]}"; do
     sf="$RDIR/scenes/$scene.txt"
     echo "==> $scene ($(group_of "$scene"))"
     [ -f "$sf" ] || { fail "no scene file $sf" "$scene"; continue; }
-    read -r -a args <<< "$(directive "$sf" args)"
     shots="$(directive "$sf" shots)"
     [ -n "$shots" ] || { fail "no '#! shots:' line" "$scene"; continue; }
     IFS=, read -r -a frames <<< "$shots"
@@ -105,7 +104,7 @@ for scene in "${SCENES[@]}"; do
         rd="$OUT/$scene/run$run"
         mkdir -p "$rd"
         # its own launch folder: screenshots and a fresh sss_settings.ini land there
-        if ! (cd "$rd" && xvfb-run -a -s "-screen 0 1280x720x24" "$REPO/builds/sss" "${COMMON_ARGS[@]}" "${args[@]}" \
+        if ! (cd "$rd" && xvfb-run -a -s "-screen 0 1280x720x24" "$REPO/builds/sss" \
                 --frames "$((last + 1))" --screenshot-at "$shots" --input-script "$sf" > sss.log 2>&1); then
             fail "sss exited non-zero (run $run); see $rd/sss.log" "$scene"; ok=0; break
         fi

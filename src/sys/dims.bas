@@ -317,6 +317,7 @@ DIM SHARED httpLastTag     AS STRING
 Const LBRD_MAX = 10
 DIM SHARED lbrdName(1 To LBRD_MAX)  AS STRING
 DIM SHARED lbrdScore(1 To LBRD_MAX) AS LONG
+DIM SHARED lbrdDiff(1 To LBRD_MAX)  AS STRING   ' the row's difficulty level (#102)
 DIM SHARED lbrdCount  AS INTEGER
 DIM SHARED lbrdPollDone AS INTEGER
 
@@ -385,6 +386,7 @@ DIM SHARED dbgGraveWas AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
 DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
 DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
+DIM SHARED dbgMlogNarr AS INTEGER   ' crawl paragraphs already logged (crawlSaidCount), see DBG_MilestoneNarr
 
 ' --- engine / render ---
 DIM SHARED vpMat AS E3D_Matrix4

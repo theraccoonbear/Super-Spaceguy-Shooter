@@ -10,6 +10,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+$EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Const VERSION$ = "0.0.0-test"
 Const BUILD_KIND$ = "dev"
@@ -78,6 +79,8 @@ Sub E3D_BindsWrite (bwFH As Integer) : End Sub
 Function E3D_BindsLoadLine% (blKey As String, blRaw As String) : E3D_BindsLoadLine% = 0 : End Function
 Sub E3D_PadReselect : End Sub
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
+'$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/sys/settingsio.bas'
@@ -160,6 +163,54 @@ TC_Assert CD_Near%(volMusic, 0.5), "3.04  other settings still load"
 Kill cdPath
 SETTINGS_LoadFile cdPath
 TC_Assert CD_Near%(camF.orbitPhi, CAM_DEFAULT_PHI) And camF.angleLocked = 0, "3.05  settings file gone: back to the default"
+Print ""
+
+Print "--- 4. difficulty level (#102) ---"
+Dim cdLv As Integer, cdLvl As String, cdAll As Integer, cdReal As String, cdLine As String, cdSeen As Integer
+cfgDifficulty = CFG_Parse$(_EMBEDDED$("CFGDIFFICULTY"))
+TC_Assert DLV_Load% <> 0, "4.01  difficulty.ini loads " + dlvLoadErr
+cdFH = FreeFile
+Open cdPath For Output As #cdFH
+Print #cdFH, "difficulty=hard"
+Close #cdFH
+settingDifficulty = ""
+SETTINGS_LoadFile cdPath
+TC_Assert settingDifficulty = "hard", "4.02  difficulty=hard loads (" + settingDifficulty + ")"
+Open cdPath For Output As #cdFH
+Print #cdFH, "difficulty=nightmare"
+Close #cdFH
+SETTINGS_LoadFile cdPath
+TC_Assert settingDifficulty = "normal", "4.03  an unknown level loads as the default (" + settingDifficulty + ")"
+Open cdPath For Output As #cdFH
+Print #cdFH, "difficulty=1"
+Close #cdFH
+SETTINGS_LoadFile cdPath
+TC_Assert settingDifficulty = "normal" And CD_Near%(volMusic, 0.5), "4.04  a number isn't a level, and doesn't reach the volume settings"
+Kill cdPath
+
+cdReal = cdPath
+cdAll = -1
+For cdLv = 1 To DLV_Count%
+    cdLvl = DLV_LevelAt$(cdLv)
+    settingDifficulty = cdLvl
+    SETTINGS_SaveFile cdReal
+    cdSeen = 0
+    Open cdReal For Input As #cdFH
+    Do While Not EOF(cdFH)
+        Line Input #cdFH, cdLine
+        If cdLine = "difficulty=" + cdLvl Then cdSeen = cdSeen + 1
+    Loop
+    Close #cdFH
+    settingDifficulty = ""
+    SETTINGS_LoadFile cdReal
+    If settingDifficulty <> cdLvl Or cdSeen <> 1 Then cdAll = 0 : Print "  " + cdLvl + " came back as '" + settingDifficulty + "'"
+Next cdLv
+TC_Assert cdAll, "4.05  every level saves as difficulty=<level> and loads back"
+settingDifficulty = ""
+SETTINGS_SaveFile cdReal
+SETTINGS_LoadFile cdReal
+TC_Assert settingDifficulty = "normal", "4.06  no level chosen yet: saved and loaded as the default"
+Kill cdReal
 Print ""
 
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _
