@@ -72,7 +72,7 @@ jobs:
           mac='{"os":"macos-latest","name":"Build macOS","artifact-name":"sss-macos","artifact-path":"builds/sss","release-asset-name":"sss-macos"}'
           win='{"os":"windows-latest","name":"Build Windows","artifact-name":"sss-windows","artifact-path":"builds/sss.exe","release-asset-name":"sss-windows.exe"}'
           lnx='{"os":"ubuntu-latest","name":"Build Linux","artifact-name":"sss-linux","artifact-path":"builds/sss","release-asset-name":"sss-linux"}'
-          # PRs: render builds and smoke-tests the Linux binary, so only master, tags and dispatch build the credentialed one
+          # PRs: build-dev covers Linux, so only master, tags and dispatch build the credentialed binary
           if [ "$EVENT" = pull_request ] || { [ "$EVENT" = push ] && [ "$REF" != refs/heads/master ] && [[ "$REF" != refs/tags/v* ]]; }; then
             echo "build-matrix={\"include\":[$mac,$win]}" >> "$GITHUB_OUTPUT"
           else
@@ -239,14 +239,12 @@ jobs:
           name: release-${{ matrix.artifact-name }}
           path: ${{ matrix.release-asset-name }}
 
-  # Full-playthrough smoke test (#100). Its own job so it runs alongside the build matrix
-  # instead of adding minutes to Build Linux; Linux only, as it needs Xvfb. The sss it
-  # tests is built with no telemetry credentials: the scripted run OKs the data notice,
-  # so a build with them would send telemetry and a leaderboard score.
-  playthrough:
+  # The one Linux dev binary with no credentials, shared by render and playthrough. It
+  # stands in for Build Linux on PRs, so the --version and libcurl checks run on it.
+  build-dev:
     needs: changes
     if: needs.changes.outputs.game == 'true'
-    name: Playthrough smoke test
+    name: Build Linux dev binary
     runs-on: ubuntu-latest
 
     steps:
@@ -261,15 +259,63 @@ jobs:
         shell: bash
         run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
 
-      - name: Playthrough smoke test (tests/playthrough)
-        timeout-minutes: 20
+      - name: Smoke test -- --version
         shell: bash
-        run: tests/playthrough/run.sh
+        run: |
+          OUT="$(xvfb-run -a builds/sss --version)"
+          echo "$OUT"
+          BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "${OUT//$'\r'/}" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
+            echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
+            exit 1
+          }
+
+      - name: Check the binary needs no libcurl symbol versions
+        shell: bash
+        run: bash .github/scripts/curl_symver_check.sh builds/sss
+
+      # tar keeps the exec bit, which upload-artifact drops
+      - name: Pack binary
+        shell: bash
+        run: tar cf sss.tar -C builds sss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sss-linux-dev
+          path: sss.tar
+          retention-days: 3
 
       - name: Dump compile log on failure
         if: failure()
         shell: bash
         run: cat qb64pe-bin/internal/temp/compilelog.txt 2>/dev/null || echo "compilelog.txt not found"
+
+  # Full-playthrough smoke test (#100). Its own job so it runs alongside the build matrix
+  # instead of adding minutes to Build Linux; Linux only, as it needs Xvfb. The sss it
+  # tests is the shared build-dev binary, built with no telemetry credentials: the scripted
+  # run OKs the data notice, so a build with them would send telemetry and a leaderboard score.
+  playthrough:
+    needs: build-dev
+    name: Playthrough smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/linux-deps
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sss-linux-dev
+
+      - name: Unpack binary
+        shell: bash
+        run: mkdir -p builds && tar xf sss.tar -C builds
+
+      - name: Playthrough smoke test (tests/playthrough)
+        timeout-minutes: 20
+        shell: bash
+        run: tests/playthrough/run.sh
 
       - name: Upload playthrough logs on failure
         if: failure()
@@ -321,11 +367,10 @@ jobs:
   # Golden-screenshot render tests (tests/render/). Its own job so it runs alongside the
   # build matrix instead of adding minutes to Build Linux. Linux only: it needs Xvfb, and
   # the goldens come from the same Ubuntu toolchain (tools/dev); another OS's compiler
-  # and libm can round the rasterizer's float math differently. Its dev build also
-  # stands in for Build Linux on PRs: the --version and libcurl checks run on it.
+  # and libm can round the rasterizer's float math differently. It still sets up
+  # QB64-PE because run.sh compiles tools/imgdiff.bas.
   render:
-    needs: changes
-    if: needs.changes.outputs.game == 'true'
+    needs: build-dev
     name: Render tests
     runs-on: ubuntu-latest
 
@@ -337,24 +382,13 @@ jobs:
         with:
           qb64pe-version: ${{ env.QB64PE_VERSION }}
 
-      - name: Build sss.bas
-        shell: bash
-        run: QB64_BIN_DIR=qb64pe-bin bash .github/scripts/qb64build.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: sss-linux-dev
 
-      - name: Smoke test -- --version
+      - name: Unpack binary
         shell: bash
-        run: |
-          OUT="$(xvfb-run -a builds/sss --version)"
-          echo "$OUT"
-          BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
-          echo "${OUT//$'\r'/}" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
-            echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
-            exit 1
-          }
-
-      - name: Check the binary needs no libcurl symbol versions
-        shell: bash
-        run: bash .github/scripts/curl_symver_check.sh builds/sss
+        run: mkdir -p builds && tar xf sss.tar -C builds
 
       - name: Render tests
         shell: bash
@@ -467,7 +501,7 @@ jobs:
     name: All checks pass
     # playthrough runs alongside but doesn't gate PRs; a failure shows as its own red check.
     # A job the change filter skipped on purpose counts as passed; any other result fails.
-    needs: [changes, dict-check, test, build, release-smoke, render, server]
+    needs: [changes, dict-check, test, build, build-dev, release-smoke, render, server]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -490,6 +524,7 @@ jobs:
           check dict-check    "${{ needs.dict-check.result }}"    "$GAME"
           check test          "${{ needs.test.result }}"          "$GAME"
           check build         "${{ needs.build.result }}"         "$GAME"
+          check build-dev     "${{ needs.build-dev.result }}"     "$GAME"
           check release-smoke "${{ needs.release-smoke.result }}" "$GAME"
           check render        "${{ needs.render.result }}"        "$GAME"
           check server        "${{ needs.server.result }}"        "$SERVER"

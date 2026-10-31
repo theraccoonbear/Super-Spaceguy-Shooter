@@ -69,23 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # the libraries sss links against and xvfb; same list and version as
-      # setup-qb64pe, so it shares that cache
-      - name: Refresh apt package index
-        shell: bash
-        run: sudo apt-get update -qq
-
-      - name: Install Linux dependencies
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev
-          version: 2
-
-      - name: Check Linux dependencies are installed
-        shell: bash
-        run: |
-          sudo ldconfig
-          command -v xvfb-run > /dev/null || { echo "::error::xvfb-run missing after the apt cache step"; exit 1; }
+      - uses: ./.github/actions/linux-deps
 
       - uses: actions/download-artifact@v4
         with:
