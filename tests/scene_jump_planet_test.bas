@@ -202,6 +202,53 @@ ST_Assert SEQ_JumpToScene("dock6") < 0 And InStr(seqLastError, "no DOCK") > 0, "
 ST_Assert SEQ_JumpToScene("dock7") < 0 And InStr(seqLastError, "level7") > 0, "dock7: error names the missing label"
 ST_Assert SEQ_JumpToScene("dock0") < 0, "dock0: error"
 Print ""
+
+' ── every scene --help lists is one --scene accepts (#334) ───────────────────
+' Mirrors CLI_Parse (SEQ_SceneType$ + SEQ_SceneTypeOk%) and sss.bas (SEQ_JumpToScene
+' for everything but consent/username, which sss.bas starts itself).
+Print "--- --help scene list vs --scene ---"
+Dim slList As String, slLine As String, slPos As Integer, slName As String
+Dim slType As String, slCount As Integer, slSawEmp As Integer
+SEQ_Load _EMBEDDED$("SEQTXT")
+slList = SEQ_SceneList$
+Do While slList <> ""
+    slPos = InStr(slList, Chr$(10))
+    slLine = LTrim$(Left$(slList, slPos - 1))
+    slList = Mid$(slList, slPos + 1)
+    If InStr(slLine, " ") > 0 Then slLine = Left$(slLine, InStr(slLine, " ") - 1)
+    ' crawl[0-6] -> crawl0, dock[1,2] -> dock1: the first name each entry stands for
+    slName = slLine
+    slPos = InStr(slLine, "[")
+    If slPos > 0 Then
+        slName = Left$(slLine, slPos - 1) + Mid$(slLine, slPos + 1)
+        slPos = InStr(slPos, slName, "-")
+        If slPos = 0 Then slPos = InStr(slName, ",")
+        If slPos = 0 Then slPos = InStr(slName, "]")
+        slName = Left$(slName, slPos - 1)
+    End If
+    slType = SEQ_SceneType$(slName)
+    slCount = slCount + 1
+    If slName = "emperor" Then slSawEmp = -1
+    ST_Assert SEQ_SceneTypeOk%(slType), "--help lists '" + slLine + "': CLI accepts type '" + slType + "'"
+    If slType <> "consent" And slType <> "username" Then
+        ST_Assert SEQ_JumpToScene(slName) >= 0, "--help lists '" + slLine + "': --scene " + slName + " resolves"
+    End If
+Loop
+ST_Assert slCount > 0, "--help scene list is not empty"
+ST_Assert slSawEmp, "--help lists emperor"
+ST_Assert SEQ_SceneTypeOk%(SEQ_SceneType$("Emperor")), "--scene Emperor: type accepted (case-insensitive)"
+ST_Assert SEQ_SceneTypeOk%(SEQ_SceneType$("nope")) = 0, "--scene nope: unknown type rejected"
+ST_Assert SEQ_SceneTypeOk%(SEQ_SceneType$("42")) = 0, "--scene 42: empty type rejected"
+
+gameState = GS_TITLE
+SEQ_Load _EMBEDDED$("SEQTXT")
+scAt = SEQ_JumpToScene("emperor")
+ST_Assert scAt >= 0 And seqKind(scAt) = SEQ_EMPEROR, "emperor lands on the emperor CARD"
+SEQ_Advance
+ST_Assert gameState = GS_INTRO And seqIdx = scAt, "--scene emperor opens the emperor card (GS_INTRO)"
+SEQ_Advance
+ST_Assert seqKind(seqIdx) = SEQ_TITLE, "leaving the emperor card goes to the title"
+Print ""
 ' ─────────────────────────────────────────────────────────────────────────────
 Print "=== " + LTrim$(Str$(stPassed + stFailed)) + " tests: " + LTrim$(Str$(stPassed)) + " passed, " + LTrim$(Str$(stFailed)) + " failed ==="
 If stFailed > 0 Then System 1 Else System 0
