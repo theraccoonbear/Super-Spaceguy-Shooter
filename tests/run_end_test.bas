@@ -192,6 +192,7 @@ Sub DOCK_Enter () : gameState = 15 : End Sub   ' GS_DOCK
 Sub SPK_Say (s As String) : End Sub
 Function GTEXT_Get$ (k As String) : GTEXT_Get$ = "" : End Function
 
+'$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/sequence.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
