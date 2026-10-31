@@ -8,7 +8,10 @@
 ' names (same held() slots as a real controller, invisible to KEY_Down%/KEY_Hit&), and
 ' the menu actions KEY_Pressed% / KEY_Confirm% / KEY_Back% (one press, not a hold), the raw
 ' pad tokens (PADBTN<n>, PADAXIS<n>+/-, PAD_DPAD_*) going through E3D_PadMap, and a d-pad +
-' A/B walk through the title console into Settings and back.
+' A/B walk through the title console into Settings and back, and the #! header (seed, args,
+' frames: parsing, rejects, merging into the launch line, --script-override), and @ lines
+' (state and label triggers, offsets, lengths, *, every, #n, re-triggering on each entry,
+' letting go on leaving, mixed with frame lines, rejects).
 '
 ' Build: ./tools/buildqb tests/inputscript_test.bas
 ' Run:   ./tests/inputscript_test    (exit 0 = pass, exit 1 = any failure)
@@ -315,13 +318,217 @@ Print "      walk:" + isLog
 IS_Assert isLog = " console con1 con2 SETTINGS opt1 opt2 opt1 TITLE", "BACK opens, d-pad down x2 to SETTINGS, A opens it, d-pad down/down/up moves, B returns"
 IS_Assert gameState = GS_TITLE And escWas <> 0 And isConsole = 0, "back on the title, console shut, ESC marked seen"
 
+Print "--- @ trigger lines: parsing ---"
+ISC_Clear
+isOk = ISC_ParseLine%("@GS_CRAWL +60 1 FIRE ESC")
+IS_Assert isOk And iscCount = 2 And iscTrig(1) = ISC_TRIG_STATE And iscTrigName(1) = "GS_CRAWL" And iscFrom(1) = 60 And iscLen(1) = 1 And iscKey(2) = E3D_KEY_ESCAPE, "state trigger, offset, length, two keys"
+isOk = ISC_ParseLine%("@GS_PLAYING +0 * FIRE")
+IS_Assert isOk And iscLen(3) = ISC_LEN_ALL And iscEvery(3) = 0, "* = held while the state lasts"
+isOk = ISC_ParseLine%("  @gs_playing" + Chr$(9) + "+0 60 every 240 left ")
+IS_Assert isOk And iscTrigName(4) = "GS_PLAYING" And iscLen(4) = 60 And iscEvery(4) = 240 And iscKey(4) = E3D_KEY_LEFT, "every, any case, tabs"
+isOk = ISC_ParseLine%("@label:level3 +5 UP")
+IS_Assert isOk And iscTrig(5) = ISC_TRIG_LABEL And iscTrigName(5) = "LEVEL3" And iscLen(5) = 1, "label trigger, length defaults to 1"
+isOk = ISC_ParseLine%("@GS_TITLE#1 +0 P")
+IS_Assert isOk And iscTrigNth(6) = 1 And iscTrigName(6) = "GS_TITLE", "#n: one entry only"
+isOk = ISC_ParseLine%("@label:outro#2 +0 every 3 ENTER")
+IS_Assert isOk And iscTrigNth(7) = 2 And iscTrigName(7) = "OUTRO" And iscEvery(7) = 3, "label with #n and every"
+
+Print "--- @ trigger lines: rejects ---"
+isOk = ISC_ParseLine%("@GS_NOPE +0 FIRE")
+IS_Assert isOk = 0 And InStr(iscError, "unknown trigger 'GS_NOPE'") > 0, "unknown state named: " + iscError
+isOk = ISC_ParseLine%("@level3 +0 FIRE")
+IS_Assert isOk = 0 And InStr(iscError, "label:") > 0, "a bare label needs label:"
+isOk = ISC_ParseLine%("@ +0 FIRE")
+isOk2 = ISC_ParseLine%("@label: +0 FIRE")
+IS_Assert isOk = 0 And isOk2 = 0, "empty trigger, empty label"
+isOk = ISC_ParseLine%("@GS_TITLE 0 FIRE")
+isOk2 = ISC_ParseLine%("@GS_TITLE +x FIRE")
+isOk3 = ISC_ParseLine%("@GS_TITLE +-1 FIRE")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0 And InStr(iscError, "+<offset>") > 0, "offset must be +<n>"
+isOk = ISC_ParseLine%("@GS_TITLE +0")
+isOk2 = ISC_ParseLine%("@GS_TITLE +0 *")
+IS_Assert isOk = 0 And isOk2 = 0 And InStr(iscError, "no keys") > 0, "no keys"
+isOk = ISC_ParseLine%("@GS_TITLE +0 2 JUMP")
+IS_Assert isOk = 0 And InStr(iscError, "'JUMP'") > 0, "unknown key"
+isOk = ISC_ParseLine%("@GS_TITLE#0 +0 P")
+isOk2 = ISC_ParseLine%("@GS_TITLE#x +0 P")
+isOk3 = ISC_ParseLine%("@GS_TITLE# +0 P")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "bad #n"
+isOk = ISC_ParseLine%("@GS_TITLE +0 0 P")
+IS_Assert isOk = 0 And InStr(iscError, "at least 1") > 0, "zero-length hold"
+isOk = ISC_ParseLine%("@GS_PLAYING +0 * every 10 LEFT")
+isOk2 = ISC_ParseLine%("@GS_PLAYING +0 10 every 10 LEFT")
+isOk3 = ISC_ParseLine%("@GS_PLAYING +0 5 every LEFT")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "every needs a number above the hold"
+isOk = ISC_ParseLine%("@GS_USERNAME +3 7")
+IS_Assert isOk = 0 And InStr(iscError, "is the length") > 0, "a lone number is the length, not a digit key"
+IS_Assert iscCount = 7, "rejected lines add no keys"
+isOk = ISC_ParseLine%("@GS_USERNAME +3 1 7")
+IS_Assert isOk And iscCount = 8 And iscKey(8) = Asc("7") And iscLen(8) = 1, "a digit key after an explicit length"
+
+Print "--- @ trigger lines: playing ---"
+Dim isHits As String
+ISC_Clear
+isOk = ISC_ParseLine%("@GS_CRAWL +3 2 FIRE ESC") And ISC_ParseLine%("0 100 UP")
+isOk = isOk And ISC_ParseLine%("@GS_PLAYING +2 * TAB") And ISC_ParseLine%("@GS_PLAYING +0 2 every 5 LEFT")
+isOk = isOk And ISC_ParseLine%("@label:level3 +1 DOWN") And ISC_ParseLine%("@GS_TITLE#2 +0 P")
+IS_Assert isOk, "load: crawl skip, absolute UP, flight hold and weave, label, second title"
+iscActive = -1
+IS_Frame 0, "GS_LEADIN", ""
+IS_Assert isHeld(E3D_KEY_UP) And IS_Down% = 1 And IS_Hits$ = Str$(E3D_KEY_UP), "before any trigger: only the absolute line"
+IS_Frame 1, "GS_LEADIN", ""
+IS_Frame 2, "GS_CRAWL", "crawl0"
+IS_Frame 4, "GS_CRAWL", "crawl0"
+IS_Assert IS_Down% = 1, "entry at 2, +3: not yet at 4"
+IS_Frame 5, "GS_CRAWL", "crawl0"
+IS_Assert isHeld(E3D_KEY_SPACE) And isHeld(E3D_KEY_ESCAPE) And IS_Down% = 3, "held at entry+3 alongside the absolute line"
+IS_Assert KEY_Down%(E3D_KEY_ESCAPE) And KEY_Down%(E3D_KEY_LEFT) = 0, "KEY_Down% sees @ lines"
+IS_Assert IS_Hits$ = " 32 27", "one press per key on the hold's first frame"
+IS_Frame 6, "GS_CRAWL", "crawl0"
+IS_Assert isHeld(E3D_KEY_SPACE) And IS_Hits$ = "", "second frame held, no new press"
+IS_Frame 7, "GS_CRAWL", "crawl0"
+IS_Assert isHeld(E3D_KEY_SPACE) = 0, "released after its length"
+IS_Frame 10, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_TAB) = 0 And isHeld(E3D_KEY_DOWN) = 0, "play entered: weave starts at +0, TAB waits for +2, label waits for +1"
+IS_Frame 11, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_DOWN), "label trigger at +1"
+IS_Frame 12, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_LEFT) = 0 And isHeld(E3D_KEY_DOWN) = 0, "TAB from +2; weave off after 2 of 5"
+isHits = IS_Hits$
+IS_Frame 15, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_TAB) And IS_Hits$ = Str$(E3D_KEY_LEFT), "weave repeats every 5, pressed again"
+IS_Frame 16, "GS_PLAYING", "level4"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_LEFT), "label change alone doesn't restart a state line"
+IS_Frame 17, "GS_PLAYING", "level4"
+IS_Assert isHeld(E3D_KEY_LEFT) = 0 And isHeld(E3D_KEY_DOWN) = 0, "weave phase keeps counting from the state's entry"
+IS_Frame 500, "GS_PLAYING", "level4"
+IS_Assert isHeld(E3D_KEY_TAB) And isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_UP) = 0, "* still held long after; absolute line ended"
+IS_Frame 501, "GS_DOCK", "level4"
+IS_Assert IS_Down% = 0, "leaving the state lets go of * and the weave"
+IS_Frame 502, "GS_CRAWL", "level4"
+IS_Frame 504, "GS_PLAYING", "level4"
+IS_Frame 505, "GS_CRAWL", "level4"
+IS_Assert IS_Down% = 0, "crawl entered again at 505"
+IS_Frame 508, "GS_CRAWL", "level4"
+IS_Assert isHeld(E3D_KEY_ESCAPE) And isHeld(E3D_KEY_SPACE), "re-triggers on each entry"
+IS_Frame 509, "GS_PLANET", "level4"
+IS_Assert IS_Down% = 0, "leaving mid-hold lets go"
+IS_Frame 510, "GS_CRAWL", "level3"
+IS_Frame 511, "GS_PLAYING", "level3"
+IS_Assert isHeld(E3D_KEY_DOWN), "label entered again: fires again"
+IS_Frame 520, "GS_TITLE", "title"
+IS_Assert isHeld(E3D_KEY_P) = 0, "#2: first title ignored"
+IS_Frame 521, "GS_PLAYING", "level1"
+IS_Frame 530, "GS_TITLE", "title"
+IS_Assert isHeld(E3D_KEY_P), "#2: second title fires"
+IS_Frame 531, "GS_PLAYING", "level1"
+IS_Frame 540, "GS_TITLE", "title"
+IS_Assert isHeld(E3D_KEY_P) = 0, "#2: third title ignored"
+isHits = IS_Hits$
+ISC_Clear
+isOk = ISC_ParseLine%("@GS_TITLE +0 * P") And ISC_ParseLine%("0 5 LEFT")
+iscActive = -1
+ISC_Apply 0, isHeld()
+IS_Assert isHeld(E3D_KEY_LEFT) And isHeld(E3D_KEY_P) = 0, "no ISC_SetContext (render scenes, older tests): @ lines never fire"
+
+Print "--- #! header ---"
+ISC_Clear
+isOk = ISC_ParseLine%("#! seed 1") And ISC_ParseLine%("#!frames: 20000") And ISC_ParseLine%("  #! ARGS  --god" + Chr$(9) + "--scene   boss3 ")
+IS_Assert isOk And iscCount = 0, "seed, frames, args: parsed, no key ranges"
+IS_Assert iscHdrSeed = "1" And iscHdrFrames = "20000" And iscHdrArgs = "--god --scene boss3", "header values stored (any case, colon, spacing)"
+isOk = ISC_ParseLine%("#! args: --nerf")
+IS_Assert isOk And iscHdrArgs = "--god --scene boss3 --nerf", "args lines add up"
+isOk = ISC_ParseLine%("#! group: gameplay") And ISC_ParseLine%("#! shots: 220,250") And ISC_ParseLine%("#! mask: 1,2,3,4")
+IS_Assert isOk And iscHdrArgs = "--god --scene boss3 --nerf", "render harness keys skipped"
+
+isOk = ISC_ParseLine%("#! colour red")
+IS_Assert isOk = 0 And InStr(iscError, "unknown header key 'colour'") > 0, "unknown key rejected: " + iscError
+isOk = ISC_ParseLine%("#!")
+IS_Assert isOk = 0 And InStr(iscError, "unknown header key") > 0, "bare #! rejected"
+isOk = ISC_ParseLine%("#! seed one")
+isOk2 = ISC_ParseLine%("#! frames")
+isOk3 = ISC_ParseLine%("#! frames 1 2")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0 And InStr(iscError, "whole number") > 0, "seed/frames need one whole number"
+isOk = ISC_ParseLine%("#! seed 2")
+IS_Assert isOk = 0 And InStr(iscError, "twice") > 0 And iscHdrSeed = "1", "second seed rejected"
+isOk = ISC_ParseLine%("#! args --fly")
+IS_Assert isOk = 0 And InStr(iscError, "can't take '--fly'") > 0, "unknown flag rejected: " + iscError
+isOk = ISC_ParseLine%("#! args god")
+isOk2 = ISC_ParseLine%("#! args --input-script x.txt")
+isOk3 = ISC_ParseLine%("#! args --script-override")
+IS_Assert isOk = 0 And isOk2 = 0 And isOk3 = 0, "non-flags, --input-script, --script-override rejected"
+isOk = ISC_ParseLine%("#! args --seed 3")
+IS_Assert isOk = 0 And InStr(iscError, "'#! seed'") > 0, "--seed in args points at '#! seed': " + iscError
+isOk = ISC_ParseLine%("#! args --scene")
+isOk2 = ISC_ParseLine%("#! args --scene --god")
+IS_Assert isOk = 0 And isOk2 = 0 And InStr(iscError, "needs a value") > 0, "value flag without its value rejected"
+isOk = ISC_ParseLine%("#! args")
+IS_Assert isOk = 0 And InStr(iscError, "empty") > 0, "empty args rejected"
+IS_Assert iscHdrArgs = "--god --scene boss3 --nerf", "rejected lines leave the header as it was"
+
+Print "--- header merged into the launch line ---"
+Dim isMerged As String
+ISC_Clear
+isOk = ISC_ParseLine%("#! seed 1") And ISC_ParseLine%("#! frames 20000") And ISC_ParseLine%("#! args --god --nerf --scene playing1")
+isOk = isOk And ISC_MergeArgs%("--input-script p.txt", 0, isMerged)
+IS_Assert isOk And isMerged = "--input-script p.txt --god --nerf --scene playing1 --seed 1 --frames 20000", "header applied: " + isMerged
+isOk = ISC_MergeArgs%("--seed 1 --god --frames 20000 --input-script p.txt --debug", 0, isMerged)
+IS_Assert isOk And isMerged = "--seed 1 --god --frames 20000 --input-script p.txt --debug --nerf --scene playing1", "matching CLI values kept, not doubled; extra CLI flags kept: " + isMerged
+isOk = ISC_MergeArgs%("--input-script p.txt --seed 7", 0, isMerged)
+IS_Assert isOk = 0 And InStr(iscError, "header says --seed 1 but the command line says --seed 7") > 0 And InStr(iscError, "--script-override") > 0, "seed mismatch is an error: " + iscError
+isOk = ISC_MergeArgs%("--frames 300 --input-script p.txt", 0, isMerged)
+IS_Assert isOk = 0 And InStr(iscError, "--frames 20000") > 0, "frames mismatch is an error"
+isOk = ISC_MergeArgs%("--scene boss3 --input-script p.txt", 0, isMerged)
+IS_Assert isOk = 0 And InStr(iscError, "--scene playing1") > 0, "args value mismatch is an error"
+isOk = ISC_MergeArgs%("--input-script p.txt --seed 7 --scene boss3 --script-override", -1, isMerged)
+IS_Assert isOk And isMerged = "--input-script p.txt --seed 7 --scene boss3 --script-override --god --nerf --frames 20000", "--script-override: command line wins, rest of header added: " + isMerged
+ISC_Clear
+isOk = ISC_ParseLine%("# a plain comment") And ISC_ParseLine%("0 5 LEFT")
+isOk = isOk And ISC_MergeArgs%("--input-script p.txt --seed 7 --god", 0, isMerged)
+IS_Assert isOk And isMerged = "--input-script p.txt --seed 7 --god", "no header: launch line unchanged"
+
 Print "--- files ---"
 isOk = ISC_Load%("no/such/script.txt")
 IS_Assert isOk = 0 And InStr(iscError, "not found") > 0 And iscActive = 0, "missing file: error, not active"
+Dim isTmp As String, isTmpFH As Integer
+isTmp = "inputscript_test_header.tmp"
+isTmpFH = FreeFile
+Open isTmp For Output As #isTmpFH
+Print #isTmpFH, "# header test"
+Print #isTmpFH, "#! seed 1"
+Print #isTmpFH, "#! args --god --nerf"
+Print #isTmpFH, "#! frames 20000"
+Print #isTmpFH, "0 1 FIRE"
+Close #isTmpFH
+isOk = ISC_Load%(isTmp)
+IS_Assert isOk And iscActive And iscCount = 1 And iscHdrSeed = "1" And iscHdrFrames = "20000" And iscHdrArgs = "--god --nerf", "file with a header loads it"
+Open isTmp For Output As #isTmpFH
+Print #isTmpFH, "#! sede 1"
+Close #isTmpFH
+isOk = ISC_Load%(isTmp)
+IS_Assert isOk = 0 And iscActive = 0 And InStr(iscError, "'sede'") > 0, "file with a bad header key fails to load"
+Kill isTmp
 
 Print ""
 Print "=== " + LTrim$(Str$(isPassed + isFailed)) + " tests: " + LTrim$(Str$(isPassed)) + " passed, " + LTrim$(Str$(isFailed)) + " failed ==="
 If isFailed > 0 Then System 1 Else System 0
+
+' One scripted frame at a game state and sequence label.
+Sub IS_Frame(isFfNo As Long, isFfState As String, isFfLabel As String)
+    ISC_SetContext isFfState, isFfLabel
+    ISC_Apply isFfNo, isHeld()
+End Sub
+
+' The queued presses, drained, as " code code ...".
+Function IS_Hits$
+    Dim isHk As Long, isHs As String
+    Do
+        isHk = KEY_Hit&
+        If isHk = 0 Then Exit Do
+        isHs = isHs + Str$(isHk)
+    Loop
+    IS_Hits$ = isHs
+End Function
 
 ' stub: input.bas logs devices through debug.bas, which this test doesn't include
 Sub DBG_Print(isDbgMsg As String)

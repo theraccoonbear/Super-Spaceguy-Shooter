@@ -5,6 +5,7 @@
 # NEEDS 109 FU, at 90 it has turned to TANK 100: UPGRADE TANK, and the need marker is a red
 # arrow off the end of the FU bar.
 #! group: ui
-#! args: --scene dock2 --credits 400 --fuel 30
+#! seed: 1
+#! args: --god --no-telem --scene dock2 --credits 400 --fuel 30
 #! shots: 60,90
 30 30 LEFT
