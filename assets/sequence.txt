@@ -15,7 +15,6 @@
 ; PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
 ;   type=boss: mus=cue1,cue2,cue3       -- comma list, one cue per boss phase (tickable)
 ;              speech=key1,key2,key3  -- comma list of gametext keys (empty entry = no speech)
-;              maneuver=name1,name2,name3 -- comma list of flight patterns per phase (assets/maneuvers/*.mvr)
 ;              seek=N -- boss bullet homing strength per frame (0=straight, 0.05=moderate curve)
 ;              attack=a,b,... -- the boss's attack pool (#26): laser, spore, cut, devour; one picked at random per volley
 ;              hp=N -- the boss's hit points (#90; none = boss_hp_default in assets/config/bosses.ini; --nerf: x 0.1)
@@ -39,7 +38,6 @@ title:
 level:1
     CRAWL txt=stage1 mus=crawl
     PLAY type=combat mus=game trigger=12
-    ;PLAY type=boss maneuver=latest_greatest mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015
     ARRIVE mus=planet
     DOCK mus=dock
     NEXT level:2
@@ -54,7 +52,7 @@ level:2
 level:3
     CRAWL txt=stage3 mus=crawl
     PLAY type=combat mus=game trigger=12
-    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore hp=30 secs=22
+    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore hp=30 secs=22
     ARRIVE mus=planet
     DOCK mus=dock
     NEXT level:4
@@ -69,7 +67,7 @@ level:4
 level:5
     CRAWL txt=stage5 mus=crawl
     PLAY type=combat mus=game trigger=18
-    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut hp=90 secs=25
+    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut hp=90 secs=25
     ARRIVE mus=planet
     DOCK mus=dock
     NEXT level:6
@@ -77,7 +75,7 @@ level:5
 level:6
     CRAWL txt=stage6 mus=crawl
     PLAY type=combat mus=game trigger=24
-    PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour hp=130 secs=32
+    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour hp=130 secs=32
     ARRIVE mus=planet
     NEXT outro
 

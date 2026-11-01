@@ -7,12 +7,11 @@ FROM docker.io/library/ubuntu:24.04
 # install (CLAUDE.md). Bump all three together.
 ARG QB64PE_VERSION=v4.5.0
 ARG QB64PE_ASSET=qb64pe_lnx-4.5.0.tar.gz
-ARG NODE_VERSION=22.20.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # First line: CI's apt list. Second: what setup_lnx.sh would sudo-install.
-# Third: tools the repo scripts call (make-version, http mock, xvfb-run, emit).
+# Third: tools the repo scripts call (make-version, xvfb-run).
 # Fourth: runtime for `tools/dev run` (Mesa GL drivers for /dev/dri, Pulse client for audio).
 # Fifth: `tools/dev record` (a null-sink PulseAudio server to capture the game's sound, ffmpeg).
 RUN apt-get update -qq \
@@ -23,11 +22,6 @@ RUN apt-get update -qq \
       libgl1-mesa-dri libglx-mesa0 libpulse0 \
       pulseaudio pulseaudio-utils ffmpeg \
  && rm -rf /var/lib/apt/lists/*
-
-RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
-      | tar xJ -C /usr/local --strip-components=1 \
-      --exclude='*/CHANGELOG.md' --exclude='*/LICENSE' --exclude='*/README.md' \
- && node --version && npm --version
 
 # setup_lnx.sh refuses to run as root, so build QB64-PE as a throwaway user.
 # The tree is then made world-writable: QB64-PE writes internal/temp on every
@@ -49,7 +43,6 @@ RUN useradd -m qbbuild \
 RUN git config --system --add safe.directory '*'
 
 ENV QB64_BIN_DIR=/opt/qb64pe \
-    HOME=/tmp/home \
-    npm_config_update_notifier=false
+    HOME=/tmp/home
 
 RUN mkdir -p /tmp/home && chmod 1777 /tmp/home

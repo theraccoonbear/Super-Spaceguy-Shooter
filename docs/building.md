@@ -3,15 +3,14 @@
 You need:
 
 - [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) installed and on your `PATH` as `qb64pe`.
-- [Node.js](https://nodejs.org/) with `npm` on your `PATH`. `tools/buildqb sss.bas` runs `npm install` in `math/` and then `node tools/emit-spline.js` to generate the spline math (see [Flight path math](flight-path-math.md)).
-- Network access on the first build, so `npm install` can fetch [exprforge](https://www.npmjs.com/package/exprforge) into `math/node_modules/`. Later builds use the installed copy.
+- Nothing else for the game and its tests: no Node, npm or Python. (Only the backend in `server/` uses Node.)
 
 ```bash
 # recommended -- run from the repo root
 tools/buildqb sss.bas
 ```
 
-This generates the spline math, bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows), or wherever `SSS_BUILD_OUT=<path>` says.
+This bakes the speech phoneme dictionary, regenerates `src/sys/version.bas` from the `VERSION` file and the current git commit, links QB64-PE's asset directory to this repo's `assets/` (so `$EMBED:'assets/...'` resolves), and compiles. The binary lands in `builds/sss` (`builds/sss.exe` on Windows), or wherever `SSS_BUILD_OUT=<path>` says.
 
 ```bash
 # smoke test

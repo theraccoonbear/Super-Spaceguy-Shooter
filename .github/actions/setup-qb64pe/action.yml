@@ -1,5 +1,5 @@
 name: Set up QB64-PE
-description: Regenerate spline math, install QB64-PE into qb64pe-bin (cached), and on Linux install the libraries it links against.
+description: Install QB64-PE into qb64pe-bin (cached), and on Linux install the libraries it links against.
 
 inputs:
   qb64pe-version:
@@ -15,23 +15,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Cache spline toolchain (math/node_modules)
-      id: cache_node_modules
-      uses: actions/cache@v4
-      with:
-        path: math/node_modules
-        key: math-node-modules-${{ runner.os }}-${{ hashFiles('math/package-lock.json') }}
-
-    - name: Regenerate spline math from DSL
-      shell: bash
-      env:
-        MACOSX_DEPLOYMENT_TARGET: "12.0"
-      run: |
-        if [ "${{ steps.cache_node_modules.outputs.cache-hit }}" != "true" ]; then
-          (cd math && npm install)
-        fi
-        node tools/emit-spline.js
-
     # Keyed on the pinned version (the release tag), so a cache hit needs no API lookup.
     # Windows' key has a suffix so its cache is re-saved once with the libqb objects the
     # test workers build (qb64test.sh copies them back, #270); bump it to re-warm.
@@ -72,10 +55,8 @@ runs:
           MINGW*|MSYS*|CYGWIN*) FILTER="win-x64" ;;
           *)                    FILTER="lnx" ;;
         esac
-        ASSET_URL=$(echo "$RELEASE_JSON" \
-          | python3 -c "import sys,json; f='${FILTER}'; assets=json.load(sys.stdin)['assets']; print(next(a['browser_download_url'] for a in assets if f in a['name'].lower()))")
-        VERSION=$(echo "$RELEASE_JSON" \
-          | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+        ASSET_URL=$(echo "$RELEASE_JSON" | jq -r --arg f "$FILTER" 'first(.assets[] | select(.name | ascii_downcase | contains($f)) | .browser_download_url)' | tr -d '\r')
+        VERSION=$(echo "$RELEASE_JSON" | jq -r .tag_name | tr -d '\r')
         echo "asset_url=$ASSET_URL" >> $GITHUB_OUTPUT
         echo "version=$VERSION"     >> $GITHUB_OUTPUT
 
@@ -86,6 +67,8 @@ runs:
     - name: Install QB64-PE (Linux/macOS)
       if: steps.qb64pe_cache.outputs.hit != 'true' && runner.os != 'Windows'
       shell: bash
+      env:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
       run: |
         curl -fsSL -o qb64pe.tar.gz "${{ steps.qb64pe_release.outputs.asset_url }}"
         tar xzf qb64pe.tar.gz

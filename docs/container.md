@@ -1,13 +1,12 @@
 # Building and running in a container
 
-If you'd rather not install QB64-PE natively, `tools/dev` runs everything inside an Ubuntu 24.04 container that mirrors CI's Linux job: the same apt packages, QB64-PE `v4.5.0` (pinned to match `QB64PE_VERSION` in `.github/workflows/build.yml`; bump `QB64PE_VERSION`/`QB64PE_ASSET` in `tools/container/Containerfile` together with it), and Node 22 for ExprForge. You only need Podman or Docker. The script uses Podman if it finds it, otherwise Docker; set `SSS_ENGINE=docker` to override.
+If you'd rather not install QB64-PE natively, `tools/dev` runs everything inside an Ubuntu 24.04 container that mirrors CI's Linux job: the same apt packages, QB64-PE `v4.5.0` (pinned to match `QB64PE_VERSION` in `.github/workflows/build.yml`; bump `QB64PE_VERSION`/`QB64PE_ASSET` in `tools/container/Containerfile` together with it). You only need Podman or Docker. The script uses Podman if it finds it, otherwise Docker; set `SSS_ENGINE=docker` to override.
 
 ```bash
 tools/dev image   # build the image (done automatically on first use)
 tools/dev build   # tools/buildqb sss.bas + the --version smoke test
 tools/dev test    # full test suite (.github/scripts/qb64test.sh, same as CI)
 tools/dev bake    # tools/bake_speech_dict
-tools/dev emit    # regenerate spline math (npm install in math/ + node tools/emit-spline.js)
 tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` runs one command
 tools/dev run     # play the game in the container on your display; args pass through to sss
 tools/dev headless  # run the game on an off-screen display (Xvfb), e.g. for scripted playtests (see [Scripted playtests](cli.md))
@@ -35,7 +34,7 @@ source <(<checkout>/tools/dev completion)
 
 Then Tab completes the command (`tools/dev bu` gives `build`, `tools/dev re` offers `record` and `render`) and each command's options: `build --release`, `record`'s own options plus the game flags it passes on, the game flags for `run` and `headless`, and `render`'s options, groups and scene names. After `--scene` it offers the scene names from `builds/sss --help`, which prints and exits before the game opens a window (without a `builds/sss`, or with a release build, it offers the scene types). `--input-script`, `--leaderboard-file`, `--out` and `--script` complete file names. It is registered for `./tools/dev`, `tools/dev` and that checkout's absolute path. In zsh, run `autoload -U +X bashcompinit && bashcompinit` before the `source` line.
 
-`tools/dev` itself only picks the engine, mounts and image. Anything that runs inside the container and is more than one command line is a script in `tools/container/in/`, called by path through the mount: `build.sh` (build plus the `--version` smoke test, or `--release` plus `tests/release_build_test.sh`), `headless.sh`, `record.sh`, `emit.sh` and `libs-ok.sh` (can the container load `builds/sss`?). Each one starts with a usage comment and can be run on its own in `tools/dev shell`, e.g. `tools/dev shell tools/container/in/headless.sh --scene title --frames 60`.
+`tools/dev` itself only picks the engine, mounts and image. Anything that runs inside the container and is more than one command line is a script in `tools/container/in/`, called by path through the mount: `build.sh` (build plus the `--version` smoke test, or `--release` plus `tests/release_build_test.sh`), `headless.sh`, `record.sh` and `libs-ok.sh` (can the container load `builds/sss`?). Each one starts with a usage comment and can be run on its own in `tools/dev shell`, e.g. `tools/dev shell tools/container/in/headless.sh --scene title --frames 60`.
 
 `tools/dev run` and `tools/dev headless` rebuild `builds/sss` if it is missing, older than any file in `sss.bas`, `src/`, `assets/` or `VERSION` (so a `git pull` or a branch switch never plays a stale build), or was built natively on a host with a newer glibc than the container, then runs it with your desktop passed through: the X11 socket and `DISPLAY`/`XAUTHORITY` (XWayland on Wayland desktops), the PulseAudio/PipeWire socket from `$XDG_RUNTIME_DIR`, `/dev/dri` for GPU rendering, and `/dev/input` so the game sees your controllers (bind-mounted, so a pad plugged in after launch works too). For that container only, SELinux labeling is turned off (`--security-opt label=disable`) so it can share the sockets, and `--ipc=host` lets X11 shared memory work. If no audio socket is found it warns and runs silently. Every other command stays headless. You can also run a container-built `builds/sss` directly on the host if it has the GL/X11/ALSA runtime libraries.
 
