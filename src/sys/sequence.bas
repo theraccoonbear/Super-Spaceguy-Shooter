@@ -1,8 +1,8 @@
 ' sequence.bas -- game-flow sequencer: named blocks, each naming its successor
 '
 ' sequence.txt block format:
-'   label:id next=<target> [secret]   block header (id appended -> --scene name "labelid")
-'     next=<label:id> | end: the block that follows; end = deliberate terminal (the run is over)
+'   label:id [secret]       block header (id appended -> --scene name "labelid")
+'     NEXT <label:id> | end   last line of the block: the block that follows; end = deliberate terminal (the run is over)
 '     secret: block no other block's next reaches; only an explicit jump enters it
 '     TASK key=val ...    task line (must be indented); a block's tasks run in order
 '
@@ -54,6 +54,7 @@ Dim Shared seqBlkNext$(0 To SEQ_BLK_MAX - 1)         ' "" = header named no next
 Dim Shared seqBlkFirst(0 To SEQ_BLK_MAX - 1) As Integer
 Dim Shared seqBlkLen(0 To SEQ_BLK_MAX - 1) As Integer
 Dim Shared seqBlkSecret(0 To SEQ_BLK_MAX - 1) As Integer
+Dim Shared seqBlkClosed(0 To SEQ_BLK_MAX - 1) As Integer   ' its NEXT step was seen; nothing may follow it
 Dim Shared seqBlkCount  As Integer
 Dim Shared seqJumpTo    As Integer   ' task SEQ_JumpToScene wants SEQ_Advance to land on, whatever block precedes it
 Dim Shared seqLoadErr   As String    ' first problem SEQ_Load hit (overflow, bad header, task outside a block); "" = clean
@@ -145,7 +146,7 @@ Function SEQ_EnterBlock%(seqebB As Integer)
 End Function
 
 ' The task that follows task seqniI: the next one in its block, else the first task of the
-' block its next= names. seqniI = -1 starts at the first block. -1 = the sequence ends here.
+' block its NEXT names. seqniI = -1 starts at the first block. -1 = the sequence ends here.
 Function SEQ_NextIdx%(seqniI As Integer)
     Dim seqniB As Integer
     If seqBlkCount = 0 Or seqniI >= seqCount Then SEQ_NextIdx% = -1 : Exit Function
@@ -156,8 +157,8 @@ Function SEQ_NextIdx%(seqniI As Integer)
 End Function
 
 ' Static checks on the loaded sequence; "" when sound, else one problem per line (each ending
-' in Chr$(10)): load errors, a block with no tasks or no next=, a next= naming no block, and
-' non-secret blocks not reachable from the first block through next=.
+' in Chr$(10)): load errors, a block with no tasks or no NEXT, a NEXT naming no block, and
+' non-secret blocks not reachable from the first block through NEXT.
 Function SEQ_Validate$()
     Dim seqvI As Integer, seqvB As Integer, seqvN As Integer, seqvOut As String
     Dim seqvSeen(0 To SEQ_BLK_MAX - 1) As Integer
@@ -166,7 +167,7 @@ Function SEQ_Validate$()
     For seqvI = 0 To seqBlkCount - 1
         If seqBlkLen(seqvI) = 0 Then seqvOut = seqvOut + "block '" + seqBlkName$(seqvI) + "' has no tasks" + Chr$(10)
         If seqBlkNext$(seqvI) = "" Then
-            seqvOut = seqvOut + "dead end: block '" + seqBlkName$(seqvI) + "' has no next= (use next=end for a terminal)" + Chr$(10)
+            seqvOut = seqvOut + "dead end: block '" + seqBlkName$(seqvI) + "' has no NEXT step (use NEXT end for a terminal)" + Chr$(10)
         ElseIf seqBlkNext$(seqvI) <> "end" And SEQ_FindBlock%(seqBlkNext$(seqvI)) < 0 Then
             seqvOut = seqvOut + "dangling next: block '" + seqBlkName$(seqvI) + "' -> '" + seqBlkNext$(seqvI) + "'" + Chr$(10)
         End If
@@ -182,7 +183,7 @@ Function SEQ_Validate$()
     End If
     For seqvI = 0 To seqBlkCount - 1
         If seqBlkSecret(seqvI) = 0 And seqvSeen(seqvI) = 0 Then
-            seqvOut = seqvOut + "unreachable: block '" + seqBlkName$(seqvI) + "' (mark it secret, or point a next= at it)" + Chr$(10)
+            seqvOut = seqvOut + "unreachable: block '" + seqBlkName$(seqvI) + "' (mark it secret, or point a NEXT at it)" + Chr$(10)
         End If
     Next seqvI
     SEQ_Validate$ = seqvOut
@@ -235,6 +236,7 @@ End Sub
 
 Sub SEQ_Add(seqaKind As Integer, seqaSval As String)
     If seqBlkCount = 0 Then SEQ_LoadFail "task before any block header: " + seqaSval : Exit Sub
+    If seqBlkClosed(seqBlkCount - 1) Then SEQ_LoadFail "block '" + seqBlkName$(seqBlkCount - 1) + "': task after NEXT (NEXT must be the last line)" : Exit Sub
     If seqCount >= SEQ_MAX Then SEQ_LoadFail "more than SEQ_MAX (" + LTrim$(Str$(SEQ_MAX)) + ") tasks": Exit Sub
     seqKind(seqCount)   = seqaKind
     seqSval$(seqCount)  = seqaSval
@@ -269,11 +271,27 @@ Function SEQ_GetKV$(seqgSval As String, seqgKey As String)
     SEQ_GetKV$ = Mid$(seqgSval, seqgStart, seqgEnd - seqgStart)
 End Function
 
-' A block header line: "name:id next=<target> [secret]". The name and the target drop their
-' colon ("level:2" -> "level2"), so a next= is written the same way as the header it names.
+' A NEXT step: the block's exit, not a task (no seqKind entry). The target drops its colon
+' ("level:2" -> "level2"); "end" is the deliberate terminal. A conditional prefix can later
+' go before NEXT without changing this line's shape.
+Sub SEQ_SetNext(seqsnTarget As String)
+    Dim seqsnB As Integer, seqsnColon As Integer, seqsnT As String
+    If seqBlkCount = 0 Then SEQ_LoadFail "NEXT before any block header" : Exit Sub
+    seqsnB = seqBlkCount - 1
+    If seqBlkClosed(seqsnB) Then SEQ_LoadFail "block '" + seqBlkName$(seqsnB) + "': second NEXT" : Exit Sub
+    seqBlkClosed(seqsnB) = -1
+    seqsnT = LTrim$(RTrim$(seqsnTarget))
+    If Len(seqsnT) = 0 Then SEQ_LoadFail "block '" + seqBlkName$(seqsnB) + "': NEXT with no target" : Exit Sub
+    seqsnColon = InStr(seqsnT, ":")
+    If seqsnColon > 0 Then seqsnT = Left$(seqsnT, seqsnColon - 1) + Mid$(seqsnT, seqsnColon + 1)
+    seqBlkNext$(seqsnB) = seqsnT
+End Sub
+
+' A block header line: "name:id [secret]". The name drops its colon ("level:2" -> "level2"),
+' so a NEXT target is written the same way as the header it names.
 Sub SEQ_AddBlock(seqabLine As String)
     Dim seqabRest As String, seqabSp As Integer, seqabHead As String, seqabTok As String
-    Dim seqabNext As String, seqabSecret As Integer, seqabB As Integer, seqabColon As Integer
+    Dim seqabSecret As Integer, seqabB As Integer, seqabColon As Integer
     seqabSp = InStr(seqabLine, " ")
     If seqabSp = 0 Then seqabHead = seqabLine : seqabRest = "" Else seqabHead = Left$(seqabLine, seqabSp - 1) : seqabRest = LTrim$(Mid$(seqabLine, seqabSp + 1))
     seqabColon = InStr(seqabHead, ":")
@@ -284,9 +302,7 @@ Sub SEQ_AddBlock(seqabLine As String)
         If LCase$(seqabTok) = "secret" Then
             seqabSecret = -1
         ElseIf LCase$(Left$(seqabTok, 5)) = "next=" Then
-            seqabNext = Mid$(seqabTok, 6)
-            seqabColon = InStr(seqabNext, ":")
-            If seqabColon > 0 Then seqabNext = Left$(seqabNext, seqabColon - 1) + Mid$(seqabNext, seqabColon + 1)
+            SEQ_LoadFail "block '" + seqabHead + "': next= on a header is not supported; end the block with a NEXT step"
         Else
             SEQ_LoadFail "block '" + seqabHead + "': unknown header field '" + seqabTok + "'"
         End If
@@ -295,7 +311,8 @@ Sub SEQ_AddBlock(seqabLine As String)
     If seqBlkCount >= SEQ_BLK_MAX Then SEQ_LoadFail "more than SEQ_BLK_MAX (" + LTrim$(Str$(SEQ_BLK_MAX)) + ") blocks" : Exit Sub
     seqabB = seqBlkCount
     seqBlkName$(seqabB)  = seqabHead
-    seqBlkNext$(seqabB)  = seqabNext
+    seqBlkNext$(seqabB)  = ""
+    seqBlkClosed(seqabB) = 0
     seqBlkFirst(seqabB)  = seqCount
     seqBlkLen(seqabB)    = 0
     seqBlkSecret(seqabB) = seqabSecret
@@ -334,6 +351,7 @@ Sub SEQ_Load(seqlData As String)
                 Case "PLAY"             : SEQ_Add SEQ_PLAY,     seqlSval
                 Case "ARRIVE"           : SEQ_Add SEQ_ARRIVE,   seqlSval
                 Case "DOCK"             : SEQ_Add SEQ_DOCK,     seqlSval
+                Case "NEXT"             : SEQ_SetNext seqlSval
                 Case Else               : SEQ_LoadFail "unknown task type '" + seqlKindStr + "'"
             End Select
         Else

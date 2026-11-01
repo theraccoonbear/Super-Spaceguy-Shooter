@@ -1,12 +1,12 @@
-; sequence.txt -- game flow: named blocks, each naming the block that follows it
+; sequence.txt -- game flow: named blocks, each ending in a NEXT step naming the block that follows
 ; Format:
-;   label:id next=<target> [secret]
-;                         block header; id optional; becomes --scene name "labelid"
-;                         next=<label:id> names the successor block (required); next=end is the
-;                         deliberate terminal. secret marks a block no next= reaches: only an
-;                         explicit jump enters it. tests/seq_graph_test.bas fails on a dangling
-;                         next, a block with no next, or an unreachable non-secret block.
+;   label:id [secret]     block header; id optional; becomes --scene name "labelid"
 ;     TASK key=val ...    task in the block, run in order (must be indented with spaces or tab)
+;     NEXT <label:id>     the block's last line (required, exactly once): the successor block.
+;                         NEXT end is the deliberate terminal. NEXT is an exit, not a task.
+;   secret marks a block no NEXT reaches: only an explicit jump enters it.
+;   tests/seq_graph_test.bas fails on a dangling NEXT, a block with no NEXT, or an unreachable
+;   non-secret block.
 ;
 ; Task types: CRAWL CARD TITLE PLAY ARRIVE DOCK
 ; CRAWL  txt=<gtext-key>  mus=<cue>
@@ -24,54 +24,64 @@
 ; ARRIVE mus=<cue>
 ; DOCK   [mus=<cue>]   upgrade dock: spend credits between stages (none after the last stage)
 
-crawl:0 next=emperor
+crawl:0
     CRAWL txt=intro mus=crawl
+    NEXT emperor
 
-emperor: next=title
+emperor:
     CARD img=emperor mus=emperor
+    NEXT title
 
-title: next=level:1
+title:
     TITLE mus=title
+    NEXT level:1
 
-level:1 next=level:2
+level:1
     CRAWL txt=stage1 mus=crawl
     PLAY type=combat mus=game trigger=12
     ;PLAY type=boss maneuver=latest_greatest mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015
     ARRIVE mus=planet
     DOCK mus=dock
+    NEXT level:2
 
-level:2 next=level:3
+level:2
     CRAWL txt=stage2 mus=crawl
     PLAY type=combat mus=game trigger=18
     ARRIVE mus=planet
     DOCK mus=dock
+    NEXT level:3
 
-level:3 next=level:4
+level:3
     CRAWL txt=stage3 mus=crawl
     PLAY type=combat mus=game trigger=12
     PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore hp=30 secs=22
     ARRIVE mus=planet
     DOCK mus=dock
+    NEXT level:4
 
-level:4 next=level:5
+level:4
     CRAWL txt=stage4 mus=crawl
     PLAY type=asteroid mus=asteroid trigger=350 
     ARRIVE mus=planet
     DOCK mus=dock
+    NEXT level:5
 
-level:5 next=level:6
+level:5
     CRAWL txt=stage5 mus=crawl
     PLAY type=combat mus=game trigger=18
     PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut hp=90 secs=25
     ARRIVE mus=planet
     DOCK mus=dock
+    NEXT level:6
 
-level:6 next=outro
+level:6
     CRAWL txt=stage6 mus=crawl
     PLAY type=combat mus=game trigger=24
     PLAY type=boss maneuver=boss-x-flight,boss-v-flight,attack-pass mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour hp=130 secs=32
     ARRIVE mus=planet
+    NEXT outro
 
-outro: next=end
+outro:
     CRAWL txt=outro mus=crawl
     TITLE mus=title
+    NEXT end

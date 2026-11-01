@@ -7,13 +7,34 @@ The game's entire flow (intro crawl, cutscene cards, title screen, six combat/bo
 ## `sequence.txt` format
 
 ```
-label:id next=<target> [secret]   block header; id is optional, becomes part of --scene names
-    TASK key=val ...             task line, must be indented (spaces or a tab)
+label:id [secret]      block header; id is optional, becomes part of --scene names
+    TASK key=val ...    task line, must be indented (spaces or a tab)
+    NEXT <target>       the block's last line: the successor
 ```
 
-A block is a header plus its tasks, which run in order. `next=` is required and names the block that follows: `next=level:2` (the same `label:id` spelling as the header) or `next=end`, the deliberate terminal (the run is over; the outro uses it). File order means nothing. `secret` marks a block no `next=` reaches, entered only by an explicit jump (`--scene`); it still needs a `next=`. Docks and arrivals are ordinary tasks, so a block with no dock simply has none (stage 6). Example header lines: `title: next=level:1`, `level:6 next=outro`, `outro: next=end`, `egg: secret next=title`.
+A block is a header, its tasks (which run in order) and one `NEXT <target>` as its last line. `NEXT` is required and is a block exit, not a task: it adds no table entry, so `seqCount` and the milestone `seqIdx`/labels are unaffected. The target is `level:2` (the same `label:id` spelling as the header) or `end`, the deliberate terminal (the run is over; the outro uses it). File order means nothing. `secret` (a bare word on the header) marks a block no `NEXT` reaches, entered only by an explicit jump (`--scene`); it still needs a `NEXT`. A task after `NEXT`, a second `NEXT`, a `NEXT` with no target, or the old `next=` on a header are load errors. Docks and arrivals are ordinary tasks, so a block with no dock simply has none (stage 6). Example:
 
-Conditional `next=` (choosing between successors) is not implemented yet; see #315 and #271.
+```
+title:
+    TITLE mus=title
+    NEXT level:1
+
+level:6
+    ...
+    ARRIVE mus=planet
+    NEXT outro
+
+outro:
+    CRAWL txt=outro mus=crawl
+    TITLE mus=title
+    NEXT end
+
+egg: secret
+    CRAWL txt=hidden
+    NEXT title
+```
+
+Conditional exits (`IF <flag> NEXT <target>`, choosing between successors) are not implemented yet; see #354, #315 and #271.
 
 Five task types:
 
@@ -35,6 +56,7 @@ level:3
     PLAY type=boss mus=boss
     ARRIVE mus=planet
     DOCK
+    NEXT level:4
 ```
 
 `trigger` means different things per `PLAY` type: for `combat`, the enemy kills that end the phase (scaled by `NERF_FACTOR` in `--nerf` mode, at least 1; points from power-ups and bonuses don't count, #312); for `asteroid`, distance in parsecs; `boss` ignores it (a boss fight ends when the boss dies, not on a kill count).
@@ -45,8 +67,8 @@ Boss `PLAY` lines also take per-phase lists, one comma-separated entry per HP ph
 
 ```basic
 SEQ_Load seqText$        ' parse sequence.txt (or any string in the same format) into the block and task tables; call once at startup
-SEQ_Validate$()           ' "" when sound, else one problem per line: load errors, no next=, dangling next=, unreachable non-secret blocks
-SEQ_NextIdx%(i)           ' the task after task i, following next= across blocks; -1 = the sequence ends
+SEQ_Validate$()           ' "" when sound, else one problem per line: load errors, no NEXT, dangling NEXT, unreachable non-secret blocks
+SEQ_NextIdx%(i)           ' the task after task i, following NEXT across blocks; -1 = the sequence ends
 SEQ_Advance               ' step forward one waypoint and execute it (sets gameState, triggers music, etc.)
 SEQ_RewindToTitle         ' jump seqIdx back to the first TITLE waypoint, without executing anything
 SEQ_QuitRun               ' pause-menu quit: session end with exit=quit, run over, park at the title
@@ -56,7 +78,7 @@ SEQ_GetKV$(sval$, key$)   ' extract "key=val" from a task's key=val... string
 SEQ_PrintScenes fh        ' print all valid --scene names, for --help
 ```
 
-`SEQ_Advance` is the workhorse: it moves `seqIdx` to the next task (the next one in the block, else the first task of the block its `next=` names; `SEQ_NextIdx%`), looks at `seqKind(seqIdx)`, and does whatever that waypoint means. It sets `gameState`, sets the music cue, and for `PLAY` specifically, resets the appropriate stage state (`levelNum`, `stageKills`, `stageKillTarget`, `levelType`, fuel for asteroid fields, `boss.warnTimer` for boss fights, and so on). The chain ending (a `next=end` block running out of tasks), or landing on the outro's `TITLE` task, both mean "the run is over" (`SEQ_EndRunWin`): leftover credits are cashed in, `highScore` is saved if beaten, and `TELEM_SessionEnd` fires with `exit=win`. That only happens while `seqRunActive` is set: the first `PLAY` of a run sets it, and every run end (win, death, stranded, `SEQ_QuitRun`) clears it. Any other landing on a `TITLE` task, such as SPACE on the intro emperor card or `--scene title`, just shows the title, the same as ESC (#331). Either way `SEQ_RewindToTitle` parks `seqIdx` at the first title waypoint.
+`SEQ_Advance` is the workhorse: it moves `seqIdx` to the next task (the next one in the block, else the first task of the block its `NEXT` names; `SEQ_NextIdx%`), looks at `seqKind(seqIdx)`, and does whatever that waypoint means. It sets `gameState`, sets the music cue, and for `PLAY` specifically, resets the appropriate stage state (`levelNum`, `stageKills`, `stageKillTarget`, `levelType`, fuel for asteroid fields, `boss.warnTimer` for boss fights, and so on). The chain ending (a `NEXT end` block running out of tasks), or landing on the outro's `TITLE` task, both mean "the run is over" (`SEQ_EndRunWin`): leftover credits are cashed in, `highScore` is saved if beaten, and `TELEM_SessionEnd` fires with `exit=win`. That only happens while `seqRunActive` is set: the first `PLAY` of a run sets it, and every run end (win, death, stranded, `SEQ_QuitRun`) clears it. Any other landing on a `TITLE` task, such as SPACE on the intro emperor card or `--scene title`, just shows the title, the same as ESC (#331). Either way `SEQ_RewindToTitle` parks `seqIdx` at the first title waypoint.
 
 ### The title screen is a waypoint, not a mode
 
@@ -98,7 +120,7 @@ Four test files cover this thoroughly with stubbed game state, no full game boot
 tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test          # boot flow, NewGame, ESC-at-emperor regressions, highScore
 tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test       # parser, SEQ_GetKV$, SEQ_JumpToScene% valid/invalid, SEQ_Advance dispatch per task type
 tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test  # --scene playingN -> correct planet/stage index for every level
-tools/buildqb tests/seq_graph_test.bas         && builds/seq_graph_test         # shipped file validates (no dangling next, dead end, unreachable block, overflow); each failure detected; Advance/NextLeg follow next=; secret blocks
+tools/dev test                                                      # (runs seq_graph_test, among all tests) shipped file validates (no dangling NEXT, dead end, unreachable block, overflow); each failure detected; Advance/NextLeg follow NEXT; secret blocks
 ```
 
 For an end-to-end check against the real game binary, `--scene <name>` is itself the fastest manual test: `builds/sss --scene boss3` drops straight into stage 3's boss fight.

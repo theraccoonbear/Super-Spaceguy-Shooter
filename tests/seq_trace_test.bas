@@ -115,42 +115,52 @@ Sub TELEM_SessionEnd()              : End Sub
 Dim Shared stSeqData As String
 Sub ST_LoadSeq()
     Dim NL As String : NL = Chr$(10)
-    stSeqData = "crawl:0 next=emperor"                                      + NL
-    stSeqData = stSeqData + "    CRAWL txt=intro mus=crawl"      + NL + NL
-    stSeqData = stSeqData + "emperor: next=title"                           + NL
-    stSeqData = stSeqData + "    CARD img=emperor mus=emperor"   + NL + NL
-    stSeqData = stSeqData + "title: next=level:1"                            + NL
-    stSeqData = stSeqData + "    TITLE mus=title"                + NL + NL
-    stSeqData = stSeqData + "level:1 next=level:2" + NL
+    stSeqData = "crawl:0"                                      + NL
+    stSeqData = stSeqData + "    CRAWL txt=intro mus=crawl" + NL
+    stSeqData = stSeqData + "    NEXT emperor" + NL + NL
+    stSeqData = stSeqData + "emperor:"                           + NL
+    stSeqData = stSeqData + "    CARD img=emperor mus=emperor" + NL
+    stSeqData = stSeqData + "    NEXT title" + NL + NL
+    stSeqData = stSeqData + "title:"                            + NL
+    stSeqData = stSeqData + "    TITLE mus=title" + NL
+    stSeqData = stSeqData + "    NEXT level:1" + NL + NL
+    stSeqData = stSeqData + "level:1" + NL
     stSeqData = stSeqData + "    CRAWL txt=stage1 mus=crawl"     + NL
     stSeqData = stSeqData + "    PLAY type=combat mus=game trigger=10" + NL
-    stSeqData = stSeqData + "    ARRIVE mus=planet"              + NL + NL
-    stSeqData = stSeqData + "level:2 next=level:3" + NL
+    stSeqData = stSeqData + "    ARRIVE mus=planet" + NL
+    stSeqData = stSeqData + "    NEXT level:2" + NL + NL
+    stSeqData = stSeqData + "level:2" + NL
     stSeqData = stSeqData + "    CRAWL txt=stage2 mus=crawl"     + NL
     stSeqData = stSeqData + "    PLAY type=combat mus=game trigger=15" + NL
-    stSeqData = stSeqData + "    ARRIVE mus=planet"              + NL + NL
-    stSeqData = stSeqData + "level:3 next=level:4" + NL
+    stSeqData = stSeqData + "    ARRIVE mus=planet" + NL
+    stSeqData = stSeqData + "    NEXT level:3" + NL + NL
+    stSeqData = stSeqData + "level:3" + NL
     stSeqData = stSeqData + "    CRAWL txt=stage3 mus=crawl"     + NL
     stSeqData = stSeqData + "    PLAY type=combat mus=game trigger=10" + NL
     stSeqData = stSeqData + "    PLAY type=boss mus=boss"        + NL
-    stSeqData = stSeqData + "    ARRIVE mus=planet"              + NL + NL
-    stSeqData = stSeqData + "level:4 next=level:5" + NL
+    stSeqData = stSeqData + "    ARRIVE mus=planet" + NL
+    stSeqData = stSeqData + "    NEXT level:4" + NL + NL
+    stSeqData = stSeqData + "level:4" + NL
     stSeqData = stSeqData + "    CRAWL txt=stage4 mus=crawl"     + NL
     stSeqData = stSeqData + "    PLAY type=asteroid mus=asteroid" + NL
-    stSeqData = stSeqData + "    ARRIVE mus=planet"              + NL + NL
-    stSeqData = stSeqData + "level:5 next=level:6" + NL
+    stSeqData = stSeqData + "    ARRIVE mus=planet" + NL
+    stSeqData = stSeqData + "    NEXT level:5" + NL + NL
+    stSeqData = stSeqData + "level:5" + NL
     stSeqData = stSeqData + "    CRAWL txt=stage5 mus=crawl"     + NL
     stSeqData = stSeqData + "    PLAY type=combat mus=game trigger=15" + NL
     stSeqData = stSeqData + "    PLAY type=boss mus=boss"        + NL
-    stSeqData = stSeqData + "    ARRIVE mus=planet"              + NL + NL
-    stSeqData = stSeqData + "level:6 next=outro" + NL
+    stSeqData = stSeqData + "    ARRIVE mus=planet" + NL
+    stSeqData = stSeqData + "    NEXT level:6" + NL + NL
+    stSeqData = stSeqData + "level:6" + NL
     stSeqData = stSeqData + "    CRAWL txt=stage6 mus=crawl"     + NL
     stSeqData = stSeqData + "    PLAY type=combat mus=game trigger=20" + NL
     stSeqData = stSeqData + "    PLAY type=boss mus=boss"        + NL
-    stSeqData = stSeqData + "    ARRIVE mus=planet"              + NL + NL
-    stSeqData = stSeqData + "outro: next=end"                            + NL
+    stSeqData = stSeqData + "    ARRIVE mus=planet" + NL
+    stSeqData = stSeqData + "    NEXT outro" + NL + NL
+    stSeqData = stSeqData + "outro:"                            + NL
     stSeqData = stSeqData + "    CRAWL txt=outro mus=crawl"      + NL
     stSeqData = stSeqData + "    TITLE mus=title"                + NL
+    stSeqData = stSeqData + "    NEXT end" + NL
     SEQ_Load stSeqData
 End Sub
 
