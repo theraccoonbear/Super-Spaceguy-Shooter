@@ -337,6 +337,26 @@ jobs:
         shell: bash
         run: tests/playthrough/run.sh
 
+      # The tutorial (#240), played from a script through sss --scene tutorial: the whole flight,
+      # then the waiver exit, then the first-play gate handing over to a New Game. Fails if the script stalls at a step or runs long. Same binary, same
+      # empty-credentials rule as the playthrough.
+      - name: Tutorial run (tests/tutorial)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          tests/tutorial/run.sh
+          tests/tutorial/run.sh waiver
+          tests/tutorial/run.sh gated
+
+      - name: Upload tutorial logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tutorial-logs
+          path: builds/tutorial/
+          if-no-files-found: ignore
+
       - name: Upload playthrough logs on failure
         if: failure()
         uses: actions/upload-artifact@v4

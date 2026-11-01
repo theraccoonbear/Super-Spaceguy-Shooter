@@ -344,8 +344,12 @@ Sub TUT_Abandon
 End Sub
 
 ' The title's start (LAUNCH NOW? confirmed): the tutorial first on a fresh install, else a New Game.
+' --gate-tutorial (dev builds) keeps the gate on under --input-script and --scene, so a script can play it.
 Sub TUT_StartFromTitle
-    If TUT_GateDue%(settingTutorialDone, iscActive, cliScene, ioReadOnly) Then
+    Dim tgScripted As Integer, tgScene As String
+    tgScripted = (iscActive <> 0) : tgScene = cliScene
+    If cliGateTutorial Then tgScripted = 0 : tgScene = ""
+    If TUT_GateDue%(settingTutorialDone, tgScripted, tgScene, ioReadOnly) Then
         tutGated = -1
         If GAME_StartTutorial% Then Exit Sub
         tutGated = 0

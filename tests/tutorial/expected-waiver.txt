@@ -1,0 +1,6 @@
+# The milestones tests/tutorial/run.sh waiver expects, in order.
+GS_PLAYING tutorial PLAY type=combat
+TUT lesson 1 tut_l1
+TUT lesson 2 tut_l2
+TUT waiver
+GS_TITLE title TITLE

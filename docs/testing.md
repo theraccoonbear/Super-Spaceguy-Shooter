@@ -30,6 +30,8 @@ The game writes a milestone log when the `SSS_MILESTONE_LOG` env var names a fil
 
 `tests/playthrough/determinism.sh` runs the playthrough twice, flat out and with `--realtime` (60 fps), and checks that the two milestone logs (NARR lines included) and the telemetry CSVs (without time, session and player_id) are identical (#329). The 60 fps run takes about five minutes, so the Determinism workflow runs it nightly, on demand, and on PRs touching audio, the crawl, the input script or `sss.bas`, building once and running the two playthroughs in parallel jobs before a compare job (`determinism.sh run <mode> <outdir>` and `determinism.sh compare <dirA> <dirB>`, #341); it doesn't gate merging.
 
+**Tutorial run (#240).** `tests/tutorial/run.sh` plays the real tutorial through `sss --scene tutorial` (so through `GAME_StartTutorial%`) with `tests/tutorial/tutorial.txt`, a pilot that never presses a skip key, flies, holds fire and toggles camera mode, so every WAIT in `assets/tutorial.txt` is met by doing what it asks. It checks the milestone log (the tutorial block, each of the five lessons, the end of the script, the title), that the script finishes by `DONE_FRAME_MAX`, and that nothing was recorded; a script that stalls names the step it stopped at. `run.sh waiver` plays `tests/tutorial/waiver.txt`: a tap of the skip key skips a line, N skips a lesson, holding the key 2 seconds files the waiver. `run.sh gated` plays `tests/tutorial/gated.txt` with `--gate-tutorial`, which keeps the first-play gate on under a script: the title's start runs the tutorial on the fresh launch folder, and its end flows into a normal New Game (stage 1's crawl and PLAY, one `session_start` in the telemetry CSV). Run it in the container (`tools/dev shell tests/tutorial/run.sh`); CI runs all three in the playthrough job. When the tutorial gets longer on purpose, raise `DONE_FRAME_MAX` and the `#! frames` of `tutorial.txt`, and say so in the PR. The runner and the script are unit-tested in `tests/tutorial_script_test.bas`, the first-play gate in `tests/tutorial_gate_test.bas`, the run's isolation in `tests/tutorial_run_test.bas`.
+
 Each subsystem doc listed in the [README's Documentation table](../README.md#documentation) has its own "Testing in isolation" section with more detail.
 
 ## Render tests
@@ -38,7 +40,7 @@ Golden-screenshot tests catch rendering regressions (blend state, font alpha, ov
 
 | Scene | Shows |
 |---|---|
-| `title` | title screen (the version string is masked: it changes every commit), then the ESC command console |
+| `title` | title screen (the version string is masked: it changes every commit), then the ESC command console (ABOUT, CONTROLS, SETTINGS, LEADERBOARD, TUTORIAL, QUIT GAME) |
 | `about` | About screen scrolled to the credits: panel UI, bitmap font, rich colour codes |
 | `playing2` | level 2 combat: enemies, lock-on bracket, enemy bolts and impact rings, HUD |
 | `boss3` | lead-aimed bolts with closing impact rings, then spore clouds |

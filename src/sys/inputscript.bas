@@ -311,7 +311,7 @@ End Function
 ' A launch flag in "#! args": 1 = takes no value, 2 = takes one, 0 = not allowed there.
 Function ISC_ArgKind%(iscAK As String)
     Select Case iscAK
-    Case "--god", "--nerf", "--crawls", "--debug", "--no-telem"
+    Case "--god", "--nerf", "--crawls", "--debug", "--no-telem", "--gate-tutorial"
         ISC_ArgKind% = 1
     Case "--scene", "--difficulty", "--credits", "--ships", "--shields", "--fuel", "--pup", "--screenshot-at", "--leaderboard-file", "--seed", "--frames"
         ISC_ArgKind% = 2

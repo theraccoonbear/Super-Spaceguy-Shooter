@@ -7,6 +7,7 @@ Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
     Dim i As Integer, j As Integer
     Dim gspAstNear As Integer, gspAstI As Integer
+    Dim gspTutState As Integer
     Dim spDmg As Integer
 
     ' ESC confirm dialog: in play and during the planet arrival / cinematic, which it
@@ -245,7 +246,9 @@ Sub GS_PLAYING_Update ()
         END IF
     END IF
 
+    gspTutState = gameState
     TUT_Frame
+    IF gameState <> gspTutState THEN EXIT SUB   ' the tutorial ended into a New Game or the title: nothing below is for that screen
 
     ' --- render (always runs, even in orbit mode) ---
     PLAYER_CamUpdate

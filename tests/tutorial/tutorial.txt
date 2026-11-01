@@ -1,0 +1,21 @@
+# Scripted run of the whole tutorial (tests/tutorial/run.sh, #240), through the real
+# GAME_StartTutorial entry (--scene tutorial). The pilot never presses a skip key: it flies, holds
+# fire and toggles camera mode, so every WAIT in assets/tutorial.txt is met by doing what it asks.
+# The speech clock and the RNG are frame-driven, so the run repeats.
+#
+#! seed 1
+#! args --scene tutorial
+#! frames 14000
+#
+# Fire throughout.
+@label:tutorial +0 * FIRE
+# Every 300 frames: LEFT, UP, RIGHT, DOWN for 30 frames each (back where it started), then hold
+# still for 180. Moving makes the flight WAITs pass and changes direction so most bolts miss;
+# the still spell lets a canister that arrives there be caught.
+@label:tutorial +0 30 every 300 LEFT
+@label:tutorial +30 30 every 300 UP
+@label:tutorial +60 30 every 300 RIGHT
+@label:tutorial +90 30 every 300 DOWN
+# Camera mode on, and 60 frames later off, every 900 frames.
+@label:tutorial +400 1 every 900 TAB
+@label:tutorial +460 1 every 900 TAB

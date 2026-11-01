@@ -10,10 +10,12 @@
 '   6. --god behaves as before (godMode untouched, still refills, still records outside a tutorial)
 '   7. a normal run after a tutorial records everything (session, cash-out, high score, death)
 '   8. an abandoned tutorial flag is cleared by the next New Game's reset
+'   9. a gated tutorial followed by New Game (TUT_Finish's order: rewind to the title, then New Game)
+'      starts a recorded run at chapter 1 with its session started
 '
 ' GAME_StartTutorial / GAME_ResetState (game.bas) pull in the whole game; TU_Start mirrors
 ' their two steps (clear the flag, jump to the label, set the flag, advance). The real entry
-' is exercised by `sss --scene tutorial` (see the PR's by-hand section).
+' is played start to finish by tests/tutorial/run.sh (the scripted run through `sss --scene tutorial`).
 '
 ' Build: tools/dev test (builds and runs every test)
 ' Run:   builds/tutorial_run_test   (exit 0 = all pass)
@@ -428,6 +430,20 @@ reOk = TU_Start%
 RE_Assert tutorialRun <> 0,                   "8.01  flag set"
 RE_NewGame
 RE_Assert tutorialRun = 0 And telemSession <> "", "8.02  New Game clears it and records"
+Print ""
+
+Print "--- 9. a gated tutorial, then New Game (TUT_Finish, src/state/tutorialplay.bas) ---"
+RE_Boot
+reOk = TU_Start%
+RE_Assert tutorialRun <> 0 And telemSession = "",  "9.01  in the tutorial: flag set, no session"
+SEQ_RewindToTitle                              ' TUT_Finish parks the sequence at the title before the New Game
+RE_Assert tutorialRun = 0 And seqKind(seqIdx) = SEQ_TITLE, "9.02  the rewind clears the flag and parks at the title"
+RE_NewGame
+RE_Assert telemSession <> "" And Len(telemBatch) > 0, "9.03  the New Game starts its session and queues session_start"
+RE_Assert seqKind(seqIdx) = SEQ_CRAWL And seqLabel$(seqIdx) = "level1", "9.04  it lands on chapter 1's crawl, not the intro"
+SEQ_Advance
+RE_Assert seqKind(seqIdx) = SEQ_PLAY And seqLabel$(seqIdx) = "level1" And seqRunActive <> 0, "9.05  the first PLAY starts a recorded run"
+RE_Assert levelNum = 1 And tutorialRun = 0,    "9.06  stage 1, not a tutorial"
 Print ""
 
 Print "=== " + LTrim$(Str$(rePass + reFail)) + " tests: " _

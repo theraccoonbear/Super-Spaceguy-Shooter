@@ -30,12 +30,25 @@ Settings > **CONTROLS** (ENTER / pad A on that row), or **K** / the nova button 
 |---|---|---|
 | P | Start | Start a new game |
 | ESC | Back / Select | Open/close the command console |
-| A / C / S / L / Q / N | B (Cancel only) | Console: About / Controls / Settings / Leaderboard / Quit / Cancel |
+| A / C / S / L / T / Q / N | B (Cancel only) | Console: About / Controls / Settings / Leaderboard / Tutorial / Quit / Cancel |
 | ↑ ↓ then ENTER | Stick up/down then A | Console: move the highlight and pick it |
 | ↑ ↓ ← → | Left stick | Navigate and adjust Settings; scroll About; page through Controls |
 | ENTER | A | Confirm (Settings callsign and CONTROLS rows, data notice, remap page) |
 | ESC | B (or Start) | Back / cancel (Settings, About, Leaderboard, Controls, remap page, data notice) |
 | F11 | — | Toggle fullscreen (any screen) |
+
+## Tutorial
+
+The first New Game on a fresh install starts the tutorial instead of stage 1 (an existing settings file counts as having done it). TUTORIAL in the title screen's command console (**T**) replays it any time. The Orientation Unit speaks and shows each line at the bottom of the screen, and outlines the HUD element it is explaining. Nothing advances on a timer: a line ends when it has been spoken or skipped, and each task waits until you have done it.
+
+| Key | Gamepad | Action |
+|---|---|---|
+| ENTER (tap) | Nova button (Y by default) | Skip the line being spoken |
+| N | Roll button (X by default) | Skip to the next lesson |
+| ENTER (hold 2 seconds) | Nova button (hold 2 seconds) | File a waiver and leave the tutorial; a meter fills while you hold. Letting go early does nothing |
+| ESC | Start | The usual pause dialog; CONFIRM RETREAT leaves the tutorial and counts as skipped |
+
+The tutorial leaves no record (no score, high score or telemetry) and cannot be failed. Finishing, skipping or leaving it saves `tutorial_done=1` in `sss_settings.ini`; delete that line, or the file, to be sent through it again on the next New Game.
 
 ## Story screens
 

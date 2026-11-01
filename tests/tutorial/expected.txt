@@ -1,0 +1,11 @@
+# The milestones tests/tutorial/run.sh expects, in order (the frame numbers are dropped):
+# state changes and sequence steps as the playthrough logs them, and one TUT line per lesson
+# and for the end of the script (src/state/tutorialplay.bas).
+GS_PLAYING tutorial PLAY type=combat
+TUT lesson 1 tut_l1
+TUT lesson 2 tut_l2
+TUT lesson 3 tut_l3
+TUT lesson 4 tut_l4
+TUT lesson 5 tut_l5
+TUT done
+GS_TITLE title TITLE

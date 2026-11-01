@@ -1,0 +1,11 @@
+# Scripted run that leaves the tutorial early (tests/tutorial/run.sh waiver, #240): a tap of the
+# narration skip key (ENTER) skips the line being spoken, N skips to the next lesson, and holding
+# ENTER for 130 frames (the waiver takes 120) files the waiver and leaves for the title.
+#
+#! seed 1
+#! args --scene tutorial
+#! frames 1800
+#
+@label:tutorial +100 5 ENTER
+@label:tutorial +300 1 N
+@label:tutorial +600 130 ENTER

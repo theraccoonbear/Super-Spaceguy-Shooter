@@ -1,0 +1,11 @@
+# The milestones tests/tutorial/run.sh gated expects, in order.
+GS_TITLE title TITLE
+GS_PLAYING tutorial PLAY type=combat
+TUT lesson 1 tut_l1
+TUT lesson 2 tut_l2
+TUT lesson 3 tut_l3
+TUT lesson 4 tut_l4
+TUT lesson 5 tut_l5
+TUT done
+GS_CRAWL level1 CRAWL
+GS_PLAYING level1 PLAY type=combat
