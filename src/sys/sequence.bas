@@ -1,8 +1,10 @@
-' sequence.bas -- linear game-flow sequencer
+' sequence.bas -- game-flow sequencer: named blocks, each naming its successor
 '
 ' sequence.txt block format:
-'   label:id              section header (id appended -> --scene name "labelid")
-'     TASK key=val ...    task line (must be indented)
+'   label:id next=<target> [secret]   block header (id appended -> --scene name "labelid")
+'     next=<label:id> | end: the block that follows; end = deliberate terminal (the run is over)
+'     secret: block no other block's next reaches; only an explicit jump enters it
+'     TASK key=val ...    task line (must be indented); a block's tasks run in order
 '
 ' Task types: CRAWL EMPEROR TITLE PLAY ARRIVE DOCK
 '   CRAWL  txt=<gtext-key>  mus=<cue>
@@ -45,7 +47,16 @@ Const SEQ_DOCK    = 6
 
 Dim Shared seqKind(0 To SEQ_MAX - 1)   As Integer
 Dim Shared seqSval$(0 To SEQ_MAX - 1)
-Dim Shared seqLabel$(0 To SEQ_MAX - 1)
+Const SEQ_BLK_MAX = 32
+Dim Shared seqTaskBlk(0 To SEQ_MAX - 1) As Integer   ' block index of each task
+Dim Shared seqBlkName$(0 To SEQ_BLK_MAX - 1)
+Dim Shared seqBlkNext$(0 To SEQ_BLK_MAX - 1)         ' "" = header named no next; "end" = deliberate terminal
+Dim Shared seqBlkFirst(0 To SEQ_BLK_MAX - 1) As Integer
+Dim Shared seqBlkLen(0 To SEQ_BLK_MAX - 1) As Integer
+Dim Shared seqBlkSecret(0 To SEQ_BLK_MAX - 1) As Integer
+Dim Shared seqBlkCount  As Integer
+Dim Shared seqJumpTo    As Integer   ' task SEQ_JumpToScene wants SEQ_Advance to land on, whatever block precedes it
+Dim Shared seqLoadErr   As String    ' first problem SEQ_Load hit (overflow, bad header, task outside a block); "" = clean
 Dim Shared seqCount     As Integer
 Dim Shared seqIdx       As Integer
 Dim Shared seqLastError As String
@@ -107,14 +118,87 @@ Sub SEQ_ListCrawls()
     SEQ_AddCrawl SEQ_CRAWL_STRANDED, "stranded at a dock", -1
 End Sub
 
+' The block label of task seqlI ("level3"); "" when out of range.
+Function seqLabel$(seqlI As Integer)
+    If seqlI < 0 Or seqlI >= seqCount Then seqLabel$ = "" Else seqLabel$ = seqBlkName$(seqTaskBlk(seqlI))
+End Function
+
+Function SEQ_FindBlock%(seqfbName As String)
+    Dim seqfbI As Integer
+    SEQ_FindBlock% = -1
+    For seqfbI = 0 To seqBlkCount - 1
+        If seqBlkName$(seqfbI) = seqfbName Then SEQ_FindBlock% = seqfbI : Exit Function
+    Next seqfbI
+End Function
+
+' First task reached by entering block seqebB, following next past any empty blocks;
+' -1 when the chain ends (terminal, no next, dangling next, or a loop of empty blocks).
+Function SEQ_EnterBlock%(seqebB As Integer)
+    Dim seqebN As Integer, seqebCur As Integer
+    seqebCur = seqebB
+    For seqebN = 0 To SEQ_BLK_MAX
+        If seqebCur < 0 Then Exit For
+        If seqBlkLen(seqebCur) > 0 Then SEQ_EnterBlock% = seqBlkFirst(seqebCur) : Exit Function
+        seqebCur = SEQ_FindBlock%(seqBlkNext$(seqebCur))
+    Next seqebN
+    SEQ_EnterBlock% = -1
+End Function
+
+' The task that follows task seqniI: the next one in its block, else the first task of the
+' block its next= names. seqniI = -1 starts at the first block. -1 = the sequence ends here.
+Function SEQ_NextIdx%(seqniI As Integer)
+    Dim seqniB As Integer
+    If seqBlkCount = 0 Or seqniI >= seqCount Then SEQ_NextIdx% = -1 : Exit Function
+    If seqniI < 0 Then SEQ_NextIdx% = SEQ_EnterBlock%(0) : Exit Function
+    seqniB = seqTaskBlk(seqniI)
+    If seqniI + 1 < seqBlkFirst(seqniB) + seqBlkLen(seqniB) Then SEQ_NextIdx% = seqniI + 1 : Exit Function
+    SEQ_NextIdx% = SEQ_EnterBlock%(SEQ_FindBlock%(seqBlkNext$(seqniB)))
+End Function
+
+' Static checks on the loaded sequence; "" when sound, else one problem per line (each ending
+' in Chr$(10)): load errors, a block with no tasks or no next=, a next= naming no block, and
+' non-secret blocks not reachable from the first block through next=.
+Function SEQ_Validate$()
+    Dim seqvI As Integer, seqvB As Integer, seqvN As Integer, seqvOut As String
+    Dim seqvSeen(0 To SEQ_BLK_MAX - 1) As Integer
+    If Len(seqLoadErr) > 0 Then seqvOut = seqvOut + seqLoadErr + Chr$(10)
+    If seqBlkCount = 0 Then seqvOut = seqvOut + "no blocks" + Chr$(10)
+    For seqvI = 0 To seqBlkCount - 1
+        If seqBlkLen(seqvI) = 0 Then seqvOut = seqvOut + "block '" + seqBlkName$(seqvI) + "' has no tasks" + Chr$(10)
+        If seqBlkNext$(seqvI) = "" Then
+            seqvOut = seqvOut + "dead end: block '" + seqBlkName$(seqvI) + "' has no next= (use next=end for a terminal)" + Chr$(10)
+        ElseIf seqBlkNext$(seqvI) <> "end" And SEQ_FindBlock%(seqBlkNext$(seqvI)) < 0 Then
+            seqvOut = seqvOut + "dangling next: block '" + seqBlkName$(seqvI) + "' -> '" + seqBlkNext$(seqvI) + "'" + Chr$(10)
+        End If
+    Next seqvI
+    If seqBlkCount > 0 Then
+        seqvB = 0
+        For seqvN = 0 To SEQ_BLK_MAX
+            If seqvB < 0 Then Exit For
+            If seqvSeen(seqvB) Then Exit For
+            seqvSeen(seqvB) = -1
+            seqvB = SEQ_FindBlock%(seqBlkNext$(seqvB))
+        Next seqvN
+    End If
+    For seqvI = 0 To seqBlkCount - 1
+        If seqBlkSecret(seqvI) = 0 And seqvSeen(seqvI) = 0 Then
+            seqvOut = seqvOut + "unreachable: block '" + seqBlkName$(seqvI) + "' (mark it secret, or point a next= at it)" + Chr$(10)
+        End If
+    Next seqvI
+    SEQ_Validate$ = seqvOut
+End Function
+
 ' The leg after the current task (the dock): its PLAY tasks up to the next ARRIVE, as the
 ' combat kill triggers summed, the boss fights' secs= summed (#90), the boss fights with no
 ' secs= (economy.ini fuel_boss_secs each) and asteroid fields (SUP_LegNeed!'s fuel need).
 ' All zero when no leg follows.
 Sub SEQ_NextLeg(seqnKills As Long, seqnBossSecs As Single, seqnBoss As Integer, seqnAst As Integer)
-    Dim seqnI As Integer, seqnType As String, seqnSecs As String
+    Dim seqnI As Integer, seqnStep As Integer, seqnType As String, seqnSecs As String
     seqnKills = 0 : seqnBossSecs = 0 : seqnBoss = 0 : seqnAst = 0
-    For seqnI = seqIdx + 1 To seqCount - 1
+    seqnI = seqIdx
+    For seqnStep = 1 To SEQ_MAX
+        seqnI = SEQ_NextIdx%(seqnI)
+        If seqnI < 0 Then Exit For
         If seqKind(seqnI) = SEQ_ARRIVE Or seqKind(seqnI) = SEQ_TITLE Then Exit For
         If seqKind(seqnI) = SEQ_PLAY Then
             seqnType = LCase$(SEQ_GetKV$(seqSval$(seqnI), "type"))
@@ -126,7 +210,7 @@ Sub SEQ_NextLeg(seqnKills As Long, seqnBossSecs As Single, seqnBoss As Integer, 
                 Case "asteroid" : seqnAst = seqnAst + 1
             End Select
         End If
-    Next seqnI
+    Next seqnStep
 End Sub
 
 ' A combat stage ends on enemy kills, not score (#312): power-ups and bonuses only add points.
@@ -145,11 +229,17 @@ Function SEQ_StageProgress!
     SEQ_StageProgress! = seqpP
 End Function
 
-Sub SEQ_Add(seqaKind As Integer, seqaSval As String, seqaLabel As String)
-    If seqCount >= SEQ_MAX Then Exit Sub
+Sub SEQ_LoadFail(seqlfMsg As String)
+    If Len(seqLoadErr) = 0 Then seqLoadErr = seqlfMsg
+End Sub
+
+Sub SEQ_Add(seqaKind As Integer, seqaSval As String)
+    If seqBlkCount = 0 Then SEQ_LoadFail "task before any block header: " + seqaSval : Exit Sub
+    If seqCount >= SEQ_MAX Then SEQ_LoadFail "more than SEQ_MAX (" + LTrim$(Str$(SEQ_MAX)) + ") tasks": Exit Sub
     seqKind(seqCount)   = seqaKind
     seqSval$(seqCount)  = seqaSval
-    seqLabel$(seqCount) = seqaLabel
+    seqTaskBlk(seqCount) = seqBlkCount - 1
+    seqBlkLen(seqBlkCount - 1) = seqBlkLen(seqBlkCount - 1) + 1
     seqCount = seqCount + 1
 End Sub
 
@@ -179,14 +269,45 @@ Function SEQ_GetKV$(seqgSval As String, seqgKey As String)
     SEQ_GetKV$ = Mid$(seqgSval, seqgStart, seqgEnd - seqgStart)
 End Function
 
+' A block header line: "name:id next=<target> [secret]". The name and the target drop their
+' colon ("level:2" -> "level2"), so a next= is written the same way as the header it names.
+Sub SEQ_AddBlock(seqabLine As String)
+    Dim seqabRest As String, seqabSp As Integer, seqabHead As String, seqabTok As String
+    Dim seqabNext As String, seqabSecret As Integer, seqabB As Integer, seqabColon As Integer
+    seqabSp = InStr(seqabLine, " ")
+    If seqabSp = 0 Then seqabHead = seqabLine : seqabRest = "" Else seqabHead = Left$(seqabLine, seqabSp - 1) : seqabRest = LTrim$(Mid$(seqabLine, seqabSp + 1))
+    seqabColon = InStr(seqabHead, ":")
+    If seqabColon > 0 Then seqabHead = Left$(seqabHead, seqabColon - 1) + Mid$(seqabHead, seqabColon + 1)
+    Do While Len(seqabRest) > 0
+        seqabSp = InStr(seqabRest, " ")
+        If seqabSp = 0 Then seqabTok = seqabRest : seqabRest = "" Else seqabTok = Left$(seqabRest, seqabSp - 1) : seqabRest = LTrim$(Mid$(seqabRest, seqabSp + 1))
+        If LCase$(seqabTok) = "secret" Then
+            seqabSecret = -1
+        ElseIf LCase$(Left$(seqabTok, 5)) = "next=" Then
+            seqabNext = Mid$(seqabTok, 6)
+            seqabColon = InStr(seqabNext, ":")
+            If seqabColon > 0 Then seqabNext = Left$(seqabNext, seqabColon - 1) + Mid$(seqabNext, seqabColon + 1)
+        Else
+            SEQ_LoadFail "block '" + seqabHead + "': unknown header field '" + seqabTok + "'"
+        End If
+    Loop
+    If SEQ_FindBlock%(seqabHead) >= 0 Then SEQ_LoadFail "duplicate block '" + seqabHead + "'" : Exit Sub
+    If seqBlkCount >= SEQ_BLK_MAX Then SEQ_LoadFail "more than SEQ_BLK_MAX (" + LTrim$(Str$(SEQ_BLK_MAX)) + ") blocks" : Exit Sub
+    seqabB = seqBlkCount
+    seqBlkName$(seqabB)  = seqabHead
+    seqBlkNext$(seqabB)  = seqabNext
+    seqBlkFirst(seqabB)  = seqCount
+    seqBlkLen(seqabB)    = 0
+    seqBlkSecret(seqabB) = seqabSecret
+    seqBlkCount = seqBlkCount + 1
+End Sub
+
 ' Parse the embedded sequence.txt block format and populate the sequence table.
 Sub SEQ_Load(seqlData As String)
     Dim seqlI As Integer, seqlNL As Integer
     Dim seqlRaw As String, seqlLine As String
     Dim seqlKindStr As String, seqlSval As String, seqlSp As Integer
-    Dim seqlLabel As String, seqlColon As Integer
-    seqCount = 0 : seqIdx = -1
-    seqlLabel = ""
+    seqCount = 0 : seqIdx = -1 : seqBlkCount = 0 : seqJumpTo = -1 : seqLoadErr = ""
     seqlI = 1
     Do While seqlI <= Len(seqlData)
         seqlNL = InStr(seqlI, seqlData, Chr$(10))
@@ -207,21 +328,16 @@ Sub SEQ_Load(seqlData As String)
                 seqlSval    = ""
             End If
             Select Case seqlKindStr
-                Case "CRAWL"            : SEQ_Add SEQ_CRAWL,   seqlSval, seqlLabel
-                Case "CARD", "EMPEROR"  : SEQ_Add SEQ_EMPEROR,  seqlSval, seqlLabel
-                Case "TITLE"            : SEQ_Add SEQ_TITLE,    seqlSval, seqlLabel
-                Case "PLAY"             : SEQ_Add SEQ_PLAY,     seqlSval, seqlLabel
-                Case "ARRIVE"           : SEQ_Add SEQ_ARRIVE,   seqlSval, seqlLabel
-                Case "DOCK"             : SEQ_Add SEQ_DOCK,     seqlSval, seqlLabel
+                Case "CRAWL"            : SEQ_Add SEQ_CRAWL,   seqlSval
+                Case "CARD", "EMPEROR"  : SEQ_Add SEQ_EMPEROR,  seqlSval
+                Case "TITLE"            : SEQ_Add SEQ_TITLE,    seqlSval
+                Case "PLAY"             : SEQ_Add SEQ_PLAY,     seqlSval
+                Case "ARRIVE"           : SEQ_Add SEQ_ARRIVE,   seqlSval
+                Case "DOCK"             : SEQ_Add SEQ_DOCK,     seqlSval
+                Case Else               : SEQ_LoadFail "unknown task type '" + seqlKindStr + "'"
             End Select
         Else
-            ' label header: "name:id" or "name:"
-            seqlColon = InStr(seqlLine, ":")
-            If seqlColon > 0 Then
-                seqlLabel = Left$(seqlLine, seqlColon - 1) + Mid$(seqlLine, seqlColon + 1)
-            Else
-                seqlLabel = seqlLine
-            End If
+            SEQ_AddBlock seqlLine
         End If
         seqlNext:
     Loop
@@ -230,6 +346,7 @@ End Sub
 ' Rewind seqIdx to the first SEQ_TITLE waypoint.
 Sub SEQ_RewindToTitle()
     Dim seqrI As Integer
+    seqJumpTo = -1
     For seqrI = 0 To seqCount - 1
         If seqKind(seqrI) = SEQ_TITLE Then seqIdx = seqrI : Exit Sub
     Next seqrI
@@ -259,7 +376,7 @@ Function SEQ_JumpToScene%(seqjSpec As String)
         For seqjI = 0 To seqCrawlCount - 1
             If LCase$(seqCrawlKey$(seqjI)) = seqjCKey Then
                 If seqCrawlAt(seqjI) >= 0 Then
-                    seqIdx = seqCrawlAt(seqjI) - 1
+                    seqIdx = seqCrawlAt(seqjI) - 1 : seqJumpTo = seqCrawlAt(seqjI)
                     SEQ_JumpToScene% = seqCrawlAt(seqjI)
                 Else
                     seqjAt = -1
@@ -267,7 +384,7 @@ Function SEQ_JumpToScene%(seqjSpec As String)
                         If seqKind(seqjLast) = SEQ_TITLE Then seqjAt = seqjLast : Exit For
                     Next seqjLast
                     If seqjAt >= 0 Then
-                        seqIdx = seqjAt - 1
+                        seqIdx = seqjAt - 1 : seqJumpTo = seqjAt
                         seqJumpCrawl$ = seqCrawlKey$(seqjI)
                     Else
                         seqLastError = "--scene '" + seqjSpec + "': sequence.txt has no TITLE to return to"
@@ -337,7 +454,7 @@ Function SEQ_JumpToScene%(seqjSpec As String)
                     seqjMatch = (seqjPType = seqjPlaySub)
                 End If
                 If seqjMatch Then
-                    seqIdx = seqjI - 1
+                    seqIdx = seqjI - 1 : seqJumpTo = seqjI
                     SEQ_JumpToScene% = seqjI
                     Exit Function
                 End If
@@ -491,7 +608,9 @@ End Sub
 ' Advance to the next sequence step and execute it.
 Sub SEQ_Advance()
     Dim seqaType As String, seqaMus As String, seqaTrig As Integer
-    seqIdx = seqIdx + 1
+    If seqJumpTo = seqIdx + 1 Then seqIdx = seqJumpTo Else seqIdx = SEQ_NextIdx%(seqIdx)
+    seqJumpTo = -1
+    If seqIdx < 0 Then seqIdx = seqCount
     If seqIdx >= seqCount Then
         SEQ_EndRunWin
         SEQ_RewindToTitle

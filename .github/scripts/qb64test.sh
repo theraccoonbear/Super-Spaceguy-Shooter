@@ -70,6 +70,7 @@ TESTS=(
   crawl_plan_test
   seq_dispatch_test
   seq_trace_test
+  seq_graph_test
   scene_jump_planet_test
   spk_timing_test
   narr_drain_test
