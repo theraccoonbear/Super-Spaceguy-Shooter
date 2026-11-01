@@ -78,7 +78,8 @@ Dim Shared seqJumpCrawl$   ' set by SEQ_JumpToScene when --scene names a code-st
 ' Every --scene type (#334). CLI_Parse accepts exactly these (plus crawl:<key>) and
 ' SEQ_SceneList$ can only list these, so --help and the parser cannot drift apart.
 ' consent and username are started by sss.bas itself, not by the sequence.
-Const SEQ_SCENE_TYPES = " crawl playing boss dock title emperor consent username "
+Const SEQ_TUTORIAL_LABEL = "tutorial"   ' the secret block GAME_StartTutorial enters
+Const SEQ_SCENE_TYPES =" crawl playing boss dock title emperor consent username tutorial "
 
 ' The scene type of a --scene name: trailing digits stripped, lowercased; "crawl:" for crawl:<key>.
 Function SEQ_SceneType$(sstSpec As String)
@@ -143,6 +144,24 @@ Function SEQ_EnterBlock%(seqebB As Integer)
         seqebCur = SEQ_FindBlock%(seqBlkNext$(seqebCur))
     Next seqebN
     SEQ_EnterBlock% = -1
+End Function
+
+' Jump to the block named seqjlName: the next SEQ_Advance lands on its first task, whatever
+' precedes it. Returns that task's index, or -1 with seqLastError set.
+Function SEQ_JumpToLabel%(seqjlName As String)
+    Dim seqjlB As Integer, seqjlAt As Integer
+    seqjlB = SEQ_FindBlock%(seqjlName)
+    If seqjlB < 0 Then
+        seqLastError = "no block named '" + seqjlName + "' in sequence.txt"
+        SEQ_JumpToLabel% = -1 : Exit Function
+    End If
+    If seqBlkLen(seqjlB) = 0 Then
+        seqLastError = "block '" + seqjlName + "' has no tasks"
+        SEQ_JumpToLabel% = -1 : Exit Function
+    End If
+    seqjlAt = seqBlkFirst(seqjlB)
+    seqIdx = seqjlAt - 1 : seqJumpTo = seqjlAt
+    SEQ_JumpToLabel% = seqjlAt
 End Function
 
 ' The task that follows task seqniI: the next one in its block, else the first task of the
@@ -363,6 +382,7 @@ End Sub
 
 ' Rewind seqIdx to the first SEQ_TITLE waypoint.
 Sub SEQ_RewindToTitle()
+    tutorialRun = 0   ' every way back to the title ends a tutorial run
     Dim seqrI As Integer
     seqJumpTo = -1
     For seqrI = 0 To seqCount - 1
@@ -415,6 +435,8 @@ Function SEQ_JumpToScene%(seqjSpec As String)
         seqLastError = "--scene '" + seqjSpec + "': no crawl named '" + seqjCKey + "' (see --help for the list)"
         SEQ_JumpToScene% = -1 : Exit Function
     End If
+
+    If LCase$(seqjSpec) = "tutorial" Then SEQ_JumpToScene% = SEQ_JumpToLabel%(SEQ_TUTORIAL_LABEL) : Exit Function
 
     ' split trailing digits from type name
     seqjLast = Len(seqjSpec)
@@ -567,6 +589,8 @@ Function SEQ_SceneList$()
                 If seqpHasTitle Then seqpLine = seqpType
             Case "emperor"
                 If seqpHasEmp Then seqpLine = seqpType
+            Case "tutorial"
+                If SEQ_FindBlock%(SEQ_TUTORIAL_LABEL) >= 0 Then seqpLine = seqpType
             Case Else
                 seqpLine = seqpType
         End Select
@@ -649,7 +673,7 @@ Sub SEQ_Advance()
             seqaMus = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             If Len(seqaMus) > 0 Then MUS_SetCue seqaMus Else MUS_SetCue "emperor"
         Case SEQ_PLAY
-            seqRunActive = -1
+            If tutorialRun = 0 Then seqRunActive = -1
             seqaType = LCase$(SEQ_GetKV$(seqSval$(seqIdx), "type"))
             seqaMus  = SEQ_GetKV$(seqSval$(seqIdx), "mus")
             Select Case seqaType

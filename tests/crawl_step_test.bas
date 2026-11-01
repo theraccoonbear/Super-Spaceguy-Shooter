@@ -106,6 +106,7 @@ Sub DOCK_Enter()                    : gameState = 15 : End Sub   ' GS_DOCK
 Sub TELEM_SessionEnd()              : End Sub
 
 
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/sys/config.bas'

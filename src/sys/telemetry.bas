@@ -81,6 +81,8 @@ Sub TELEM_FlushCsv
 End Sub
 
 Sub TELEM_Row(tlEvent As String, tlData As String)
+    ' a tutorial run has no session, and a row with a blank session would still reach the CSV
+    If tutorialRun Then Exit Sub
     If telemOn = 0 Then Exit Sub
     If Len(telemCsvDir) > 0 Then
         telemCsvBuf = telemCsvBuf + LTrim$(Str$(Int(Timer))) + "," + telemSession + "," + tlEvent + "," + tlData + Chr$(10)
@@ -123,6 +125,7 @@ Sub TELEM_FlushBatch
 End Sub
 
 Sub TELEM_SessionStart()
+    If tutorialRun Then Exit Sub
     telemSession = Mid$(Date$, 7, 4) + Mid$(Date$, 1, 2) + Mid$(Date$, 4, 2) _
                   + Left$(Time$, 2) + Mid$(Time$, 4, 2) + Right$(Time$, 2)
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
@@ -225,6 +228,7 @@ Sub TELEM_CreditBonus(tlcbCredits As Long, tlcbRate As Double, tlcbPts As Long)
 End Sub
 
 Sub TELEM_SessionEnd()
+    If tutorialRun Then Exit Sub
     If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
     TELEM_Row "credits_earned", "earned=" + LTrim$(Str$(creditsEarned)) + "|spent=" + LTrim$(Str$(creditsSpent)) _
             + "|left=" + LTrim$(Str$(credits))

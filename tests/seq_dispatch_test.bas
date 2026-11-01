@@ -119,6 +119,7 @@ Sub DBG_Print(s As String)          : End Sub
 Sub TELEM_SessionEnd()              : End Sub
 
 ' ── real sequencer ───────────────────────────────────────────────────────────
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/sys/sequence.bas'
 
 ' Reset all shared state to defaults before each scenario.
@@ -214,7 +215,7 @@ Print ""
 ' ────────────────────────────────────────────────────────────────────────────
 Print "--- 1. parser ---"
 ST_Reset
-ST_Assert seqCount = 31,                                         "1.01  seqCount=31"
+ST_Assert seqCount = 33,                                         "1.01  seqCount=33"
 ST_Assert seqKind(0)  = SEQ_CRAWL,                              "1.02  idx 0 is CRAWL"
 ST_Assert seqLabel$(0) = "crawl0",                              "1.03  idx 0 label=crawl0"
 ST_Assert SEQ_GetKV$(seqSval$(0), "txt") = "intro",             "1.04  idx 0 txt=intro"

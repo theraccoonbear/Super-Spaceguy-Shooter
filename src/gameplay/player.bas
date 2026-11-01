@@ -212,6 +212,13 @@ Sub PLAYER_CamUpdate
     ' writes from included-file Subs don't update the global, same as UDT array gotcha.
 End Sub
 
+' The tutorial run cannot be failed: shields and fuel stay full, and it is never stranded.
+' Separate from --god (godMode), which also refills the laser and must keep working unchanged.
+Sub PLAYER_TutorialGuard
+    If tutorialRun = 0 Then Exit Sub
+    lives = shieldMax : fuelLevel = fuelMax : fuelStranded = 0
+End Sub
+
 Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     If gameState <> GS_PLAYING Then Exit Sub
     If deathTimer > 0 Then Exit Sub  ' a second lethal hit in the same frame would cost another ship and re-run the death path
@@ -223,7 +230,7 @@ Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     TELEM_PlayerDamaged
     ' --god refills shields once per frame in playing.bas, which a big hit (an asteroid)
     ' or a burst of hits within one frame could still outrun
-    If godMode Then lives = shieldMax
+    If godMode Or tutorialRun Then lives = shieldMax
     If lives <= 0 Then
         shipLives = shipLives - 1
         SND_Death

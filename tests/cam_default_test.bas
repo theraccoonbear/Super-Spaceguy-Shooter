@@ -91,6 +91,7 @@ Sub E3D_BindsWrite (bwFH As Integer) : End Sub
 Function E3D_BindsLoadLine% (blKey As String, blRaw As String) : E3D_BindsLoadLine% = 0 : End Function
 Sub E3D_PadReselect : End Sub
 
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/rng.bas'

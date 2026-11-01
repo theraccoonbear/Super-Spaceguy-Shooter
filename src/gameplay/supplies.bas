@@ -177,7 +177,7 @@ End Function
 Function SUP_Stranded%
     Dim supsdNeed As Single, supsdCan As Integer
     SUP_Stranded% = 0
-    If godMode Then Exit Function
+    If godMode Or tutorialRun Then Exit Function
     supsdNeed = SUP_LegReach!
     If supsdNeed <= 0 Then Exit Function
     supsdCan = SUP_MaxAffordable%(SUP_FUEL, levelNum)

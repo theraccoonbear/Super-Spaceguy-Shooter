@@ -85,3 +85,9 @@ outro:
     CRAWL txt=outro mus=crawl
     TITLE mus=title
     NEXT end
+
+; the isolated tutorial run (#240): entered by --scene tutorial via GAME_StartTutorial, never by a NEXT. Placeholder content.
+tutorial: secret
+    PLAY type=combat mus=game trigger=3
+    TITLE mus=title
+    NEXT end

@@ -9,6 +9,7 @@
 Sub GAME_ResetState
     Dim grI As Integer
 
+    tutorialRun = 0
     DLV_Begin
     GAME_LoadTuning
     UPG_Reset
@@ -71,6 +72,18 @@ Sub GAME_NewGame
         SEQ_Advance
     End If
 End Sub
+
+' The isolated tutorial run: a normal run's reset, then the tutorial block, with tutorialRun
+' set so nothing it does is recorded and it cannot be failed. No TELEM_SessionStart. Returns 0
+' (seqLastError set) when sequence.txt has no tutorial block. Ended by SEQ_RewindToTitle.
+Function GAME_StartTutorial%
+    GAME_ResetState
+    If seqCount = 0 Then SEQ_Load _EMBEDDED$("SEQTXT")
+    If SEQ_JumpToLabel%(SEQ_TUTORIAL_LABEL) < 0 Then GAME_StartTutorial% = 0 : Exit Function
+    tutorialRun = -1
+    SEQ_Advance
+    GAME_StartTutorial% = -1
+End Function
 
 Sub GAME_InitMeshes
     Dim gmiMdl As String

@@ -191,7 +191,9 @@ ELSEIF cliSceneType = "username" THEN
     GS_USERNAME_Init : gameState = GS_USERNAME
 ELSEIF cliScene <> "" THEN
     IF SEQ_JumpToScene(cliScene) < 0 THEN GAME_Usage(seqLastError)
-    IF seqJumpCrawl$ <> "" THEN
+    IF cliSceneType = "tutorial" THEN
+        IF GAME_StartTutorial% = 0 THEN GAME_Usage(seqLastError)
+    ELSEIF seqJumpCrawl$ <> "" THEN
         ' code-started crawl (e.g. death_final): play it; the sequence then continues at the title
         CRAWL_Prep seqJumpCrawl$, scrH
         gameState = GS_CRAWL
@@ -209,7 +211,7 @@ ELSEIF cliScene <> "" THEN
         IF levelNum < 1 THEN levelNum = 1
         planetCurrent = levelNum : planetNameIdx = levelNum
     END IF
-    IF seqJumpCrawl$ = "" THEN SEQ_Advance
+    IF seqJumpCrawl$ = "" AND cliSceneType <> "tutorial" THEN SEQ_Advance
 ELSE
     If telemOn <> 0 And telemConsent = 0 Then
         gameState = GS_CONSENT

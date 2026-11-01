@@ -140,6 +140,7 @@ Sub SND_Death : End Sub
 Sub SND_Shoot : End Sub
 Sub FX_SpawnBurst (cx As Single, cy As Single, cz As Single, n As Integer, spd As Single, lifBase As Integer, lifVar As Integer, clr As Long) : End Sub
 
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
