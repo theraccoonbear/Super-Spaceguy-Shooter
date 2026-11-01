@@ -179,6 +179,7 @@ builds/sss --version                      # must print version and exit 0
 # Jump straight to a named scene (fastest manual test)
 builds/sss --scene boss3                  # stage 3 boss fight
 builds/sss --scene playing2               # stage 2 combat
+builds/sss --scene tutorial               # the isolated tutorial run: no record, cannot be failed (#240)
 
 # Full test suite (same as CI)
 tools/test                                # native, uses the qb64pe on PATH

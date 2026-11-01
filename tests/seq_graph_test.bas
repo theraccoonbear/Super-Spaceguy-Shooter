@@ -109,6 +109,7 @@ Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
 Sub DBG_Print(s As String)          : End Sub
 Sub TELEM_SessionEnd()              : End Sub
 
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/sys/sequence.bas'
 
 Dim Shared stPassed As Integer, stFailed As Integer
@@ -142,7 +143,7 @@ sgP = SEQ_Validate$
 If sgP <> "" Then Print sgP
 ST_Assert sgP = "",                                       "1.04  no dangling next, dead end or unreachable block"
 ST_Assert seqBlkNext$(SEQ_FindBlock%("outro")) = "end",   "1.05  the outro is the deliberate terminal"
-ST_Assert seqCount = 31,                                  "1.06  NEXT adds no task (31 tasks, as before)"
+ST_Assert seqCount = 33,                                  "1.06  NEXT adds no task (33 tasks: the 31 before plus the tutorial block's 2)"
 
 Print "--- 2. failures are detected ---"
 SEQ_Load "a:" + sgNL + "    TITLE" + sgNL + "    NEXT b" + sgNL + "b:" + sgNL + "    CRAWL txt=x" + sgNL + "    NEXT end" + sgNL

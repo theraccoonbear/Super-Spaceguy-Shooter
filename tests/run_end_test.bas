@@ -200,6 +200,7 @@ Sub DOCK_Enter () : gameState = 15 : End Sub   ' GS_DOCK
 Sub SPK_Say (s As String) : End Sub
 Function GTEXT_Get$ (k As String) : GTEXT_Get$ = "" : End Function
 
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/sequence.bas'

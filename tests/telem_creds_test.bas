@@ -86,6 +86,7 @@ Function JSON_Obj$ (s As String) : JSON_Obj$ = "{" + s + "}" : End Function
 Function JSON_S$   (k As String, v As String) : JSON_S$ = k + ":" + v : End Function
 Function JSON_N$   (k As String, v As String) : JSON_N$ = k + ":" + v : End Function
 
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'

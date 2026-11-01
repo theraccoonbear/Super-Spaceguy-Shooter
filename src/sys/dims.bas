@@ -219,6 +219,7 @@ DIM SHARED settingNarrSpeed  AS INTEGER : settingNarrSpeed  = 2   ' 1 SLOW, 2 NO
 DIM SHARED settingFullscreen AS INTEGER : settingFullscreen = 1
 DIM SHARED settingNerf AS INTEGER
 DIM SHARED godMode    AS INTEGER
+DIM SHARED tutorialRun AS INTEGER   ' -1 while the isolated tutorial run is playing: no record, cannot be failed (GAME_StartTutorial, cleared by GAME_ResetState and SEQ_RewindToTitle)
 DIM SHARED debugMode  AS INTEGER
 
 ' --- options UI ---

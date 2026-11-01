@@ -101,6 +101,7 @@ Sub DBG_Print(s As String)          : End Sub
 Sub TELEM_SessionEnd()              : End Sub
 
 ' ── real sequencer ───────────────────────────────────────────────────────────
+Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/sys/sequence.bas'
 
 ' ── test sequence (matches assets/sequence.txt) ──────────────────────────────

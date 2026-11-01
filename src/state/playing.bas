@@ -116,7 +116,7 @@ Sub GS_PLAYING_Update ()
             deathTimer = deathTimer - 1
             IF deathTimer = 0 THEN
                 IF gameOver THEN
-                    IF score > highScore THEN highScore = score : SETTINGS_Save
+                    IF score > highScore AND tutorialRun = 0 THEN highScore = score : SETTINGS_Save
                     crawlNextState = GS_GAMEOVER
                     CRAWL_Prep SEQ_CRAWL_DEATH, scrH
                     gameState = GS_CRAWL
@@ -140,6 +140,7 @@ Sub GS_PLAYING_Update ()
                     fuelStranded = -1
                 END IF
             END IF
+            PLAYER_TutorialGuard
             IF godMode THEN
                 lives = shieldMax : laserEnergy = laserMax : fuelLevel = fuelMax : fuelStranded = 0
             END IF
@@ -232,7 +233,7 @@ Sub GS_PLAYING_Update ()
 
             ' gameOver with deathTimer>0 is handled at deathTimer expiry above
             IF gameOver AND deathTimer = 0 THEN
-                IF score > highScore THEN highScore = score : SETTINGS_Save
+                IF score > highScore AND tutorialRun = 0 THEN highScore = score : SETTINGS_Save
                 gameOverDelay = 90
                 gameState = GS_GAMEOVER
                 StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0

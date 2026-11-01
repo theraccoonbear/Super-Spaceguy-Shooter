@@ -72,7 +72,7 @@ End Sub
 Sub DOCK_Strand
     TELEM_RunStranded levelNum, fuelLevel, SUP_LegNeed!, credits, SUP_UnitPrice!(SUP_FUEL, levelNum)
     CR_CashOut
-    If score > highScore Then highScore = score : SETTINGS_Save
+    If score > highScore And tutorialRun = 0 Then highScore = score : SETTINGS_Save
     telemExitReason = "stranded"
     TELEM_SessionEnd
     seqRunActive = 0
