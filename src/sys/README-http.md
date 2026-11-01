@@ -72,4 +72,4 @@ End If
 tools/http_queue_test
 ```
 
-This builds `tests/http_queue_test.bas`, starts `tools/http_mock_server` (a small Python `http.server`-based mock with canned `/fast`, `/slow/<ms>`, `/fail`, and `/get_ok` endpoints) on a free local port, runs the test binary against it, and tears the mock server down. It's the same thing `.github/scripts/qb64test.sh` runs in CI on all three platforms.
+This builds `tests/http_queue_test.bas`, starts `tools/http_mock_server` (a small Node `http`-based mock (the build already needs `node`) with canned `/fast`, `/slow/<ms>`, `/fail`, and `/get_ok` endpoints) on a free local port, runs the test binary against it, and tears the mock server down. It's the same thing `.github/scripts/qb64test.sh` runs in CI on all three platforms.

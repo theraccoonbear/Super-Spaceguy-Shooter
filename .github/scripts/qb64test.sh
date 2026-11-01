@@ -324,7 +324,7 @@ run_http_test() {
   local mock_port=18752
   local errfile
   errfile="$(mktemp)"
-  python3 "$REPODIR/tools/http_mock_server" --port "$mock_port" > /dev/null 2> "$errfile" &
+  node "$REPODIR/tools/http_mock_server" --port "$mock_port" > /dev/null 2> "$errfile" &
   local mock_pid=$!
   local ready=0
   for i in $(seq 1 150); do

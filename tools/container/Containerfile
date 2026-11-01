@@ -19,7 +19,7 @@ RUN apt-get update -qq \
  && apt-get install -y --no-install-recommends \
       libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libx11-dev libxext-dev libpng-dev xvfb libcurl4-openssl-dev \
       build-essential x11-utils mesa-common-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev \
-      ca-certificates curl git python3 xauth xz-utils \
+      ca-certificates curl git xauth xz-utils \
       libgl1-mesa-dri libglx-mesa0 libpulse0 \
       pulseaudio pulseaudio-utils ffmpeg \
  && rm -rf /var/lib/apt/lists/*
