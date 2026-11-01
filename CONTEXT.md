@@ -110,6 +110,18 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 
 ---
 
+## Content guideline: machines, not people (#317)
+
+The game is a teaching tale. Violence is the gameplay, not the story.
+
+- Every opponent is a machine: an autonomous drone, or a craft remote-piloted by someone who is elsewhere. Bosses are named operators flying their machines by remote link.
+- Nobody dies on camera, except the player character in some endings. Destroying an opponent wrecks a machine or cuts a remote link ("signal lost", "operator disconnected"). It never kills a person. Planets are never destroyed; no text, art or sound implies crews, cockpits, escape pods or civilian casualties.
+- Player-facing wording is neutral: "drones downed", "disabled", "wrecked", not "kill". Internal names (`stageKills`, the `enemy_killed` event) stay.
+- The regime's reality is not softened. The Executioners, the executions and abuses, the blockade and the repression stay as plain history and context in crawls, dock news and narration. The player fights machines and does not take part in or watch those crimes.
+- The player's own death endings stay.
+
+---
+
 ## Coordinate system (3D engine)
 
 ```
