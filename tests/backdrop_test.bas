@@ -118,32 +118,32 @@ Print "--- 2. parse failures name their line ---"
 BT_Assert BT_Fails%(BT_Src$("    GLOW at=10,10 color=ff0000"), 2, "unknown effect 'GLOW'"), "2.01  unknown verb"
 BT_Assert BT_Fails%(BT_Src$("    SPRITE at=10,10 color=ff0000"), 2, "unknown effect"), "2.02  SPRITE is not an effect yet"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 colour=ff0000"), 2, "unknown BLINK key 'colour'"), "2.03  unknown key"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 count=3"), 2, "unknown BLINK key 'count'"), "2.04  a SPARK key on a BLINK"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=1 count=3"), 2, "unknown BLINK key 'count'"), "2.04  a SPARK key on a BLINK"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=5 hold=6"), 2, "given twice"), "2.05  a key given twice"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 on"), 2, "key=value"), "2.06  a word with no ="
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=1 on"), 2, "key=value"), "2.06  a word with no ="
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold="), 2, "key=value"), "2.07  a key with no value"
 BT_Assert BT_Fails%(BT_Src$("    BLINK color=ff0000"), 2, "needs at"), "2.08  no at="
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10"), 2, "needs color"), "2.09  no color="
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10 color=ff0000"), 2, "at must be x,y"), "2.10  at= with one number"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,20,30 color=ff0000"), 2, "at must be x,y"), "2.11  at= with three numbers (not yet)"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=a,b color=ff0000"), 2, "at must be x,y"), "2.12  at= with words"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=321,10 color=ff0000"), 2, "off the 320x240 painting"), "2.13  x off the painting"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,-1 color=ff0000"), 2, "off the 320x240 painting"), "2.14  a negative y (negatives parse, then fail the range)"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff00"), 2, "rrggbb"), "2.15  a short colour"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10 color=ff0000 hold=1"), 2, "at must be x,y"), "2.10  at= with one number"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,20,30 color=ff0000 hold=1"), 2, "at must be x,y"), "2.11  at= with three numbers (not yet)"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=a,b color=ff0000 hold=1"), 2, "at must be x,y"), "2.12  at= with words"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=321,10 color=ff0000 hold=1"), 2, "off the 320x240 painting"), "2.13  x off the painting"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,-1 color=ff0000 hold=1"), 2, "off the 320x240 painting"), "2.14  a negative y (negatives parse, then fail the range)"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff00 hold=1"), 2, "rrggbb"), "2.15  a short colour"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=gg0000"), 2, "rrggbb"), "2.16  a colour that is not hex"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000,00ff00"), 2, "at most 1"), "2.17  two colours on a BLINK"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000,00ff00 hold=1"), 2, "at most 1"), "2.17  two colours on a BLINK"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=10,10 color=ff0000,00ff00,0000ff,ffffff,ff00ff"), 2, "at most 4"), "2.18  five colours on a SPARK"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=601"), 2, "hold must be a whole number 0 to 600"), "2.19  hold=601"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 rest=2.5"), 2, "rest must be a whole number"), "2.20  a fraction where a whole number goes"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 size=9"), 2, "size must be"), "2.21  size too big"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 mode=pulse"), 2, "unknown BLINK key 'mode'"), "2.22  mode= is gone"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=1 size=9"), 2, "size must be"), "2.21  size too big"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=1 mode=pulse"), 2, "unknown BLINK key 'mode'"), "2.22  mode= is gone"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=0 rest=0"), 2, "at least 1 frame"), "2.23  an envelope of no frames"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 phase=-3"), 2, "phase must be"), "2.24  a negative phase"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=1 phase=-3"), 2, "phase must be"), "2.24  a negative phase"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=10,10 color=ff0000 count=0"), 2, "count must be"), "2.25  no sparks"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=10,10 color=ff0000 gravity=2"), 2, "gravity must be a number -1 to 1"), "2.26  gravity out of range"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=10,10 color=ff0000 speed=fast"), 2, "speed must be"), "2.27  speed not a number"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=10,10 color=ff0000 life=0"), 2, "life must be"), "2.28  life 0"
-BT_Assert BT_Fails%("    BLINK at=10,10 color=ff0000" + Chr$(10), 1, "before any backdrop"), "2.29  an effect before a header"
+BT_Assert BT_Fails%("    BLINK at=10,10 color=ff0000 hold=1" + Chr$(10), 1, "before any backdrop"), "2.29  an effect before a header"
 BT_Assert BT_Fails%("backdrop:title" + Chr$(10) + "backdrop:dock extra" + Chr$(10), 2, "only its name"), "2.30  a header with a stray word"
 BT_Assert BT_Fails%("scene:title" + Chr$(10), 1, "unknown header"), "2.31  a header of another kind"
 BT_Assert BT_Fails%("backdrop:" + Chr$(10), 1, "needs a name"), "2.32  a header with no name"
@@ -154,19 +154,19 @@ BT_Assert BD_Parse%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=0 rest=0 phase
 Print ""
 
 Print "--- 3. what a good file may hold ---"
-btOk = BD_Parse%("; a comment" + Chr$(13) + Chr$(10) + "backdrop:title ; trailing" + Chr$(13) + Chr$(10) + Chr$(9) + "blink AT=10.5,20 Color=#FF0000 SIZE=0 ; x" + Chr$(13) + Chr$(10) + Chr$(13) + Chr$(10))
+btOk = BD_Parse%("; a comment" + Chr$(13) + Chr$(10) + "backdrop:title ; trailing" + Chr$(13) + Chr$(10) + Chr$(9) + "blink AT=10.5,20 Color=#FF0000 SIZE=0 HOLD=1 ; x" + Chr$(13) + Chr$(10) + Chr$(13) + Chr$(10))
 BT_Assert btOk <> 0,                                    "3.01  comments, CRLF, tabs, case, # colours and decimals parse"
 If btOk = 0 Then Print bdErrors
 BT_Assert bdFxN = 1 And bdKind(0) = BD_KIND_BLINK And bdX(0) = 10.5 And bdY(0) = 20 And bdSize(0) = 0, "3.02  and read as written"
 BT_Assert _Red32(bdCol(0, 0)) = 255 And _Green32(bdCol(0, 0)) = 0 And _Blue32(bdCol(0, 0)) = 0,            "3.03  the colour"
-btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10))
-BT_Assert bdRise(0) = 0 And bdHold(0) = 30 And bdFall(0) = 0 And bdRest(0) = 30 And bdSize(0) = 1 And bdPhase(0) = 0, "3.04  BLINK defaults (hard, 30 frames lit and 30 dark)"
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10))
+BT_Assert bdRise(0) = 0 And bdHold(0) = 1 And bdFall(0) = 0 And bdRest(0) = 0 And bdSize(0) = 1 And bdPhase(0) = 0, "3.04  BLINK defaults: every envelope key is 0, glow 3, size 1"
 btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000" + Chr$(10))
 BT_Assert bdCount(0) = 3 And bdEvery(0) = 60 And bdLife(0) = 20 And bdDir(0) = 270 And Abs(bdGrav(0) - 0.05) < 0.0001 And Abs(bdSpeed(0) - 0.6) < 0.0001, "3.05  SPARK defaults"
 btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000 gravity=-0.25" + Chr$(10))
 BT_Assert btOk <> 0 And Abs(bdGrav(0) + 0.25) < 0.0001, "3.06  a negative decimal"
 BT_Assert BD_ParseNum%("-.5", btV) <> 0 And Abs(btV + 0.5) < 0.0001 And BD_ParseNum%("1.2.3", btV) = 0 And BD_ParseNum%("-", btV) = 0 And BD_ParseNum%("1-", btV) = 0 And BD_ParseNum%("", btV) = 0, "3.07  number syntax"
-btOk = BD_Parse%("backdrop:nowhere" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10))
+btOk = BD_Parse%("backdrop:nowhere" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10))
 btErr = BD_Validate$
 BT_Assert btOk <> 0 And InStr(btErr, "line 1: backdrop 'nowhere' is not a painted screen") > 0, "3.08  validation: an unknown screen"
 btOk = BD_Parse%("backdrop:dock" + Chr$(10))
@@ -178,22 +178,22 @@ Print ""
 Print "--- 4. fixed tables ---"
 btBig = "backdrop:title" + Chr$(10)
 For btI = 1 To BD_MAX_FX
-    btBig = btBig + "    BLINK at=1,1 color=ff0000" + Chr$(10)
+    btBig = btBig + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10)
 Next btI
 btOk = BD_Parse%(btBig)
 BT_Assert btOk <> 0 And bdFxN = BD_MAX_FX, "4.01  exactly BD_MAX_FX effects fit"
-btBig = btBig + "    BLINK at=1,1 color=ff0000" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10)
+btBig = btBig + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10)
 BT_Assert BT_Fails%(btBig, BD_MAX_FX + 2, "more than BD_MAX_FX"), "4.02  one more is an error on its line"
 BT_Assert BT_Count%(bdErrors, "BD_MAX_FX") = 1,         "4.03  reported once, not once per extra line"
 btBig = ""
 For btI = 1 To BD_MAX_SETS
-    btBig = btBig + "backdrop:set" + LTrim$(Str$(btI)) + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10)
+    btBig = btBig + "backdrop:set" + LTrim$(Str$(btI)) + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10)
 Next btI
 btOk = BD_Parse%(btBig)
 BT_Assert btOk <> 0 And bdSets = BD_MAX_SETS, "4.04  exactly BD_MAX_SETS backdrops fit"
 btBig = btBig + "backdrop:one_more" + Chr$(10)
 BT_Assert BT_Fails%(btBig, BD_MAX_SETS * 2 + 1, "more than BD_MAX_SETS"), "4.05  one more is an error"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"), 2, "options on one line"), "4.06  too many words on a line"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=1 hold=1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"), 2, "options on one line"), "4.06  too many words on a line"
 Print ""
 
 Print "--- 5. BLINK timing ---"
@@ -253,17 +253,21 @@ For btF = 0 To 59
     If Abs(BD_BlinkLevel!(1, btF) - (0.5 - 0.5 * Cos(6.2831853 * btF / 60))) > 0.0001 Then btOk = 0
 Next btF
 BT_Assert btOk,                                         "5.14  rise=N fall=N (no hold, no rest) is the plain sine pulse of 2N frames"
-btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=10 fall=10 hold=0 rest=40 phase=20" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=10 fall=10 hold=0 rest=40 phase=10" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=10 fall=10 hold=0 rest=40" + Chr$(10))
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=10 fall=10 rest=40 phase=20" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=10 fall=10 hold=0 rest=40 phase=10" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=10 fall=10 hold=0 rest=40" + Chr$(10))
 BT_Assert BD_BlinkLevel!(0, 50) = 1 And BD_BlinkLevel!(1, 0) = 1 And BD_BlinkLevel!(2, 10) = 1 And BD_BlinkLevel!(0, 0) = 0 And BD_BlinkLevel!(1, 10) = 0 And BD_BlinkLevel!(2, 0) = 0, "5.15  a landing-light chase: phases 20, 10, 0 peak at frames 50, 0 and 10 of a 60-frame loop, 10 apart, in that order"
 btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1 rest=0" + Chr$(10) + "    BLINK at=1,1 color=ff0000 rise=1 hold=0 fall=0 rest=0" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=0 rest=1" + Chr$(10))
 BT_Assert btOk <> 0 And BD_BlinkLevel!(0, 5) = 1 And BD_BlinkLevel!(1, 5) = 0 And BD_BlinkLevel!(2, 5) = 0, "5.16  a period of 1 frame is allowed: hold=1 is steady, rise=1 or rest=1 stays dark"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 on=10 off=10"), 2, "unknown BLINK key 'on'"), "5.17  on= is no longer a key"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 off=10"), 2, "unknown BLINK key 'off'"), "5.18  off= is no longer a key"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 rise=0 hold=0 fall=0 rest=0"), 2, "rise + hold + fall + rest must be at least 1"), "5.19  an all-zero envelope is an error"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 hold=1 on=10 off=10"), 2, "unknown BLINK key 'on'"), "5.17  on= is no longer a key"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 hold=1 off=10"), 2, "unknown BLINK key 'off'"), "5.18  off= is no longer a key"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 rise=0 hold=0 fall=0 rest=0"), 2, "rise + hold + fall + rest must add up to at least 1"), "5.19  an all-zero envelope is an error"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 rise=-1"), 2, "rise must be a whole number 0 to 600"), "5.20  a negative fade"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 fall=601"), 2, "fall must be"), "5.21  a fall over 600 frames"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 rise=5"), 2, "unknown SPARK key 'rise'"), "5.22  rise= is not a SPARK key"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 rise=2.5"), 2, "rise must be a whole number"), "5.23  a fractional fade"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000"), 2, "must add up to at least 1 frame (for example hold=30 rest=30)"), "5.24  no envelope at all is an error, and says how to write one"
+btOk = BD_Parse%(BT_Src$("    BLINK at=1,1 color=ff0000 rise=10 fall=10 rest=40"))
+BT_Assert btOk <> 0 And bdHold(0) = 0, "5.25  unset keys are 0: rise=10 fall=10 rest=40 has no hold"
+BT_Assert bdRise(0) + bdHold(0) + bdFall(0) + bdRest(0) = 60, "5.26  the loop is the sum of what is written"
 Print ""
 
 Print "--- 6. the hash ---"
@@ -390,7 +394,7 @@ BT_Assert BD_SparksLive% = 16,                          "8.07  entering a screen
 Print ""
 
 Print "--- 9. screen entry ---"
-btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=2 every=30 life=10" + Chr$(10) + "backdrop:dock" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10))
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=2 every=30 life=10" + Chr$(10) + "backdrop:dock" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10))
 bdLastMain = -9
 BD_Advance 100, "title"
 BT_Assert bdFrame = 0 And bdCur = BD_Find%("title") And BD_SparksLive% = 2, "9.01  the first call is frame 0, and the frame-0 burst has started"
@@ -426,11 +430,11 @@ BT_Assert btRnd1 = btRnd2,                              "10.01  600 frames of th
 Print ""
 
 Print "--- 11. glow, spark size and jitter ---"
-btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10))
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1" + Chr$(10))
 BT_Assert bdGlow(0) = 3,                                "11.01  BLINK glow defaults to 3"
-btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 glow=12 size=2" + Chr$(10))
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 hold=1 glow=12 size=2" + Chr$(10))
 BT_Assert btOk <> 0 And bdGlow(0) = 12 And bdSize(0) = 2, "11.02  glow=12 is allowed"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 glow=13"), 2, "glow must be a whole number 0 to 12"), "11.03  glow=13 is an error"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 hold=1 glow=13"), 2, "glow must be a whole number 0 to 12"), "11.03  glow=13 is an error"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 glow=2"), 2, "unknown SPARK key 'glow'"), "11.04  glow is not a SPARK key"
 btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000" + Chr$(10))
 BT_Assert bdSize(0) = 1 And bdJitter(0) = 0,            "11.05  SPARK size defaults to 1 and jitter to 0"
@@ -439,7 +443,7 @@ BT_Assert btOk <> 0 And bdSize(0) = 6 And bdJitter(0) = 20, "11.06  size=6 and j
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 size=0"), 2, "size must be a whole number 1 to 6"), "11.07  SPARK size=0 is an error"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 size=7"), 2, "size must be a whole number 1 to 6"), "11.08  SPARK size=7 is an error"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 size=2.5"), 2, "size must be"), "11.09  SPARK size must be whole"
-BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 size=8 jitter=3"), 2, "unknown BLINK key 'jitter'"), "11.10  jitter is not a BLINK key"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 hold=1 size=8 jitter=3"), 2, "unknown BLINK key 'jitter'"), "11.10  jitter is not a BLINK key"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 every=30 jitter=30"), 2, "jitter must be less than every (30)"), "11.11  jitter must stay under every"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 every=3600 jitter=3600"), 2, "jitter must be"), "11.12  jitter has an upper limit"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 jitter=x"), 2, "jitter must be a whole number"), "11.13  jitter must be a number"

@@ -9,7 +9,7 @@
 '
 ' File format (; starts a comment; verbs are case-insensitive, keys are lower case):
 '   backdrop:<name>          the painting the following lines belong to (title emperor dock)
-'       BLINK at=x,y color=rrggbb [size=1] [glow=3] [rise=0] [hold=30] [fall=0] [rest=30] [phase=0]
+'       BLINK at=x,y color=rrggbb [size=1] [glow=3] [rise=0] [hold=0] [fall=0] [rest=0] [phase=0]
 '       SPARK at=x,y color=rrggbb[,rrggbb...] [count=3] [every=60] [speed=0.6] [gravity=0.05]
 '             [life=20] [dir=270] [spread=120] [phase=0] [jitter=0] [size=1]
 ' Positions are pixels on the 320x240 painting. Frames run at 60 per second.
@@ -268,13 +268,13 @@ Sub BD_BuildEffect ()
         bdGlow(bfFx) = bfV
         If BD_Opt%("rise", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
         bdRise(bfFx) = bfV
-        If BD_Opt%("hold", 30, 0, 600, -1, bfV) = 0 Then Exit Sub
+        If BD_Opt%("hold", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
         bdHold(bfFx) = bfV
         If BD_Opt%("fall", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
         bdFall(bfFx) = bfV
-        If BD_Opt%("rest", 30, 0, 600, -1, bfV) = 0 Then Exit Sub
+        If BD_Opt%("rest", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
         bdRest(bfFx) = bfV
-        If bdRise(bfFx) + bdHold(bfFx) + bdFall(bfFx) + bdRest(bfFx) < 1 Then BD_LineErr "BLINK rise + hold + fall + rest must be at least 1 frame" : Exit Sub
+        If bdRise(bfFx) + bdHold(bfFx) + bdFall(bfFx) + bdRest(bfFx) < 1 Then BD_LineErr "BLINK needs a loop: rise + hold + fall + rest must add up to at least 1 frame (for example hold=30 rest=30)" : Exit Sub
     Else
         If BD_ParseColors%(bfFx, BD_MAX_COL) = 0 Then Exit Sub
         bdKind(bfFx) = BD_KIND_SPARK
