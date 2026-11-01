@@ -1,0 +1,22 @@
+# The dock item picture card (#364) for rows the base dock scene never shows: SHIELDS (frame 25),
+# TWIN CANNONS (45), SPREAD SHOT after the first level is bought (75) and still when maxed (105),
+# and LAUNCH, which shows no picture (frame 190). $5000 so every purchase goes through.
+#! group: ui
+#! seed: 1
+#! args: --god --no-telem --scene dock2 --credits 5000
+#! shots: 25,45,75,105,190
+10 10 DOWN
+30 30 DOWN
+38 38 DOWN
+50 50 ENTER
+80 80 ENTER
+110 110 DOWN
+118 118 DOWN
+126 126 DOWN
+134 134 DOWN
+142 142 DOWN
+150 150 DOWN
+158 158 DOWN
+166 166 DOWN
+174 174 DOWN
+182 182 DOWN
