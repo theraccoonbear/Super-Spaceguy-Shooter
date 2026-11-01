@@ -1,0 +1,19 @@
+; backdrops.txt -- looping effects over the painted screens (#369)
+; Each backdrop: line starts a painting; every line under it is one independent effect.
+; Positions are pixels on the 320x240 painting. Format and dev workflow: docs/backdrops.md
+
+backdrop:title
+    ; port wing-tip light on the player's ship
+    BLINK at=66,123 color=ff3030 size=1 on=8 off=52
+    ; warning lights on the tunnel mouth, out of step with each other
+    BLINK at=256,113 color=ff4040 size=1 mode=pulse on=45 off=45
+    BLINK at=302,114 color=ff4040 size=1 mode=pulse on=45 off=45 phase=45
+    ; engine embers
+    SPARK at=58,179 color=a0e0ff,ffffff count=2 every=14 speed=1.1 gravity=0 life=18 dir=120 spread=50
+    SPARK at=111,183 color=a0e0ff,ffffff count=2 every=14 speed=1.1 gravity=0 life=18 dir=120 spread=50 phase=7
+
+backdrop:dock
+    ; hangar floodlight
+    BLINK at=78,67 color=ffc040 size=1 mode=pulse on=70 off=50
+    ; a welder at work on the red ship's hull
+    SPARK at=40,128 color=ffd080,ffffff count=5 every=90 speed=1.2 gravity=0.05 life=22 dir=270 spread=150

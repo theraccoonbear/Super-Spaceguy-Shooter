@@ -9,6 +9,7 @@ Sub GS_TITLE_Update ()
     tt = tt + 0.025
     _DEST backBuffer
     _PUTIMAGE (0, 0)-(scrW - 1, scrH - 1), titleImg, backBuffer
+    BACKDROP_Draw "title", 0, 0, scrW - 1, scrH - 1
     LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
     gstThrobBright = INT(170 + 85 * SIN(tt * 5))
     UI_PromptsCentered "PRESS " + UI_Tok$("P", E3D_ACT_PAUSE) + " TO PLAY", 200, 15, gstThrobBright
