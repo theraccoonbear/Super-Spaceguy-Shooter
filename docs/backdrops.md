@@ -9,7 +9,7 @@ A declarative list, not a script. Each effect line is an independent loop: no wa
 ```
 ; comments start with ;
 backdrop:dock
-    BLINK  at=78,67 color=ffc040 size=2 glow=8 mode=pulse on=60 off=60
+    BLINK  at=78,67 color=ffc040 size=2 glow=8 rise=60 fall=60 hold=0 rest=0
     SPARK  at=50,117 color=ffd080,ffffff count=5 every=113 jitter=50 speed=1.2 gravity=0.05 life=22
 ```
 
@@ -21,8 +21,7 @@ backdrop:dock
 | `color=` | one `rrggbb` | one to four, comma-separated | each spark takes one of them |
 | `size=` | 0-8, default 1 | 1-6, default 1 | BLINK: radius of the lit core. SPARK: how big each spark is (1 is a 2x2 head with a 1 pixel trail; each step adds a pixel to both) |
 | `glow=` | 0-12, default 3 | | pixels of soft glow around the core, drawn as stacked translucent rings; more glow reads brighter |
-| `on=` `off=` | 1-600 / 0-600, default 30 / 30 | | frames lit and frames dark; in `pulse` mode their sum is the period |
-| `mode=` | `hard` (default) or `pulse` | | `pulse` is a sine swell from dark to lit and back |
+| `rise=` `hold=` `fall=` `rest=` | each 0-600, defaults 0 / 30 / 0 / 30 | | the light's envelope in frames: fades up over `rise`, stays full for `hold`, fades down over `fall`, is dark for `rest`. The loop is the sum of the four, at least 1 frame. Fades are eased (half a cosine). `rise=0 fall=0` is a hard blink; `rise=N fall=N hold=0 rest=0` is a smooth pulse of 2N frames |
 | `count=` | | 1-16, default 3 | sparks per burst |
 | `every=` | | 1-3600, default 60 | frames between bursts |
 | `jitter=` | | 0-3599, default 0; below `every` | each burst comes up to this many frames late, a different amount each time (from the frame/effect hash, so the same every run). Bursts are then `every-jitter` to `every+jitter` frames apart; use it with periods that are not multiples of each other so effects never fall into step |
@@ -31,6 +30,20 @@ backdrop:dock
 | `life=` | | 1-600, default 20 | frames before a spark has faded out |
 | `dir=` `spread=` | | 0-360, default 270 / 120 | launch direction in degrees (0 right, 90 down, 270 up) and the fan around it |
 | `phase=` | 0-9999 | 0-9999 | start that many frames into the loop |
+
+### Landing lights
+
+One envelope, three lights, `phase=` stepping each 10 frames behind the last, makes a chase:
+
+```
+    BLINK at=207,166 color=ffffcc size=3 glow=6 rise=10 fall=10 hold=0 rest=40 phase=20
+    BLINK at=241,148 color=ffffcc size=2 glow=3 rise=10 fall=10 hold=0 rest=40 phase=10
+    BLINK at=265,137 color=ffffcc size=1 glow=2 rise=10 fall=10 hold=0 rest=40
+```
+
+Each loop is 60 frames; the lights peak 10 frames apart (the `phase=20` one first), then all stay dark for 40 frames. A plain hard blink is `hold=8 rest=52`. `on=`, `off=` and `mode=` no longer exist and are errors.
+
+## Errors and limits
 
 A problem is reported as `line N: ...`. Unknown effects and keys, bad numbers and colours, positions off the painting, a missing `at=` or `color=` are all errors, and a file with any error draws nothing. The tables are fixed (96 effects, 12 backdrops, 64 sparks alive at once per screen); going over is an error, never a silently dropped line. The spark limit is checked from `count`, `life` and `every - jitter` (the closest two bursts can come), so a file that could overflow the pool does not load.
 

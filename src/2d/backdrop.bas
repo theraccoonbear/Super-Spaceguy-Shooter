@@ -9,12 +9,14 @@
 '
 ' File format (; starts a comment; verbs are case-insensitive, keys are lower case):
 '   backdrop:<name>          the painting the following lines belong to (title emperor dock)
-'       BLINK at=x,y color=rrggbb [size=1] [glow=3] [on=30] [off=30] [mode=hard|pulse] [phase=0]
+'       BLINK at=x,y color=rrggbb [size=1] [glow=3] [rise=0] [hold=30] [fall=0] [rest=30] [phase=0]
 '       SPARK at=x,y color=rrggbb[,rrggbb...] [count=3] [every=60] [speed=0.6] [gravity=0.05]
 '             [life=20] [dir=270] [spread=120] [phase=0] [jitter=0] [size=1]
 ' Positions are pixels on the 320x240 painting. Frames run at 60 per second.
-'   BLINK  a light: hard mode is on for `on` frames then off for `off`; pulse mode is a sine over
-'          the `on`+`off` frames. size is the radius of the lit core in pixels.
+'   BLINK  a light on a looping envelope: it fades up over `rise` frames, stays at full for `hold`,
+'          fades down over `fall`, and is dark for `rest`; the loop is the sum of the four (at
+'          least 1 frame). Fades are eased (half a cosine). rise=0 fall=0 is a hard blink. size is the
+'          radius of the lit core in pixels.
 '   SPARK  every `every` frames, `count` sparks leave the point at `speed` px/frame, spread over
 '          `spread` degrees around `dir` (0 = right, 90 = down, 270 = up), pulled down by
 '          `gravity`, and fade out over `life` frames. Each takes one of the colours.
@@ -41,8 +43,6 @@ Const BD_POOL = 64            ' sparks alive at once
 Const BD_MAX_WORDS = 16
 Const BD_KIND_BLINK = 1
 Const BD_KIND_SPARK = 2
-Const BD_MODE_HARD = 0
-Const BD_MODE_PULSE = 1
 Const BD_PAINT_W = 320
 Const BD_PAINT_H = 240
 
@@ -60,9 +60,10 @@ Dim Shared bdColN(0 To BD_MAX_FX - 1) As Integer
 Dim Shared bdSize(0 To BD_MAX_FX - 1) As Integer
 Dim Shared bdGlow(0 To BD_MAX_FX - 1) As Integer
 Dim Shared bdJitter(0 To BD_MAX_FX - 1) As Long
-Dim Shared bdOn(0 To BD_MAX_FX - 1) As Long
-Dim Shared bdOff(0 To BD_MAX_FX - 1) As Long
-Dim Shared bdMode(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdRise(0 To BD_MAX_FX - 1) As Long
+Dim Shared bdHold(0 To BD_MAX_FX - 1) As Long
+Dim Shared bdFall(0 To BD_MAX_FX - 1) As Long
+Dim Shared bdRest(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdPhase(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdCount(0 To BD_MAX_FX - 1) As Integer
 Dim Shared bdEvery(0 To BD_MAX_FX - 1) As Long
@@ -172,7 +173,7 @@ End Function
 ' The keys each verb takes, space-separated; "" for an unknown verb.
 Function BD_KeysOf$ (bkVerb As String)
     Select Case bkVerb
-        Case "BLINK" : BD_KeysOf$ = "at color size glow on off mode phase"
+        Case "BLINK" : BD_KeysOf$ = "at color size glow rise hold fall rest phase"
         Case "SPARK" : BD_KeysOf$ = "at color count every jitter size speed gravity life dir spread phase"
         Case Else    : BD_KeysOf$ = ""
     End Select
@@ -265,20 +266,15 @@ Sub BD_BuildEffect ()
         bdSize(bfFx) = bfV
         If BD_Opt%("glow", 3, 0, 12, -1, bfV) = 0 Then Exit Sub
         bdGlow(bfFx) = bfV
-        If BD_Opt%("on", 30, 1, 600, -1, bfV) = 0 Then Exit Sub
-        bdOn(bfFx) = bfV
-        If BD_Opt%("off", 30, 0, 600, -1, bfV) = 0 Then Exit Sub
-        bdOff(bfFx) = bfV
-        bdMode(bfFx) = BD_MODE_HARD
-        bfI = BD_KvIdx%("mode")
-        If bfI >= 0 Then
-            Select Case bdKvVal(bfI)
-                Case "hard" : bdMode(bfFx) = BD_MODE_HARD
-                Case "pulse" : bdMode(bfFx) = BD_MODE_PULSE
-                Case Else : BD_LineErr "BLINK mode must be hard or pulse, not '" + bdKvVal(bfI) + "'" : Exit Sub
-            End Select
-        End If
-        If bdMode(bfFx) = BD_MODE_PULSE And bdOn(bfFx) + bdOff(bfFx) < 2 Then BD_LineErr "BLINK mode=pulse needs on + off of 2 or more frames" : Exit Sub
+        If BD_Opt%("rise", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
+        bdRise(bfFx) = bfV
+        If BD_Opt%("hold", 30, 0, 600, -1, bfV) = 0 Then Exit Sub
+        bdHold(bfFx) = bfV
+        If BD_Opt%("fall", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
+        bdFall(bfFx) = bfV
+        If BD_Opt%("rest", 30, 0, 600, -1, bfV) = 0 Then Exit Sub
+        bdRest(bfFx) = bfV
+        If bdRise(bfFx) + bdHold(bfFx) + bdFall(bfFx) + bdRest(bfFx) < 1 Then BD_LineErr "BLINK rise + hold + fall + rest must be at least 1 frame" : Exit Sub
     Else
         If BD_ParseColors%(bfFx, BD_MAX_COL) = 0 Then Exit Sub
         bdKind(bfFx) = BD_KIND_SPARK
@@ -416,18 +412,17 @@ Function BD_Hash! (bhFrame As Long, bhFx As Long, bhSalt As Long)
     BD_Hash! = bhH / 4294967296#
 End Function
 
-' How lit a BLINK is on frame bbFrame: 0..1. Hard mode is all or nothing.
+' How lit a BLINK is on frame bbFrame: 0..1, from its envelope (rise, hold, fall, rest), eased with a half cosine.
 Function BD_BlinkLevel! (bbFx As Integer, bbFrame As Long)
     Dim bbPer As Long, bbP As Long
-    bbPer = bdOn(bbFx) + bdOff(bbFx)
+    bbPer = bdRise(bbFx) + bdHold(bbFx) + bdFall(bbFx) + bdRest(bbFx)
     bbP = (bbFrame + bdPhase(bbFx)) Mod bbPer
-    If bdMode(bbFx) = BD_MODE_PULSE Then
-        BD_BlinkLevel! = 0.5 - 0.5 * Cos(6.2831853 * bbP / bbPer)
-    ElseIf bbP < bdOn(bbFx) Then
-        BD_BlinkLevel! = 1
-    Else
-        BD_BlinkLevel! = 0
-    End If
+    If bbP < bdRise(bbFx) Then BD_BlinkLevel! = 0.5 - 0.5 * Cos(3.14159265 * bbP / bdRise(bbFx)) : Exit Function
+    bbP = bbP - bdRise(bbFx)
+    If bbP < bdHold(bbFx) Then BD_BlinkLevel! = 1 : Exit Function
+    bbP = bbP - bdHold(bbFx)
+    If bbP < bdFall(bbFx) Then BD_BlinkLevel! = 0.5 + 0.5 * Cos(3.14159265 * bbP / bdFall(bbFx)) : Exit Function
+    BD_BlinkLevel! = 0
 End Function
 
 Function BD_SparksLive% ()
