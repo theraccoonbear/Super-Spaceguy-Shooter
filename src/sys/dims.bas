@@ -220,6 +220,7 @@ DIM SHARED settingFullscreen AS INTEGER : settingFullscreen = 1
 DIM SHARED settingNerf AS INTEGER
 DIM SHARED godMode    AS INTEGER
 DIM SHARED tutorialRun AS INTEGER   ' -1 while the isolated tutorial run is playing: no record, cannot be failed (GAME_StartTutorial, cleared by GAME_ResetState and SEQ_RewindToTitle)
+DIM SHARED hudRetX AS SINGLE, hudRetY AS SINGLE   ' where HUD_Draw put the aim reticle this frame (the tutorial outlines it)
 DIM SHARED debugMode  AS INTEGER
 
 ' --- options UI ---
@@ -344,7 +345,7 @@ DIM SHARED spaceWas        AS INTEGER
 DIM SHARED pWas            AS INTEGER  ' title screen's own "start game" key debounce -- see GS_TITLE_Update
 DIM SHARED crawlFFVolSave  AS SINGLE
 DIM SHARED titleEscConfirm AS INTEGER
-DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 5 CANCEL)
+DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 6 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
 DIM SHARED escKWas         AS INTEGER  ' ABORT MISSION dialog: K (remap controls) debounce
 DIM SHARED escConfirm      AS INTEGER
@@ -356,6 +357,7 @@ DIM SHARED camUpWas        AS INTEGER
 DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
+DIM SHARED cliGateTutorial AS INTEGER  ' --gate-tutorial (dev): the first-play tutorial gate stays on under --input-script and --scene
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
 DIM SHARED cliRealtime     AS INTEGER  ' --realtime: keep the 60 fps throttle in scripted runs (recordings)

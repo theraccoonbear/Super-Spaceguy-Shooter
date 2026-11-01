@@ -7,6 +7,7 @@ Sub GS_PLAYING_Update ()
     Dim gspSkipPhysics As Integer
     Dim i As Integer, j As Integer
     Dim gspAstNear As Integer, gspAstI As Integer
+    Dim gspTutState As Integer
     Dim spDmg As Integer
 
     ' ESC confirm dialog: in play and during the planet arrival / cinematic, which it
@@ -14,6 +15,7 @@ Sub GS_PLAYING_Update ()
     IF gameState = GS_PLAYING OR gameState = GS_PLANET OR gameState = GS_CINEMATIC THEN
         SELECT CASE PAUSE_Input%
             CASE PAUSE_QUIT
+                IF tutorialRun THEN TUT_Abandon
                 SEQ_QuitRun
                 planetTimer = 0 : cinematicFade = 0 : shipCinVX = 0 : cinematicCamX = 0
             CASE PAUSE_CONTROLS
@@ -180,7 +182,7 @@ Sub GS_PLAYING_Update ()
                     IF gspAstNear = 0 THEN astForceTarget = -1
                 END IF
             END IF
-            WAVE_Spawn
+            IF tutorialRun = 0 THEN WAVE_Spawn
             IF cliPup <> "" THEN GAME_DevPups
 
             FOR i = 1 TO MAX_BULLETS
@@ -243,6 +245,10 @@ Sub GS_PLAYING_Update ()
             END IF
         END IF
     END IF
+
+    gspTutState = gameState
+    TUT_Frame
+    IF gameState <> gspTutState THEN EXIT SUB   ' the tutorial ended into a New Game or the title: nothing below is for that screen
 
     ' --- render (always runs, even in orbit mode) ---
     PLAYER_CamUpdate
@@ -329,6 +335,7 @@ Sub GS_PLAYING_Update ()
 
     FX_Draw vpMat, scrW, scrH
     HUD_Draw
+    TUT_Draw
 
     IF camF.orbitMode THEN
         _DEST backBuffer
@@ -358,6 +365,7 @@ Sub GS_PLAYING_PupGrab (gpgI As Integer)
     gpgKind = WAVE_PupKind%(powerups(gpgI).meshIdx)
     powerups(gpgI).active = 0
     gpgAmt = PUP_Apply!(gpgKind, levelNum)
+    TUT_NotePickup gpgKind
     gpgN = LTRIM$(STR$(INT(gpgAmt + 0.5)))
     pupPopTimer = 50 : pupPopY = scrH * 0.55
     IF pupOverflowPts > 0 THEN

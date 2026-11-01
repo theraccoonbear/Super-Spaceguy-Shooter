@@ -60,6 +60,8 @@ TESTS=(
   death_telem_test
   run_end_test
   tutorial_run_test
+  tutorial_script_test
+  tutorial_gate_test
   dbg_output_test
   spore_test
   attack_test

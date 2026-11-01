@@ -82,6 +82,7 @@ Function GAME_StartTutorial%
     If SEQ_JumpToLabel%(SEQ_TUTORIAL_LABEL) < 0 Then GAME_StartTutorial% = 0 : Exit Function
     tutorialRun = -1
     SEQ_Advance
+    If TUT_Begin% = 0 Then SEQ_RewindToTitle : GAME_StartTutorial% = 0 : Exit Function
     GAME_StartTutorial% = -1
 End Function
 
@@ -162,6 +163,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --settings-dir <path>  Keep sss_settings.ini in this folder (relative: to the launch folder) instead of the per-user one; --input-script runs use the launch folder"
     CLI_Emit guFH, "  --frames N           Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --realtime             Keep 60 frames per second in --input-script runs (for recordings)"
+    CLI_Emit guFH, "  --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder starts the tutorial at the first New Game)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
     CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"

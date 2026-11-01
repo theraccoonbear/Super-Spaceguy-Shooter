@@ -93,14 +93,33 @@ playingN   -> the first PLAY type=combat|asteroid task in label "levelN"
 bossN      -> the first PLAY type=boss task in label "levelN"
 title      -> the first SEQ_TITLE entry
 emperor    -> the first SEQ_EMPEROR entry
-tutorial   -> the first task of the secret block "tutorial" (SEQ_JumpToLabel%), entered by GAME_StartTutorial, not by SEQ_Advance alone
+tutorial   -> the first task of the secret block "tutorial" (SEQ_JumpToLabel%), entered by GAME_StartTutorial (which also starts the step runner), not by SEQ_Advance alone
 ```
 
 It sets `seqIdx` to one *before* the resolved index and returns the resolved index; the caller (`sss.bas`'s startup block) then calls `SEQ_Advance` once to actually land on it, same as normal flow, just seeded to start somewhere other than the very beginning. For `playingN`/`bossN`, `sss.bas` also pre-seeds `levelNum` by parsing the digits out of the scene name (`playingN` → `levelNum = N - 1`, since `SEQ_Advance`'s `combat`/`asteroid` branch increments it; `bossN` → `levelNum = N`, since the boss branch doesn't increment it) so per-level kill targets and planet indices come out the same as if you'd played through normally.
 
 ### The tutorial run (#240)
 
-`tutorial` is a `secret` block (`tutorial: secret`; today one short combat `PLAY`, then `TITLE`, `NEXT end`, placeholder content). It is entered by a label jump, `SEQ_JumpToLabel%(name)`: `seqIdx` is parked one before the block's first task and `seqJumpTo` set, so the next `SEQ_Advance` lands on it whatever precedes. `GAME_StartTutorial%` (`game.bas`) is the entry routine next to `GAME_NewGame`: `GAME_ResetState`, no `TELEM_SessionStart`, the jump, `tutorialRun = -1`, then `SEQ_Advance`. `--scene tutorial` goes through it (`sss.bas`); a title-menu row will later call the same routine.
+`tutorial` is a `secret` block: one `PLAY type=combat script=tutorial` task, then `TITLE`, `NEXT end`. The task is the whole hand-off: `script=tutorial` names the step script `assets/tutorial.txt` (embedded as `TUTSCRIPT`), and `TUT_Begin%` (`src/state/tutorialplay.bas`) loads it, validates it, and takes over the flight. The combat `trigger=` is not used: the run ends when the script does. The block is entered by a label jump, `SEQ_JumpToLabel%(name)`: `seqIdx` is parked one before the block's first task and `seqJumpTo` set, so the next `SEQ_Advance` lands on it whatever precedes. `GAME_StartTutorial%` (`game.bas`) is the entry routine next to `GAME_NewGame`: `GAME_ResetState`, no `TELEM_SessionStart`, the jump, `tutorialRun = -1`, `SEQ_Advance`, then `TUT_Begin%`. Three things call it: `--scene tutorial` (`sss.bas`), the title command console's TUTORIAL row, and the first-play gate.
+
+**The step runner** (`src/sys/tutorial.bas`; its header has the grammar) runs a linear script one frame at a time and knows nothing about the game: the glue fills a snapshot (`tutIn*`: distance flown, shots, hits, kills, dodged bolts, canisters caught, whatever is in flight, whether the instructor is still speaking) before each `TUT_Tick` and acts on the requests it leaves (`tutOut*`: speak a block, cut the line, spawn something, feed a bolt or canister, flush the world). Script lines:
+
+| Step | Meaning |
+|---|---|
+| `LESSON <key>` | start of a lesson; `<key>` is a gametext block holding its title. The lesson skip jumps to the next one |
+| `SAY <key>` | the instructor speaks gametext block `<key>` (`SPK_Say`) and shows it; the step ends when the speech has finished (the speech clock counts frames, #329) or is skipped. The line stays on screen through the WAITs that follow |
+| `HIGHLIGHT <element>` | outline a HUD element: `sh la fu score hi lives reticle`; `off` clears it |
+| `SPAWN <type> [count=n]` | place objects ahead of the ship now: `ship bolt asteroid shield fuel points` |
+| `STREAM ship [kills=n] [fire]` | keep drones coming (at most two, and no more than the kills still needed) until n have been shot down; `fire` makes them shoot back. `STREAM off` stops it |
+| `WAIT <condition> [arg]` | hold until the player has: `move [dist]`, `camera` (entered camera mode and left it), `shoot [n]`, `hit [n]`, `kills <n>`, `dodge [n]` (enemy bolts that passed without a hit), `pickup shield\|fuel\|points`, `clear` (no asteroid in flight). `dodge` and `pickup` feed a bolt or canister while none is in flight, so a miss never stalls the script |
+
+Nothing advances on a timer: there is no timing step, a WAIT never expires, and a SAY ends on speech or a skip. `TUT_Parse%` collects every error as `line N: message`; `TUT_Validate$` also checks that the script opens with a `LESSON`, that every key is a gametext block, that no spoken line is longer than the two rows of the panel, and that a `WAIT kills` or `WAIT hit` has ships coming from a `STREAM` or `SPAWN` in the same lesson. `tests/tutorial_script_test.bas` runs those checks against the real file and every failure case.
+
+**The lessons** (one flight, about 4 minutes): flying and camera; shooting and aim assist; reading incoming fire and dodging (drones keep coming until 3 are down); the HUD bars and fuel (SH, LA, FU, SCORE, HI, the ship squares; PSC is mentioned, there is no asteroid field to show it); pickups and hazards. Boss attacks are not covered. The narration is the `tut_*` blocks of `assets/gametext.txt`, spoken by the Orientation Unit (a bored, officious training program filling in a form), at the player's narration speed; run `bash tools/bake_speech_dict` after editing it.
+
+**Skipping** (`TUT_SkipTick%`, one frame at a time, frames not seconds): the narration skip key (ENTER; the nova button on a pad) released within 30 frames is a tap and skips the line being spoken; held for 120 frames (2 s) it files a waiver: the instructor speaks the waiver line and the tutorial ends. A press between the two does nothing, and a key still down from the menu that started the tutorial is ignored until it is let go, so leaving by accident is not possible. N (the roll button on a pad) skips to the next lesson; skipping the last one ends the script.
+
+**Ending** (`TUT_Finish`): `settingTutorialDone` is saved (`tutorial_done=1` in `sss_settings.ini`), then `SEQ_RewindToTitle` (which clears `tutorialRun`) and either `GAME_NewGame` (the gate started it, `tutGated`) or the title (a replay). The rewind comes first so the New Game starts from the title waypoint and lands on stage 1's crawl, not on the intro. The pause menu's retreat (`TUT_Abandon`) counts as skipped. `settingTutorialDone` lives in `settingsio.bas`: a settings file with no `tutorial_done` line counts as done, and only a first run, with no file at all, starts at 0. `TUT_GateDue%` decides whether the title's start (`TUT_StartFromTitle`) runs the tutorial first: not done, not scripted (`iscActive`), no `--scene`, and a session that can save the answer. Scripted and `--scene` runs bypass the gate, so `tests/playthrough/expected.txt` is unchanged.
 
 `tutorialRun` (`dims.bas`) is the run flag. It is cleared by `GAME_ResetState` (every New Game) and by `SEQ_RewindToTitle` (pause quit, finishing, the game-over card, ESC on the intro; every way back to the title). While it is set:
 
@@ -108,9 +127,10 @@ It sets `seqIdx` to one *before* the resolved index and returns the resolved ind
 - `TELEM_Row`, `TELEM_SessionStart` and `TELEM_SessionEnd` return at once: no CSV row, no queued row, no score POST.
 - Every `highScore` update (`playing.bas` at the death and game-over steps, `DOCK_Strand`) is skipped.
 - `PLAYER_TutorialGuard` (each frame, `playing.bas`) and `PLAYER_TakeDamage` keep shields and fuel full and clear `fuelStranded`; `SUP_Stranded%` is never true. `--god` (`godMode`) is separate and unchanged; it also refills the laser, the tutorial protection does not.
+- `WAVE_Spawn` does not run: the script places everything (`TUT_Place*`), so the lessons are the same every time.
 - The difficulty is the player's chosen one (`DLV_Begin` reads `settingDifficulty`, which nothing here writes).
 
-The block has no `ARRIVE` or `DOCK` (`planetNames` is `1 TO PLANET_COUNT`). Its combat `PLAY` increments `levelNum` to 1, so waves, fire scale and fuel prices read the stage-1 rows; the next `GAME_ResetState` sets it back to 0. `tests/tutorial_run_test.bas` covers the isolation.
+The block has no `ARRIVE` or `DOCK` (`planetNames` is `1 TO PLANET_COUNT`). Its combat `PLAY` increments `levelNum` to 1, so fire scale and fuel prices read the stage-1 rows; the next `GAME_ResetState` sets it back to 0. `tests/tutorial_run_test.bas` covers the isolation and the gated hand-over to a normal run; `tests/tutorial/run.sh` plays the whole tutorial from a script.
 
 ## How to add a new task type
 
@@ -129,11 +149,13 @@ The block has no `ARRIVE` or `DOCK` (`planetNames` is `1 TO PLANET_COUNT`). Its 
 
 ## Testing in isolation
 
-Four test files cover this thoroughly with stubbed game state, no full game boot required:
+These test files cover this thoroughly with stubbed game state, no full game boot required:
 
 ```bash
 tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test          # boot flow, NewGame, ESC-at-emperor regressions, highScore
 tools/buildqb tests/tutorial_run_test.bas      && builds/tutorial_run_test      # the tutorial run: no record, cannot be failed (#240)
+tools/buildqb tests/tutorial_script_test.bas   && builds/tutorial_script_test   # the step runner and tutorial.txt: parser, validation, a simulated pilot, the skip key (#240)
+tools/buildqb tests/tutorial_gate_test.bas     && builds/tutorial_gate_test     # the first-play gate and tutorial_done in the settings file (#240)
 tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test       # parser, SEQ_GetKV$, SEQ_JumpToScene% valid/invalid, SEQ_Advance dispatch per task type
 tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test  # --scene playingN -> correct planet/stage index for every level
 tools/dev test                                                      # (runs seq_graph_test, among all tests) shipped file validates (no dangling NEXT, dead end, unreachable block, overflow); each failure detected; Advance/NextLeg follow NEXT; secret blocks

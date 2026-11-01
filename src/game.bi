@@ -21,6 +21,7 @@
 '$INCLUDE:'gameplay/behavior.bas'
 '$INCLUDE:'2d/font.bas'
 '$INCLUDE:'sys/gametext.bas'
+'$INCLUDE:'sys/tutorial.bas'
 '$INCLUDE:'2d/crawllayout.bas'
 '$INCLUDE:'2d/crawl.bas'
 '$INCLUDE:'2d/about.bas'
@@ -58,3 +59,5 @@
 '$INCLUDE:'sys/telemetry.bas'
 '$INCLUDE:'sys/lbrd.bas'
 '$INCLUDE:'2d/crawlbrowse.bas'
+
+'$INCLUDE:'state/tutorialplay.bas'

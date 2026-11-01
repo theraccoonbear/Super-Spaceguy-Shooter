@@ -1,0 +1,14 @@
+# Scripted run of the first-play gate (tests/tutorial/run.sh gated, #240). --gate-tutorial keeps the
+# gate on under --scene and --input-script, so the title's start (P, then P to confirm LAUNCH NOW?)
+# on this fresh launch folder starts the tutorial, not stage 1. N skips a lesson every 40 frames:
+# the gate and the hand-over are under test here, not the lessons. When the tutorial ends it flows
+# into a normal New Game: stage 1's crawl, skipped, then stage 1 itself.
+#
+#! seed 1
+#! args --gate-tutorial --scene title
+#! frames 1500
+#
+@GS_TITLE#1 +0 P
+@GS_TITLE#1 +5 P
+@label:tutorial +30 1 every 40 N
+@GS_CRAWL +60 FIRE ESC

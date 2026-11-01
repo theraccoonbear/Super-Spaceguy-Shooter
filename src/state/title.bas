@@ -21,28 +21,31 @@ Sub GS_TITLE_Update ()
     UI_Prompts UI_Tok$("ESC", E3D_ACT_CAMERA) + "  OPTIONS", 2, scrH - FONT_CHAR_H, 8, 255
     FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
     IF titleEscConfirm THEN
-        Dim gstKX As Integer, gstSelY As Integer
-        UI_DrawPanel scrW\2 - 76, scrH\2 - 72, scrW\2 + 76, scrH\2 + 66, "COMMAND CONSOLE"
-        gstSelY = scrH\2 - 46 + titleConSel * 18
+        Dim gstKX As Integer, gstSelY As Integer, gstBY As Integer
+        gstBY = scrH\2 - 9   ' the console grew a row: it moves up half of it, clear of PRESS P TO PLAY
+        UI_DrawPanel scrW\2 - 76, gstBY - 72, scrW\2 + 76, gstBY + 84, "COMMAND CONSOLE"
+        gstSelY = gstBY - 46 + titleConSel * 18
         UI_MenuHighlight scrW\2 - 66, gstSelY - 3, scrW\2 + 66, gstSelY + 11
         ' labels, then (keyboard) each hotkey letter overwritten in bright; the pad has only its cancel button
         gstKX = scrW\2 - 44
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",       gstKX, scrH\2 - 46, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "CONTROLS",    gstKX, scrH\2 - 28, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "SETTINGS",    gstKX, scrH\2 - 10, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "LEADERBOARD", gstKX, scrH\2 +  8, 255
-        FONT_PrintAlpha fontPalette(9),  backBuffer, "QUIT GAME",   gstKX, scrH\2 + 26, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",       gstKX, gstBY - 46, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "CONTROLS",    gstKX, gstBY - 28, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "SETTINGS",    gstKX, gstBY - 10, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "LEADERBOARD", gstKX, gstBY +  8, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "TUTORIAL",    gstKX, gstBY + 26, 255
+        FONT_PrintAlpha fontPalette(9),  backBuffer, "QUIT GAME",   gstKX, gstBY + 44, 255
         IF INP_LastDevice% = INP_DEV_PAD THEN
-            UI_PromptsAt UI_Tok$("", E3D_ACT_BACK) + " CANCEL", INP_DEV_PAD, gstKX, scrH\2 + 44, 9, 255, 0
+            UI_PromptsAt UI_Tok$("", E3D_ACT_BACK) + " CANCEL", INP_DEV_PAD, gstKX, gstBY + 62, 9, 255, 0
         ELSE
-            FONT_PrintAlpha fontPalette(15), backBuffer, "A",            gstKX, scrH\2 - 46, 255
-            FONT_PrintAlpha fontPalette(15), backBuffer, "C",            gstKX, scrH\2 - 28, 255
-            FONT_PrintAlpha fontPalette(15), backBuffer, "S",            gstKX, scrH\2 - 10, 255
-            FONT_PrintAlpha fontPalette(15), backBuffer, "L",            gstKX, scrH\2 +  8, 255
-            FONT_PrintAlpha fontPalette(15), backBuffer, "Q",            gstKX, scrH\2 + 26, 255
-            FONT_PrintAlpha fontPalette(9),  backBuffer, "N/ESC CANCEL", gstKX, scrH\2 + 44, 255
-            FONT_PrintAlpha fontPalette(15), backBuffer, "N",            gstKX, scrH\2 + 44, 255
-            FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",          gstKX + 2 * FONT_CHAR_W, scrH\2 + 44, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "A",            gstKX, gstBY - 46, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "C",            gstKX, gstBY - 28, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "S",            gstKX, gstBY - 10, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "L",            gstKX, gstBY +  8, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "T",            gstKX, gstBY + 26, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "Q",            gstKX, gstBY + 44, 255
+            FONT_PrintAlpha fontPalette(9),  backBuffer, "N/ESC CANCEL", gstKX, gstBY + 62, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "N",            gstKX, gstBY + 62, 255
+            FONT_PrintAlpha fontPalette(15), backBuffer, "ESC",          gstKX + 2 * FONT_CHAR_W, gstBY + 62, 255
         END IF
     END IF
     IF titleEscConfirm = 0 THEN HUD_RunTally
@@ -66,15 +69,16 @@ Sub GS_TITLE_Update ()
     escWas = held(E3D_KEY_ESCAPE)
     IF titleEscConfirm THEN
         Dim gstPick As Integer
-        gstPick = MENU_Input%(titleConSel, 6)
+        gstPick = MENU_Input%(titleConSel, 7)
         IF KEY_Down%(65) OR KEY_Down%(97) THEN gstPick = 0
         IF KEY_Down%(67) OR KEY_Down%(99) THEN gstPick = 1
         IF KEY_Down%(83) OR KEY_Down%(115) THEN gstPick = 2
         IF KEY_Down%(76) OR KEY_Down%(108) THEN gstPick = 3
-        IF KEY_Down%(81) OR KEY_Down%(113) THEN gstPick = 4
-        IF KEY_Down%(78) OR KEY_Down%(110) OR KEY_Pressed%(E3D_KEY_PAD_B) THEN gstPick = 5
-        IF gstPick >= 0 AND gstPick <= 4 THEN uiSfx = SND_UI_OK
-        IF gstPick = 5 THEN uiSfx = SND_UI_BACK
+        IF KEY_Down%(84) OR KEY_Down%(116) THEN gstPick = 4
+        IF KEY_Down%(81) OR KEY_Down%(113) THEN gstPick = 5
+        IF KEY_Down%(78) OR KEY_Down%(110) OR KEY_Pressed%(E3D_KEY_PAD_B) THEN gstPick = 6
+        IF gstPick >= 0 AND gstPick <= 5 THEN uiSfx = SND_UI_OK
+        IF gstPick = 6 THEN uiSfx = SND_UI_BACK
         SELECT CASE gstPick
             CASE 0
                 ABOUT_Prep GS_TITLE : gameState = GS_ABOUT : titleEscConfirm = 0
@@ -86,8 +90,11 @@ Sub GS_TITLE_Update ()
             CASE 3
                 gameState = GS_LEADERBOARD : titleEscConfirm = 0
             CASE 4
-                GAME_Quit
+                titleEscConfirm = 0 : tutGated = 0
+                IF GAME_StartTutorial% = 0 THEN GAME_Usage(seqLastError)
             CASE 5
+                GAME_Quit
+            CASE 6
                 titleEscConfirm = 0
         END SELECT
         ' keep the start-game debounce current, so a P or Start held while the console closes doesn't start a game
@@ -101,5 +108,5 @@ Sub GS_TITLE_Update ()
     ' start a new game from the title screen. P is not bound to anything else.
     ' Gamepad Start for the same reason (A is the fire button).
     ' The first start press opens LAUNCH NOW? (launchlogic.bas); nothing starts a run until it is confirmed.
-    IF LAUNCH_Input%(held(E3D_KEY_P) OR held(E3D_KEY_PAD_START)) = LAUNCH_YES THEN GAME_NewGame
+    IF LAUNCH_Input%(held(E3D_KEY_P) OR held(E3D_KEY_PAD_START)) = LAUNCH_YES THEN TUT_StartFromTitle
 End Sub

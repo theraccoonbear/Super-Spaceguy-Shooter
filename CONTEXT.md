@@ -46,6 +46,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | *(main loop)* | `sss.bas` | Entry point, CLI parsing, main game loop, HTTP_Pump dispatch |
 | `SEQ_` | `src/sys/sequence.bas` | Data-driven scene sequencer (`assets/sequence.txt`); see `src/sys/README-sequence.md` |
 | `SETTINGS_` | `src/sys/settingsio.bas`, `src/sys/settingsprobe.bas` | Persistent INI settings (volumes, consent, callsign) in the per-user dir (#284); the options screen is `settings.bas` |
+| `TUT_` | `src/sys/tutorial.bas`, `src/state/tutorialplay.bas` | The tutorial: a step runner for the linear script `assets/tutorial.txt` (grammar in the file's header; no game dependencies, so tests drive it with plain numbers) and its link to the game (spawns, speech, HUD outline, the instructor panel, the skip keys, ending in a New Game or the title); see `src/sys/README-sequence.md` |
 | `CFG_` | `src/sys/config.bas` | The one key=value parser for every embedded .ini (gamevalues.ini and `assets/config/*.ini`) |
 | `DBG_` | `src/sys/debug.bas` | Debug HUD overlay and diagnostic console output (`--debug`) |
 | `HTTP_` | `src/sys/http.bas` | Non-blocking HTTP queue via libcurl; see `src/sys/README-http.md` |
@@ -190,7 +191,8 @@ builds/sss --version                      # must print version and exit 0
 # Jump straight to a named scene (fastest manual test)
 builds/sss --scene boss3                  # stage 3 boss fight
 builds/sss --scene playing2               # stage 2 combat
-builds/sss --scene tutorial               # the isolated tutorial run: no record, cannot be failed (#240)
+builds/sss --scene tutorial               # the tutorial: one guided flight, no record, cannot be failed (#240)
+tests/tutorial/run.sh                      # scripted run of the whole tutorial (in the container: tools/dev shell tests/tutorial/run.sh) (also: waiver, gated)
 
 # Full test suite (same as CI)
 tools/test                                # native, uses the qb64pe on PATH

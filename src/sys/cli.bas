@@ -54,6 +54,7 @@ Sub CLI_Parse()
     settingNerf = (InStr(cliLine, "--nerf")  > 0)
     cliCrawls   = (InStr(cliLine, "--crawls") > 0)
     cliRealtime = (InStr(cliLine, "--realtime") > 0)
+    cliGateTutorial = (InStr(cliLine, "--gate-tutorial") > 0)
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then

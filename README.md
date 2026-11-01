@@ -55,6 +55,9 @@ Open the pause dialog (ESC / Start) and press **C**, or pick CONTROLS in the tit
 
 Every key and button, remapping and the dock controls are in [docs/controls.md](docs/controls.md).
 
+The first New Game on a fresh install starts a short tutorial (the Orientation Unit walks you through flying, shooting, incoming fire, the HUD bars and pickups; nothing is recorded and you cannot fail). Skip a line with ENTER, a lesson with N, or hold ENTER for 2 seconds to leave. TUTORIAL in the command console replays it.
+
+
 ## Building from source
 
 You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) on your `PATH` as `qb64pe`. Nothing else: the build and the tests need no Node, npm or Python.

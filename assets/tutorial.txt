@@ -1,0 +1,75 @@
+; tutorial.txt -- the pilot orientation, one continuous flight (#240)
+; Run by the step runner in src/sys/tutorial.bas; sequence.txt's tutorial block hands off to
+; it with script=tutorial. Grammar and checks: see that file's header. Narration lives in
+; gametext.txt under the keys used here (tut_*). Nothing advances on a timer: a SAY ends when
+; the line has been spoken or skipped, a WAIT ends when the player has done the thing.
+
+LESSON tut_lesson_1_flying_camera
+SAY tut_01_welcome_form
+SAY tut_02_unit_intro
+SAY tut_03_flying_move_ship
+WAIT move 12
+SAY tut_04_flying_camera_mode
+WAIT camera
+SAY tut_05_flying_camera_done
+
+LESSON tut_lesson_2_shooting_aim_assist
+HIGHLIGHT reticle
+SAY tut_06_shooting_hold_fire
+WAIT shoot 6
+HIGHLIGHT off
+STREAM ship kills=3
+SAY tut_07_shooting_first_drone
+SAY tut_08_shooting_aim_assist
+WAIT kills 1
+SAY tut_09_shooting_drone_down
+SAY tut_10_shooting_other_models
+
+LESSON tut_lesson_3_incoming_fire
+STREAM ship kills=3 fire
+SAY tut_11_fire_bolts_grow
+SAY tut_12_fire_impact_rings
+SPAWN bolt
+SAY tut_13_fire_dodge
+WAIT dodge 2
+SAY tut_14_fire_evasion_logged
+SAY tut_15_fire_shoot_remaining
+WAIT kills 3
+SAY tut_16_fire_three_down
+
+LESSON tut_lesson_4_bars_fuel
+HIGHLIGHT sh
+SAY tut_17_hud_shield_bar
+SAY tut_18_hud_shield_zero
+HIGHLIGHT la
+SAY tut_19_hud_laser_bar
+SAY tut_20_hud_laser_fire_few
+WAIT shoot 8
+HIGHLIGHT fu
+SAY tut_21_hud_fuel_bar
+SAY tut_22_hud_fuel_full_decree
+HIGHLIGHT score
+SAY tut_23_hud_score
+HIGHLIGHT hi
+SAY tut_24_hud_hi_score
+HIGHLIGHT lives
+SAY tut_25_hud_ship_squares
+HIGHLIGHT off
+SAY tut_26_hud_psc_readout
+
+LESSON tut_lesson_5_pickups_hazards
+SPAWN fuel
+SAY tut_27_pickups_fuel_canister
+WAIT pickup fuel
+SAY tut_28_pickups_shield_canister
+SPAWN shield
+WAIT pickup shield
+SAY tut_29_pickups_points_canister
+SPAWN points
+WAIT pickup points
+SAY tut_30_hazards_asteroid_intro
+SPAWN asteroid
+SAY tut_31_hazards_cannot_shoot
+WAIT clear
+SAY tut_32_hazards_cleared
+SAY tut_33_closing_complete
