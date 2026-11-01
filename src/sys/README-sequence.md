@@ -2,7 +2,7 @@
 
 ## What problem it solves
 
-The game's entire flow (intro crawl, cutscene cards, title screen, six combat/boss/asteroid stages, outro) is a graph of named blocks, each naming the block that follows it, defined in a plain-text data file (`assets/sequence.txt`) rather than hardcoded as a state machine in QBasic. Adding, reordering, or rebalancing stages is a data edit, not a code change, and `--scene <name>` (see the [root README](../../README.md#cli-options)) can jump straight to any waypoint for testing without playing through everything before it.
+The game's entire flow (intro crawl, cutscene cards, title screen, six combat/boss/asteroid stages, outro) is a graph of named blocks, each naming the block that follows it, defined in a plain-text data file (`assets/sequence.txt`) rather than hardcoded as a state machine in QBasic. Adding, reordering, or rebalancing stages is a data edit, not a code change, and `--scene <name>` (see the [root README](../../docs/cli.md)) can jump straight to any waypoint for testing without playing through everything before it.
 
 ## `sequence.txt` format
 

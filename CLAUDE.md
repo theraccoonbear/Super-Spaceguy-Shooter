@@ -11,7 +11,7 @@
 - Always do a test build after any code change. Fix all errors before reporting back.
 - Build command: from the repo root, run `./tools/buildqb sss.bas`  (script auto-creates `qb64pe-dir/assets → repo/assets` symlink so `$EMBED:'assets/...'` resolves correctly from QB64-PE's binary dir)
 - After building, always smoke-test: run `builds/sss --version` and confirm it prints the version and exits cleanly. This catches launch crashes without needing a display.
-- No native QB64-PE? `tools/dev build` / `tools/dev test` run the same build, smoke test, and full suite in a Podman/Docker container (see README "Building in a container").
+- No native QB64-PE? `tools/dev build` / `tools/dev test` run the same build, smoke test, and full suite in a Podman/Docker container (see [`docs/container.md`](docs/container.md)).
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
@@ -49,9 +49,9 @@
    - **Adding a test:** add its name to `TESTS` in `.github/scripts/qb64test.sh` and make it print `=== <name> ===` first. The runner rejects a binary that doesn't print its own banner, which is how it catches parallel-build mix-ups.
    - **Never run two native QB64-PE builds at once on one install** (e.g. two agents, or `tools/buildqb` in two terminals). On Linux and macOS qb64pe claims its temp folder without a lock, so concurrent compiles can silently produce each other's binaries (#239). `qb64test.sh` gives each worker its own QB64-PE copy; parallel agents should build through `tools/dev`, which runs each build in its own container.
 4. **Render tests**: `tools/dev render` (or `tests/render/run.sh` natively on Linux). It replays the seeded scenes in `tests/render/scenes/` and compares their screenshots with the goldens in `tests/render/golden/`; CI runs it on the Linux job.
-   - **Golden changes are deliberate.** If your change is meant to alter what's on screen, re-bless with `tools/dev render --update`, look at every changed golden PNG before committing it, and list the changed goldens and why in the PR. If a golden fails and you didn't mean to change rendering, fix the code, never the golden. Bless from the container so goldens match CI. See README "Render tests".
+   - **Golden changes are deliberate.** If your change is meant to alter what's on screen, re-bless with `tools/dev render --update`, look at every changed golden PNG before committing it, and list the changed goldens and why in the PR. If a golden fails and you didn't mean to change rendering, fix the code, never the golden. Bless from the container so goldens match CI. See [`docs/testing.md`](docs/testing.md) "Render tests".
 5. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
-6. **Full playthrough**: runs in CI as its own non-blocking job (`playthrough`); it doesn't gate PRs, a failure shows as its own red check. Don't run it locally before committing. Run it locally (`tools/dev build && tools/dev shell tests/playthrough/run.sh`, needs an empty `assets/.env`) only to debug a playthrough failure. If the game flow changes on purpose (`assets/sequence.txt`, game states, stages, bosses, crawls, input, the boot screens), update `tests/playthrough/expected.txt` (see README "Testing").
+6. **Full playthrough**: runs in CI as its own non-blocking job (`playthrough`); it doesn't gate PRs, a failure shows as its own red check. Don't run it locally before committing. Run it locally (`tools/dev build && tools/dev shell tests/playthrough/run.sh`, needs an empty `assets/.env`) only to debug a playthrough failure. If the game flow changes on purpose (`assets/sequence.txt`, game states, stages, bosses, crawls, input, the boot screens), update `tests/playthrough/expected.txt` (see [`docs/testing.md`](docs/testing.md)).
 
 > Adding a new `$INCLUDE` to sequence.bas, dims.bas, or any file that test stubs replicate
 > means updating every test file that declares shared vars. Grep for the variable name in
