@@ -19,6 +19,10 @@ concurrency:
 env:
   # Pinned to match local dev (CLAUDE.md), tools/container and determinism.yml. Bump deliberately, all together.
   QB64PE_VERSION: v4.5.0
+  # Lowest macOS the binary and the QB64-PE objects it links are built to run on. clang reads this
+  # variable, so it covers the compiler build, libqb and the game; without it the runner's SDK
+  # default (26.0) becomes the binary's minimum OS (#352). Changing it needs a new cache suffix.
+  MACOSX_DEPLOYMENT_TARGET: "12.0"
 
 jobs:
   # Which halves of CI this change needs (#341). game: everything but server/ and docs;
@@ -28,7 +32,7 @@ jobs:
   # tags, dispatch).
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       game: ${{ steps.filter.outputs.game }}
       server: ${{ steps.filter.outputs.server }}
@@ -82,7 +86,7 @@ jobs:
   dict-check:
     needs: changes
     if: needs.changes.outputs.game == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Regenerate speech dict and check for missing pronunciations
@@ -105,7 +109,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             name: Test Linux
           - os: macos-latest
             name: Test macOS
@@ -226,6 +230,11 @@ jobs:
         shell: bash
         run: bash .github/scripts/glibc_floor_check.sh "${{ matrix.artifact-path }}"
 
+      - name: Check the macOS binary's minimum OS version
+        if: runner.os == 'macOS'
+        shell: bash
+        run: bash .github/scripts/macos_minos_check.sh "${{ matrix.artifact-path }}" "$MACOSX_DEPLOYMENT_TARGET"
+
       - name: Dump compile log on failure
         if: failure()
         shell: bash
@@ -256,7 +265,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.game == 'true'
     name: Build Linux dev binary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -308,7 +317,7 @@ jobs:
   playthrough:
     needs: build-dev
     name: Playthrough smoke test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -390,7 +399,7 @@ jobs:
   render:
     needs: build-dev
     name: Render tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -431,7 +440,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.server == 'true'
     name: Server tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -454,7 +463,7 @@ jobs:
   deploy-server:
     name: Deploy server
     needs: server
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     concurrency:
       group: deploy-server
@@ -520,7 +529,7 @@ jobs:
     # playthrough runs alongside but doesn't gate PRs; a failure shows as its own red check.
     # A job the change filter skipped on purpose counts as passed; any other result fails.
     needs: [changes, dict-check, test, build, build-dev, release-smoke, render, server]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always()
     steps:
       - name: Require all jobs to succeed
@@ -552,7 +561,7 @@ jobs:
   # render or server check on a tag blocks the release.
   release:
     needs: [gate]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
     # The repo's default GITHUB_TOKEN is read-only; gh release create needs write.
     permissions:

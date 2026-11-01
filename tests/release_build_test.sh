@@ -90,6 +90,15 @@ if [ "$(uname -s)" = Linux ]; then
     fi
 fi
 
+# Release builds link libstdc++ and libgcc statically (#352), so the player needs no matching runtime
+if [ "$(uname -s)" = Linux ]; then
+    if readelf -d "$BIN" | grep NEEDED | grep -Eq 'libstdc\+\+|libgcc_s'; then
+        fail "binary needs libstdc++ or libgcc_s at run time"
+    else
+        echo "ok:   libstdc++ and libgcc_s not needed"
+    fi
+fi
+
 if [ "$fails" -ne 0 ]; then
     echo "release_build_test: $fails check(s) failed"
     exit 1

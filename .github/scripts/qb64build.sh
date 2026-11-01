@@ -122,6 +122,10 @@ case "$(uname -s)" in
     if [ "$(uname -s)" = Linux ]; then
       CURL_STUB_DIR=$(mktemp -d)
       CURL_LINK_FLAGS=$("$REPODIR/tools/curl-link-stub" "$CURL_STUB_DIR")
+      # Release only: the binary carries libstdc++/libgcc itself, so it needs no matching runtime on the player's distro (#352)
+      if [ "${SSS_RELEASE:-}" = 1 ]; then
+        CURL_LINK_FLAGS="$CURL_LINK_FLAGS -static-libstdc++ -static-libgcc -Wl,--as-needed"
+      fi
       LINK_FLAGS=("-f:ExtraLinkerFlags=$CURL_LINK_FLAGS")
     fi
     if command -v xvfb-run &>/dev/null; then
