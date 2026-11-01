@@ -1,0 +1,36 @@
+; backdrops.txt -- looping effects over the painted screens (#369)
+; Each backdrop: line starts a painting; every line under it is one independent effect.
+; Positions are pixels on the 320x240 painting. Format and dev workflow: docs/backdrops.md
+
+backdrop:title
+    ; wing-tip lights on the player's ship
+    BLINK at=66,123 color=ff3030 size=1 hold=8 rest=52
+    BLINK at=178,155 color=ff3030 size=1 hold=8 rest=52
+    BLINK at=16,157 color=7777da size=3 glow=4 rise=20 fall=20
+
+    ; enemy ships
+    BLINK at=158,104 color=ff3030 size=1 hold=8 rest=52 phase=30
+    BLINK at=205,108 color=ff3030 size=1 hold=8 rest=52 phase=20
+    BLINK at=238,121 color=ff3030 size=1 hold=8 rest=52 phase=20
+
+    ; "landing lights"
+    BLINK at=207,166 color=ffffcc size=3 glow=6 rise=10 fall=10 rest=40 phase=20
+    BLINK at=241,148 color=ffffcc size=2 glow=3 rise=10 fall=10 rest=40 phase=10
+    BLINK at=265,137 color=ffffcc size=1 glow=2 rise=10 fall=10 rest=40
+
+
+    ; warning lights on the tunnel mouth, out of step with each other
+    BLINK at=256,113 color=ff4040 size=4 rise=45 fall=45
+    BLINK at=302,114 color=ff4040 size=4 rise=45 fall=45 phase=45
+
+    ; engine embers
+    SPARK at=58,179 color=ffffff,c0f0ff count=5 every=6 speed=1.2 gravity=0 life=18 dir=120 spread=60 size=3
+    SPARK at=120,187 color=ffffff,c0f0ff count=5 every=6 speed=1.2 gravity=0 life=18 dir=120 spread=60 size=3 phase=3
+
+backdrop:dock
+    ; hangar floodlight, breathing over two seconds
+    BLINK at=78,67 color=ffc040 size=2 glow=8 rise=60 fall=60
+    ; a crew at work on the red ship: three welds at different points, each on its own uneven beat
+    SPARK at=19,105 color=ffd080,ffffff count=4 every=79 jitter=40 speed=1.2 gravity=0.05 life=20 dir=270 spread=150
+    SPARK at=50,117 color=ffd080,ffffff count=5 every=113 jitter=50 speed=1.2 gravity=0.05 life=22 dir=270 spread=150 phase=31
+    SPARK at=31,147 color=ffe0a0,ffffff count=4 every=151 jitter=60 speed=1.0 gravity=0.05 life=20 dir=270 spread=150 phase=67

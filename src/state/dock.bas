@@ -110,6 +110,7 @@ Sub DOCK_Draw
     _Dest backBuffer
     If dockBgImg < -1 Then
         _PutImage (0, 0)-(scrW - 1, scrH - 1), dockBgImg, backBuffer
+        BACKDROP_Draw "dock", 0, 0, scrW - 1, scrH - 1
     Else
         Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 12), BF
     End If

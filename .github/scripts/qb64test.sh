@@ -62,6 +62,7 @@ TESTS=(
   tutorial_run_test
   tutorial_script_test
   tutorial_gate_test
+  backdrop_test
   dbg_output_test
   spore_test
   attack_test
