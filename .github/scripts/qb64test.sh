@@ -43,30 +43,10 @@ if [ ! -x "$QB64" ]; then
   exit 1
 fi
 
-# The mnv tests include src/gameplay/spline_path_gen.bi, which is generated (not
-# committed). Regenerate it as tools/buildqb sss.bas does when it's missing or older
-# than its inputs, so a fresh checkout can run the suite without a game build (#254).
-SPLINE_GEN="$REPODIR/src/gameplay/spline_path_gen.bi"
-SPLINE_INPUTS=(math/formula.expr math/package.json math/package-lock.json tools/emit-spline.js)
-if [ ! -f "$SPLINE_GEN" ] || [ -n "$(cd "$REPODIR" && find "${SPLINE_INPUTS[@]}" -newer "$SPLINE_GEN" -print -quit)" ]; then
-  echo "==> Generating spline math from DSL (spline_path_gen.bi missing or stale)..."
-  for tool in node npm; do
-    if ! command -v "$tool" > /dev/null 2>&1; then
-      echo "ERROR: $tool not found, and src/gameplay/spline_path_gen.bi needs regenerating."
-      echo "       Install Node.js, or run the suite in the container: tools/dev test"
-      exit 1
-    fi
-  done
-  (cd "$REPODIR/math" && npm install --prefer-offline --silent)
-  (cd "$REPODIR" && node tools/emit-spline.js)
-fi
-
 # Longest-running first, so it isn't the last thing left. http_queue_test runs on its
 # own at the end (it needs the mock server on a fixed port).
 TESTS=(
   crawl_step_test
-  mnv_transition_test
-  mnv_conformance_test
   crawl_plan_test
   seq_dispatch_test
   seq_trace_test
@@ -83,7 +63,6 @@ TESTS=(
   tutorial_script_test
   tutorial_gate_test
   dbg_output_test
-  mnv_load_test
   spore_test
   attack_test
   inputscript_test
@@ -319,7 +298,13 @@ run_http_test() {
     return 0
   fi
 
-  echo "    Starting HTTP mock server..."
+  echo "    Building and starting HTTP mock server..."
+  local mock_bin
+  if ! mock_bin="$(build_test "$(cat "$WORK/qbdir1")" "$REPODIR/tools/http_mock_server.bas" "$WORK/http_mock_server")"; then
+    cat "$(cat "$WORK/qbdir1")"/internal/temp*/compilelog.txt 2> /dev/null || true
+    echo "FAIL mock build" > "$WORK/$name.result"
+    return 0
+  fi
   # Use a fixed port and poll for reachability via curl instead of reading a
   # printed port back from redirected stdout -- that read was silently never
   # satisfied on macOS CI (untested there before this branch; no diagnosis
@@ -327,7 +312,7 @@ run_http_test() {
   local mock_port=18752
   local errfile
   errfile="$(mktemp)"
-  node "$REPODIR/tools/http_mock_server" --port "$mock_port" > /dev/null 2> "$errfile" &
+  "$mock_bin" --port "$mock_port" --max-secs 300 > /dev/null 2> "$errfile" &
   local mock_pid=$!
   local ready=0
   for i in $(seq 1 150); do

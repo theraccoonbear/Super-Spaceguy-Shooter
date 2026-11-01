@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # http_queue_test -- start mock server, build and run the HTTP queue integration test
 # Usage: tools/http_queue_test
-# No arguments needed; starts its own mock server on a free localhost port.
+# No arguments needed; builds and starts its own mock server on a free localhost port.
 
 set -euo pipefail
 
@@ -15,11 +15,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# --- start mock server ---
+# --- build and start mock server ---
+echo "==> Building tools/http_mock_server.bas..."
+"$REPODIR/tools/buildqb" tools/http_mock_server.bas
 echo "==> Starting HTTP mock server..."
 # Read the port it prints to stdout; use a temp file to avoid blocking pipe
 PORTFILE="$(mktemp)"
-node "$REPODIR/tools/http_mock_server" --port 0 > "$PORTFILE" &
+"$REPODIR/builds/http_mock_server" --port 0 --max-secs 300 > "$PORTFILE" &
 MOCK_PID=$!
 
 # Wait for the server to print its port (up to 5s)

@@ -378,17 +378,14 @@ DIM SHARED unCursorPos     AS INTEGER  ' raw-string cursor position (0 = before 
 DIM SHARED unScrollOff     AS INTEGER  ' raw-string scroll offset for input box display
 DIM SHARED unBlinkN        AS LONG     ' frames since the last edit; drives the input-box cursor blink
 
-' --- boss phase tickables (populated by SEQ_Advance from sequence.txt mus=/speech=/maneuver=/attack=/seek= CSV) ---
+' --- boss phase tickables (populated by SEQ_Advance from sequence.txt mus=/speech=/attack=/seek= CSV) ---
 DIM SHARED bossMusList$(0 To 7)
 DIM SHARED bossMusCnt        AS INTEGER
 DIM SHARED bossSpeechList$(0 To 7)
 DIM SHARED bossSpeechCnt     AS INTEGER
-DIM SHARED bossManeuverList$(0 To 7)
-DIM SHARED bossManeuverCnt   AS INTEGER
 DIM SHARED bossAttackList$(0 To 7)       ' attack= pool (#26): laser / spore / cut / devour; see attacks.bas
 DIM SHARED bossAttackCnt     AS INTEGER
 DIM SHARED bossSeekStr       AS SINGLE   ' bullet homing strength per frame (0=straight, >0=curves)
-DIM SHARED bsmTurnDir      AS INTEGER  ' flyover dramatic turn direction: +1=right arc, -1=left arc; alternates each flyover
 
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER

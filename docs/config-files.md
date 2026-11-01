@@ -5,7 +5,7 @@ Game data that isn't code lives in small `key=value` files (`;` starts a comment
 | File | Holds |
 |---|---|
 | `assets/gamevalues.ini` | Text substitution tokens for `assets/gametext.txt` (names of the emperor, planets, ships). Only text tokens: `tools/bake_speech_dict` and the unused-token check read it with `gametext.txt` |
-| `assets/config/economy.ini` | Credits earned per kill, boss, stage clear and asteroid event, with the economy maths; fuel and shield prices, the per-dock fuel surcharge and the next jump's fuel need |
+| `assets/config/economy.ini` | Credits earned per drone downed, boss, stage clear and asteroid event, with the economy maths; fuel and shield prices, the per-dock fuel surcharge and the next jump's fuel need |
 | `assets/config/upgrades.ini` | The dock's upgrade table: names, prices per level, effect values per level, and each upgrade's description |
 | `assets/config/abilities.ini` | Active ability behaviour: nova charges, radius and boss damage; roll cooldowns, length and speed; the first-purchase hints |
 

@@ -32,10 +32,9 @@
 - No new files unless the task requires them.
 
 ## No outside languages for verification
-- Scope note: ExprForge spline math is currently used only by tools and possible cinematics, not gameplay (`docs/adr/0001-rail-shooter-scope.md`). The rules below still apply in full whenever you touch it.
-- NEVER write Python (or any language outside this project's own stack) to "verify a hypothesis," even as disposable scratch work you don't intend to commit. This includes re-deriving/re-transcribing formulas from `formula.expr`, `.bas`, or `.ts` into a throwaway script to sanity-check them numerically.
-- Hand-retyping shared math into yet another language to "just check" is the exact silent-transcription-divergence failure mode this codebase's ExprForge discipline exists to prevent. Doing it as a side-channel scratch tool is not exempt from that risk — it's the same mistake with extra steps.
-- Verify TypeScript with TypeScript: write a real Vitest test importing the actual exported functions from the real module (e.g. `tools/TrailForge/src/math/spline.ts`) against real project data. Verify QB64 with QB64: a scratch `.bas` harness or an addition to `tests/`, built and run the normal way.
+- NEVER write Python (or any language outside this project's own stack) to "verify a hypothesis," even as disposable scratch work you don't intend to commit. This includes re-deriving/re-transcribing formulas from `.bas` or `.ts` code into a throwaway script to sanity-check them numerically.
+- Hand-retyping shared math into yet another language to "just check" is the silent-transcription-divergence failure mode (two copies of the same math drifting apart). Doing it as a side-channel scratch tool is not exempt from that risk — it's the same mistake with extra steps.
+- Verify TypeScript with TypeScript: write a real Vitest test importing the actual exported functions from the real module (under `server/`) against real project data. Verify QB64 with QB64: a scratch `.bas` harness or an addition to `tests/`, built and run the normal way.
 - If a case ever seems to genuinely require an outside language, do not just do it. Stop, explain specifically and concretely why the project's own stack can't answer the question, and get the user's explicit go-ahead for that specific instance before writing a single line.
 
 ## Pull requests

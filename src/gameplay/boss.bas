@@ -59,7 +59,6 @@ Sub BOSS_Update
             If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score)) + "  aabb=" + LTrim$(Str$(boxLib(MESH_BOSS).hx)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hy)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hz)) + "  verts=" + LTrim$(Str$(meshLib(MESH_BOSS).vCount))
             boss.active  = -1
             boss.meshIdx = MESH_BOSS
-            bsmTurnDir   = 1
             boss.px = player.px + BOSS_SPAWN_DIST
             boss.py = player.py
             boss.pz = player.pz

@@ -60,7 +60,7 @@ The first New Game on a fresh install starts a short tutorial (the Orientation U
 
 ## Building from source
 
-You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) on your `PATH` as `qb64pe`, [Node.js](https://nodejs.org/) with `npm`, and network access on the first build (`npm install` fetches [exprforge](https://www.npmjs.com/package/exprforge)).
+You need [QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) on your `PATH` as `qb64pe`. Nothing else: the build and the tests need no Node, npm or Python.
 
 ```bash
 # from the repo root
@@ -85,7 +85,6 @@ The binary lands in `builds/sss` (`builds/sss.exe` on Windows). If you'd rather 
 | Credits, upgrades, fuel and shields | [docs/upgrades-and-economy.md](docs/upgrades-and-economy.md) |
 | Config files in `assets/config/` | [docs/config-files.md](docs/config-files.md) |
 | How the engine works (overview) | [docs/internals.md](docs/internals.md) |
-| Flight path math (ExprForge) | [docs/flight-path-math.md](docs/flight-path-math.md) |
 | Telemetry, leaderboard and deploying the backend | [server/README.md](server/README.md) |
 | 3D engine | [src/engine3d.md](src/engine3d.md) |
 | Scene sequencer | [src/sys/README-sequence.md](src/sys/README-sequence.md) |

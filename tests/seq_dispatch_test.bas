@@ -21,7 +21,6 @@
 '  18.  --scene boss3 regression: gameState=GS_PLAYING after cold-start boss dispatch (#187)
 '  19.  PLAY boss mus= CSV: bossMusList$ populated with phase cues
 '  20.  PLAY boss seek=: bossSeekStr parsed from sequence.txt
-'  21.  PLAY boss maneuver=: bsmManeuverName set; defaults to "flyover"
 '  22.  PLAY boss attack=: bossAttackList$ per boss (cumulative attack pool)
 '  23.  stale arrival planetTimer cleared when the next combat/asteroid stage starts (#168)
 '  24.  the stage ends on kills, not score; progress follows kills (#312)
@@ -85,12 +84,9 @@ Dim Shared bossMusList$(0 To 7)
 Dim Shared bossMusCnt        As Integer
 Dim Shared bossSpeechList$(0 To 7)
 Dim Shared bossSpeechCnt     As Integer
-Dim Shared bossManeuverList$(0 To 7)
-Dim Shared bossManeuverCnt   As Integer
 Dim Shared bossAttackList$(0 To 7)
 Dim Shared bossAttackCnt     As Integer
 Dim Shared bossSeekStr     As Single
-Dim Shared bsmManeuverName As String
 Dim Shared introTimer As Integer
 Dim Shared stageKills     As Long
 Dim Shared scrW         As Single
@@ -141,7 +137,6 @@ Sub ST_Reset()
     boss.warnTimer = 0
     bossMusCnt      = 0
     bossSpeechCnt   = 0
-    bossManeuverCnt = 0
     bossAttackCnt   = 0
     bossSeekStr     = 0
     tt           = 0
@@ -583,34 +578,6 @@ ST_GoTo "boss6"
 SEQ_Advance
 ST_Assert bossSeekStr > 0.054 And bossSeekStr < 0.056, "17.03  level6 boss seek=0.055"
 
-' ────────────────────────────────────────────────────────────────────────────
-' 18. PLAY boss maneuver= populates bsmManeuverName; defaults to "flyover"
-' ────────────────────────────────────────────────────────────────────────────
-Print ""
-Print "--- 18. boss maneuver= parsed into bossManeuverList$ ---"
-' level:3 boss has maneuver=boss-x-flight,boss-v-flight,attack-pass (three entries)
-ST_Reset
-ST_GoTo "boss3"
-SEQ_Advance
-ST_Assert bossManeuverCnt = 3,                     "18.01  level3 maneuver= -> count=3"
-ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.02  level3 phase1=boss-x-flight"
-' level:5 boss has maneuver=boss-x-flight,boss-v-flight,attack-pass (three entries)
-ST_Reset
-levelNum = 4
-ST_GoTo "boss5"
-SEQ_Advance
-ST_Assert bossManeuverCnt = 3,                     "18.03  level5 maneuver= -> count=3"
-ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.04  level5 phase1=boss-x-flight"
-ST_Assert bossManeuverList$(1) = "boss-v-flight",  "18.05  level5 phase2=boss-v-flight"
-' level:6 boss has maneuver=boss-x-flight,boss-v-flight,attack-pass (three entries)
-ST_Reset
-levelNum = 5
-ST_GoTo "boss6"
-SEQ_Advance
-ST_Assert bossManeuverCnt = 3,                     "18.06  level6 maneuver= -> count=3"
-ST_Assert bossManeuverList$(0) = "boss-x-flight",  "18.07  level6 phase1=boss-x-flight"
-ST_Assert bossManeuverList$(1) = "boss-v-flight",  "18.08  level6 phase2=boss-v-flight"
-ST_Assert bossManeuverList$(2) = "attack-pass",    "18.09  level6 phase3=attack-pass"
 ' ────────────────────────────────────────────────────────────────────────────
 Print ""
 Print "--- 19. boss attack= parsed into bossAttackList$ (cumulative attack pool, #26) ---"

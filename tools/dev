@@ -10,7 +10,6 @@
 #   render [args]  golden-screenshot render tests (tests/render/run.sh; --update
 #                  re-blesses the goldens)
 #   bake           tools/bake_speech_dict
-#   emit           npm install in math/, then node tools/emit-spline.js
 #   shell [cmd]    interactive shell in the container, or run one command
 #   run [args]     play the game: builds/sss (rebuilt first if missing or older
 #                  than any source) on your display and audio (X11/XWayland,
@@ -199,10 +198,6 @@ cmd_render() {
 cmd_bake() {
     pick_engine; ensure_image
     run_in bash tools/bake_speech_dict
-}
-cmd_emit() {
-    pick_engine; ensure_image
-    run_in tools/container/in/emit.sh
 }
 cmd_shell() {
     pick_engine; ensure_image
