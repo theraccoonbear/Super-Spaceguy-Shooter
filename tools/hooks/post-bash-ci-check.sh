@@ -3,11 +3,7 @@
 # Outputs the log path so Claude can Monitor it and send a PushNotification on completion.
 
 INPUT=$(cat)
-COMMAND=$(echo "$INPUT" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-print(d.get('tool_input', {}).get('command', ''))
-" 2>/dev/null)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
 
 echo "$COMMAND" | grep -qE "git(\s+-C\s+\S+)?\s+push" || exit 0
 
@@ -30,24 +26,10 @@ rm -f "$LOGFILE"
       sleep 15
       continue
     fi
-    echo "$STATUS_JSON" | python3 -c "
-import sys, json
-checks = json.load(sys.stdin)
-for c in checks:
-    print(f\"{c['name']}: {c['bucket']}\")
-" >> "$LOGFILE" 2>/dev/null
-    ALL_DONE=$(echo "$STATUS_JSON" | python3 -c "
-import sys, json
-checks = json.load(sys.stdin)
-print('yes' if all(c['bucket'] != 'pending' for c in checks) else 'no')
-" 2>/dev/null)
+    echo "$STATUS_JSON" | jq -r '.[] | "\(.name): \(.bucket)"' >> "$LOGFILE" 2>/dev/null
+    ALL_DONE=$(echo "$STATUS_JSON" | jq -r 'if all(.[]; .bucket != "pending") then "yes" else "no" end' 2>/dev/null)
     if [ "$ALL_DONE" = "yes" ]; then
-      FAILED=$(echo "$STATUS_JSON" | python3 -c "
-import sys, json
-checks = json.load(sys.stdin)
-failed = [c['name'] for c in checks if c['bucket'] == 'fail']
-print(','.join(failed))
-" 2>/dev/null)
+      FAILED=$(echo "$STATUS_JSON" | jq -r '[.[] | select(.bucket == "fail") | .name] | join(",")' 2>/dev/null)
       if [ -z "$FAILED" ]; then
         echo "CI_RESULT:PASS:PR #${PR} all checks green" >> "$LOGFILE"
       else

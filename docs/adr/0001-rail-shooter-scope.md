@@ -1,6 +1,6 @@
 # ADR-0001: SSS1 stays a rail shooter; splines are cinematics-only
 
-- **Status:** Accepted
+- **Status:** Accepted. Decision 2 (keep ExprForge, TrailForge and the maneuver engine in the repo) is superseded by [ADR-0002](0002-remove-forge-tools.md).
 - **Date:** 2026-10-25
 - **Related:** #181, #197, #214, #216
 

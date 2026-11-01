@@ -20,7 +20,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 │   ├── sys/                ← core systems: game state, CLI, sequencer, settings, HTTP, telemetry, JSON, leaderboard, debug
 │   ├── 3d/                 ← software 3D pipeline: mesh, matrix, poly, camera, collision, starfield
 │   ├── audio/              ← music.bas, snd.bas (mixer/SFX), speech.bas (TTS)
-│   ├── gameplay/           ← player, enemy, boss, waves, behavior, stage/level logic, maneuvers
+│   ├── gameplay/           ← player, enemy, boss, waves, behavior, stage/level logic
 │   ├── state/              ← per-screen game states: title, crawl, combat, asteroids, game over, consent, username, leaderboard, lead-in, dock, remap, pause input
 │   └── 2d/                 ← HUD, UI panels, bitmap font, particle effects, crawl renderer, about and controls screens, text editing
 ├── assets/                 ← all game assets (embedded at compile time -- no runtime file I/O)
@@ -32,7 +32,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 │   └── .env                ← gitignored; DB_URL + DB_KEY for the telemetry backend (absent = no network)
 ├── server/                 ← telemetry/leaderboard backend: Cloudflare Worker + D1 (TypeScript, Vitest)
 ├── tests/                  ← self-contained .bas test programs (exit 0 = pass)
-└── tools/                  ← buildqb, bake_speech_dict, TrailForge (web tool), obj2e3d, viewer, etc.
+└── tools/                  ← buildqb, bake_speech_dict, http_mock_server (QB64-PE mock for the HTTP test), obj2e3d, viewer, etc.
 ```
 
 `sss.bas` is the only file QB64-PE compiles directly. It `$INCLUDE`s `src/sys/version.bas`, `src/sys/rng.bas`, `src/engine3d.bi`, `src/sys/dims.bas` and `src/game.bi` in that order (the two manifests pull in every other module), and then, inline after the startup code, the seven main-loop states `src/state/title.bas`, `intro.bas`, `gameover.bas`, `crawl.bas`, `playing.bas`, `asteroids.bas` and `combat.bas`. New modules go in `src/game.bi`, not as another `$INCLUDE` in `sss.bas`.
@@ -60,7 +60,6 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `BEH_` | `src/gameplay/behavior.bas` | Enemy AI update functions |
 | `STAGE_` | `src/gameplay/stage.bas` | Level layout and enemy-wave scheduling |
 | `BOSS_` | `src/gameplay/boss.bas` | Boss fight logic and phase management |
-| `MNV_` | `src/gameplay/maneuvers.bas` | `.mvr` spline-route loader. Not used by gameplay; kept for possible cinematics (see ADR-0001) |
 | `GS_*` | `src/state/*.bas` | Per-screen game states (title, crawl, combat, asteroid, game over, consent, username, leaderboard, lead-in, upgrade dock) |
 | `HUD_` | `src/2d/hud.bas` | In-game heads-up display |
 | `FONT_` | `src/2d/font.bas` | Bitmap font renderer with color palettes |
@@ -153,7 +152,7 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 
 - No GPU — the 3D renderer is 100% CPU (software rasterizer in `src/3d/poly.bas`)
 - No audio files — all sound is synthesized in `snd.bas` / `music.bas` / `speech.bas`
-- No Makefile and no CMake — the build is `./tools/buildqb sss.bas`. It does need Node.js and npm: it runs `npm install` in `math/` and `node tools/emit-spline.js` to generate the ExprForge spline math before compiling
+- No Makefile and no CMake — the build is `./tools/buildqb sss.bas`. It needs no Node, npm or Python; only `server/` uses Node
 - No general JSON decoder — `json.bas` encodes only; all response parsing is hand-rolled per consumer
 - No texture mapping — faces are flat-colored with optional directional lighting
 - No unit test framework — tests are self-contained `.bas` programs in `tests/` that exit 0 on pass
@@ -204,7 +203,7 @@ tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
 tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
 tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
-tools/http_queue_test                          # needs Node (a Node mock HTTP server, tools/http_mock_server, starts automatically)
+tools/http_queue_test                          # builds and starts the QB64-PE mock HTTP server (tools/http_mock_server.bas) itself
 
 # Golden-screenshot render tests (tests/render/; --update re-blesses goldens)
 tools/dev render
@@ -224,7 +223,7 @@ tools/buildqb viewer.bas && builds/viewer
 |---|---|
 | Where does game flow live? | `src/sys/sequence.bas` — `SEQ_Load` parses `sequence.txt`, `SEQ_Advance` steps forward |
 | Where does combat live? | `src/gameplay/stage.bas` (wave scheduling) + `src/gameplay/behavior.bas` (per-enemy AI) |
-| Where do boss fights live? | `src/gameplay/boss.bas` (phases) + `BOSS_UpdateMovement` in `src/gameplay/behavior.bas` (hunt/evade movement). The spline flyover states are unused; see `docs/adr/0001-rail-shooter-scope.md` |
+| Where do boss fights live? | `src/gameplay/boss.bas` (phases) + `BOSS_UpdateMovement` in `src/gameplay/behavior.bas` (hunt/evade movement). Bosses never fly authored spline routes; see `docs/adr/0002-remove-forge-tools.md` |
 | Where does audio happen? | `src/audio/snd.bas` (SFX triggers) + `src/audio/music.bas` (music engine) |
 | Where does speech happen? | `src/audio/speech.bas` — call `SPK_Say text$` (text$ must come from `gametext.txt`) |
 | Where do shared globals live? | `src/sys/dims.bas` — the game's shared memory layout |

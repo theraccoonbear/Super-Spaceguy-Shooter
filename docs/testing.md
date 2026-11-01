@@ -9,7 +9,7 @@ QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical 
 # one test on its own (native; in the container wrap it, e.g.
 #   tools/dev shell bash -c "tools/buildqb tests/spore_test.bas && builds/spore_test")
 tools/buildqb tests/spore_test.bas && builds/spore_test
-tools/http_queue_test   # builds http_queue_test.bas, starts a local mock HTTP server, runs it
+tools/http_queue_test   # builds http_queue_test.bas and the QB64-PE mock server (tools/http_mock_server.bas), starts the mock on a local port, runs the test against it
 bash tests/tools_dev_test.sh  # checks the container commands `tools/dev run` and `record` build (display, GPU, controllers; options, DB_URL refusal) and its tab completion
 ```
 
