@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# tools/prune-worktrees -- list, and optionally remove, finished agent worktrees under
+# .claude/worktrees/. Squash merges never make a branch an ancestor of master, so "finished"
+# comes from the PR (gh pr list --state all --head <branch>), not from git ancestry.
+#
+# Usage: tools/prune-worktrees [--apply] [--unlock-mine]
+#   (default)       dry run: list each worktree with branch, PR state, changes, size and
+#                   what would happen
+#   --apply         remove the worktrees marked REMOVE and delete their local branches
+#   --unlock-mine   also treat a lock held by this session (this shell or an ancestor
+#                   process) as released
+#
+# A worktree is removed only if all of these hold:
+#   - its PR is merged, or closed with every commit on a remote branch (a detached worktree
+#     has no PR: it needs every commit on a remote branch or master)
+#   - no tracked or untracked changes (gitignored output is ignored)
+#   - no process has it as its working directory (/proc/*/cwd)
+#   - it is not locked, or its lock holder (the "pid N" in the lock reason) is gone
+# Never touched: the primary checkout, the worktree you run this from, master/main, and any
+# worktree with an open PR. If gh fails, nothing is removed.
+set -euo pipefail
+
+apply=0
+unlock_mine=0
+for arg in "$@"; do
+    case "$arg" in
+        --apply) apply=1 ;;
+        --unlock-mine) unlock_mine=1 ;;
+        -h|--help) sed -n '2,/^set -e/p' "$0" | sed '$d;s/^# \{0,1\}//'; exit 0 ;;
+        *) echo "Unknown option: $arg (see --help)" >&2; exit 2 ;;
+    esac
+done
+
+primary=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+here=$(git rev-parse --show-toplevel)
+root="$primary/.claude/worktrees"
+
+pid_alive() { [ -d "/proc/$1" ]; }
+
+is_my_pid() {
+    local p=$$
+    while [ "$p" -gt 1 ] 2>/dev/null; do
+        [ "$p" = "$1" ] && return 0
+        p=$(awk '/^PPid:/ {print $2}' "/proc/$p/status" 2>/dev/null) || return 1
+        [ -n "$p" ] || return 1
+    done
+    return 1
+}
+
+holder_of() {
+    local c d
+    for c in /proc/[0-9]*/cwd; do
+        d=$(readlink "$c" 2>/dev/null) || continue
+        case "$d" in
+            "$1"|"$1"/*) echo "${c#/proc/}" | sed 's|/cwd||'; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# Echoes: open | merged | closed | none ; returns 1 if gh fails.
+pr_state() {
+    local out
+    out=$(gh pr list --state all --head "$1" --json state --jq '.[].state' --limit 50) || return 1
+    if grep -qx OPEN <<<"$out"; then echo open
+    elif grep -qx MERGED <<<"$out"; then echo merged
+    elif grep -qx CLOSED <<<"$out"; then echo closed
+    else echo none; fi
+}
+
+paths=() branches=() heads=() locks=()
+path="" head="" branch="" lock=""
+flush() {
+    if [ -n "$path" ]; then
+        paths+=("$path"); heads+=("$head"); branches+=("$branch"); locks+=("$lock")
+    fi
+    path=""; head=""; branch=""; lock=""
+}
+while IFS= read -r line; do
+    case "$line" in
+        "worktree "*) flush; path=${line#worktree } ;;
+        "HEAD "*) head=${line#HEAD } ;;
+        "branch "*) branch=${line#branch refs/heads/} ;;
+        locked*) lock=${line#locked}; lock=${lock# }; [ -n "$lock" ] || lock="(no reason)" ;;
+    esac
+done < <(git worktree list --porcelain)
+flush
+
+actions=() reasons=() rows=()
+gh_failed=0
+for i in "${!paths[@]}"; do
+    p=${paths[$i]}
+    case "$p" in "$root"/*) ;; *) continue ;; esac
+    br=${branches[$i]}
+    action=KEEP reason="" pr="-" changes="-" size="-"
+
+    if [ ! -d "$p" ]; then
+        reason="directory missing (run git worktree prune)"
+        rows+=("$p|${br:-detached}|$pr|$changes|$size"); actions+=("$action"); reasons+=("$reason")
+        continue
+    fi
+    size=$(du -sh "$p" 2>/dev/null | cut -f1)
+    if [ -n "$(git -C "$p" status --porcelain 2>/dev/null)" ]; then changes=dirty; else changes=clean; fi
+
+    pushed=1
+    if [ -n "$br" ]; then
+        [ -z "$(git -C "$p" rev-list "$br" --not --remotes --max-count=1)" ] || pushed=0
+        if pr=$(pr_state "$br"); then :; else pr="gh-error"; gh_failed=1; fi
+    else
+        [ -z "$(git -C "$p" rev-list "${heads[$i]}" --not --remotes master --max-count=1)" ] || pushed=0
+        pr="detached"
+    fi
+
+    if [ "$p" = "$here" ]; then reason="current worktree"
+    elif [ "$br" = master ] || [ "$br" = main ]; then reason="protected branch"
+    elif [ "$pr" = gh-error ]; then reason="gh failed"
+    elif [ "$pr" = open ]; then reason="open PR"
+    elif [ "$pr" = none ]; then reason="no PR"
+    elif [ "$pr" = closed ] && [ $pushed = 0 ]; then reason="closed PR with unpushed commits"
+    elif [ "$pr" = detached ] && [ $pushed = 0 ]; then reason="detached with unpushed commits"
+    elif [ "$changes" = dirty ]; then reason="local changes"
+    elif pid=$(holder_of "$p"); then reason="in use by pid $pid"
+    elif [ -n "${locks[$i]}" ]; then
+        lpid=$(grep -o 'pid [0-9]*' <<<"${locks[$i]}" | head -n1 | cut -d' ' -f2 || true)
+        if [ -n "$lpid" ] && ! pid_alive "$lpid"; then action=REMOVE reason="lock holder gone"
+        elif [ -n "$lpid" ] && [ $unlock_mine = 1 ] && is_my_pid "$lpid"; then action=REMOVE reason="lock held by this session"
+        else reason="locked: ${locks[$i]}"; fi
+    else
+        action=REMOVE reason="finished"
+    fi
+    if [ "$action" = REMOVE ] && [ "$pr" = detached ]; then reason="detached, all commits on remote"; fi
+    rows+=("$p|${br:-detached}|$pr|$changes|$size"); actions+=("$action"); reasons+=("$reason")
+done
+
+if [ "${#rows[@]}" = 0 ]; then echo "No worktrees under $root"; exit 0; fi
+
+printf '%-7s %-40s %-9s %-6s %-6s %s\n' ACTION BRANCH PR CHANGES SIZE "WORKTREE (reason)"
+for i in "${!rows[@]}"; do
+    IFS='|' read -r p br pr changes size <<<"${rows[$i]}"
+    printf '%-7s %-40s %-9s %-6s %-6s %s (%s)\n' "${actions[$i]}" "$br" "$pr" "$changes" "$size" "${p#"$primary"/}" "${reasons[$i]}"
+done
+
+if [ "$gh_failed" = 1 ]; then
+    echo "gh failed; removing nothing." >&2
+    exit 1
+fi
+if [ "$apply" = 0 ]; then
+    echo "Dry run. Re-run with --apply to remove the REMOVE rows."
+    exit 0
+fi
+
+removed=0
+for i in "${!rows[@]}"; do
+    [ "${actions[$i]}" = REMOVE ] || continue
+    IFS='|' read -r p br _ <<<"${rows[$i]}"
+    full=${p}
+    if git worktree list --porcelain | grep -A3 -Fx "worktree $full" | grep -q '^locked'; then
+        git worktree remove -f -f "$full"
+    else
+        git worktree remove "$full"
+    fi
+    echo "Removed worktree ${full#"$primary"/}"
+    if [ "$br" != detached ]; then
+        git branch -D "$br" >/dev/null
+        echo "Deleted branch $br"
+    fi
+    removed=$((removed + 1))
+done
+echo "Removed $removed worktree(s)."
