@@ -82,6 +82,7 @@ Function GAME_StartTutorial%
     If SEQ_JumpToLabel%(SEQ_TUTORIAL_LABEL) < 0 Then GAME_StartTutorial% = 0 : Exit Function
     tutorialRun = -1
     SEQ_Advance
+    If TUT_Begin% = 0 Then SEQ_RewindToTitle : GAME_StartTutorial% = 0 : Exit Function
     GAME_StartTutorial% = -1
 End Function
 

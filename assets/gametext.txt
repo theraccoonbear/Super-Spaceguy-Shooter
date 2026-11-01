@@ -209,3 +209,122 @@ Rationing spreads across the {{region_name}}. Fuel is up one hundred and twenty 
 
 [BLOCK:dock_news5]
 No relief came. Fuel is up one hundred and sixty percent. {{the_empire}} reports record profits from {{refinery_world}}.
+
+; --- tutorial: the pilot orientation script, spoken by the Orientation Unit, one line per block (#240) ---
+
+[BLOCK:tut_l1]
+FLYING AND CAMERA
+
+[BLOCK:tut_l2]
+SHOOTING AND AIM ASSIST
+
+[BLOCK:tut_l3]
+INCOMING FIRE
+
+[BLOCK:tut_l4]
+BARS AND FUEL
+
+[BLOCK:tut_l5]
+PICKUPS AND HAZARDS
+
+[BLOCK:tut_01]
+Pilot orientation. Form twenty-seven B. Please remain seated.
+
+[BLOCK:tut_02]
+I am the Orientation Unit. I tick boxes. You do the flying.
+
+[BLOCK:tut_03]
+Box one. Move the ship. Any direction will do.
+
+[BLOCK:tut_04]
+Box two. Open camera mode, look around, then lock it.
+
+[BLOCK:tut_05]
+Camera confirmed. You may now look at things, officially.
+
+[BLOCK:tut_06]
+Box three. Hold fire. The cross shows where shots will go.
+
+[BLOCK:tut_07]
+Shots logged. A hostile drone is approaching. Please shoot it.
+
+[BLOCK:tut_08]
+Aim assist bends shots toward targets near the cross. Use it.
+
+[BLOCK:tut_09]
+Drone down. Nobody was aboard. Nobody ever is.
+
+[BLOCK:tut_10]
+Other drone models exist. They are rude in different ways.
+
+[BLOCK:tut_11]
+Box four. Drones shoot back. Bolts grow as they get closer.
+
+[BLOCK:tut_12]
+Closing rings show where a bolt will reach you. Watch them.
+
+[BLOCK:tut_13]
+Holding one direction gets you hit. Change it. Dodge two.
+
+[BLOCK:tut_14]
+Evasion logged. Being hit is free today. Enjoy it.
+
+[BLOCK:tut_15]
+Remaining drones must be shot down. Three, per the form.
+
+[BLOCK:tut_16]
+Three down. Form satisfied. The drones declined to comment.
+
+[BLOCK:tut_17]
+Box five. The bars. SH is shield. Hits drain it.
+
+[BLOCK:tut_18]
+At zero you lose a ship. Today it refills. Savor that.
+
+[BLOCK:tut_19]
+LA is laser energy. Every shot costs some. Resting refills it.
+
+[BLOCK:tut_20]
+Fire a few shots and watch it drop.
+
+[BLOCK:tut_21]
+FU is fuel. It drains while you fly. Empty means stranded.
+
+[BLOCK:tut_22]
+Today your tank is full by decree. Out there, it is not.
+
+[BLOCK:tut_23]
+Score counts every unit you wreck. Higher is better.
+
+[BLOCK:tut_24]
+HI is the best score on file. Yours will be filed too.
+
+[BLOCK:tut_25]
+Three squares are your ships. Lose all three and it is over.
+
+[BLOCK:tut_26]
+PSC counts parsecs in asteroid fields. None today. Box ticked.
+
+[BLOCK:tut_27]
+Box six. A fuel canister, orange. Fly into it.
+
+[BLOCK:tut_28]
+Fuel restored, in theory. Next, a green shield canister.
+
+[BLOCK:tut_29]
+Shield restored. The gold ones are points. Take one.
+
+[BLOCK:tut_30]
+Points added. Paperwork improves. Now, an asteroid.
+
+[BLOCK:tut_31]
+Asteroids cannot be shot. Steer around them.
+
+[BLOCK:tut_32]
+Hazard cleared. Or survived. Both are accepted.
+
+[BLOCK:tut_33]
+Orientation complete. Form filed. Good luck. Not binding.
+
+[BLOCK:tut_waiver]
+Waiver filed. Orientation declined. Liability is now yours.

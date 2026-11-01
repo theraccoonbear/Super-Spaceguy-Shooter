@@ -40,6 +40,7 @@ Sub HUD_Draw
         Else
             hdCSX = scrW * 0.5 : hdCSY = scrH * 0.5
         End If
+        hudRetX = hdCSX : hudRetY = hdCSY
         LINE (hdCSX - 7, hdCSY)-(hdCSX - 3, hdCSY), _RGB(100, 255, 100)
         LINE (hdCSX + 3, hdCSY)-(hdCSX + 7, hdCSY), _RGB(100, 255, 100)
         LINE (hdCSX, hdCSY - 5)-(hdCSX, hdCSY - 2), _RGB(100, 255, 100)

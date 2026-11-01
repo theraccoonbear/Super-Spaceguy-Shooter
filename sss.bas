@@ -39,6 +39,7 @@ $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
+$EMBED:'assets/tutorial.txt':'TUTSCRIPT'
 ' Each boss flight-path maneuver is its own independent embedded file --
 ' no concatenation/bake step. Adding a new one means adding its .mvr file
 ' AND a line here AND an entry in MNV_ListBlocks (maneuvers.bas).

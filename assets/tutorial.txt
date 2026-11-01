@@ -1,0 +1,75 @@
+; tutorial.txt -- the pilot orientation, one continuous flight (#240)
+; Run by the step runner in src/sys/tutorial.bas; sequence.txt's tutorial block hands off to
+; it with script=tutorial. Grammar and checks: see that file's header. Narration lives in
+; gametext.txt under the keys used here (tut_*). Nothing advances on a timer: a SAY ends when
+; the line has been spoken or skipped, a WAIT ends when the player has done the thing.
+
+LESSON tut_l1
+SAY tut_01
+SAY tut_02
+SAY tut_03
+WAIT move 12
+SAY tut_04
+WAIT camera
+SAY tut_05
+
+LESSON tut_l2
+HIGHLIGHT reticle
+SAY tut_06
+WAIT shoot 6
+HIGHLIGHT off
+STREAM ship kills=3
+SAY tut_07
+SAY tut_08
+WAIT kills 1
+SAY tut_09
+SAY tut_10
+
+LESSON tut_l3
+STREAM ship kills=3 fire
+SAY tut_11
+SAY tut_12
+SPAWN bolt
+SAY tut_13
+WAIT dodge 2
+SAY tut_14
+SAY tut_15
+WAIT kills 3
+SAY tut_16
+
+LESSON tut_l4
+HIGHLIGHT sh
+SAY tut_17
+SAY tut_18
+HIGHLIGHT la
+SAY tut_19
+SAY tut_20
+WAIT shoot 8
+HIGHLIGHT fu
+SAY tut_21
+SAY tut_22
+HIGHLIGHT score
+SAY tut_23
+HIGHLIGHT hi
+SAY tut_24
+HIGHLIGHT lives
+SAY tut_25
+HIGHLIGHT off
+SAY tut_26
+
+LESSON tut_l5
+SPAWN fuel
+SAY tut_27
+WAIT pickup fuel
+SAY tut_28
+SPAWN shield
+WAIT pickup shield
+SAY tut_29
+SPAWN points
+WAIT pickup points
+SAY tut_30
+SPAWN asteroid
+SAY tut_31
+WAIT clear
+SAY tut_32
+SAY tut_33

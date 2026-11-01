@@ -86,8 +86,10 @@ outro:
     TITLE mus=title
     NEXT end
 
-; the isolated tutorial run (#240): entered by --scene tutorial via GAME_StartTutorial, never by a NEXT. Placeholder content.
+; the isolated tutorial run (#240): entered by --scene tutorial, the title menu or the first New Game via
+; GAME_StartTutorial, never by a NEXT. script= hands the flight to the step runner (assets/tutorial.txt,
+; src/sys/tutorial.bas), which ends the run; the combat kill trigger below is not used.
 tutorial: secret
-    PLAY type=combat mus=game trigger=3
+    PLAY type=combat script=tutorial mus=game trigger=3
     TITLE mus=title
     NEXT end

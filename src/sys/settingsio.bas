@@ -5,6 +5,10 @@
 
 Const SETTINGS_FILE = "sss_settings.ini"
 
+' -1 once the tutorial was finished or skipped (#240). A settings file with no tutorial_done line counts as
+' done, so existing players are not sent to it; only a first run, with no file yet, starts at 0.
+Dim Shared settingTutorialDone As Integer
+
 ' The per-user settings dir for an OS (the _OS$ string), or "" when its base can't be told.
 ' sdXdg / sdAppData / sdHome are the XDG_CONFIG_HOME, APPDATA and HOME environment values.
 Function SETTINGS_DirFor$ (sdOs As String, sdXdg As String, sdAppData As String, sdHome As String)
@@ -72,6 +76,7 @@ Sub SETTINGS_SaveFile (sfsPath As String)
     Print #sfH, "fullscreen=" + LTrim$(Str$(settingFullscreen))
     Print #sfH, "difficulty=" + DLV_Valid$(settingDifficulty)
     Print #sfH, "highscore="  + LTrim$(Str$(highScore))
+    Print #sfH, "tutorial_done=" + LTrim$(Str$(Abs(settingTutorialDone <> 0)))
     If Len(telemPlayerID) > 0 Then Print #sfH, "player_id=" + telemPlayerID
     If Len(leaderboardPlayerID) > 0 Then Print #sfH, "lb_player_id=" + leaderboardPlayerID
     If Len(telemPlayerName) > 0 Then Print #sfH, "player_name=" + telemPlayerName
@@ -104,6 +109,7 @@ Sub SETTINGS_LoadFile (sfPath As String)
     Dim sfH As Integer, sfLine As String, sfKey As String, sfVal As Single, sfEq As Integer
     Dim sfRaw As String, sfBound As Integer
     camF.orbitTheta = _PI(1.0) : camF.orbitPhi = CAM_DEFAULT_PHI : camF.orbitR = CAM_DEFAULT_R : camF.angleLocked = 0
+    If Len(sfPath) > 0 And _FILEEXISTS(sfPath) Then settingTutorialDone = -1 Else settingTutorialDone = 0
     If Len(sfPath) > 0 And _FILEEXISTS(sfPath) Then
         sfH = FreeFile
         Open sfPath For Input As #sfH
@@ -136,6 +142,8 @@ Sub SETTINGS_LoadFile (sfPath As String)
                         camF.orbitR = sfVal
                     Case "highscore"
                         If sfVal >= 0 Then highScore = CLng(sfVal)
+                    Case "tutorial_done"
+                        settingTutorialDone = (Int(sfVal + 0.5) <> 0)
                     Case "difficulty"
                         settingDifficulty = DLV_Valid$(sfRaw)
                     Case "narration_speed"
