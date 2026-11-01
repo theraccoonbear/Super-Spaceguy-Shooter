@@ -43,7 +43,7 @@ A problem is reported as `line N: ...`. Unknown effects and keys, bad numbers an
 
 ## Dev workflow
 
-`--backdrop-dev` (dev builds only; a release build rejects it) shows the painting coordinates under the mouse cursor in the top-left corner, with a cross at the cursor, and re-reads `assets/backdrops.txt` from disk on **R**. A reload restarts the loops. Parse problems are listed on screen and the effects stay off until the file is fixed; the game does not stop. R is not used by the title (its menu hotkeys are A C S L T Q N and P), the emperor card or the dock; it is the one letter the helper takes.
+`--backdrop-dev` (dev builds only; a release build rejects it) shows the painting coordinates under the mouse cursor in the top-left corner, with a cross at the cursor, and re-reads `assets/backdrops.txt` from disk on **R**. A reload restarts the loops and says "reloaded N" (the effect count) in small text beside the readout for half a second, with no panel behind it. Parse problems are listed in small red text under the readout (at most four lines) and stay until the file is fixed, with the effects off; the game does not stop. R is not used by the title (its menu hotkeys are A C S L T Q N and P), the emperor card or the dock; it is the one letter the helper takes.
 
 ```
 tools/dev run --backdrop-dev --scene title --no-telem

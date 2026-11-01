@@ -20,7 +20,7 @@ sss [options]
   --frames N             Quit after N frames (60 per second)
   --realtime             Keep 60 frames per second in --input-script runs (for recordings, see tools/dev record)
   --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder then starts the tutorial at the first New Game)
-  --backdrop-dev         Matte-painting helper on the title, emperor and dock screens: shows the painting coordinates under the mouse, and R reloads `assets/backdrops.txt` from disk, with parse problems shown on screen (see [Backdrops](backdrops.md))
+  --backdrop-dev         Matte-painting helper on the title, emperor and dock screens: shows the painting coordinates under the mouse, and R reloads `assets/backdrops.txt` from disk, with parse problems shown on screen in small text (see [Backdrops](backdrops.md))
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
   --ships N              Start every run with N ships (testing)

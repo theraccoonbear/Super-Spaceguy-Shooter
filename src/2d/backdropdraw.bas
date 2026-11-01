@@ -9,11 +9,13 @@
 '                                         shown on screen and the effects stay off until it is fixed)
 ' There is no additive blending, so a glow is a stack of translucent circles, as for the bolts.
 
+Const BD_DEV_NOTE_FRAMES = 30   ' a successful reload is mentioned for this long
 Const BD_DEV_FILE = "assets/backdrops.txt"
 
 Dim Shared bdDevWas As Integer
 Dim Shared bdDevMsg As String         ' last reload result, "" before the first
 Dim Shared bdDevErr As Integer
+Dim Shared bdDevAt As Long             ' main-loop frame of the last successful reload
 Dim Shared bdDevX1 As Integer, bdDevY1 As Integer, bdDevX2 As Integer, bdDevY2 As Integer
 
 ' The file as shipped, parsed at startup. A problem here is caught by the test that parses the
@@ -45,7 +47,8 @@ Sub BACKDROP_DevReload ()
     bdrOk = BD_Parse%(_ReadFile$(bdrPath))
     If bdrOk Then
         bdDevErr = 0
-        bdDevMsg = "R: reloaded " + LTrim$(Str$(bdFxN)) + " effects"
+        bdDevMsg = "reloaded " + LTrim$(Str$(bdFxN))
+        bdDevAt = gameFrame
     Else
         bdDevErr = -1
         bdDevMsg = bdErrors
@@ -93,7 +96,7 @@ Sub BACKDROP_DrawSparks ()
 End Sub
 
 Sub BACKDROP_DrawDev ()
-    Dim bddPal As Integer, bddI As Integer, bddMX As Integer, bddMY As Integer, bddNL As Integer, bddS As String, bddP As Integer
+    Dim bddI As Integer, bddMX As Integer, bddMY As Integer, bddNL As Integer, bddS As String, bddP As Integer
     Do While _MouseInput : Loop
     _MouseShow
     bddMX = _MouseX : bddMY = _MouseY
@@ -108,15 +111,18 @@ Sub BACKDROP_DrawDev ()
     Line (0, 0)-(Len(bddS) * FONT_CHAR_W + 3, FONT_CHAR_H), _RGBA(0, 0, 0, 200), BF
     FONT_PrintAlpha fontPalette(14), backBuffer, bddS, 2, 0, 255
     If Len(bdDevMsg) > 0 Then
-        bddNL = 0 : bddP = 1
-        Line (0, FONT_CHAR_H)-(scrW - 1, FONT_CHAR_H * 7), _RGBA(0, 0, 0, 170), BF
-        Do While bddP <= Len(bdDevMsg) And bddNL < 6
-            bddI = InStr(bddP, bdDevMsg, Chr$(10))
-            If bddI = 0 Then bddI = Len(bdDevMsg) + 1
-            bddPal = 10 : If bdDevErr Then bddPal = 12
-            FONT_PrintAlpha fontPalette(bddPal), backBuffer, Left$(Mid$(bdDevMsg, bddP, bddI - bddP), 40), 2, FONT_CHAR_H * (1 + bddNL), 255
-            bddNL = bddNL + 1 : bddP = bddI + 1
-        Loop
+        If bdDevErr = 0 Then
+            If gameFrame - bdDevAt < BD_DEV_NOTE_FRAMES Then UI_Text 10, bdDevMsg, Len(bddS) * FONT_CHAR_W + 8, 0, 255
+        Else
+            bddNL = 0 : bddP = 1
+            Do While bddP <= Len(bdDevMsg)
+                bddI = InStr(bddP, bdDevMsg, Chr$(10))
+                If bddI = 0 Then bddI = Len(bdDevMsg) + 1
+                If bddNL = 4 Then UI_Text 12, "(and more)", 2, FONT_CHAR_H * 5, 255 : Exit Do
+                UI_Text 12, Left$(Mid$(bdDevMsg, bddP, bddI - bddP), 40), 2, FONT_CHAR_H * (1 + bddNL), 255
+                bddNL = bddNL + 1 : bddP = bddI + 1
+            Loop
+        End If
     End If
 End Sub
 
