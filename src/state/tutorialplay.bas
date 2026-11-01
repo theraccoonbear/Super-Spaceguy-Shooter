@@ -255,8 +255,8 @@ Sub TUT_Frame
     If tgSkip = TUT_SKIP_EXIT Then
         tutActive = 0 : tutLeaving = -1
         SPK_Say ""
-        tutSayKey = "tut_waiver"
-        TUT_Speak "tut_waiver"
+        tutSayKey = "tut_waiver_filed"
+        TUT_Speak "tut_waiver_filed"
         DBG_MilestoneWrite LTrim$(Str$(gameFrame)) + " TUT waiver"
         Exit Sub
     End If
