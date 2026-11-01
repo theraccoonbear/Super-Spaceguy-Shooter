@@ -22,6 +22,10 @@
 - Without `Option _Explicit`, an undefined function or array compiles silently: `RNG!(RNG_FX)` with `rng.bas` missing becomes an implicit array read with `RNG_FX` an implicit 0, and a missing `Dim Shared` or `Const` becomes a 0-valued local. The game, every test and every CI-compiled tool start with `Option _Explicit` (it covers `$INCLUDE`d files too) — keep it in any new program, and include every module a file depends on (e.g. `src/sys/rng.bas` before `src/engine3d.bi`)
 - `Not` is bitwise, not logical: `Not 1 = -2` (truthy), so `If Not flag` misbehaves when `flag` is `1` instead of `-1`. Use `If flag = 0` to guard a disabled feature, or define boolean consts as `0`/`-1`
 
+## Worktrees
+- Agents reuse or remove the worktrees they create under `.claude/worktrees/`; do not leave finished ones behind.
+- After each merge, run `tools/prune-worktrees` (dry run) and then `tools/prune-worktrees --apply`. It removes worktrees whose PR is merged or closed and that are clean and unused, and deletes their local branches.
+
 ## Scope of work
 - Fix only what was asked. Don't refactor, clean up, or fix adjacent things unless asked.
 - No comments unless the WHY is non-obvious.

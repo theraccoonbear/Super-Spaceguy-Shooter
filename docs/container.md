@@ -25,7 +25,7 @@ tools/dev test                      # full suite before you commit (pre-commit c
 
 `run` takes any [CLI option](cli.md). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--scene dock2 --credits 2000` opens the upgrade dock after stage 2 (docks follow stages 1-5) with 2000 credits to spend, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
 
-The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside.
+The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside. Finished agent worktrees under `.claude/worktrees/` are cleaned up with `tools/prune-worktrees` (dry run by default; `--apply` removes those whose PR is merged or closed, that are clean and not in use, and deletes their local branches).
 
 **Tab completion.** `tools/dev completion` prints a bash completion function. To turn it on, add this line to `~/.bashrc` (use your checkout's path for `<checkout>`):
 
