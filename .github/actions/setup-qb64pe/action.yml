@@ -24,6 +24,8 @@ runs:
 
     - name: Regenerate spline math from DSL
       shell: bash
+      env:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
       run: |
         if [ "${{ steps.cache_node_modules.outputs.cache-hit }}" != "true" ]; then
           (cd math && npm install)
@@ -41,7 +43,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: qb64pe-bin
-        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}${{ inputs.cache-suffix }}
+        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}${{ runner.os == 'macOS' && '-macos12' || '' }}${{ inputs.cache-suffix }}
 
     - name: Restore QB64-PE cache
       if: inputs.save-cache != 'true'
@@ -49,7 +51,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: qb64pe-bin
-        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}${{ inputs.cache-suffix }}
+        key: qb64pe-${{ inputs.qb64pe-version }}-${{ runner.os }}${{ runner.os == 'Windows' && '-warm1' || '' }}${{ runner.os == 'macOS' && '-macos12' || '' }}${{ inputs.cache-suffix }}
 
     - name: QB64-PE cache hit?
       id: qb64pe_cache

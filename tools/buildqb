@@ -78,6 +78,10 @@ link_flags=()
 if [ "$(uname -s)" = Linux ]; then
     curl_stub_dir=$(mktemp -d)
     curl_link_flags=$("$(dirname "$0")/curl-link-stub" "$curl_stub_dir") || exit 1
+    # Release only: the binary carries libstdc++/libgcc itself, so it needs no matching runtime on the player's distro (#352)
+    if [ "${SSS_RELEASE:-}" = 1 ]; then
+        curl_link_flags="$curl_link_flags -static-libstdc++ -static-libgcc -Wl,--as-needed"
+    fi
     link_flags=("-f:ExtraLinkerFlags=$curl_link_flags")
 fi
 build_output=$(qb64pe -w -x "$1" ${link_flags[@]+"${link_flags[@]}"} -o "$out_abs" 2>&1)
