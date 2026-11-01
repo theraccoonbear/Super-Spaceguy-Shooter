@@ -52,7 +52,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `TELEM_` | `src/sys/telemetry.bas` | Gameplay event logging (CSV + optional POST to the `server/` Worker); see `src/sys/README-telemetry.md` |
 | `LBRD_` | `src/sys/lbrd.bas` | Leaderboard poll and parse (reads `top_scores` from the `server/` Worker) |
 | `JSON_` | `src/sys/json.bas` | Minimal JSON *encoder* only (no decoder; parsing is hand-rolled per consumer) |
-| *(shared state)* | `src/sys/dims.bas` | All `DIM SHARED` global state — the game's shared memory layout. Every module reads/writes these. |
+| *(shared state)* | `src/sys/dims.bas` | All `DIM SHARED` global state — the game's shared memory layout (QB64-PE has no module-private state). Every module reads/writes these. |
 | `E3D_` | `src/3d/*.bas` | Software 3D engine (mesh, matrix, poly, camera, scene batching, collision, starfield); see `src/engine3d.md` |
 | `SPK_` | `src/audio/speech.bas` | Phoneme formant TTS synthesizer; see `src/sys/README-speech.md` |
 | `SND_` | `src/audio/snd.bas` | Sound effect triggers and real-time software mixer |
@@ -110,6 +110,18 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 
 ---
 
+## Content guideline: machines, not people (#317)
+
+The game is a teaching tale. Violence is the gameplay, not the story.
+
+- Every opponent is a machine: an autonomous drone, or a craft remote-piloted by someone who is elsewhere. Bosses are named operators flying their machines by remote link.
+- Nobody dies on camera, except the player character in some endings. Destroying an opponent wrecks a machine or cuts a remote link ("signal lost", "operator disconnected"). It never kills a person. Planets are never destroyed; no text, art or sound implies crews, cockpits, escape pods or civilian casualties.
+- Player-facing wording is neutral: "drones downed", "disabled", "wrecked", not "kill". Internal names (`stageKills`, the `enemy_killed` event) stay.
+- The regime's reality is not softened. The Executioners, the executions and abuses, the blockade and the repression stay as plain history and context in crawls, dock news and narration. The player fights machines and does not take part in or watch those crimes.
+- The player's own death endings stay.
+
+---
+
 ## Coordinate system (3D engine)
 
 ```
@@ -141,7 +153,7 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 
 - No GPU — the 3D renderer is 100% CPU (software rasterizer in `src/3d/poly.bas`)
 - No audio files — all sound is synthesized in `snd.bas` / `music.bas` / `speech.bas`
-- No Makefile, no CMake, no `npm` — build is `./tools/buildqb sss.bas`
+- No Makefile and no CMake — the build is `./tools/buildqb sss.bas`. It does need Node.js and npm: it runs `npm install` in `math/` and `node tools/emit-spline.js` to generate the ExprForge spline math before compiling
 - No general JSON decoder — `json.bas` encodes only; all response parsing is hand-rolled per consumer
 - No texture mapping — faces are flat-colored with optional directional lighting
 - No unit test framework — tests are self-contained `.bas` programs in `tests/` that exit 0 on pass
@@ -192,7 +204,7 @@ tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
 tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
 tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
-tools/http_queue_test                          # needs Python; starts mock server automatically
+tools/http_queue_test                          # needs Node (a Node mock HTTP server, tools/http_mock_server, starts automatically)
 
 # Golden-screenshot render tests (tests/render/; --update re-blesses goldens)
 tools/dev render

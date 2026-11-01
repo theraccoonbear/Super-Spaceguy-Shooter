@@ -25,6 +25,7 @@
 The systems of the {{region_name}} once governed themselves: a thousand worlds, a thousand flags, no single hand on the scale.
 That ended with ~4{{emperor}}~6.
 What followed was not war. It was appetite. One world at a time, ~4{{the_empire}}~6 rose, and the stars grew quiet beneath it.
+~6{{the_empire}} does not risk its own. Its fleets are drones and remote-piloted craft, steered by operators who never leave home.
 This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage1]
 ~4-~E=~7[ ~3CHAPTER 1 ~7]~E=~4-
@@ -40,7 +41,7 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6The aid run worked. The refugees lived. And ~4{{emperor}}~6 was furious.
 
-~6He has unleashed the ~4{{enforcers_full}}~6. The refugees answer with rebellion, and call themselves ~5{{resistance}}~6. The smuggler's new cargo is not grain, but rifles.
+~6He has unleashed the ~4{{enforcers_full}}~6, whose fleets are drones and remote-piloted craft: the Executioners stay home and send machines. The refugees answer with rebellion, and call themselves ~5{{resistance}}~6. The smuggler's new cargo is not grain, but rifles.
 
 ~6A resistance cell on ~2{{planet2}}~6 offers clean paperwork and easy terms. Too easy. The buyers are ~4{{enforcers}}~6, and they are waiting.
 
@@ -55,8 +56,12 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6One rogue scientist believes she can cure it. She is held on ~2{{planet3}}~6 by ~4{{boss1_name}}~6, the empire's {{boss1_title}}, who has no interest in a cure. Pull her out alive.
 
+~6He is not aboard his flagship. He flies it by remote link from a bunker far away.
+
 [BLOCK:stage4]
 ~4-~E=~7[ ~3CHAPTER 4 ~7]~E=~4-
+
+~6~4{{boss1_name}}~6's flagship is wrecked and the link is cut: signal lost, operator disconnected.
 
 ~6The scientist is safe, for now. To make the vaccine, she needs a lab. The last one standing is on ~2{{planet4}}~6, a survivor of ~4{{emperor}}'s~6 purge of the universities.
 
@@ -75,16 +80,16 @@ This is the story of one pilot who refused to stay quiet too.
 
 ~6Too little. Too late. The homeworld burns. Mobs storm the palaces and banks. Temples looted. Parliaments ablaze. From the shadows, ~4{{emperor}}~6 whispers. Burn it all down.
 
-~6And above the flames, ~4{{boss2_name}}~6 has followed the smuggler home.
+~6And above the flames, ~4{{boss2_name}}~6 has followed the smuggler home, piloting a cruiser by remote link from orbit.
 
 ~6Save who you can.
 
 [BLOCK:stage6]
 ~4-~E=~7[ ~3CHAPTER 6 ~7]~E=~4-
 
-~6Behind the smuggler, ~2{{planet5}}~6 is ash and radiation. In the cockpit, the last few allies not yet brainwashed. The cargo bay is empty. There is nothing left to deliver.
+~6Behind the smuggler, ~2{{planet5}}~6 is ash and radiation, and the wreck of ~4{{boss2_name}}~6's cruiser drifts dark, its operator offline. In the cockpit, the last few allies not yet brainwashed. The cargo bay is empty. There is nothing left to deliver.
 
-~6Ahead lies ~2{{emperor_homeworld}}~6, throne-world of the empire that swallowed a hundred systems. ~4{{emperor}}~6 waits behind a wall of warships, bought with the plunder of starving planets.
+~6Ahead lies ~2{{emperor_homeworld}}~6, throne-world of the empire that swallowed a hundred systems. ~4{{emperor}}~6 waits behind a wall of drone warships, bought with the plunder of starving planets.
 
 ~6This is no longer a courier's run.
 
@@ -93,7 +98,8 @@ This is the story of one pilot who refused to stay quiet too.
 [BLOCK:outro]
 ~4-~E=~7[ ~3EPILOGUE ~7]~E=~4-
 
-~2{{emperor_homeworld}}~6 burns behind the wreckage of ~4{{the_empire}}'s~6 last fleet.
+~2{{emperor_homeworld}}~6 burns behind the wrecked machines of ~4{{the_empire}}'s~6 last fleet.
+~6The final link drops. ~4{{emperor}}'s~6 command console goes dark, and every drone across the {{region_name}} falls still.
 In the ruin of ~4{{emperor}}'s~6 throne hall, the pilot finds what the propaganda never showed: star charts, older than the empire itself, marking a single world of origin.
 The world behind every ~4{{the_empire}}~6 banner, every imperial seal, every oath of conquest: it is ~2{{emperor_homeworld}}~6.
 
@@ -155,10 +161,10 @@ SUPER SPACE GUY SHOOTER
 WARNING BOSS INCOMING
 
 [BLOCK:speech_boss_phase2]
-SHIELDS FAILING. FULL AGGRESSION.
+SHIELDS FAILING. LINK UNSTABLE.
 
 [BLOCK:speech_boss_phase3]
-ALL SYSTEMS CRITICAL. WEAPONS FREE.
+ALL SYSTEMS CRITICAL. OPERATOR OVERRIDE.
 
 [BLOCK:speech_game_over]
 GAME OVER
