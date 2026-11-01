@@ -65,7 +65,7 @@ pids+=("$ff")
 echo ">>> recording: sss $*"
 start=$SECONDS
 rc=0
-(cd "$launch" && timeout -k 5 "$limit" "$bin" "$@" > game.out 2>&1) || rc=$?
+(cd "$launch" && timeout -k 5 "$limit" "$bin" --settings-dir . "$@" > game.out 2>&1) || rc=$?
 echo ">>> game exited with $rc after $((SECONDS - start))s"
 sleep 1    # let the last sound reach the recording
 kill -TERM "$ff" 2> /dev/null || true

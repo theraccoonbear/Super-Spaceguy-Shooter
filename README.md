@@ -152,6 +152,7 @@ sss [options]
   --fuel N               Start every run with N fuel (testing, e.g. a nearly empty tank at the dock)
   --pup K,K,K            Place power-ups (shield, fuel, points) when play starts: in your path, beside it, off-screen
   --screenshot-at N,N    Save frames N,... as shot-N.png in the launch folder
+  --settings-dir <path>  Keep sss_settings.ini in this folder instead of the per-user one (--input-script runs use the launch folder)
 ```
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
@@ -165,6 +166,10 @@ tools/dev headless --scene boss3 --god --no-telem --seed 1 --frames 1500 --input
 Add `--screenshot-at 200,700,1250` to save those frames as `shot-<frame>.png` (gitignored) to look at afterwards. A relative script path is resolved from the directory you launch from.
 
 `--leaderboard-file <file>` fills the leaderboard from a saved `top_scores` response, so it can be checked without the network: `tools/dev headless --scene title --no-telem --seed 1 --frames 130 --leaderboard-file tests/input/leaderboard.json --input-script tests/input/open-leaderboard.txt --screenshot-at 120`.
+
+**Where settings live (#284):** `sss_settings.ini` (volumes, fullscreen, difficulty, telemetry consent, callsign, key and gamepad bindings, high score) is kept in a per-user folder, so it doesn't matter where the game is launched from: `$XDG_CONFIG_HOME/sss` (default `~/.config/sss`) on Linux, `%APPDATA%\sss` on Windows, `~/Library/Application Support/sss` on macOS. The game creates the folder if it's missing. On the first run with the new location it copies an existing `sss_settings.ini` from the launch folder, so current players keep their settings; the old file is left where it was and is no longer read. If the per-user folder can't be created or written, the game uses the launch folder, and if that isn't writable either it plays without saving settings (no error dialog). The local telemetry CSV (`sss_telemetry.csv`) stays in the launch folder (skipped if it isn't writable) and is written once, when the session ends or the window is closed, not on every event.
+
+Dev builds only: `--settings-dir <path>` keeps `sss_settings.ini` in that folder (a relative path is from the launch folder; `.` is the launch folder itself), and any `--input-script` run uses the launch folder. So `tools/dev test`, `render`, `record` and the playthrough and determinism runs start from the settings in their own fresh launch folder and never read or write your own. `tools/dev run` mounts your host settings folder (`$XDG_CONFIG_HOME/sss` or `~/.config/sss`, created if missing) into the container, so a containerized run and a native run share settings. A `sss_settings.ini` in the repo root from before is copied into it on the first run.
 
 ## Testing
 

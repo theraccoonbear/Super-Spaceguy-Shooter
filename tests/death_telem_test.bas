@@ -102,6 +102,9 @@ Dim Shared telemShotsFired   As Long
 Dim Shared telemShotsHit     As Long
 Dim Shared telemEscapes      As Long
 Dim Shared telemBatch        As String
+Dim Shared telemCsvDir       As String
+Dim Shared telemCsvBuf       As String
+Dim Shared settingsDir       As String
 Dim Shared telemBatchRows    As Long
 Dim Shared telemT0           As Long
 Dim Shared gameFrame         As Long

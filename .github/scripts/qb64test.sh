@@ -98,6 +98,7 @@ TESTS=(
   wave_timing_test
   boss_hp_test
   readonly_io_test
+  settings_dir_test
   tty_probe_test
   cam_default_test
   difficulty_test

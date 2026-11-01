@@ -216,6 +216,12 @@ cmd_run() {
     pick_engine; ensure_image
     rebuild_if_stale
     gui_args
+    # Settings live in the per-user dir (#284). The container's own home is thrown away with
+    # it, so mount the host's settings dir where the game looks, and play shares settings
+    # with a native run.
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}/sss"
+    [ "$DRYRUN" = 1 ] || mkdir -p "$cfg"
+    RUN_EXTRA+=(-e XDG_CONFIG_HOME=/tmp/sss-config -v "$cfg:/tmp/sss-config/sss")
     run_in builds/sss "$@"
 }
 cmd_headless() {
@@ -316,7 +322,7 @@ cmd_help() {
 # The game's command-line options, as GAME_Usage in src/sys/game.bas lists them
 # (tests/tools_dev_test.sh checks the two match).
 GAME_FLAGS="--version --help --scene --crawls --god --nerf --difficulty --debug --no-telem --input-script --script-override
-    --leaderboard-file --frames --realtime --seed --credits --ships --shields --fuel --pup
+    --leaderboard-file --settings-dir --frames --realtime --seed --credits --ships --shields --fuel --pup
     --screenshot-at"
 
 # Prints a bash completion function for tools/dev. The command list is every cmd_*

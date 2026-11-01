@@ -70,20 +70,21 @@ IF DLV_Load% = 0 THEN GAME_Usage dlvLoadErr
 ' --- CLI arg handling (all before screen opens so output goes to terminal) ---
 CLI_Parse
 
-' Launched from a folder we can't write to (Program Files, a shared install, cwd /):
-' skip sss_settings.ini and sss_telemetry.csv for the session instead of raising
-' runtime-error dialogs (#283). Module level for the same ON ERROR reason as the
-' /dev/tty probe below.
-DIM ioProbe AS INTEGER : ioProbe = FREEFILE
-ON ERROR GOTO ioProbeFail
-OPEN _STARTDIR$ + "/sss_write_probe.tmp" FOR OUTPUT AS #ioProbe : CLOSE #ioProbe
-KILL _STARTDIR$ + "/sss_write_probe.tmp"
-GOTO ioProbeDone
-ioProbeFail:
-ioReadOnly = -1
-RESUME ioProbeDone
-ioProbeDone:
-ON ERROR GOTO 0
+' Where sss_settings.ini lives (#284): the per-user dir, made if missing; else the launch folder;
+' else nowhere, and the session saves no settings (#283). The launch folder is probed too, since
+' the local telemetry CSV goes there. --settings-dir pins the first choice and --input-script runs
+' use the launch folder, so scripted runs never touch a developer's own settings.
+'$INCLUDE:'src/sys/settingsprobe.bas'
+IF cliSettingsDir <> "" THEN
+    ioDirs(1) = cliSettingsDir
+ELSEIF iscActive THEN
+    ioDirs(1) = _STARTDIR$
+ELSE
+    ioDirs(1) = SETTINGS_DirFor$(_OS$, ENVIRON$("XDG_CONFIG_HOME"), ENVIRON$("APPDATA"), ENVIRON$("HOME"))
+END IF
+ioDirs(2) = _STARTDIR$
+ioMigrateWanted = (cliSettingsDir = "" AND iscActive = 0)
+GOSUB ioProbeRun
 
 ' Enable debug/diagnostic output where possible; DBG_Print and GTEXT_Log check dbgTtyOK.
 ' Windows: DBG_InitTty (src/sys/debug.bas) gates on --debug via $CONSOLE.
@@ -104,7 +105,13 @@ $ELSE
     dbgTtyDone:
     ON ERROR GOTO 0
 $END IF
-IF ioReadOnly THEN DBG_Print "IO: launch folder " + _STARTDIR$ + " is not writable; settings and local telemetry won't be saved this session"
+IF ioReadOnly THEN
+    DBG_Print "IO: no writable settings folder (tried " + ioDirs(1) + " and " + _STARTDIR$ + "); settings won't be saved this session"
+ELSE
+    DBG_Print "IO: settings in " + settingsDir
+    IF ioMigrated THEN DBG_Print "IO: migrated sss_settings.ini from the launch folder"
+END IF
+IF telemCsvDir = "" THEN DBG_Print "IO: launch folder " + _STARTDIR$ + " is not writable; no local telemetry CSV this session"
 
 ' --- screen ---
 scrW = 320 : scrH = 240
@@ -221,7 +228,7 @@ DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
     IF _EXIT THEN GAME_Quit
-    IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : SYSTEM
+    IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
     ' --- input ---
     KEY_FrameBegin
     IF iscActive THEN

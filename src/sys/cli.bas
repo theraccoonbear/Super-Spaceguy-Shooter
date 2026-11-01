@@ -70,6 +70,17 @@ Sub CLI_Parse()
         If _FileExists(cliVal) = 0 Then GAME_Usage("leaderboard file not found: " + cliVal)
         LBRD_Parse _ReadFile$(cliVal)
     End If
+    cliVal = CLI_Value$(cliLine, "--settings-dir ")
+    If cliVal <> "" Then
+        If cliVal = "." Then
+            cliVal = _StartDir$
+        ElseIf Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then
+            cliVal = _StartDir$ + "/" + cliVal
+        End If
+        cliSettingsDir = SETTINGS_TrimSlash$(cliVal)
+    ElseIf InStr(cliLine, "--settings-dir") > 0 Then
+        GAME_Usage("--settings-dir needs a folder")
+    End If
     cliVal = CLI_Value$(cliLine, "--frames ")
     If cliVal <> "" Then
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--frames needs a whole number, got '" + cliVal + "'")

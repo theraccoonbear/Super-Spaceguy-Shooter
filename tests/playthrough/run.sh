@@ -121,7 +121,7 @@ fi
 echo "=== playthrough: input $HERE/playthrough.txt ($(grep '^#!' "$HERE/playthrough.txt" | tr '\n' ' ')) ==="
 start=$SECONDS
 SSS_MILESTONE_LOG=milestones.log timeout "$TIME_LIMIT" "${XVFB[@]}" "$BIN" \
-    --input-script "$HERE/playthrough.txt" "$@" \
+    --settings-dir . --input-script "$HERE/playthrough.txt" "$@" \
     > game.out 2>&1
 rc=$?
 elapsed=$((SECONDS - start))

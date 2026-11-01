@@ -289,7 +289,10 @@ DIM SHARED dockBgImg   AS LONG
 ' --- telemetry ---
 DIM SHARED dbgTtyOK          AS INTEGER
 DIM SHARED telemOn           AS INTEGER
-DIM SHARED ioReadOnly        AS INTEGER   ' -1: launch folder not writable, skip settings + local CSV (#283)
+DIM SHARED ioReadOnly        AS INTEGER   ' -1: no writable settings location, skip saving settings (#283)
+DIM SHARED settingsDir       AS STRING    ' where sss_settings.ini lives; "" when ioReadOnly (#284)
+DIM SHARED telemCsvDir       AS STRING    ' where sss_telemetry.csv is written at session end; "" = no local CSV (#284)
+DIM SHARED telemCsvBuf       AS STRING    ' CSV rows waiting for the session-end write
 DIM SHARED telemKills        AS LONG
 DIM SHARED telemBossReached  AS INTEGER
 DIM SHARED telemBossPhaseLog AS INTEGER
@@ -357,6 +360,7 @@ DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = ne
 DIM SHARED cliRealtime     AS INTEGER  ' --realtime: keep the 60 fps throttle in scripted runs (recordings)
 DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
 DIM SHARED cliSeedSet      AS INTEGER
+DIM SHARED cliSettingsDir  AS STRING    ' --settings-dir <path>: pin the settings location (dev builds only)
 DIM SHARED cliCredits      AS LONG     ' --credits N: every run starts with N credits (testing the dock)
 DIM SHARED cliShips        AS LONG     ' --ships N: start with N ships (testing: quick game over)
 DIM SHARED cliShields      AS LONG     ' --shields N: start with N shield points (testing: damaged shields at the dock)
