@@ -319,6 +319,34 @@ DT_Assert SUP_Load% <> 0, "back to normal"
 dtLegBoss = 0 : dtLegBossSecs = 0
 
 Print ""
+Print "--- item art: every row maps to a picture, the cannon by level (#364) ---"
+Dim dtaRow As Integer, dtaId As Integer, dtaSeen(1 To DOCK_ART_COUNT) As Integer, dtaU As Integer
+UPG_Reset
+For dtaRow = DOCK_REFUEL To DOCK_LAUNCH - 1
+    dtaId = DOCK_ArtOf%(dtaRow)
+    DT_Assert dtaId >= 1 And dtaId <= DOCK_ART_COUNT, "row" + Str$(dtaRow) + " has a picture"
+    If dtaId >= 1 And dtaId <= DOCK_ART_COUNT Then dtaSeen(dtaId) = dtaSeen(dtaId) + 1
+Next dtaRow
+DT_Assert dtaSeen(DOCK_ART_SPREAD) = 0, "a fresh run shows twin cannons, not spread shot"
+dtaSeen(DOCK_ART_SPREAD) = 1
+For dtaId = 1 To DOCK_ART_COUNT
+    DT_Assert dtaSeen(dtaId) = 1, "picture" + Str$(dtaId) + " is used by exactly one row"
+Next dtaId
+DT_Assert DOCK_ArtOf%(DOCK_LAUNCH) = 0, "LAUNCH shows no picture"
+DT_Assert DOCK_ArtOf%(0) = 0 And DOCK_ArtOf%(DOCK_LAUNCH + 1) = 0, "rows outside the list show no picture"
+dtaRow = DOCK_UPG0 + UPG_CANNON
+DT_Assert DOCK_ArtOf%(dtaRow) = DOCK_ART_TWIN, "cannon level 0: twin cannons"
+upgLevel(UPG_CANNON) = 1
+DT_Assert DOCK_ArtOf%(dtaRow) = DOCK_ART_SPREAD, "cannon level 1 (next buys the spread): spread shot"
+upgLevel(UPG_CANNON) = upgMax(UPG_CANNON)
+DT_Assert DOCK_ArtOf%(dtaRow) = DOCK_ART_SPREAD, "cannon maxed: spread shot"
+For dtaU = 1 To UPG_COUNT
+    upgLevel(dtaU) = upgMax(dtaU)
+    DT_Assert DOCK_ArtOf%(DOCK_UPG0 + dtaU) > 0, "upgrade" + Str$(dtaU) + " maxed still has a picture"
+Next dtaU
+UPG_Reset
+
+Print ""
 Print "=== " + LTrim$(Str$(dtPassed + dtFailed)) + " tests: " + LTrim$(Str$(dtPassed)) + " passed, " + LTrim$(Str$(dtFailed)) + " failed ==="
 If dtFailed > 0 Then System 1
 System 0

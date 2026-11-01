@@ -165,3 +165,48 @@ End Function
 Function DOCK_TankWarnText$ (dtsMax As Single)
     DOCK_TankWarnText$ = "TANK " + LTrim$(Str$(Int(dtsMax))) + ": UPGRADE TANK"
 End Function
+
+' The art each dock row shows (#364): one id per picture in assets/32px/, 0 for a row with none.
+' dock.bas loads and draws the pictures; the 13x13 inline row icons will read this same table.
+Const DOCK_ART_COUNT   = 14
+Const DOCK_ART_REFUEL  = 1
+Const DOCK_ART_SHIELDS = 2
+Const DOCK_ART_TWIN    = 3
+Const DOCK_ART_SPREAD  = 4
+
+' Picture id for upgrade u, indexed by upgrade id; the cannon is resolved by level (DOCK_ArtOf%).
+Function DOCK_ArtOfUpgrade% (daouId As Integer)
+    Select Case daouId
+        Case UPG_LASER : DOCK_ArtOfUpgrade% = 5
+        Case UPG_CANNON : DOCK_ArtOfUpgrade% = DOCK_ART_TWIN
+        Case UPG_RAPID : DOCK_ArtOfUpgrade% = 6
+        Case UPG_SHIELD : DOCK_ArtOfUpgrade% = 7
+        Case UPG_REGEN : DOCK_ArtOfUpgrade% = 8
+        Case UPG_ARMOUR : DOCK_ArtOfUpgrade% = 9
+        Case UPG_NOVA : DOCK_ArtOfUpgrade% = 10
+        Case UPG_THRUST : DOCK_ArtOfUpgrade% = 11
+        Case UPG_ROLL : DOCK_ArtOfUpgrade% = 12
+        Case UPG_TRACTOR : DOCK_ArtOfUpgrade% = 13
+        Case UPG_FUEL : DOCK_ArtOfUpgrade% = 14
+        Case Else : DOCK_ArtOfUpgrade% = 0
+    End Select
+End Function
+
+' Picture for a list row: twin cannons until the next level buys the three-way spread, then
+' (and when maxed) spread shot; LAUNCH and any other row 0.
+Function DOCK_ArtOf% (daoRow As Integer)
+    Dim daoU As Integer
+    DOCK_ArtOf% = 0
+    If daoRow = DOCK_REFUEL Then DOCK_ArtOf% = DOCK_ART_REFUEL : Exit Function
+    If daoRow = DOCK_SHIELDS Then DOCK_ArtOf% = DOCK_ART_SHIELDS : Exit Function
+    If daoRow <= DOCK_UPG0 Or daoRow >= DOCK_LAUNCH Then Exit Function
+    daoU = daoRow - DOCK_UPG0
+    DOCK_ArtOf% = DOCK_ArtOfUpgrade%(daoU)
+    If daoU = UPG_CANNON Then
+        If upgLevel(daoU) >= upgMax(daoU) Then
+            DOCK_ArtOf% = DOCK_ART_SPREAD
+        ElseIf upgFxA(daoU, upgLevel(daoU) + 1) >= 3 Then
+            DOCK_ArtOf% = DOCK_ART_SPREAD
+        End If
+    End If
+End Function

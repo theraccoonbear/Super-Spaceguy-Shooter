@@ -26,6 +26,20 @@ $EMBED:'assets/planet-05-clean.png':'PLANET05'
 $EMBED:'assets/planet-06-clean.png':'PLANET06'
 $EMBED:'assets/grotuk.png':'EMPERORIMG'
 $EMBED:'assets/dock_bg.png':'DOCKBG'
+$EMBED:'assets/32px/evasive_roll.png':'DKARTEVASIVEROLL'
+$EMBED:'assets/32px/fuel_tank.png':'DKARTFUELTANK'
+$EMBED:'assets/32px/hull_armour.png':'DKARTHULLARMOUR'
+$EMBED:'assets/32px/laser_capacitor.png':'DKARTLASERCAPACITOR'
+$EMBED:'assets/32px/nova_pulse.png':'DKARTNOVAPULSE'
+$EMBED:'assets/32px/rapid_fire.png':'DKARTRAPIDFIRE'
+$EMBED:'assets/32px/refuel.png':'DKARTREFUEL'
+$EMBED:'assets/32px/shield_capacity.png':'DKARTSHIELDCAPACITY'
+$EMBED:'assets/32px/shield_regen.png':'DKARTSHIELDREGEN'
+$EMBED:'assets/32px/shields.png':'DKARTSHIELDS'
+$EMBED:'assets/32px/spread_shot.png':'DKARTSPREADSHOT'
+$EMBED:'assets/32px/thrusters.png':'DKARTTHRUSTERS'
+$EMBED:'assets/32px/tractor_beam.png':'DKARTTRACTORBEAM'
+$EMBED:'assets/32px/twin_cannons.png':'DKARTTWINCANNONS'
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
@@ -116,6 +130,7 @@ backBuffer = _NEWIMAGE(scrW, scrH, 32)
 titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 dockBgImg       = _LOADIMAGE(_EMBEDDED$("DOCKBG"),     32, "memory")
+DOCK_LoadArt
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
 cfgEconomy   = CFG_Parse$(_EMBEDDED$("CFGECONOMY"))
