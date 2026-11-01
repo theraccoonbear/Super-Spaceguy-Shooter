@@ -4,14 +4,12 @@
 ' and holds --backdrop-dev, the dev-build helper for placing effects:
 '   BACKDROP_Draw name$, x1, y1, x2, y2   call right after the painting is drawn into the rectangle
 '                                         x1,y1-x2,y2 of backBuffer, before any UI over it
-'   --backdrop-dev                        shows the painting coordinates under the mouse and, on F5,
+'   --backdrop-dev                        shows the painting coordinates under the mouse and, on R,
 '                                         re-reads assets/backdrops.txt from disk (parse problems are
 '                                         shown on screen and the effects stay off until it is fixed)
 ' There is no additive blending, so a glow is a stack of translucent circles, as for the bolts.
 
-Const BD_DEV_KEY = 16128      ' F5: no screen with a painting uses it
 Const BD_DEV_FILE = "assets/backdrops.txt"
-Const BD_GLOW = 3             ' glow rings outside the lit core, in pixels
 
 Dim Shared bdDevWas As Integer
 Dim Shared bdDevMsg As String         ' last reload result, "" before the first
@@ -40,14 +38,14 @@ Sub BACKDROP_DevReload ()
     Dim bdrPath As String, bdrOk As Integer
     bdrPath = BACKDROP_DevPath$
     If bdrPath = "" Then
-        bdDevMsg = "F5: " + BD_DEV_FILE + " not found (launch from the repository folder)"
+        bdDevMsg = "R: " + BD_DEV_FILE + " not found (launch from the repository folder)"
         bdDevErr = -1
         Exit Sub
     End If
     bdrOk = BD_Parse%(_ReadFile$(bdrPath))
     If bdrOk Then
         bdDevErr = 0
-        bdDevMsg = "F5: reloaded " + LTrim$(Str$(bdFxN)) + " effects"
+        bdDevMsg = "R: reloaded " + LTrim$(Str$(bdFxN)) + " effects"
     Else
         bdDevErr = -1
         bdDevMsg = bdErrors
@@ -72,7 +70,7 @@ Sub BACKDROP_DrawBlink (bdbFx As Integer)
     bdbX = BACKDROP_ScreenX%(bdX(bdbFx)) : bdbY = BACKDROP_ScreenY%(bdY(bdbFx))
     bdbC = bdCol(bdbFx, 0)
     bdbRed = _Red32(bdbC) : bdbGrn = _Green32(bdbC) : bdbBlu = _Blue32(bdbC)
-    For bdbR = bdSize(bdbFx) + BD_GLOW To bdSize(bdbFx) + 1 Step -1
+    For bdbR = bdSize(bdbFx) + bdGlow(bdbFx) To bdSize(bdbFx) + 1 Step -1
         Circle (bdbX, bdbY), bdbR, _RGBA(bdbRed, bdbGrn, bdbBlu, Int(34 * bdbLv))
     Next bdbR
     If bdSize(bdbFx) > 0 Then Line (bdbX - bdSize(bdbFx) + 1, bdbY - bdSize(bdbFx) + 1)-(bdbX + bdSize(bdbFx) - 1, bdbY + bdSize(bdbFx) - 1), _RGBA(bdbRed, bdbGrn, bdbBlu, Int(220 * bdbLv)), BF
@@ -80,14 +78,16 @@ Sub BACKDROP_DrawBlink (bdbFx As Integer)
 End Sub
 
 Sub BACKDROP_DrawSparks ()
-    Dim bdsI As Integer, bdsX As Integer, bdsY As Integer, bdsA As Long, bdsC As Long
+    Dim bdsS As Integer, bdsTX As Integer, bdsTY As Integer, bdsI As Integer, bdsX As Integer, bdsY As Integer, bdsA As Long, bdsC As Long
     For bdsI = 0 To BD_POOL - 1
         If bdPAlive(bdsI) Then
             bdsA = 255 - (255 * bdPAge(bdsI)) \ bdPLife(bdsI)
             bdsC = bdPCol(bdsI)
             bdsX = BACKDROP_ScreenX%(bdPX(bdsI)) : bdsY = BACKDROP_ScreenY%(bdPY(bdsI))
-            Line (bdsX - Sgn(bdPVX(bdsI)), bdsY - Sgn(bdPVY(bdsI)))-(bdsX - Sgn(bdPVX(bdsI)), bdsY - Sgn(bdPVY(bdsI))), _RGBA(_Red32(bdsC), _Green32(bdsC), _Blue32(bdsC), bdsA \ 3)
-            Line (bdsX, bdsY)-(bdsX + 1, bdsY + 1), _RGBA(_Red32(bdsC), _Green32(bdsC), _Blue32(bdsC), bdsA), BF
+            bdsS = bdSize(bdPFx(bdsI))
+            bdsTX = bdsX - Sgn(bdPVX(bdsI)) * bdsS : bdsTY = bdsY - Sgn(bdPVY(bdsI)) * bdsS
+            Line (bdsTX, bdsTY)-(bdsTX + bdsS - 1, bdsTY + bdsS - 1), _RGBA(_Red32(bdsC), _Green32(bdsC), _Blue32(bdsC), bdsA \ 3), BF
+            Line (bdsX, bdsY)-(bdsX + bdsS, bdsY + bdsS), _RGBA(_Red32(bdsC), _Green32(bdsC), _Blue32(bdsC), bdsA), BF
         End If
     Next bdsI
 End Sub
@@ -104,8 +104,9 @@ Sub BACKDROP_DrawDev ()
     Else
         bddS = "off the painting"
     End If
-    Line (0, 0)-(Len("at=" + bddS) * FONT_CHAR_W + 3, FONT_CHAR_H), _RGBA(0, 0, 0, 200), BF
-    FONT_PrintAlpha fontPalette(14), backBuffer, "at=" + bddS, 2, 0, 255
+    bddS = "at=" + bddS + "  R=reload"
+    Line (0, 0)-(Len(bddS) * FONT_CHAR_W + 3, FONT_CHAR_H), _RGBA(0, 0, 0, 200), BF
+    FONT_PrintAlpha fontPalette(14), backBuffer, bddS, 2, 0, 255
     If Len(bdDevMsg) > 0 Then
         bddNL = 0 : bddP = 1
         Line (0, FONT_CHAR_H)-(scrW - 1, FONT_CHAR_H * 7), _RGBA(0, 0, 0, 170), BF
@@ -123,7 +124,7 @@ Sub BACKDROP_Draw (bdnName As String, bdnX1 As Integer, bdnY1 As Integer, bdnX2 
     Dim bdnI As Integer, bdnKeyNow As Integer
     bdDevX1 = bdnX1 : bdDevY1 = bdnY1 : bdDevX2 = bdnX2 : bdDevY2 = bdnY2
     If cliBackdropDev Then
-        bdnKeyNow = KEY_Down%(BD_DEV_KEY)
+        bdnKeyNow = KEY_Down%(82) Or KEY_Down%(114)
         If bdnKeyNow And bdDevWas = 0 Then BACKDROP_DevReload
         bdDevWas = bdnKeyNow
     End If

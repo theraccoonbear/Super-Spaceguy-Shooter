@@ -9,11 +9,13 @@ backdrop:title
     BLINK at=256,113 color=ff4040 size=1 mode=pulse on=45 off=45
     BLINK at=302,114 color=ff4040 size=1 mode=pulse on=45 off=45 phase=45
     ; engine embers
-    SPARK at=58,179 color=a0e0ff,ffffff count=2 every=14 speed=1.1 gravity=0 life=18 dir=120 spread=50
-    SPARK at=111,183 color=a0e0ff,ffffff count=2 every=14 speed=1.1 gravity=0 life=18 dir=120 spread=50 phase=7
+    SPARK at=58,179 color=ffffff,c0f0ff count=5 every=6 speed=1.2 gravity=0 life=18 dir=120 spread=60 size=3
+    SPARK at=111,183 color=ffffff,c0f0ff count=5 every=6 speed=1.2 gravity=0 life=18 dir=120 spread=60 size=3 phase=3
 
 backdrop:dock
-    ; hangar floodlight
-    BLINK at=78,67 color=ffc040 size=1 mode=pulse on=70 off=50
-    ; a welder at work on the red ship's hull
-    SPARK at=40,128 color=ffd080,ffffff count=5 every=90 speed=1.2 gravity=0.05 life=22 dir=270 spread=150
+    ; hangar floodlight, breathing over two seconds
+    BLINK at=78,67 color=ffc040 size=2 glow=8 mode=pulse on=60 off=60
+    ; a crew at work on the red ship: three welds at different points, each on its own uneven beat
+    SPARK at=19,105 color=ffd080,ffffff count=4 every=79 jitter=40 speed=1.2 gravity=0.05 life=20 dir=270 spread=150
+    SPARK at=50,117 color=ffd080,ffffff count=5 every=113 jitter=50 speed=1.2 gravity=0.05 life=22 dir=270 spread=150 phase=31
+    SPARK at=31,147 color=ffe0a0,ffffff count=4 every=151 jitter=60 speed=1.0 gravity=0.05 life=20 dir=270 spread=150 phase=67

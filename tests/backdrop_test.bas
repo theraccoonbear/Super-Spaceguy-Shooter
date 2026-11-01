@@ -78,6 +78,7 @@ End Function
 
 Dim btI As Integer, btN As Integer, btOk As Integer, btF As Long, btS As String, btT As String, btErr As String
 Dim btSum As Double, btV As Single, btMin As Single, btMax As Single, btA As Long, btB As Long
+Dim btU As String
 Dim btRnd1 As Single, btRnd2 As Single, btFx As Integer, btBig As String
 
 Print "=== backdrop_test ==="
@@ -385,6 +386,95 @@ For btF = 0 To 599
 Next btF
 btRnd2 = Rnd(0)
 BT_Assert btRnd1 = btRnd2,                              "10.01  600 frames of the real title backdrop draw nothing from the Rnd stream (its last number is unchanged)"
+Print ""
+
+Print "--- 11. glow, spark size and jitter ---"
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000" + Chr$(10))
+BT_Assert bdGlow(0) = 3,                                "11.01  BLINK glow defaults to 3"
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    BLINK at=1,1 color=ff0000 glow=12 size=2" + Chr$(10))
+BT_Assert btOk <> 0 And bdGlow(0) = 12 And bdSize(0) = 2, "11.02  glow=12 is allowed"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 glow=13"), 2, "glow must be a whole number 0 to 12"), "11.03  glow=13 is an error"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 glow=2"), 2, "unknown SPARK key 'glow'"), "11.04  glow is not a SPARK key"
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000" + Chr$(10))
+BT_Assert bdSize(0) = 1 And bdJitter(0) = 0,            "11.05  SPARK size defaults to 1 and jitter to 0"
+btOk = BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000 size=6 jitter=20 every=60" + Chr$(10))
+BT_Assert btOk <> 0 And bdSize(0) = 6 And bdJitter(0) = 20, "11.06  size=6 and jitter=20 are read"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 size=0"), 2, "size must be a whole number 1 to 6"), "11.07  SPARK size=0 is an error"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 size=7"), 2, "size must be a whole number 1 to 6"), "11.08  SPARK size=7 is an error"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 size=2.5"), 2, "size must be"), "11.09  SPARK size must be whole"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 size=8 jitter=3"), 2, "unknown BLINK key 'jitter'"), "11.10  jitter is not a BLINK key"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 every=30 jitter=30"), 2, "jitter must be less than every (30)"), "11.11  jitter must stay under every"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 every=3600 jitter=3600"), 2, "jitter must be"), "11.12  jitter has an upper limit"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 jitter=x"), 2, "jitter must be a whole number"), "11.13  jitter must be a number"
+BT_Assert BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=10 life=40")) <> 0, "11.14  64 alive with no jitter is allowed"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=10 jitter=5 life=40"), 2, "pool holds 64"), "11.15  jitter closes the gap between bursts, so the pool bound uses every - jitter"
+BT_Assert BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=8 every=10 jitter=5 life=40")) <> 0, "11.16  8 sparks with jitter fits (8 bursts of 8 never exceed 64)"
+' bursts of an effect: the frames on which sparks of age 0 exist, as "f,f,f,"
+btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=1 every=50 jitter=20 life=5" + Chr$(10) + "    SPARK at=2,2 color=ff0000 count=1 every=50 jitter=20 life=5" + Chr$(10))
+bdLastMain = -9
+btS = "" : btT = ""
+For btF = 0 To 2999
+    BD_Advance 4000 + btF, "dock"
+    For btI = 0 To BD_POOL - 1
+        If bdPAlive(btI) Then
+            If bdPAge(btI) = 0 And bdPFx(btI) = 0 Then btS = btS + LTrim$(Str$(btF)) + ","
+            If bdPAge(btI) = 0 And bdPFx(btI) = 1 Then btT = btT + LTrim$(Str$(btF)) + ","
+        End If
+    Next btI
+Next btF
+btOk = -1 : btN = 0 : btMin = 99 : btMax = 0 : btA = -1 : btB = 0
+Dim btP As Integer, btC As Integer, btCur As Long, btWin As Long, btSeen(0 To 59) As Integer
+btP = 1 : btWin = 0
+Do While btP < Len(btS)
+    btC = InStr(btP, btS, ",")
+    btCur = Val(Mid$(btS, btP, btC - btP)) : btP = btC + 1
+    btN = btN + 1
+    If btCur \ 50 <> btWin Then btOk = 0
+    btWin = btWin + 1
+    If btCur - (btCur \ 50) * 50 > 20 Then btOk = 0
+    btSeen(btCur - (btCur \ 50) * 50) = -1
+    If btA >= 0 Then
+        If btCur - btA < 30 Or btCur - btA > 70 Then btOk = 0
+    End If
+    btA = btCur
+Loop
+btC = 0
+For btP = 0 To 59 : If btSeen(btP) Then btC = btC + 1
+Next btP
+BT_Assert btN = 60 And btOk,                            "11.17  jitter=20, every=50: one burst in each 50-frame window, at most 20 frames late, 30 to 70 frames apart (60 bursts in 3000 frames)"
+BT_Assert btC >= 10,                                    "11.18  the bursts are not on a fixed beat (" + LTrim$(Str$(btC)) + " different offsets in 60 bursts)"
+BT_Assert btS <> btT,                                   "11.19  two identical effects keep different beats (the effect number is hashed in)"
+btA = 0
+btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=1 every=50 jitter=20 life=5" + Chr$(10) + "    SPARK at=2,2 color=ff0000 count=1 every=50 jitter=20 life=5" + Chr$(10))
+bdLastMain = -9
+btU = ""
+For btF = 0 To 2999
+    BD_Advance 4000 + btF, "dock"
+    For btI = 0 To BD_POOL - 1
+        If bdPAlive(btI) Then
+            If bdPAge(btI) = 0 And bdPFx(btI) = 0 Then btU = btU + LTrim$(Str$(btF)) + ","
+        End If
+    Next btI
+Next btF
+BT_Assert btU = btS,                                   "11.20  the same 3000 frames again give the same bursts"
+btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=1 every=50 life=5" + Chr$(10))
+bdLastMain = -9
+btN = 0 : btOk = -1
+For btF = 0 To 999
+    BD_Advance 8000 + btF, "dock"
+    For btI = 0 To BD_POOL - 1
+        If bdPAlive(btI) Then
+            If bdPAge(btI) = 0 Then
+                btN = btN + 1
+                If btF Mod 50 <> 0 Then btOk = 0
+            End If
+        End If
+    Next btI
+Next btF
+BT_Assert btN = 20 And btOk,                            "11.21  jitter=0 keeps the plain every= beat"
+btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=1 every=1000 speed=0 gravity=0 life=30 size=3" + Chr$(10))
+BD_Reset "dock"
+BT_Assert bdSize(bdPFx(0)) = 3,                         "11.22  a spark reads its size from its effect"
 Print ""
 
 Print "=== " + LTrim$(Str$(btPass + btFail)) + " tests: " _

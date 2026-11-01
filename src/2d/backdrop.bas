@@ -9,15 +9,19 @@
 '
 ' File format (; starts a comment; verbs are case-insensitive, keys are lower case):
 '   backdrop:<name>          the painting the following lines belong to (title emperor dock)
-'       BLINK at=x,y color=rrggbb [size=1] [on=30] [off=30] [mode=hard|pulse] [phase=0]
+'       BLINK at=x,y color=rrggbb [size=1] [glow=3] [on=30] [off=30] [mode=hard|pulse] [phase=0]
 '       SPARK at=x,y color=rrggbb[,rrggbb...] [count=3] [every=60] [speed=0.6] [gravity=0.05]
-'             [life=20] [dir=270] [spread=120] [phase=0]
+'             [life=20] [dir=270] [spread=120] [phase=0] [jitter=0] [size=1]
 ' Positions are pixels on the 320x240 painting. Frames run at 60 per second.
 '   BLINK  a light: hard mode is on for `on` frames then off for `off`; pulse mode is a sine over
 '          the `on`+`off` frames. size is the radius of the lit core in pixels.
 '   SPARK  every `every` frames, `count` sparks leave the point at `speed` px/frame, spread over
 '          `spread` degrees around `dir` (0 = right, 90 = down, 270 = up), pulled down by
 '          `gravity`, and fade out over `life` frames. Each takes one of the colours.
+'   glow   pixels of soft glow around a BLINK core.
+'   size   of a SPARK: 1 = a 2x2 head with a 1 pixel trail, each step adds a pixel to both.
+'   jitter each SPARK burst comes up to this many frames late (below every), different each time,
+'          from the frame/effect hash: bursts are every-jitter to every+jitter frames apart.
 '   phase  shifts the loop: the effect behaves as if the screen had been open that many frames.
 '
 ' Randomness is a hash of (frame, effect, spark): no RNG stream is read, so no other visual and no
@@ -54,6 +58,8 @@ Dim Shared bdY(0 To BD_MAX_FX - 1) As Single
 Dim Shared bdCol(0 To BD_MAX_FX - 1, 0 To BD_MAX_COL - 1) As Long
 Dim Shared bdColN(0 To BD_MAX_FX - 1) As Integer
 Dim Shared bdSize(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdGlow(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdJitter(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdOn(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdOff(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdMode(0 To BD_MAX_FX - 1) As Integer
@@ -166,8 +172,8 @@ End Function
 ' The keys each verb takes, space-separated; "" for an unknown verb.
 Function BD_KeysOf$ (bkVerb As String)
     Select Case bkVerb
-        Case "BLINK" : BD_KeysOf$ = "at color size on off mode phase"
-        Case "SPARK" : BD_KeysOf$ = "at color count every speed gravity life dir spread phase"
+        Case "BLINK" : BD_KeysOf$ = "at color size glow on off mode phase"
+        Case "SPARK" : BD_KeysOf$ = "at color count every jitter size speed gravity life dir spread phase"
         Case Else    : BD_KeysOf$ = ""
     End Select
 End Function
@@ -241,7 +247,7 @@ End Function
 Function BD_SparksAlive& (bsaSet As Integer)
     Dim bsaI As Integer, bsaTot As Long
     For bsaI = bdSetFrom(bsaSet) To bdSetFrom(bsaSet) + bdSetN(bsaSet) - 1
-        If bdKind(bsaI) = BD_KIND_SPARK Then bsaTot = bsaTot + bdCount(bsaI) * ((bdLife(bsaI) - 1) \ bdEvery(bsaI) + 1)
+        If bdKind(bsaI) = BD_KIND_SPARK Then bsaTot = bsaTot + bdCount(bsaI) * ((bdLife(bsaI) - 1) \ (bdEvery(bsaI) - bdJitter(bsaI)) + 1)
     Next bsaI
     BD_SparksAlive& = bsaTot
 End Function
@@ -257,6 +263,8 @@ Sub BD_BuildEffect ()
         bdKind(bfFx) = BD_KIND_BLINK
         If BD_Opt%("size", 1, 0, 8, -1, bfV) = 0 Then Exit Sub
         bdSize(bfFx) = bfV
+        If BD_Opt%("glow", 3, 0, 12, -1, bfV) = 0 Then Exit Sub
+        bdGlow(bfFx) = bfV
         If BD_Opt%("on", 30, 1, 600, -1, bfV) = 0 Then Exit Sub
         bdOn(bfFx) = bfV
         If BD_Opt%("off", 30, 0, 600, -1, bfV) = 0 Then Exit Sub
@@ -278,6 +286,11 @@ Sub BD_BuildEffect ()
         bdCount(bfFx) = bfV
         If BD_Opt%("every", 60, 1, 3600, -1, bfV) = 0 Then Exit Sub
         bdEvery(bfFx) = bfV
+        If BD_Opt%("jitter", 0, 0, 3599, -1, bfV) = 0 Then Exit Sub
+        bdJitter(bfFx) = bfV
+        If bdJitter(bfFx) >= bdEvery(bfFx) Then BD_LineErr "SPARK jitter must be less than every (" + LTrim$(Str$(bdEvery(bfFx))) + ")" : Exit Sub
+        If BD_Opt%("size", 1, 1, 6, -1, bfV) = 0 Then Exit Sub
+        bdSize(bfFx) = bfV
         If BD_Opt%("speed", 0.6, 0, 10, 0, bfV) = 0 Then Exit Sub
         bdSpeed(bfFx) = bfV
         If BD_Opt%("gravity", 0.05, -1, 1, 0, bfV) = 0 Then Exit Sub
@@ -449,7 +462,7 @@ End Sub
 
 ' Frame bsFrame of the current backdrop: the sparks fly one frame on and the bursts due now start.
 Sub BD_Tick (btFrame As Long)
-    Dim btI As Integer, btFx As Integer, btRel As Long
+    Dim btI As Integer, btFx As Integer, btRel As Long, btK As Long, btOff As Long
     For btI = 0 To BD_POOL - 1
         If bdPAlive(btI) Then
             bdPAge(btI) = bdPAge(btI) + 1
@@ -467,7 +480,9 @@ Sub BD_Tick (btFrame As Long)
         If bdKind(btFx) = BD_KIND_SPARK Then
             btRel = btFrame - bdPhase(btFx)
             If btRel >= 0 Then
-                If btRel Mod bdEvery(btFx) = 0 Then BD_Spawn btFx, btFrame
+                btK = btRel \ bdEvery(btFx)
+                btOff = Int(BD_Hash!(btK, btFx, 1000) * (bdJitter(btFx) + 1))
+                If btRel = btK * bdEvery(btFx) + btOff Then BD_Spawn btFx, btFrame
             End If
         End If
     Next btFx

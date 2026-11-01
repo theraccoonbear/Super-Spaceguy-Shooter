@@ -164,7 +164,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --frames N           Quit after N frames (60 per second)"
     CLI_Emit guFH, "  --realtime             Keep 60 frames per second in --input-script runs (for recordings)"
     CLI_Emit guFH, "  --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder starts the tutorial at the first New Game)"
-    CLI_Emit guFH, "  --backdrop-dev         Matte paintings: show the painting coordinates under the mouse, and F5 re-reads assets/backdrops.txt from disk (see docs/backdrops.md)"
+    CLI_Emit guFH, "  --backdrop-dev         Matte paintings: show the painting coordinates under the mouse, and R re-reads assets/backdrops.txt from disk (see docs/backdrops.md)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
     CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"

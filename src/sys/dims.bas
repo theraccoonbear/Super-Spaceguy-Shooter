@@ -358,7 +358,7 @@ DIM SHARED camDnWas        AS INTEGER
 DIM SHARED cliScene        AS STRING
 DIM SHARED cliSceneType    AS STRING
 DIM SHARED cliGateTutorial AS INTEGER  ' --gate-tutorial (dev): the first-play tutorial gate stays on under --input-script and --scene
-DIM SHARED cliBackdropDev  AS INTEGER  ' --backdrop-dev (dev): painting coordinates under the mouse, F5 reloads assets/backdrops.txt
+DIM SHARED cliBackdropDev  AS INTEGER  ' --backdrop-dev (dev): painting coordinates under the mouse, R reloads assets/backdrops.txt
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
 DIM SHARED cliRealtime     AS INTEGER  ' --realtime: keep the 60 fps throttle in scripted runs (recordings)
