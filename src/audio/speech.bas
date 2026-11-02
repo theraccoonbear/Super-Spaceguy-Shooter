@@ -49,6 +49,20 @@ DIM SHARED spkSampleOut  AS SINGLE  ' current sample; written by SPK_Advance, re
 DIM SHARED spkClkIdx AS INTEGER
 DIM SHARED spkClkPos AS LONG
 
+' Audio lock (#393): the frame clock above runs 735 samples per frame, so it falls behind the voice
+' whenever frames run slower than the device drains, or the device runs faster than SAMPLE_RATE.
+' With spkAudioLock on, SPK_Tick also moves the clock up to the sample the listener is hearing:
+' the synth position (spkSynthTotal) at the output sample that is spkBuffered samples behind the
+' newest one (spkSynthAt ring). The clock never falls behind that, and never runs backwards.
+CONST SPK_RING = 8192
+DIM SHARED spkAudioLock AS INTEGER
+DIM SHARED spkBuffered AS LONG       ' output samples queued in the audio device; set by the main loop before SPK_Tick
+DIM SHARED spkSynthTotal AS LONG     ' synth samples produced while an utterance was queued
+DIM SHARED spkOutTotal AS LONG
+DIM SHARED spkSayBase AS LONG        ' spkSynthTotal when the current utterance was queued
+DIM SHARED spkClkTotal AS LONG       ' synth samples the clock has moved through this utterance
+DIM SHARED spkSynthAt(0 TO SPK_RING - 1) AS LONG
+
 ' Formant synthesis
 ' F1/F2 per phoneme (Hz, Peterson & Barney 1952 for vowels; Klatt 1980 for consonants)
 DIM SHARED spkF1(0 TO 39) AS SINGLE
@@ -465,15 +479,33 @@ SUB SPK_Init()
         SPK_IsPlaying% = (spkClkIdx < spkPhoneCount)
     END FUNCTION
 
+    ' Synth samples of the current utterance the listener has heard, given sphBufferedN output
+    ' samples still queued in the device (0 if the voice has not reached the speakers yet).
+    FUNCTION SPK_HeardSynth&(sphBufferedN AS LONG)
+        DIM sphOut AS LONG, sphV AS LONG
+        IF sphBufferedN > SPK_RING - 1 THEN sphBufferedN = SPK_RING - 1
+        IF sphBufferedN < 0 THEN sphBufferedN = 0
+        sphOut = spkOutTotal - sphBufferedN
+        IF sphOut < 1 THEN SPK_HeardSynth& = 0 : EXIT FUNCTION
+        sphV = spkSynthAt(sphOut AND (SPK_RING - 1)) - spkSayBase
+        IF sphV < 0 THEN sphV = 0
+        SPK_HeardSynth& = sphV
+    END FUNCTION
+
     ' One game frame of speech: SAMPLE_RATE / 60 output samples (spkTimeScale synth samples
     ' each), however much audio the fill synthesised this frame.
     SUB SPK_Tick()
-        DIM sptLeft AS LONG, sptD AS LONG
+        DIM sptLeft AS LONG, sptD AS LONG, sptHeard AS LONG
         sptLeft = (SAMPLE_RATE \ 60) * spkTimeScale
+        IF spkAudioLock THEN
+            sptHeard = SPK_HeardSynth&(spkBuffered)
+            IF sptHeard - spkClkTotal > sptLeft THEN sptLeft = sptHeard - spkClkTotal
+        END IF
         DO WHILE sptLeft > 0 AND spkClkIdx < spkPhoneCount
             sptD = SPK_PhoneDur&(spkPhones(spkClkIdx), spkStress(spkClkIdx)) - spkClkPos
             IF sptD < 1 THEN sptD = 1
-            IF sptLeft < sptD THEN spkClkPos = spkClkPos + sptLeft : EXIT DO
+            IF sptLeft < sptD THEN spkClkPos = spkClkPos + sptLeft : spkClkTotal = spkClkTotal + sptLeft : EXIT DO
+            spkClkTotal = spkClkTotal + sptD
             sptLeft = sptLeft - sptD : spkClkPos = 0 : spkClkIdx = spkClkIdx + 1
         LOOP
     END SUB
@@ -525,10 +557,10 @@ SUB SPK_Init()
         DIM stsWT(0 TO SPK_MAX_WORDS - 1) AS STRING, stsWO(0 TO SPK_MAX_WORDS - 1) AS INTEGER
         DIM stsN AS INTEGER, stsIdx AS INTEGER, stsPos AS INTEGER, stsWN AS INTEGER, stsI AS INTEGER
         DIM stsPhase AS SINGLE, stsPrev AS INTEGER, stsSil AS SINGLE, stsVow AS SINGLE, stsCons AS SINGLE
-        DIM stsClkIdx AS INTEGER, stsClkPos AS LONG
+        DIM stsClkIdx AS INTEGER, stsClkPos AS LONG, stsClkTotal AS LONG, stsBase AS LONG
 
         stsN = spkPhoneCount : stsIdx = spkPhoneIdx : stsPos = spkSamplePos : stsWN = spkWordCount
-        stsClkIdx = spkClkIdx : stsClkPos = spkClkPos
+        stsClkIdx = spkClkIdx : stsClkPos = spkClkPos : stsClkTotal = spkClkTotal : stsBase = spkSayBase
         stsPhase = spkWavePhase : stsPrev = spkPrevPhoneID
         stsSil = spkScaleSil : stsVow = spkScaleVow : stsCons = spkScaleCons
         FOR stsI = 0 TO stsN - 1 : stsPh(stsI) = spkPhones(stsI) : stsSt(stsI) = spkStress(stsI) : NEXT stsI
@@ -542,7 +574,7 @@ SUB SPK_Init()
         SPK_TextSamples& = SPK_QueueSamples&
 
         spkPhoneCount = stsN : spkPhoneIdx = stsIdx : spkSamplePos = stsPos : spkWordCount = stsWN
-        spkClkIdx = stsClkIdx : spkClkPos = stsClkPos
+        spkClkIdx = stsClkIdx : spkClkPos = stsClkPos : spkClkTotal = stsClkTotal : spkSayBase = stsBase
         spkWavePhase = stsPhase : spkPrevPhoneID = stsPrev
         spkScaleSil = stsSil : spkScaleVow = stsVow : spkScaleCons = stsCons
         FOR stsI = 0 TO stsN - 1 : spkPhones(stsI) = stsPh(stsI) : spkStress(stsI) = stsSt(stsI) : NEXT stsI
@@ -590,7 +622,7 @@ SUB SPK_Init()
         DIM spkStem AS STRING, spkStemIdx AS INTEGER, spkStemFound AS INTEGER, spkLastPh AS INTEGER
 
         SPK_SetSpeed 1.0  ' every utterance starts at natural speed; the crawl applies the narration preset after this
-        spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0 : spkClkIdx = 0 : spkClkPos = 0
+        spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0 : spkClkIdx = 0 : spkClkPos = 0 : spkClkTotal = 0 : spkSayBase = spkSynthTotal
         spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
         spkWordCount = 0
         DIM spkTs AS LONG : spkTs = CLNG(TIMER * 1000) MOD 3600000  ' ms since last hour
@@ -761,6 +793,8 @@ SUB SPK_Init()
         FOR spaI = 1 TO spkTimeScale
             SPK_AdvanceOne
         NEXT spaI
+        spkOutTotal = spkOutTotal + 1
+        spkSynthAt(spkOutTotal AND (SPK_RING - 1)) = spkSynthTotal
     END SUB
 
     ' One synthesizer sample (SPK_Advance runs spkTimeScale of these per output sample).
@@ -870,6 +904,7 @@ SUB SPK_Init()
 
         spkSampleOut = s * env * 0.45
 
+        spkSynthTotal = spkSynthTotal + 1
         spkSamplePos = spkSamplePos + 1
         IF spkSamplePos >= dur THEN
             spkSamplePos = 0
