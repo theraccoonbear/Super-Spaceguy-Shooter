@@ -5,6 +5,7 @@
 # it deliberately, together with README "Downloading a release" and the ubuntu-22.04
 # runners that build the Linux release binary in .github/workflows/build.yml.
 set -uo pipefail
+case "${1:-}" in -h|--help) sed -n '2,/^[^#]/{/^#/s/^# \{0,1\}//p;}' "$0"; exit 0;; esac
 BIN="$1"
 FLOOR="${2:-2.34}"
 NEED=$(objdump -T "$BIN" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)

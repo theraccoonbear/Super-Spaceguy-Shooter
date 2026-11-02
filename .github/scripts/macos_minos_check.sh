@@ -3,6 +3,7 @@
 # older LC_VERSION_MIN_MACOSX version) is the expected one (default 12.0) (#352).
 # Usage: macos_minos_check.sh BINARY [EXPECTED]
 set -euo pipefail
+case "${1:-}" in -h|--help) sed -n '2,/^[^#]/{/^#/s/^# \{0,1\}//p;}' "$0"; exit 0;; esac
 
 bin="${1:?usage: $0 BINARY [EXPECTED]}"
 want="${2:-12.0}"

@@ -61,3 +61,17 @@ tests/render/run.sh             # natively on Linux (needs qb64pe on PATH and xv
 The comparison is exact by default (`RENDER_TOL=N` allows a per-channel difference of N, `RENDER_MAX_FRAC=F` lets a fraction F of pixels differ beyond it). Seeded scripted runs are byte-repeatable and the container matches CI's Linux runner, so nothing needs a tolerance today. On a mismatch the actual screenshots and a `diff-<frame>.png` (red = differs, yellow = within tolerance, blue = masked) are left in `tests/render/out/<scene>/`; CI uploads that folder as the `render-test-results` artifact. CI runs the suite on the Linux job only.
 
 **When to update goldens:** only when a change is meant to change what's on screen (a new effect, a HUD tweak, different fonts or colours, changed gameplay timing that moves things). Run `tools/dev render --update`, look at every changed PNG in `git diff` before committing it, and say in the PR which goldens changed and why. If a golden changes and you didn't mean to change rendering, that's the bug the suite is for. Re-bless from the container, not a native build on another distro, so the goldens keep matching CI. To add a scene, write `tests/render/scenes/<name>.txt` (copy an existing one) and run `tools/dev render --update <name>`.
+
+## CI scripts
+
+The workflows in `.github/workflows/` hold no long inline shell: each non-trivial step is one call to a script in `.github/scripts/`, so it can be run and read outside CI. Every script has a usage header (`--help` prints it) and takes its inputs as arguments or documented env vars (`GITHUB_OUTPUT`, `GH_TOKEN`, `RUNNER_OS` and so on).
+
+| Script | What it does |
+| --- | --- |
+| `detect_changes.sh` | Which halves of CI a change needs (`game`, `server`) and the Build matrix, written to `GITHUB_OUTPUT` |
+| `check_speech_dict_fresh.sh` | Fails if `assets/speech_dict.txt` is stale after `tools/bake_speech_dict` |
+| `version_smoke_test.sh` | `<binary> --version` output matches `VERSION` (or the tag, on a tag build) |
+| `curl_symver_check.sh`, `glibc_floor_check.sh`, `macos_minos_check.sh` | Binary checks; run them against a local `builds/sss` |
+| `ci_gate.sh` | The "All checks pass" gate over the needed jobs' results |
+| `detect_server_changes.sh`, `require_secret.sh` | Deploy job: did `server/` change, is the Cloudflare token set |
+| `check_release_assets.sh`, `create_github_release.sh` | Tag-only release steps; `create_github_release.sh --dry-run <tag>` prints the `gh` command without running it |
