@@ -94,6 +94,7 @@ Sub DOCK_Update
     End Select
     DOCK_Draw
     If dkdRes = DOCK_LEAVE Then
+        DOCK_LogVisit "launch"
         _Dest backBuffer
         Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
         SEQ_Advance
@@ -102,9 +103,16 @@ Sub DOCK_Update
     End If
 End Sub
 
+' The dock_visit row (#387): the tallies from docklogic.bas, as the visit ends.
+Sub DOCK_LogVisit (dklvExit As String)
+    TELEM_DockVisit dklvExit, dockCredIn, dockSpentUpg, dockSpentFuel, dockSpentShield, dockFrames, _
+        DOCK_TallyStr$(0), DOCK_TallyStr$(1), DOCK_TallyStr$(3), DOCK_TallyStr$(2), UPG_LevelsStr$
+End Sub
+
 ' The stranded ending (#277): the run is over, scored like a death (leftover credits cashed
 ' in, high score, session end), then the stranded crawl and the STRANDED game-over card.
 Sub DOCK_Strand
+    DOCK_LogVisit "stranded"
     TELEM_RunStranded levelNum, fuelLevel, SUP_LegNeed!, credits, SUP_UnitPrice!(SUP_FUEL, levelNum)
     CR_CashOut
     If score > highScore And tutorialRun = 0 Then highScore = score : SETTINGS_Save

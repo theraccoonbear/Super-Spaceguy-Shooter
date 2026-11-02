@@ -91,8 +91,11 @@ Sub PLAYER_Fire
     Dim plfAaDX As Single, plfAaDY As Single, plfAaDZ As Single, plfAaDist As Single
     Dim plfAaBest As Single, plfAaNY As Single, plfAaNZ As Single
 
-    If held(E3D_KEY_SPACE) = 0 Or gameState <> GS_PLAYING Then Exit Sub
-    If fireTimer > 0 Or laserEnergy < LASER_COST Then Exit Sub
+    If gameState <> GS_PLAYING Then Exit Sub
+    If held(E3D_KEY_SPACE) = 0 Then TELEM_NoteFire 0 : Exit Sub
+    If fireTimer > 0 Then TELEM_NoteFire 1 : Exit Sub
+    If laserEnergy < LASER_COST Then TELEM_NoteFire 2 : Exit Sub
+    TELEM_NoteFire 3
 
     plfRx = player.rx * _PI / 180.0
     plfRy = player.ry * _PI / 180.0
@@ -222,7 +225,7 @@ End Sub
 Sub PLAYER_TakeDamage(ptDmg As Integer, ptShake As Integer, ptFlash As Integer)
     If gameState <> GS_PLAYING Then Exit Sub
     If deathTimer > 0 Then Exit Sub  ' a second lethal hit in the same frame would cost another ship and re-run the death path
-    If rollTimer > 0 Then Exit Sub   ' evasive roll: untouchable for its length (#268)
+    If rollTimer > 0 Then TELEM_NoteDodge : Exit Sub   ' evasive roll: untouchable for its length (#268)
     noHitFrames = 0
     lives = lives - ptDmg
     fxShakeTimer = ptShake : fxFlashTimer = ptFlash
@@ -252,5 +255,8 @@ End Sub
 
 ' Collisions (ships, the boss, asteroids): hull armour cuts the damage (#268)
 Sub PLAYER_TakeHit(pthDmg As Integer, pthShake As Integer, pthFlash As Integer)
-    PLAYER_TakeDamage UPG_ArmourDmg%(pthDmg), pthShake, pthFlash
+    Dim pthLeft As Integer
+    pthLeft = UPG_ArmourDmg%(pthDmg)
+    If gameState = GS_PLAYING And deathTimer = 0 And rollTimer = 0 Then TELEM_NoteArmour pthDmg - pthLeft
+    PLAYER_TakeDamage pthLeft, pthShake, pthFlash
 End Sub

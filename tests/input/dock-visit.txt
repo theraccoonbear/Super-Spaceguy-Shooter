@@ -1,0 +1,8 @@
+# One dock visit for the dock_visit telemetry row (#387): buy fuel, buy the laser capacitor,
+# be refused its second level, then leave. Run it with --scene dock2 --credits 400 --fuel 30.
+10 10 ENTER
+20 20 DOWN
+30 30 DOWN
+40 40 ENTER
+50 50 ENTER
+60 60 ESC

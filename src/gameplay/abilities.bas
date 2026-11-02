@@ -13,9 +13,11 @@ Const ABL_HINT_FRAMES = 180   ' how long "NOVA READY - Q" stays up after launch
 
 
 Sub ABL_Update
-    Dim abuDir As Integer, abuNova As Integer, abuRoll As Integer
+    Dim abuDir As Integer, abuNova As Integer, abuRoll As Integer, abuOk As Integer, abuLives As Integer
     UPG_RollTick
+    abuLives = lives
     UPG_RegenTick
+    If lives > abuLives Then TELEM_NoteRegen lives - abuLives
     If novaFxTimer > 0 Then novaFxTimer = novaFxTimer - 1
     If ablHintTimer > 0 Then ablHintTimer = ablHintTimer - 1
     If gameState <> GS_PLAYING Or deathTimer > 0 Then Exit Sub
@@ -31,7 +33,9 @@ Sub ABL_Update
         If held(E3D_KEY_LEFT) Or held(E3D_KEY_A) Then abuDir = -1
         If held(E3D_KEY_RIGHT) Or held(E3D_KEY_D) Then abuDir = 1
         If abuDir = 0 Then abuDir = Sgn(playerVZ)
-        If UPG_RollTry%(abuDir) Then SND_Whoosh 1.5
+        abuOk = UPG_RollTry%(abuDir)
+        TELEM_NoteRoll abuOk
+        If abuOk Then SND_Whoosh 1.5
     End If
     If rollTimer > 0 Then
         FX_SpawnBurst player.px - 0.4, player.py, player.pz, 2, 0.02, 14, 6, _RGB(120, 200, 255)
@@ -39,7 +43,9 @@ Sub ABL_Update
 
     abuNova = KEY_Pressed%(E3D_KEY_Q) Or KEY_Pressed%(E3D_KEY_PAD_Y)
     If abuNova Then
-        If UPG_NovaTry% Then ABL_Nova
+        abuOk = UPG_NovaTry%
+        TELEM_NoteNova abuOk
+        If abuOk Then ABL_Nova
     End If
 End Sub
 
@@ -61,7 +67,7 @@ Sub ABL_Nova
                 enemies(abnI).active = 0
                 score = score + SCORE_ENEMY
                 stageKills = stageKills + 1
-                TELEM_EnemyKilled
+                TELEM_NovaKill
                 CR_Add crKill
                 XP_Spawn xpIdNovaKill, enemies(abnI).px, enemies(abnI).py, enemies(abnI).pz, enemies(abnI).vx, enemies(abnI).vy, enemies(abnI).vz, 1
             End If

@@ -347,6 +347,31 @@ Next dtaU
 UPG_Reset
 
 Print ""
+Print "--- dock_visit tallies (#387) ---"
+DT_Script 140, "2 2 DOWN/4 4 DOWN/6 6 ENTER/8 8 ENTER/10 10 DOWN/12 12 ENTER/14 14 UP/16 16 UP/18 18 UP/20 20 ENTER"
+dtLeft = DT_Run%(24)
+DT_Assert dockCredIn = 140 And dockSpentUpg = 80 And dockSpentFuel = 0 And dockSpentShield = 0, "credits in 140, 80 spent on upgrades, none on supplies"
+DT_Assert DOCK_TallyStr$(0) = "laser:1", "bought: the laser capacitor, once (" + DOCK_TallyStr$(0) + ")"
+DT_Assert DOCK_TallyStr$(1) = "laser:1,cannon:1", "denied: laser level 2 and the cannon (" + DOCK_TallyStr$(1) + ")"
+DT_Assert DOCK_TallyStr$(2) = "refuel,repair,laser,cannon", "seen: the rows the cursor visited, in list order (" + DOCK_TallyStr$(2) + ")"
+DT_Assert DOCK_TallyStr$(3) = "thrust,tractor,fuel", "afford: next level within the 60 left and not bought (" + DOCK_TallyStr$(3) + ")"
+DT_Assert dockFrames = 25 And dtLeft = -1, "frames in the dock are counted (25), the visit still open"
+DT_Assert dockDeniedN(DOCK_REFUEL) = 0 And dockBoughtN(DOCK_REFUEL) = 0, "ENTER on a full tank is neither a purchase nor a denial"
+DT_ScriptAt 1000, 40, 50, "2 2 ENTER/4 4 DOWN/6 6 ENTER"
+dtLeft = DT_Run%(8)
+DT_Assert dockSpentFuel > 0 And dockSpentShield > 0 And dockSpentUpg = 0, "fuel and shields are tallied apart from upgrades"
+DT_Assert dockCredIn - credits = dockSpentFuel + dockSpentShield, "spend equals the credits actually taken"
+DT_Assert DOCK_TallyStr$(0) = "refuel:1,repair:1", "bought: refuel and repair (" + DOCK_TallyStr$(0) + ")"
+DT_ScriptAt 0, 40, -1, "2 2 ENTER"
+dtLeft = DT_Run%(4)
+DT_Assert DOCK_TallyStr$(1) = "refuel:1" And dockSpentFuel = 0, "broke on REFUEL: one denial, nothing spent"
+dockDeniedN(DOCK_REFUEL) = 150 : dockBoughtN(DOCK_UPG0 + UPG_NOVA) = 3
+DT_Assert DOCK_TallyStr$(1) = "refuel:99" And DOCK_TallyStr$(0) = "nova:3", "a count tops out at 99 (" + DOCK_TallyStr$(1) + ")"
+credits = 77
+DOCK_Open
+DT_Assert dockCredIn = 77 And DOCK_TallyStr$(0) = "" And DOCK_TallyStr$(1) = "" And DOCK_TallyStr$(2) = "refuel" And dockFrames = 0, "opening the dock starts a fresh visit"
+UPG_Reset
+Print ""
 Print "=== " + LTrim$(Str$(dtPassed + dtFailed)) + " tests: " + LTrim$(Str$(dtPassed)) + " passed, " + LTrim$(Str$(dtFailed)) + " failed ==="
 If dtFailed > 0 Then System 1
 System 0
