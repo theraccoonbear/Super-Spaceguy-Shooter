@@ -17,6 +17,7 @@
 --gate-tutorial
 --backdrop-dev
 --explosion-dev
+--aim-dev
 --explode
 --seed
 --credits

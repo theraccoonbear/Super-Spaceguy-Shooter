@@ -132,6 +132,25 @@ AT_Assert atOk = 0 And Len(aimLoadErr) > 0, "config: blend above 1 rejected"
 atOk = AIM_Set%(0, -5)
 AT_Assert atOk = 0, "config: negative arc rejected"
 
+' --aim-dev steps
+AT_Assert AT_Near%(AIM_NudgeBlend!(0, 1), 0.1), "nudge: blend 0 up is 0.1"
+AT_Assert AIM_NudgeBlend!(0, -1) = 0, "nudge: blend clamps at 0"
+AT_Assert AIM_NudgeBlend!(1, 1) = 1, "nudge: blend clamps at 1"
+atI = 0 : aaX = 0
+Do While atI < 20 : aaX = AIM_NudgeBlend!(aaX, 1) : atI = atI + 1 : Loop
+AT_Assert aaX = 1, "nudge: ten-plus steps up land exactly on 1"
+atI = 0 : aaX = 1
+Do While atI < 3 : aaX = AIM_NudgeBlend!(aaX, -1) : atI = atI + 1 : Loop
+AT_Assert AT_Near%(aaX, 0.7), "nudge: three steps down from 1 is 0.7 with no drift"
+AT_Assert AIM_NudgeArc!(360, -1) = 345, "nudge: arc 360 down is 345"
+AT_Assert AIM_NudgeArc!(360, 1) = 360, "nudge: arc clamps at 360"
+AT_Assert AIM_NudgeArc!(15, -1) = 15, "nudge: arc clamps at 15"
+AT_Assert AIM_NudgeArc!(60, 1) = 75 And AIM_NudgeArc!(60, -1) = 45, "nudge: arc steps 15 degrees"
+atOk = AIM_Set%(0.3, 360)
+AT_Assert AT_Near%(aimArcCfg, 360) And aimArcDeg = 0, "config: unlimited arc reports 360 for the readout"
+atOk = AIM_Set%(0.3, 345)
+AT_Assert aimArcCfg = 345 And aimArcDeg = 345, "config: a set arc is kept as configured"
+
 Print ""
 Print "=== " + LTrim$(Str$(atPassed + atFailed)) + " tests: " + LTrim$(Str$(atPassed)) + " passed, " + LTrim$(Str$(atFailed)) + " failed ==="
 If atFailed > 0 Then System 1 Else System 0

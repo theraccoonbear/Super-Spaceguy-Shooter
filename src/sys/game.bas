@@ -61,7 +61,9 @@ Sub GAME_LoadTuning
     If PUP_Load% = 0 Then GAME_Usage pupLoadErr
     If WVT_Load% = 0 Then GAME_Usage wvtLoadErr
     If BHP_Load% = 0 Then GAME_Usage bhpLoadErr
-    If AIM_Set%(Val(CFG_Get$(cfgWaves, "player_nose_blend")), Val(CFG_Get$(cfgWaves, "enemy_fire_arc_deg"))) = 0 Then GAME_Usage aimLoadErr
+    If aimDevLive = 0 Then
+        If AIM_Set%(Val(CFG_Get$(cfgWaves, "player_nose_blend")), Val(CFG_Get$(cfgWaves, "enemy_fire_arc_deg"))) = 0 Then GAME_Usage aimLoadErr
+    End If
 End Sub
 
 Sub GAME_NewGame
@@ -168,6 +170,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder starts the tutorial at the first New Game)"
     CLI_Emit guFH, "  --backdrop-dev         Matte paintings: show the painting coordinates under the mouse, and R re-reads assets/backdrops.txt from disk (see docs/backdrops.md)"
     CLI_Emit guFH, "  --explosion-dev        Explosions in play: Z picks a definition, X detonates it ahead of the ship, C re-reads assets/explosions.txt from disk, V stress test (see docs/explosions.md)"
+    CLI_Emit guFH, "  --aim-dev              Shot direction in play: 1 and 2 nudge player_nose_blend, 3 and 4 the enemy fire arc, 5 re-reads assets/config/waves.ini from disk (live only; see docs/cli.md)"
     CLI_Emit guFH, "  --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"

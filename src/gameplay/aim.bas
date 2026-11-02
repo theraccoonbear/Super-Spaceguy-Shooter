@@ -13,12 +13,15 @@
 '                                          than arcDeg / 2 off the nose. arcDeg <= 0 or >= 360 means no
 '                                          limit: o is t untouched, ok is -1
 '   ok = AIM_Set%(blend, arcDeg)           the two config values (assets/config/waves.ini)
+'   AIM_NudgeBlend!(cur, dir) / AIM_NudgeArc!(cur, dir)   --aim-dev steps: blend 0.1 (0 to 1), arc 15 degrees (15 to 360)
 '
 ' Local variable prefix: aim*
 
 Dim Shared aimNoseBlend As Single   ' player_nose_blend: 0 = today's aim
 Dim Shared aimArcDeg As Single      ' enemy_fire_arc_deg: 0 (stored for 360 and up) = no limit
 Dim Shared aimLoadErr As String
+Dim Shared aimArcCfg As Single     ' enemy_fire_arc_deg as configured (360 when unlimited), for --aim-dev
+Dim Shared aimDevLive As Integer    ' --aim-dev changed the values: a new run keeps them
 
 Function AIM_Set% (aimsBlend As Single, aimsArc As Single)
     AIM_Set% = 0
@@ -26,6 +29,8 @@ Function AIM_Set% (aimsBlend As Single, aimsArc As Single)
     If aimsBlend < 0 Or aimsBlend > 1 Then aimLoadErr = "config/waves.ini player_nose_blend must be 0 to 1" : Exit Function
     If aimsArc < 0 Then aimLoadErr = "config/waves.ini enemy_fire_arc_deg must be 0 or more (0 and 360 or more = no limit)" : Exit Function
     aimNoseBlend = aimsBlend
+    aimArcCfg = aimsArc
+    If aimsArc <= 0 Then aimArcCfg = 360
     If aimsArc >= 360 Then aimArcDeg = 0 Else aimArcDeg = aimsArc
     AIM_Set% = -1
 End Function
@@ -74,4 +79,22 @@ Function AIM_Arc% (aimNx As Single, aimNy As Single, aimNz As Single, aimTx As S
     aimOx = aimNx * Cos(aimHalf) + aimPx / aimPm * Sin(aimHalf)
     aimOy = aimNy * Cos(aimHalf) + aimPy / aimPm * Sin(aimHalf)
     aimOz = aimNz * Cos(aimHalf) + aimPz / aimPm * Sin(aimHalf)
+End Function
+
+Function AIM_NudgeBlend! (aimNbCur As Single, aimNbDir As Integer)
+    Dim aimNbV As Single
+    aimNbV = Int((aimNbCur + aimNbDir * 0.1) * 10 + 0.5) / 10
+    If aimNbV < 0 Then aimNbV = 0
+    If aimNbV > 1 Then aimNbV = 1
+    AIM_NudgeBlend! = aimNbV
+End Function
+
+Function AIM_NudgeArc! (aimNaCur As Single, aimNaDir As Integer)
+    Dim aimNaV As Single
+    aimNaV = aimNaCur
+    If aimNaV > 360 Then aimNaV = 360
+    aimNaV = aimNaV + aimNaDir * 15
+    If aimNaV < 15 Then aimNaV = 15
+    If aimNaV > 360 Then aimNaV = 360
+    AIM_NudgeArc! = aimNaV
 End Function

@@ -22,6 +22,7 @@ sss [options]
   --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder then starts the tutorial at the first New Game)
   --backdrop-dev         Matte-painting helper on the title, emperor and dock screens: shows the painting coordinates under the mouse, and R reloads `assets/backdrops.txt` from disk, with parse problems shown on screen in small text (see [Backdrops](backdrops.md))
   --explosion-dev        Explosion helper in play: **Z** picks a definition, **X** detonates it ahead of the ship (at the boss when one is out), **C** reloads `assets/explosions.txt` from disk, **V** runs the stress test; a readout shows the name, live particles and drops (see [Explosions](explosions.md))
+  --aim-dev              Shot-direction tuning in play: **1** / **2** lower / raise `player_nose_blend` (0.1 a step, 0 to 1), **3** / **4** lower / raise `enemy_fire_arc_deg` (15 degrees a step, 15 to 360), **5** re-reads `assets/config/waves.ini` from disk and applies its two aim values; a readout (top left) shows the current values, "reloaded" in green or the problem in red. Live only, never written back; a new run keeps the values
   --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes, e.g. `boss@20`)
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
