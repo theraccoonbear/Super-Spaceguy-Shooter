@@ -24,7 +24,7 @@ Const DOCK_REFUEL  = 1
 Const DOCK_SHIELDS = 2
 Const DOCK_UPG0    = 2     ' upgrade id = row - DOCK_UPG0
 Const DOCK_LAUNCH  = DOCK_UPG0 + UPG_COUNT + 1
-Const DOCK_VISIBLE = 7     ' list rows on screen; the list scrolls to keep the cursor in view
+Const DOCK_VISIBLE = 8     ' list rows on screen; the list scrolls to keep the cursor in view
 Const DOCK_NONE    = 0
 Const DOCK_MOVED   = 1
 Const DOCK_BOUGHT  = 2
