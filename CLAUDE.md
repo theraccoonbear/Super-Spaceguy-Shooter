@@ -60,9 +60,7 @@ The branch goes up as a draft PR as soon as it builds, so it can be pulled and p
 5. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
 6. **Full playthrough**: runs in CI as its own non-blocking job (`playthrough`); it doesn't gate PRs, a failure shows as its own red check. Don't run it locally before committing. Run it locally (`tools/dev build && tools/dev shell tests/playthrough/run.sh`, needs an empty `assets/.env`) only to debug a playthrough failure. If the game flow changes on purpose (`assets/sequence.txt`, game states, stages, bosses, crawls, input, the boot screens), update `tests/playthrough/expected.txt` (see [`docs/testing.md`](docs/testing.md)).
 
-> Adding a new `$INCLUDE` to sequence.bas, dims.bas, or any file that test stubs replicate
-> means updating every test file that declares shared vars. Grep for the variable name in
-> `tests/` to find which stubs need it.
+> **Tests include the real shared state.** A test that needs game state starts with `src/sys/rng.bas`, `src/engine3d.bi` and `src/sys/dims.bas` (see `tests/dock_test.bas`) and stubs only collaborator Subs it cannot include; the sequencer tests share theirs in `tests/seq_stubs.bi`. Never copy a `Dim Shared` or `Const` from `dims.bas` into a test: `tools/check_test_dims` (run first by `qb64test.sh`) fails the suite and names the test and the variable. A new module only needs a stub if a test includes code that calls it.
 
 ## Definition of done — a task is NOT complete until ALL of these are true
 1. The checklist above is fully satisfied

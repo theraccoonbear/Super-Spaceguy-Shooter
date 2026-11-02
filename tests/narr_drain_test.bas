@@ -17,7 +17,10 @@
 Option _Explicit
 $CONSOLE:ONLY
 
-Const SAMPLE_RATE = 44100
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+
 
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
@@ -25,7 +28,6 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 
 Sub DBG_Print(ndDbgMsg As String) : End Sub
 
-'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/sys/config.bas'
 '$INCLUDE:'../src/sys/gametext.bas'
