@@ -27,6 +27,35 @@ set -euo pipefail
 
 REPODIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
+# The append-only lists live one entry per line in their own files, marked merge=union in
+# .gitattributes so parallel PRs that each add a line merge without a conflict (#344). Blank
+# lines and # comments are skipped; a trailing CR (Windows checkout) is dropped.
+list_entries() {
+  local line
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    case "$line" in ''|'#'*) continue ;; esac
+    printf '%s\n' "$line"
+  done < "$1"
+}
+
+# merge=union can keep the same line from both sides, so fail on any repeated entry.
+dup_fail=0
+for list in tests/list.txt tests/dev_flags.txt tools/game_flags.txt; do
+  dups="$(awk -v f="$list" '
+    { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") }
+    $0 == "" || /^#/ { next }
+    ($0 in first) { printf "ERROR: %s line %d: duplicate entry \"%s\" (first on line %d)\n", f, NR, $0, first[$0]; next }
+    { first[$0] = NR }' "$REPODIR/$list")"
+  if [ -n "$dups" ]; then
+    echo "$dups"
+    dup_fail=1
+  fi
+done
+[ "$dup_fail" -eq 0 ] || exit 1
+
 if [ -z "${QB64_BIN_DIR:-}" ]; then
   echo "ERROR: QB64_BIN_DIR must be set"
   exit 1
@@ -45,47 +74,8 @@ fi
 
 # Longest-running first, so it isn't the last thing left. http_queue_test runs on its
 # own at the end (it needs the mock server on a fixed port).
-TESTS=(
-  crawl_step_test
-  crawl_plan_test
-  seq_dispatch_test
-  seq_trace_test
-  seq_graph_test
-  scene_jump_planet_test
-  spk_timing_test
-  narr_drain_test
-  snd_init_test
-  music_test
-  telem_creds_test
-  death_telem_test
-  run_end_test
-  tutorial_run_test
-  tutorial_script_test
-  tutorial_gate_test
-  dbg_output_test
-  spore_test
-  attack_test
-  inputscript_test
-  pad_map_test
-  rng_test
-  titlenav_test
-  textedit_test
-  lbrd_test
-  font_render_test
-  upgrade_test
-  dock_test
-  remap_test
-  menu_test
-  callsign_pad_test
-  powerup_test
-  wave_timing_test
-  boss_hp_test
-  readonly_io_test
-  settings_dir_test
-  tty_probe_test
-  cam_default_test
-  difficulty_test
-)
+TESTS=()
+while IFS= read -r name; do TESTS+=("$name"); done < <(list_entries "$REPODIR/tests/list.txt")
 
 # Dev tools (path from the repo root, no .bas): compiled only (they're interactive), so an engine change
 # that breaks them fails CI instead of going unnoticed (#224).

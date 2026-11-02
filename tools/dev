@@ -315,18 +315,16 @@ cmd_help() {
 }
 
 # The game's command-line options, as GAME_Usage in src/sys/game.bas lists them
-# (tests/tools_dev_test.sh checks the two match).
-GAME_FLAGS="--version --help --scene --crawls --god --nerf --difficulty --debug --no-telem --input-script --script-override
-    --leaderboard-file --settings-dir --frames --realtime --gate-tutorial --seed --credits --ships --shields --fuel --pup
-    --screenshot-at"
+# (tests/tools_dev_test.sh checks the two match); the list is tools/game_flags.txt.
 
 # Prints a bash completion function for tools/dev. The command list is every cmd_*
 # function, the same names the dispatch below runs.
 cmd_completion() {
-    local cmds
+    local cmds GAME_FLAGS
+    GAME_FLAGS="$(tr -d '\r' < "$REPO/tools/game_flags.txt" | grep -vE '^[[:space:]]*(#|$)' | tr '\n' ' ')"
     cmds="$(declare -F | sed -n 's/^declare -f cmd_//p' | tr '\n' ' ')"
     printf '_sss_dev_commands=%q\n' "${cmds% }"
-    printf '_sss_dev_game_flags=%q\n' "${GAME_FLAGS//$'\n'    / }"
+    printf '_sss_dev_game_flags=%q\n' "${GAME_FLAGS% }"
     cat << 'EOF'
 # Plain bash 3.2 (macOS) and zsh-bashcompinit compatible: no mapfile, BASH_REMATCH
 # or ${!array[@]}.

@@ -1,0 +1,24 @@
+# The game command-line options (as GAME_Usage lists them), one per line, for tab completion. Blank lines and # comments are ignored.
+--version
+--help
+--scene
+--crawls
+--god
+--nerf
+--difficulty
+--debug
+--no-telem
+--input-script
+--script-override
+--leaderboard-file
+--settings-dir
+--frames
+--realtime
+--gate-tutorial
+--seed
+--credits
+--ships
+--shields
+--fuel
+--pup
+--screenshot-at
