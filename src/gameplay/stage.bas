@@ -36,7 +36,7 @@ Sub STAGE_Update
         planetDefDone = -1
         For stI = 1 To MAX_ENEMIES
             If enemies(stI).active Then
-                FX_SpawnBurst enemies(stI).px, enemies(stI).py, enemies(stI).pz, 12, 0.28, 20, 10, _RGB(160, 230, 255)
+                XP_Spawn xpIdNovaKill, enemies(stI).px, enemies(stI).py, enemies(stI).pz, enemies(stI).vx, enemies(stI).vy, enemies(stI).vz, 1
                 enemies(stI).active = 0
             End If
         Next stI

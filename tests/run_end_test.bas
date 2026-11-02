@@ -187,7 +187,8 @@ Function JSON_N$   (k As String, v As String) : JSON_N$ = k + ":" + v : End Func
 Sub SND_Hit   : End Sub
 Sub SND_Death : End Sub
 Sub SND_Shoot : End Sub
-Sub FX_SpawnBurst (cx As Single, cy As Single, cz As Single, n As Integer, spd As Single, lifBase As Integer, lifVar As Integer, clr As Long) : End Sub
+Dim Shared xpIdPlayer As Integer
+Sub XP_Spawn (xsId As Integer, xsX As Single, xsY As Single, xsZ As Single, xsVX As Single, xsVY As Single, xsVZ As Single, xsScale As Single) : End Sub
 Sub MUS_SetCue (c As String) : reLastCue = c : End Sub
 Sub StarfieldReset (x As Single, y As Single, z As Single) : End Sub
 Sub CRAWL_Prep (k As String, h As Single) : End Sub

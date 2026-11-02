@@ -39,7 +39,7 @@ Sub ASTEROIDS_Update()
                     SND_Whoosh asteroids(astUI).scl
                 Else
                     SND_Boom
-                    FX_SpawnBurst asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, 8, 0.18, 15, 7, _RGB(120 + Int(RNG!(RNG_FX) * 40), 100 + Int(RNG!(RNG_FX) * 30), 75 + Int(RNG!(RNG_FX) * 20))
+                    XP_Spawn xpIdAsteroid, asteroids(astUI).px, asteroids(astUI).py, asteroids(astUI).pz, asteroids(astUI).vx, asteroids(astUI).vy, asteroids(astUI).vz, 1
                     telemDeathCause = "asteroid"
                     PLAYER_TakeHit DMG_ASTEROID, SHAKE_COLLISION, FLASH_COLLISION
                 End If

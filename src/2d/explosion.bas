@@ -56,7 +56,7 @@ Const XP_MAX_WORDS = 40
 Const XP_SHAPE_SPHERE = 0
 Const XP_SHAPE_RING = 1
 Const XP_SHAPE_CONE = 2
-Const XP_REQUIRED = "boss enemy"
+Const XP_REQUIRED = "boss enemy enemy_col player asteroid nova_kill nova spark"
 Const XP_MAXPX_DEFAULT = 16
 Const XP_MAXPX_CAP = 64
 Const XP_NEAR = 0.6
@@ -115,6 +115,7 @@ Dim Shared xpBurstN As Integer
 Dim Shared xpErrors As String
 Dim Shared xpIdBoss As Integer
 Dim Shared xpIdEnemy As Integer
+Dim Shared xpIdEnemyCol As Integer, xpIdPlayer As Integer, xpIdAsteroid As Integer, xpIdNovaKill As Integer, xpIdNova As Integer, xpIdSpark As Integer
 
 Dim Shared xpKvKey(0 To XP_MAX_WORDS - 1) As String
 Dim Shared xpKvVal(0 To XP_MAX_WORDS - 1) As String
@@ -431,7 +432,7 @@ Function XP_Parse% (xlSrc As String)
     Dim xlW(0 To XP_MAX_WORDS - 1) As String, xlN As Integer, xlVerb As String
     Dim xlK As Integer, xlEq As Integer, xlKey As String, xlKeys As String, xlHdr As Integer
     XP_Clear
-    xdCnt = 0 : xpBurstN = 0 : xpErrors = "" : xpIdBoss = -1 : xpIdEnemy = -1
+    xdCnt = 0 : xpBurstN = 0 : xpErrors = "" : xpIdBoss = -1 : xpIdEnemy = -1 : xpIdEnemyCol = -1 : xpIdPlayer = -1 : xpIdAsteroid = -1 : xpIdNovaKill = -1 : xpIdNova = -1 : xpIdSpark = -1
     xlI = 1 : xpPLine = 0 : xlHdr = 0
     Do While xlI <= Len(xlSrc)
         xlNL = InStr(xlI, xlSrc, Chr$(10))
@@ -477,6 +478,8 @@ Function XP_Parse% (xlSrc As String)
         xdCnt = 0 : xpBurstN = 0
     Else
         xpIdBoss = XP_Find%("boss") : xpIdEnemy = XP_Find%("enemy")
+        xpIdEnemyCol = XP_Find%("enemy_col") : xpIdPlayer = XP_Find%("player") : xpIdAsteroid = XP_Find%("asteroid")
+        xpIdNovaKill = XP_Find%("nova_kill") : xpIdNova = XP_Find%("nova") : xpIdSpark = XP_Find%("spark")
     End If
     XP_Parse% = (Len(xpErrors) = 0)
 End Function

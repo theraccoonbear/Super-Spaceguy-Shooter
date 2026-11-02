@@ -23,3 +23,35 @@ explosion:enemy
     BURST count=1 life=5 size=0.4,1.2 glow=2 ramp=ffffff,ffc060 occlude=0
     BURST count=18 speed=0.03..0.11 drag=0.96 gravity=0.0004 life=20..36 size=0.12,0.02 glow=1.5 ramp=ffe080,ff7020,501808 inherit=0.5
     BURST count=12 speed=0.06..0.16 drag=0.98 gravity=0.0015 life=25..45 size=0.03,0.01 glow=3 color=ffe080,ffffff inherit=0.5
+
+explosion:enemy_col
+    SHAKE frames=6
+    BURST count=1 life=7 size=0.6,1.8 glow=2 ramp=ffffff,ffa040 occlude=0
+    BURST count=26 speed=0.04..0.14 drag=0.96 gravity=0.0004 life=22..40 size=0.16,0.03 glow=1.5 ramp=ffe080,ff6020,401408 inherit=0.5
+    BURST count=10 speed=0.06..0.18 drag=0.98 gravity=0.0015 life=25..45 size=0.03,0.01 glow=3 color=ffe080,ffffff inherit=0.5
+
+explosion:player
+    SHAKE frames=20
+    BURST count=1 life=10 size=1.5,5 glow=2 ramp=ffffff,ffd060,ff6020 occlude=0
+    BURST count=50 speed=0.05..0.22 scatter=0.3 drag=0.97 gravity=0.0005 life=30..60 size=0.3,0.05 glow=1.5 ramp=ffe080,ff8020,c02010,301008 inherit=0.3
+    BURST count=22 shape=ring speed=0.18..0.22 drag=0.95 life=18..24 size=0.14,0.02 glow=1 ramp=ffffff,ff8040 occlude=0
+    BURST count=20 speed=0.08..0.25 drag=0.985 gravity=0.0015 life=40..80 size=0.05,0.02 glow=3 color=ffe080,ffffff,ff9040
+
+explosion:asteroid
+    SHAKE frames=0
+    BURST count=14 speed=0.03..0.12 drag=0.97 gravity=0.0006 life=22..40 size=0.18,0.06 ramp=a08060,786450,403428 inherit=0.2
+    BURST count=6 speed=0.05..0.15 drag=0.98 life=14..24 size=0.04,0.01 glow=2 color=ffd090,ffffff
+
+explosion:nova_kill
+    SHAKE frames=0
+    BURST count=1 life=5 size=0.5,1.4 glow=2 ramp=ffffff,a0e8ff occlude=0
+    BURST count=12 speed=0.05..0.18 drag=0.96 life=18..32 size=0.14,0.02 glow=1.5 ramp=ffffff,80d8ff,203860
+
+explosion:nova
+    SHAKE frames=10
+    BURST count=1 life=8 size=0.8,3 glow=2 ramp=ffffff,80d0ff occlude=0
+    BURST count=28 shape=ring speed=0.35..0.4 drag=0.94 life=18..26 size=0.12,0.02 glow=1.5 ramp=ffffff,60b0ff occlude=0
+
+explosion:spark
+    SHAKE frames=0
+    BURST count=4 speed=0.03..0.1 drag=0.94 life=10..16 size=0.08,0.02 glow=2 ramp=ffffff,60c8ff,102040

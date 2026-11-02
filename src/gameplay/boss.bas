@@ -231,7 +231,7 @@ Sub BOSS_Update
                 bullets(bssJ).active = 0
                 telemShotsHit = telemShotsHit + 1
                 If bossShieldT > 0 Then
-                    FX_SpawnBurst bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, 4, 0.12, 10, 5, _RGB(140, 230, 255)
+                    XP_Spawn xpIdSpark, bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, 0, 0, 0, 1
                     _Continue
                 End If
                 BOSS_Hit 1

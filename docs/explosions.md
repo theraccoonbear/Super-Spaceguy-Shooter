@@ -114,9 +114,26 @@ tools/dev run --scene playing2 --god --explosion-dev
 
 Edit `assets/explosions.txt`, press **C** in the running game, press **X** to see it, **Z** for the next definition, **V** for the worst case. Look at it near and far (fly forward), behind a ship (the ship must hide it), with Tab's camera orbit, and check `drop` stays 0 in the stress test. Then bless a render scene deliberately (`tools/dev render --update gameplay explosion`).
 
+## Where the game uses them
+
+`XP_REQUIRED` names the definitions the game looks up; the ids are `xpIdBoss`, `xpIdEnemy` and so on.
+
+| Definition | Used for |
+|---|---|
+| `boss` | `BOSS_Defeat` (`XPD_Boom` at the boss, drawn at scale `BOSS_DEATH_SCALE`: the boss is far, so the blast is made large); it vanishes on the same frame as before, with the same score, telemetry and stage transition |
+| `enemy` | an enemy shot down |
+| `enemy_col` | a ship that rams the player |
+| `player` | the player's ship destroyed (the 20 frame shake and the flash stay in `PLAYER_TakeDamage`) |
+| `asteroid` | an asteroid hitting the ship |
+| `nova_kill` | an enemy or asteroid caught by a nova, the planet defence wipe, the tutorial's kill |
+| `nova` | the nova's own ring |
+| `spark` | a shot on the shielded boss, a shot cleared by a nova |
+
+Spawns inherit the victim's velocity (`inherit`). Only the boss uses `XPD_Boom`, so only it shakes the screen from its SHAKE; every other call site is plain `XP_Spawn` and keeps the shake it had. The contrails and the ship's trail stay on the older `FX_` particles. The kill bursts are no longer coloured by enemy type.
+
 ## Errors
 
-A problem is reported as `line N: ...` in `xpErrors`; a file with any error loads nothing (the tables stay empty). `XP_Validate$()` adds a missing BURST and the names the game looks up (`XP_REQUIRED`: `boss`, `enemy`). `XP_Find%(name)` gives an explosion's id (-1 when absent); `xpIdBoss` and `xpIdEnemy` are resolved when the file loads.
+A problem is reported as `line N: ...` in `xpErrors`; a file with any error loads nothing (the tables stay empty). `XP_Validate$()` adds a missing BURST and the names the game looks up (`XP_REQUIRED`, listed under "Where the game uses them"). `XP_Find%(name)` gives an explosion's id (-1 when absent); `xpIdBoss`, `xpIdEnemy` and the rest are resolved when the file loads.
 
 ## API
 
