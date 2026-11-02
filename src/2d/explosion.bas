@@ -11,7 +11,7 @@
 '       SHAKE frames=N
 '       BURST [count=1] [delay=0] [at=0,0,0] [scatter=0] [speed=0] [shape=sphere] [dir=0,1,0]
 '             [spread=30] [drag=1] [gravity=0] [inherit=0] [life=30] [size=0.1] [glow=0]
-'             ramp=c1,c2,... | color=c1,c2,... [maxpx=0] [minpx=1] [occlude=1]
+'             ramp=c1,c2,... | color=c1,c2,... [maxpx=0] [minpx=1] [alpha=1] [occlude=1]
 '   Numeric keys count, delay, scatter, speed, drag, gravity, inherit, life, size and glow take a
 '   range a..b: each particle (count and delay: each spawn) picks a value from the hash.
 '   count     particles in the layer         delay    frames after XP_Spawn the layer starts
@@ -25,6 +25,7 @@
 '   glow      halo radius as a multiple of size
 '   ramp      gradient over the particle's life; color  one colour per particle
 '   maxpx minpx   pixel clamps on the drawn size (maxpx=0: XP_MAXPX_DEFAULT; never above XP_MAXPX_CAP)
+'   alpha     opacity of the layer, 0.05 to 1 (smoke)
 '   occlude   1: ships in front hide the particle, 0: drawn over everything
 ' Each frame: v *= drag, vy -= gravity, p += v. Scale in XP_Spawn multiplies size, speed, at and
 ' scatter.
@@ -108,6 +109,7 @@ Dim Shared xbCol(0 To XP_MAX_BURST - 1, 0 To XP_MAX_COLORS - 1) As Long
 Dim Shared xbMaxPx(0 To XP_MAX_BURST - 1) As Single
 Dim Shared xbMinPx(0 To XP_MAX_BURST - 1) As Single
 Dim Shared xbOcc(0 To XP_MAX_BURST - 1) As Integer
+Dim Shared xbAlpha(0 To XP_MAX_BURST - 1) As Single
 Dim Shared xpBurstN As Integer
 
 Dim Shared xpErrors As String
@@ -380,6 +382,8 @@ Sub XP_BuildBurst ()
     xbMaxPx(xkL) = xkS
     If XP_OptOne%("minpx", 1, 0, 16, 0, xkS) = 0 Then Exit Sub
     xbMinPx(xkL) = xkS
+    If XP_OptOne%("alpha", 1, 0.05, 1, 0, xkS) = 0 Then Exit Sub
+    xbAlpha(xkL) = xkS
     If xbMaxPx(xkL) > 0 And xbMinPx(xkL) > xbMaxPx(xkL) Then XP_LineErr "minpx must not exceed maxpx" : Exit Sub
     If XP_OptOne%("occlude", 1, 0, 1, -1, xkS) = 0 Then Exit Sub
     xbOcc(xkL) = xkS
@@ -451,7 +455,7 @@ Function XP_Parse% (xlSrc As String)
         End If
         xlVerb = UCase$(xlW(0))
         Select Case xlVerb
-            Case "BURST" : xlKeys = "count delay at scatter speed shape dir spread drag gravity inherit life size glow ramp color maxpx minpx occlude"
+            Case "BURST" : xlKeys = "count delay at scatter speed shape dir spread drag gravity inherit life size glow ramp color maxpx minpx alpha occlude"
             Case "SHAKE" : xlKeys = "frames"
             Case Else : XP_LineErr "unknown line '" + xlW(0) + "' (BURST SHAKE)" : GoTo xlNext
         End Select

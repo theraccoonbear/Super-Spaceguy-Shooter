@@ -42,6 +42,7 @@ explosion:enemy
 | `ramp=c1,c2,...` | | a colour gradient over the particle's life, 1 to 6 `rrggbb` |
 | `color=c1,c2,...` | | one colour per particle, picked from the list, 1 to 6 `rrggbb` |
 | `maxpx=` `minpx=` | 0 / 1 | pixel clamps on the drawn size; `maxpx=0` means the default 16 px; never above 64 |
+| `alpha=` | 1 | opacity of the layer, 0.05 to 1 (smoke) |
 | `occlude=` | 1 | 1: ships in front hide the particle; 0: drawn over everything (flashes) |
 
 Exactly one of `ramp=` and `color=` is required. `count`, `delay`, `scatter`, `speed`, `drag`, `gravity`, `inherit`, `life`, `size` (either end) and `glow` take a range `a..b`: each particle picks its own value (`count` and `delay`: each spawn picks one). The other keys take a single number.

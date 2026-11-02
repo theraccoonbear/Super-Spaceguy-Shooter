@@ -117,7 +117,7 @@ Sub XPD_Particle (xqS As Integer)
     xqR = XP_MaxPx!(xbMaxPx(xqL))
     If xqRaw < xqR Then xqR = xqRaw
     xqMin = xbMinPx(xqL)
-    xqAF = XP_NearFade!(xwW(xqS)) * XP_LifeFade!(xpAge(xqS), xpLife(xqS)) * XP_DotFade!(xqR, xqMin)
+    xqAF = XP_NearFade!(xwW(xqS)) * XP_LifeFade!(xpAge(xqS), xpLife(xqS)) * XP_DotFade!(xqR, xqMin) * xbAlpha(xqL)
     If xqAF <= 0.004 Then Exit Sub
     xqGlowR = xpGl(xqS) * xqR
     If xqGlowR > XPD_GLOW_MAX Then xqGlowR = XPD_GLOW_MAX

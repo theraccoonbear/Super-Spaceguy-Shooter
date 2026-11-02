@@ -13,7 +13,7 @@ explosion:boss
     ; shock ring
     BURST count=36 shape=ring speed=0.26..0.3 drag=0.95 life=24..30 size=0.15,0.02 glow=1 ramp=ffffff,80a0ff occlude=0
     ; smoke
-    BURST count=30 delay=6 speed=0.02..0.06 scatter=0.5 drag=0.98 gravity=-0.0008 life=90..140 size=0.4,1.2 ramp=403830,181410
+    BURST count=30 delay=6 speed=0.02..0.06 scatter=0.5 drag=0.98 gravity=-0.0008 life=90..140 size=0.4,1.2 ramp=403830,181410 alpha=0.5
     ; secondary bursts
     BURST count=40 delay=20 at=0.8,0.4,0.3 scatter=0.3 speed=0.06..0.18 drag=0.97 gravity=0.0005 life=35..60 size=0.3,0.05 glow=1.5 ramp=ffffff,ff9030,802010
     BURST count=40 delay=38 at=-0.7,-0.3,-0.5 scatter=0.3 speed=0.06..0.18 drag=0.97 gravity=0.0005 life=35..60 size=0.3,0.05 glow=1.5 ramp=ffffff,ff9030,802010
