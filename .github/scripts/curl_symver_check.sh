@@ -2,6 +2,7 @@
 # Fedora's libcurl has no symbol versions, so a CURL_OPENSSL_4 requirement makes its
 # loader warn (#303). Usage: curl_symver_check.sh <linux sss binary>
 set -uo pipefail
+case "${1:-}" in -h|--help) sed -n '2,/^[^#]/{/^#/s/^# \{0,1\}//p;}' "$0"; exit 0;; esac
 BIN="$1"
 ERR=$(xvfb-run -a "$BIN" --version 2>&1 >/dev/null)
 if grep -q "no version information available" <<< "$ERR"; then

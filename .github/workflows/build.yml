@@ -47,41 +47,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           BEFORE: ${{ github.event.before }}
-        run: |
-          all=1 files=""
-          if [ "$EVENT" = pull_request ]; then
-            # HEAD is the PR merged into master; its first parent is master
-            files="$(git diff --name-only HEAD^1 HEAD)" && all=0
-          elif [ "$EVENT" = push ] && [[ "$REF" == refs/heads/* ]] && ! [[ "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
-            files="$(git diff --name-only "$BEFORE" HEAD)" && all=0
-          fi
-          game=0 server=0
-          while IFS= read -r f; do
-            case "$f" in
-              '') ;;
-              .github/*) game=1 server=1 ;;
-              tests/input/leaderboard.json) game=1 server=1 ;;
-              server/*) server=1 ;;
-              assets/*) game=1 ;;
-              docs/*|*.md) ;;
-              *) game=1 ;;
-            esac
-          done <<< "$files"
-          [ "$all" = 1 ] && game=1 server=1
-          echo "changed files:"; printf '  %s\n' $files
-          tf() { [ "$1" = 1 ] && echo true || echo false; }
-          echo "game=$(tf $game)" >> "$GITHUB_OUTPUT"
-          echo "server=$(tf $server)" >> "$GITHUB_OUTPUT"
-          echo "game=$(tf $game) server=$(tf $server)"
-          mac='{"os":"macos-latest","name":"Build macOS","artifact-name":"sss-macos","artifact-path":"builds/sss","release-asset-name":"sss-macos"}'
-          win='{"os":"windows-latest","name":"Build Windows","artifact-name":"sss-windows","artifact-path":"builds/sss.exe","release-asset-name":"sss-windows.exe"}'
-          lnx='{"os":"ubuntu-22.04","cache-suffix":"-ubuntu2204","name":"Build Linux","artifact-name":"sss-linux","artifact-path":"builds/sss","release-asset-name":"sss-linux"}'
-          # PRs: build-dev covers Linux, so only master, tags and dispatch build the credentialed binary
-          if [ "$EVENT" = pull_request ] || { [ "$EVENT" = push ] && [ "$REF" != refs/heads/master ] && [[ "$REF" != refs/tags/v* ]]; }; then
-            echo "build-matrix={\"include\":[$mac,$win]}" >> "$GITHUB_OUTPUT"
-          else
-            echo "build-matrix={\"include\":[$lnx,$mac,$win]}" >> "$GITHUB_OUTPUT"
-          fi
+        run: bash .github/scripts/detect_changes.sh
 
   dict-check:
     needs: changes
@@ -94,11 +60,7 @@ jobs:
         run: bash tools/bake_speech_dict
       - name: Fail if speech_dict.txt is stale
         shell: bash
-        run: |
-          git diff --exit-code assets/speech_dict.txt || {
-            echo "::error::speech_dict.txt is stale — run tools/bake_speech_dict and commit"
-            exit 1
-          }
+        run: bash .github/scripts/check_speech_dict_fresh.sh
 
   # The QB64-PE test suite, apart from the game builds so neither waits on the other.
   # Windows is the slowest, so it runs in two shards.
@@ -185,38 +147,7 @@ jobs:
 
       - name: Smoke test -- --version
         shell: bash
-        run: |
-          if [ "${{ runner.os }}" == "Linux" ] && command -v xvfb-run &>/dev/null; then
-            OUT=$(xvfb-run -a "${{ matrix.artifact-path }}" --version)
-          else
-            OUT=$("${{ matrix.artifact-path }}" --version)
-          fi
-          echo "$OUT"
-          if [ "${{ runner.os }}" != "Windows" ] && [[ "$OUT" == *$'\r'* ]]; then
-            echo "::error::--version output contains a carriage return on ${{ runner.os }} (#252)"
-            exit 1
-          fi
-          OUT="${OUT//$'\r'/}"
-          BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
-          # A tag build must print exactly the tag's version (v0.1.0-rc1 -> 0.1.0-rc1), and
-          # the tag must be a release of VERSION. Taken from the ref, not git, so a checkout
-          # that lost the tag (make-version.sh falls back to VERSION) fails here.
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            TAG_VERSION="${GITHUB_REF_NAME#v}"
-            if [ "${TAG_VERSION%%-*}" != "$BASE_VERSION" ]; then
-              echo "::error::tag $GITHUB_REF_NAME doesn't match VERSION ($BASE_VERSION)"
-              exit 1
-            fi
-            if [ "$OUT" != "Super Spaceguy Shooter $TAG_VERSION" ]; then
-              echo "::error::--version smoke test failed: expected 'Super Spaceguy Shooter $TAG_VERSION', got: $OUT"
-              exit 1
-            fi
-            exit 0
-          fi
-          echo "$OUT" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
-            echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
-            exit 1
-          }
+        run: bash .github/scripts/version_smoke_test.sh "${{ matrix.artifact-path }}"
 
       # Fedora's libcurl has no symbol versions, so a CURL_OPENSSL_4 requirement makes its loader warn (#303)
       - name: Check the binary needs no libcurl symbol versions
@@ -281,14 +212,7 @@ jobs:
 
       - name: Smoke test -- --version
         shell: bash
-        run: |
-          OUT="$(xvfb-run -a builds/sss --version)"
-          echo "$OUT"
-          BASE_VERSION="$(tr -d '[:space:]' < VERSION)"
-          [[ "$OUT" != *$'\r'* ]] && echo "$OUT" | grep -qE "Super Spaceguy Shooter ${BASE_VERSION}(-dev\+[0-9a-f]+(-dirty)?)?$" || {
-            echo "::error::--version smoke test failed: expected a version starting with '${BASE_VERSION}', got: $OUT"
-            exit 1
-          }
+        run: bash .github/scripts/version_smoke_test.sh --ignore-tag builds/sss
 
       - name: Check the binary needs no libcurl symbol versions
         shell: bash
@@ -494,16 +418,7 @@ jobs:
           fetch-depth: 0
       - name: Detect server/ changes
         id: changes
-        run: |
-          before="${{ github.event.before }}"
-          if [[ "$before" =~ ^0+$ ]] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          elif [[ -n "$(git diff --name-only "$before" "${{ github.sha }}" -- server/)" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No changes under server/; skipping deploy."
-          fi
+        run: bash .github/scripts/detect_server_changes.sh "${{ github.event.before }}" "${{ github.sha }}"
       - uses: actions/setup-node@v4
         if: steps.changes.outputs.changed == 'true'
         with:
@@ -523,11 +438,7 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          if [[ -z "$CLOUDFLARE_API_TOKEN" ]]; then
-            echo "::error::CLOUDFLARE_API_TOKEN secret is not set"
-            exit 1
-          fi
+        run: bash .github/scripts/require_secret.sh CLOUDFLARE_API_TOKEN
       - name: Apply D1 migrations
         if: steps.changes.outputs.changed == 'true'
         working-directory: server
@@ -557,25 +468,16 @@ jobs:
         env:
           GAME: ${{ needs.changes.outputs.game }}
           SERVER: ${{ needs.changes.outputs.server }}
-        run: |
-          fail=0
-          # <job> <result> <whether the change filter wanted it to run>
-          check() {
-            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = false ]; }; then
-              printf 'ok   %-14s %s\n' "$1" "$2"
-            else
-              printf 'FAIL %-14s %s\n' "$1" "$2"; fail=1
-            fi
-          }
-          check changes       "${{ needs.changes.result }}"       true
-          check dict-check    "${{ needs.dict-check.result }}"    "$GAME"
-          check test          "${{ needs.test.result }}"          "$GAME"
-          check build         "${{ needs.build.result }}"         "$GAME"
-          check build-dev     "${{ needs.build-dev.result }}"     "$GAME"
-          check release-smoke "${{ needs.release-smoke.result }}" "$GAME"
-          check render        "${{ needs.render.result }}"        "$GAME"
-          check server        "${{ needs.server.result }}"        "$SERVER"
-          [[ $fail -eq 0 ]] && echo "All checks passed." || exit 1
+        run: >-
+          bash .github/scripts/ci_gate.sh
+          changes=${{ needs.changes.result }}:true
+          dict-check=${{ needs.dict-check.result }}:"$GAME"
+          test=${{ needs.test.result }}:"$GAME"
+          build=${{ needs.build.result }}:"$GAME"
+          build-dev=${{ needs.build-dev.result }}:"$GAME"
+          release-smoke=${{ needs.release-smoke.result }}:"$GAME"
+          render=${{ needs.render.result }}:"$GAME"
+          server=${{ needs.server.result }}:"$SERVER"
 
   # gate runs if: always() but fails unless every gating job succeeded, so a red
   # render or server check on a tag blocks the release.
@@ -599,23 +501,11 @@ jobs:
 
       - name: Check release assets
         shell: bash
-        run: |
-          ls -l release-assets
-          for f in sss-linux sss-macos sss-windows.exe; do
-            [ -s "release-assets/$f" ] || { echo "::error::missing release asset $f"; exit 1; }
-          done
-          [ "$(ls release-assets | wc -l)" -eq 3 ] || { echo "::error::expected exactly 3 release assets"; exit 1; }
+        run: bash .github/scripts/check_release_assets.sh
 
       # A tag with a '-' (v0.1.0-rc1) is a pre-release, never "latest".
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: |
-          PRERELEASE=()
-          [[ "$TAG" == *-* ]] && PRERELEASE=(--prerelease)
-          gh release create "$TAG" \
-            release-assets/* \
-            --title "$TAG" \
-            --generate-notes \
-            "${PRERELEASE[@]}"
+        run: bash .github/scripts/create_github_release.sh "$TAG"
