@@ -593,6 +593,54 @@ TC_Assert dtCapRows >= 7 And dtCapMax < 600, "19.01  every row's data under 600 
 telemOn = 0 : ioReadOnly = 0
 Print ""
 
+Print "--- 20. credits_earned reports the unspent credits, not the zero after the cash-out (#387) ---"
+DT_Telem
+CR_ResetRun
+credits = 300 : creditsEarned = 500 : creditsSpent = 200 : deathTimer = 0
+PLAYER_TakeDamage DMG_COLLISION * 6, SHAKE_COLLISION, FLASH_COLLISION
+TC_Assert credits = 0 And InStr(DT_Data$("credits_earned"), "|left=300") > 0, "20.01  death: left=300 although the cash-out zeroed credits"
+DT_Shape "credits_earned", "credits_earned"
+DT_Telem
+CR_ResetRun
+credits = 40 : telemExitReason = "quit"
+TELEM_SessionEnd
+TC_Assert InStr(DT_Data$("credits_earned"), "|left=40") > 0, "20.02  quit (no cash-out): left is what the player holds"
+DT_Telem
+CR_ResetRun
+credits = 90
+CR_CashOut
+DT_Telem
+credits = 5 : telemExitReason = "quit"
+TELEM_SessionEnd
+TC_Assert InStr(DT_Data$("credits_earned"), "|left=5") > 0, "20.03  a later session starts clean of an earlier cash-out"
+Print ""
+
+Print "--- 21. dock_visit: shape, fields and size at the maximum (#387) ---"
+DT_Telem
+levelNum = 3 : credits = 20
+TELEM_DockVisit "launch", 100, 80, 0, 0, 3690, "laser:1", "cannon:1", "thrust", "refuel,repair,laser", "2,0,0,0,0,0,0,0,0,0,0"
+DT_Shape "dock_visit", "dock_visit"
+TC_Assert InStr(DT_Data$("dock_visit"), "chapter=3|credits_in=100|spent_upg=80|spent_fuel=0|spent_shield=0|credits_out=20|secs=61|exit=launch|bought=laser:1|denied=cannon:1|afford=thrust|seen=refuel,repair,laser|lv=2,0") = 1, "21.01  fields carry the figures given (seconds from frames)"
+Dim dtDk As Integer, dtDkN As String, dtDkB As String, dtDkS As String, dtDkU As String, dtDkL As String
+dtDkN = "refuel,repair,laser,cannon,rapid,shield,regen,armour,nova,thrust,roll,tractor,fuel"
+dtDkU = "laser,cannon,rapid,shield,regen,armour,nova,thrust,roll,tractor,fuel"
+dtDkS = dtDkN
+For dtDk = 1 To Len(dtDkN)
+    If Mid$(dtDkN, dtDk, 1) = "," Then dtDkB = dtDkB + ":99," Else dtDkB = dtDkB + Mid$(dtDkN, dtDk, 1)
+Next dtDk
+dtDkB = dtDkB + ":99"
+For dtDk = 1 To 11
+    If dtDk > 1 Then dtDkL = dtDkL + ","
+    dtDkL = dtDkL + "5"
+Next dtDk
+levelNum = 32767 : credits = DT_BIG
+TELEM_DockVisit "stranded", DT_BIG, DT_BIG, DT_BIG, DT_BIG, DT_BIG, dtDkB, dtDkB, dtDkU, dtDkS, dtDkL
+Dim dtDkLen As Long : dtDkLen = Len(DT_Data$("dock_visit"))
+Print "      longest dock_visit data= " + LTrim$(Str$(dtDkLen)) + " characters"
+TC_Assert dtDkLen <= 600, "21.02  dock_visit with every list at its longest stays within 600 characters (real keys, counts capped at 99)"
+telemOn = 0 : ioReadOnly = 0
+Print ""
+
 Print "=== " + LTrim$(Str$(tcPass + tcFail)) + " tests: " _
     + LTrim$(Str$(tcPass)) + " passed, " + LTrim$(Str$(tcFail)) + " failed ==="
 If tcFail > 0 Then System 1 Else System 0

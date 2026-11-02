@@ -144,6 +144,10 @@ UT_Assert upgLevel(UPG_LASER) = 0, "levels reset"
 UT_Assert UT_Near%(laserMax, 100) And UT_Near%(laserRegen, 0.3) And UT_Near%(fireCool, 0.18), "laser 100 / regen 0.30 / cooldown 0.18"
 UT_Assert UT_Near%(shipMaxVel, 0.12) And shieldMax = 100 And UT_Near%(fuelMax, 100) And gunShots = 1, "speed 0.12, shield 100, fuel 100, one shot"
 UT_Assert rollCoolMax = 0 And novaMax = 0 And regenEvery = 0 And UT_Near%(armourMul, 1) And tractorR = 0, "no roll, nova, regen, armour or tractor"
+UT_Assert UPG_LevelsStr$ = "0,0,0,0,0,0,0,0,0,0,0", "a new run: one 0 per upgrade, in UPG_* order (dock_visit lv=)"
+upgLevel(UPG_LASER) = 2 : upgLevel(UPG_NOVA) = 1 : upgLevel(UPG_FUEL) = 3
+UT_Assert UPG_LevelsStr$ = "2,0,0,0,0,0,1,0,0,0,3", "levels land at their UPG_* positions (" + UPG_LevelsStr$ + ")"
+UPG_Reset
 
 Print ""
 Print "--- earning ---"

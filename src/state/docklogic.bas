@@ -40,13 +40,72 @@ Dim Shared dockSel As Integer, dockTop As Integer
 Dim Shared dockMsg As String, dockMsgTimer As Integer, dockMsgBad As Integer
 Dim Shared dockAmt(1 To 2) As Integer   ' amount on the REFUEL / SHIELDS rows (SUP_FUEL / SUP_SHIELD)
 Dim Shared dockAsk As Integer          ' -1 = the stranded dialog is up
+' Per-visit tallies for the dock_visit telemetry row (#387); dock.bas reads them when the visit ends.
+' Indexed by list row. Spend is the credits actually taken, so a price change can't skew it.
+Dim Shared dockCredIn As Long, dockSpentUpg As Long, dockSpentFuel As Long, dockSpentShield As Long, dockFrames As Long
+Dim Shared dockBoughtN(1 To DOCK_LAUNCH) As Integer, dockDeniedN(1 To DOCK_LAUNCH) As Integer, dockSeen(1 To DOCK_LAUNCH) As Integer
 
 Sub DOCK_Open
     dockSel = 1 : dockTop = 1
     dockMsg = "" : dockMsgTimer = 0 : dockMsgBad = 0 : dockAsk = 0
+    DOCK_ResetTally
     UPG_DockVisit
     DOCK_ResetAmts
 End Sub
+
+' A new visit: nothing bought, denied or spent yet; the cursor's first row counts as seen.
+Sub DOCK_ResetTally
+    Dim dkrtI As Integer
+    For dkrtI = 1 To DOCK_LAUNCH
+        dockBoughtN(dkrtI) = 0 : dockDeniedN(dkrtI) = 0 : dockSeen(dkrtI) = 0
+    Next dkrtI
+    dockSeen(1) = -1
+    dockCredIn = credits : dockFrames = 0
+    dockSpentUpg = 0 : dockSpentFuel = 0 : dockSpentShield = 0
+End Sub
+
+' Short name of a list row in the dock_visit lists: refuel and repair for the supply rows (the
+' tank and shield upgrades keep their own names), the upgrade's key otherwise, "" for LAUNCH.
+Function DOCK_RowKey$ (dkrkRow As Integer)
+    DOCK_RowKey$ = ""
+    If dkrkRow = DOCK_REFUEL Then DOCK_RowKey$ = "refuel" : Exit Function
+    If dkrkRow = DOCK_SHIELDS Then DOCK_RowKey$ = "repair" : Exit Function
+    If dkrkRow > DOCK_UPG0 And dkrkRow < DOCK_LAUNCH Then DOCK_RowKey$ = UPG_KeyOf$(dkrkRow - DOCK_UPG0)
+End Function
+
+' A tally shown in a dock_visit list tops out at 99, so the row stays short however long the visit.
+Function DOCK_CapCount% (dkccN As Integer)
+    If dkccN > 99 Then DOCK_CapCount% = 99 Else DOCK_CapCount% = dkccN
+End Function
+
+' One dock_visit list. which: 0 bought and 1 denied are "key:count", 2 seen is the keys the
+' cursor visited, 3 afford is the upgrades whose next level costs no more than the credits now
+' but weren't bought this visit.
+Function DOCK_TallyStr$ (dktsWhich As Integer)
+    Dim dktsRow As Integer, dktsOut As String, dktsAdd As String, dktsN As Integer
+    For dktsRow = 1 To DOCK_LAUNCH - 1
+        dktsAdd = ""
+        Select Case dktsWhich
+            Case 0 : dktsN = dockBoughtN(dktsRow)
+                If dktsN > 0 Then dktsAdd = DOCK_RowKey$(dktsRow) + ":" + LTrim$(Str$(DOCK_CapCount%(dktsN)))
+            Case 1 : dktsN = dockDeniedN(dktsRow)
+                If dktsN > 0 Then dktsAdd = DOCK_RowKey$(dktsRow) + ":" + LTrim$(Str$(DOCK_CapCount%(dktsN)))
+            Case 2
+                If dockSeen(dktsRow) Then dktsAdd = DOCK_RowKey$(dktsRow)
+            Case 3
+                If dktsRow > DOCK_UPG0 Then
+                    If dockBoughtN(dktsRow) = 0 And UPG_Price&(dktsRow - DOCK_UPG0) > 0 Then
+                        If UPG_Price&(dktsRow - DOCK_UPG0) <= credits Then dktsAdd = DOCK_RowKey$(dktsRow)
+                    End If
+                End If
+        End Select
+        If Len(dktsAdd) > 0 Then
+            If Len(dktsOut) > 0 Then dktsOut = dktsOut + ","
+            dktsOut = dktsOut + dktsAdd
+        End If
+    Next dktsRow
+    DOCK_TallyStr$ = dktsOut
+End Function
 
 ' Each supply row back to "fill what the credits buy"; with nothing affordable, the whole gap
 ' (its price shows red and ENTER says why).
@@ -71,6 +130,9 @@ End Sub
 
 Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As Integer, dkBuy As Integer, dkBack As Integer)
     Dim dkRes As Integer, dkBuyRes As Integer, dkKind As Integer, dkMiss As Integer, dkAmt As Integer
+    Dim dkCr As Long
+    dkCr = credits
+    dockFrames = dockFrames + 1
     dkRes = DOCK_NONE
     If dockMsgTimer > 0 Then dockMsgTimer = dockMsgTimer - 1
     If dockAsk Then
@@ -101,9 +163,12 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
             Select Case dkBuyRes
                 Case SUP_OK
                     dkRes = DOCK_BOUGHT
+                    dockBoughtN(dockSel) = dockBoughtN(dockSel) + 1
+                    If dkKind = SUP_FUEL Then dockSpentFuel = dockSpentFuel + (dkCr - credits) Else dockSpentShield = dockSpentShield + (dkCr - credits)
                     If dkKind = SUP_FUEL Then DOCK_Say "BOUGHT" + Str$(dkAmt) + " FUEL", 0 Else DOCK_Say "REPAIRED" + Str$(dkAmt) + " SHIELD", 0
                 Case SUP_NOFUNDS
                     dkRes = DOCK_NOFUNDS
+                    dockDeniedN(dockSel) = dockDeniedN(dockSel) + 1
                     DOCK_Say "NOT ENOUGH CREDITS", -1
                 Case Else
                     dkRes = DOCK_FULL
@@ -114,9 +179,12 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
             Select Case dkBuyRes
                 Case UPG_OK
                     dkRes = DOCK_BOUGHT
+                    dockBoughtN(dockSel) = dockBoughtN(dockSel) + 1
+                    dockSpentUpg = dockSpentUpg + (dkCr - credits)
                     DOCK_Say "INSTALLED " + DOCK_BoughtName$(dockSel - DOCK_UPG0), 0
                 Case UPG_NOFUNDS
                     dkRes = DOCK_NOFUNDS
+                    dockDeniedN(dockSel) = dockDeniedN(dockSel) + 1
                     DOCK_Say "NOT ENOUGH CREDITS", -1
                 Case Else
                     dkRes = DOCK_MAXED
@@ -125,6 +193,7 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
         End If
         If dkRes = DOCK_BOUGHT Then DOCK_ResetAmts
     End If
+    dockSeen(dockSel) = -1
     If dockSel < dockTop Then dockTop = dockSel
     If dockSel > dockTop + DOCK_VISIBLE - 1 Then dockTop = dockSel - DOCK_VISIBLE + 1
     DOCK_Step% = dkRes

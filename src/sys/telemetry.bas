@@ -321,8 +321,19 @@ Sub TELEM_StageClear(tlscCh As Integer, tlscFuelUsed As Single, tlscSecs As Sing
     TELEM_LegReset
 End Sub
 
+' A dock visit ends (#387): what the player had, spent and left, how long, and what they looked at.
+' The lists are "key:count" (bought, denied) or keys (afford: next level within the credits left but
+' not bought; seen: rows the cursor visited), lv the upgrade levels in UPG_* order.
+Sub TELEM_DockVisit (tldvExit As String, tldvIn As Long, tldvUpg As Long, tldvFuel As Long, tldvShield As Long, tldvFrames As Long, tldvBought As String, tldvDenied As String, tldvAfford As String, tldvSeen As String, tldvLv As String)
+    TELEM_Row "dock_visit", "chapter=" + LTrim$(Str$(levelNum)) + "|credits_in=" + TELEM_N$(tldvIn) _
+            + "|spent_upg=" + TELEM_N$(tldvUpg) + "|spent_fuel=" + TELEM_N$(tldvFuel) + "|spent_shield=" + TELEM_N$(tldvShield) _
+            + "|credits_out=" + TELEM_N$((credits)) + "|secs=" + TELEM_N$(tldvFrames \ 60) + "|exit=" + tldvExit _
+            + "|bought=" + tldvBought + "|denied=" + tldvDenied + "|afford=" + tldvAfford + "|seen=" + tldvSeen + "|lv=" + tldvLv
+End Sub
+
 ' End of a run (#268): leftover credits cashed in for score, logged once per run.
 Sub TELEM_CreditBonus(tlcbCredits As Long, tlcbRate As Double, tlcbPts As Long)
+    telemCashedOut = -1 : telemCashedLeft = tlcbCredits
     TELEM_Row "credit_bonus", "credits=" + LTrim$(Str$(tlcbCredits)) + "|rate=" + LTrim$(Str$(tlcbRate)) _
             + "|points=" + LTrim$(Str$(tlcbPts)) + "|score=" + LTrim$(Str$(score))
 End Sub
@@ -330,8 +341,11 @@ End Sub
 Sub TELEM_SessionEnd()
     If tutorialRun Then Exit Sub
     If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
+    Dim tlLeft As Long
+    tlLeft = credits
+    If telemCashedOut Then tlLeft = telemCashedLeft
     TELEM_Row "credits_earned", "earned=" + LTrim$(Str$(creditsEarned)) + "|spent=" + LTrim$(Str$(creditsSpent)) _
-            + "|left=" + LTrim$(Str$(credits))
+            + "|left=" + LTrim$(Str$(tlLeft))
     Dim tlMisses As Long : tlMisses = telemShotsFired - telemShotsHit
     Dim tlData As String
     tlData = "exit=" + telemExitReason _
