@@ -25,12 +25,17 @@ Const DEV_CHEV_SIZE  = 7      ' chevron half-width / depth in pixels
 
 ' World point -> backBuffer pixel; cpOk = 0 when it's behind the camera.
 Sub COMBAT_Project(cpX As Single, cpY As Single, cpZ As Single, cpSX As Single, cpSY As Single, cpOk As Integer)
+    COMBAT_ProjectM vpMat, scrW, scrH, cpX, cpY, cpZ, cpSX, cpSY, cpOk
+End Sub
+
+' Same, through the matrix cpmMat onto a cpmW x cpmH screen (the backdrops project with their own camera, never vpMat).
+Sub COMBAT_ProjectM(cpmMat As E3D_Matrix4, cpmW As Single, cpmH As Single, cpX As Single, cpY As Single, cpZ As Single, cpSX As Single, cpSY As Single, cpOk As Integer)
     Dim cpW As Single
-    cpW = cpX * vpMat.m(3,0) + cpY * vpMat.m(3,1) + cpZ * vpMat.m(3,2) + vpMat.m(3,3)
+    cpW = cpX * cpmMat.m(3,0) + cpY * cpmMat.m(3,1) + cpZ * cpmMat.m(3,2) + cpmMat.m(3,3)
     cpOk = (cpW > 0.0001)
     If cpOk = 0 Then Exit Sub
-    cpSX = ((cpX * vpMat.m(0,0) + cpY * vpMat.m(0,1) + cpZ * vpMat.m(0,2) + vpMat.m(0,3)) / cpW + 1.0) * scrW * 0.5
-    cpSY = (1.0 - (cpX * vpMat.m(1,0) + cpY * vpMat.m(1,1) + cpZ * vpMat.m(1,2) + vpMat.m(1,3)) / cpW) * scrH * 0.5
+    cpSX = ((cpX * cpmMat.m(0,0) + cpY * cpmMat.m(0,1) + cpZ * cpmMat.m(0,2) + cpmMat.m(0,3)) / cpW + 1.0) * cpmW * 0.5
+    cpSY = (1.0 - (cpX * cpmMat.m(1,0) + cpY * cpmMat.m(1,1) + cpZ * cpmMat.m(1,2) + cpmMat.m(1,3)) / cpW) * cpmH * 0.5
 End Sub
 
 ' Bolt brightness from its X distance to the player: 1 at bhHot or nearer, bhColdB at bhCold or beyond.
@@ -50,6 +55,13 @@ End Function
 Sub COMBAT_DrawBolt(bdX As Single, bdY As Single, bdZ As Single, bdVX As Single, bdVY As Single, bdVZ As Single, _
                     bdLen As Double, bdRad As Double, bdMaxR As Integer, bdF As Single, _
                     bdGlowLo As _Unsigned Long, bdGlowHi As _Unsigned Long, bdBody As _Unsigned Long, bdCore As _Unsigned Long)
+    COMBAT_DrawBoltM vpMat, scrW, scrH, bdX, bdY, bdZ, bdVX, bdVY, bdVZ, bdLen, bdRad, bdMaxR, bdF, bdGlowLo, bdGlowHi, bdBody, bdCore
+End Sub
+
+' The same bolt through the matrix bdMat onto a bdSW x bdSH screen: the in-game bolts pass vpMat, the backdrops their own camera.
+Sub COMBAT_DrawBoltM(bdMat As E3D_Matrix4, bdSW As Single, bdSH As Single, bdX As Single, bdY As Single, bdZ As Single, bdVX As Single, bdVY As Single, bdVZ As Single, _
+                     bdLen As Double, bdRad As Double, bdMaxR As Integer, bdF As Single, _
+                     bdGlowLo As _Unsigned Long, bdGlowHi As _Unsigned Long, bdBody As _Unsigned Long, bdCore As _Unsigned Long)
     Dim bdMag As Single, bdS As Single
     Dim bdHX As Single, bdHY As Single, bdTX As Single, bdTY As Single, bdRX As Single, bdRY As Single
     Dim bdOk As Integer, bdOk2 As Integer, bdOk3 As Integer
@@ -60,11 +72,11 @@ Sub COMBAT_DrawBolt(bdX As Single, bdY As Single, bdZ As Single, bdVX As Single,
 
     bdMag = Sqr(bdVX * bdVX + bdVY * bdVY + bdVZ * bdVZ)
     If bdMag <= 0.0001 Then Exit Sub
-    COMBAT_Project bdX, bdY, bdZ, bdHX, bdHY, bdOk
-    COMBAT_Project bdX - bdVX / bdMag * bdLen, bdY - bdVY / bdMag * bdLen, bdZ - bdVZ / bdMag * bdLen, bdTX, bdTY, bdOk2
-    COMBAT_Project bdX, bdY + bdRad, bdZ, bdRX, bdRY, bdOk3
+    COMBAT_ProjectM bdMat, bdSW, bdSH, bdX, bdY, bdZ, bdHX, bdHY, bdOk
+    COMBAT_ProjectM bdMat, bdSW, bdSH, bdX - bdVX / bdMag * bdLen, bdY - bdVY / bdMag * bdLen, bdZ - bdVZ / bdMag * bdLen, bdTX, bdTY, bdOk2
+    COMBAT_ProjectM bdMat, bdSW, bdSH, bdX, bdY + bdRad, bdZ, bdRX, bdRY, bdOk3
     If bdOk = 0 Or bdOk2 = 0 Or bdOk3 = 0 Then Exit Sub
-    If bdHX < 0 Or bdHX >= scrW Or bdHY < 0 Or bdHY >= scrH Then Exit Sub
+    If bdHX < 0 Or bdHX >= bdSW Or bdHY < 0 Or bdHY >= bdSH Then Exit Sub
 
     bdS = Abs(bdHY - bdRY)
     If bdS < 1 Then bdS = 1

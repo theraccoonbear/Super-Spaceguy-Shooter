@@ -44,6 +44,14 @@ Sub UI_PanelFade (upfX1 As Integer, upfY1 As Integer, upfX2 As Integer, upfY2 As
     Line (upfX2, upfY2)-(upfX2 - 7, upfY2), upfCC : Line (upfX2, upfY2)-(upfX2, upfY2 - 7), upfCC
 End Sub
 
+' An embedded PNG (the bytes from _Embedded$) as a blended 32 bit memory image; below -1 when it loaded.
+Function UI_LoadArt& (ulaData As String)
+    Dim ulaImg As Long
+    ulaImg = _LoadImage(ulaData, 32, "memory")
+    If ulaImg < -1 Then _Blend ulaImg
+    UI_LoadArt& = ulaImg
+End Function
+
 Sub UI_Text (utPal As Integer, utTxt As String, utX As Integer, utY As Integer, utA As Integer)
     If uiShadowSheet = 0 Then
         FONT_BuildSheet uiShadowSheet, _RGB(0, 0, 0), _RGB(0, 0, 0)

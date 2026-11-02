@@ -9,9 +9,13 @@
 '
 ' File format (; starts a comment; verbs are case-insensitive, keys are lower case):
 '   backdrop:<name>          the painting the following lines belong to (title emperor dock)
+'       CAMERA [fov=60] [horizon=120]      (at most once per backdrop; for LASER)
 '       BLINK at=x,y color=rrggbb [size=1] [glow=3] [rise=0] [hold=0] [fall=0] [rest=0] [phase=0]
+'             [morse=TEXT] [unit=6]
 '       SPARK at=x,y color=rrggbb[,rrggbb...] [count=3] [every=60] [speed=0.6] [gravity=0.05]
 '             [life=20] [dir=270] [spread=120] [phase=0] [jitter=0] [size=1]
+'       SPRITE img=name at=x,y to=x,y [frames=300] [rest=0] [pingpong=0] [flip=0] [phase=0]
+'       LASER from=x,y,depth to=x,y,depth color=rrggbb [every=60] [speed=4] [length=12] [jitter=0] [phase=0]
 ' Positions are pixels on the 320x240 painting. Frames run at 60 per second.
 '   BLINK  a light on a looping envelope: it fades up over `rise` frames, stays at full for `hold`,
 '          fades down over `fall`, and is dark for `rest`; the loop is the sum of the four (at
@@ -20,6 +24,13 @@
 '   SPARK  every `every` frames, `count` sparks leave the point at `speed` px/frame, spread over
 '          `spread` degrees around `dir` (0 = right, 90 = down, 270 = up), pulled down by
 '          `gravity`, and fade out over `life` frames. Each takes one of the colours.
+'          morse=TEXT flashes TEXT in Morse code instead (letters, digits, _ for a space; unit= is the
+'          dot in frames; dash 3, gaps 1 / 3 / 7), dark for `rest` before it repeats; rise and fall
+'          soften each flash; hold is not allowed with it.
+'   SPRITE an image from assets/backdrops/ goes at -> to over `frames`, then waits `rest` (hidden, or
+'          parked at the end with pingpong=1, which drives it back; flip=1 mirrors the return leg).
+'   LASER  every `every` frames a bolt flies from -> to at `speed` world units a frame, `length` long,
+'          through the backdrop's own CAMERA. x,y is where the bolt shows on the painting at that depth.
 '   glow   pixels of soft glow around a BLINK core.
 '   size   of a SPARK: 1 = a 2x2 head with a 1 pixel trail, each step adds a pixel to both.
 '   jitter each SPARK burst comes up to this many frames late (below every), different each time,
@@ -33,7 +44,10 @@
 ' BD_Validate$()       "" when sound, else one problem per line (parse problems first)
 ' BD_Find%(name)       the backdrop's number, -1 when it has none
 ' BD_Advance           call once per drawn frame; resets when a screen is entered
-' BD_BlinkLevel!(fx,f) 0..1 brightness of a BLINK at frame f
+' BD_BlinkLevel!(fx,f) 0..1 brightness of a BLINK (or its Morse) at frame f
+' BD_SpriteAt%(fx,f,x,y,flip)  where a SPRITE is on frame f (0 = hidden)
+' BD_LaserHead%(fx,f,j,dist)   whether the j-th newest bolt of a LASER is in flight, and how far it has gone
+' BD_World / BD_CamMatrix       the painting's fixed camera (CAMERA), so a LASER never reads the game's vpMat
 ' Shared state is bd*; every routine's locals carry their own two-letter prefix
 
 Const BD_MAX_FX = 96          ' effects in the whole file
@@ -43,6 +57,15 @@ Const BD_POOL = 1024          ' sparks alive at once
 Const BD_MAX_WORDS = 16
 Const BD_KIND_BLINK = 1
 Const BD_KIND_SPARK = 2
+Const BD_KIND_SPRITE = 3
+Const BD_KIND_LASER = 4
+Const BD_SPRITE_NAMES = "tug"      ' images in assets/backdrops/, each embedded as BDIMG + the name in capitals
+Const BD_CAM_FOV = 60                ' CAMERA defaults
+Const BD_CAM_HORIZON = 120
+Const BD_CAM_VPX = 160               ' the vanishing point's x: the middle of the painting
+Const BD_MARGIN = 64                 ' a SPRITE may start and end this far off the painting
+Const BD_MORSE_MAX = 24              ' characters of morse=
+Const BD_LASER_BOLTS = 8             ' bolts of one LASER in flight at once
 Const BD_PAINT_W = 320
 Const BD_PAINT_H = 240
 
@@ -50,6 +73,9 @@ Dim Shared bdSetName(0 To BD_MAX_SETS - 1) As String
 Dim Shared bdSetFrom(0 To BD_MAX_SETS - 1) As Integer    ' first effect
 Dim Shared bdSetN(0 To BD_MAX_SETS - 1) As Integer       ' effects
 Dim Shared bdSetLine(0 To BD_MAX_SETS - 1) As Integer
+Dim Shared bdSetFov(0 To BD_MAX_SETS - 1) As Single
+Dim Shared bdSetHor(0 To BD_MAX_SETS - 1) As Single
+Dim Shared bdSetCam(0 To BD_MAX_SETS - 1) As Integer     ' a CAMERA line was given
 Dim Shared bdSets As Integer
 
 Dim Shared bdKind(0 To BD_MAX_FX - 1) As Integer
@@ -73,6 +99,18 @@ Dim Shared bdLife(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdDir(0 To BD_MAX_FX - 1) As Single
 Dim Shared bdSpread(0 To BD_MAX_FX - 1) As Single
 Dim Shared bdFxLine(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdFxSet(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdX2(0 To BD_MAX_FX - 1) As Single       ' SPRITE to, LASER to
+Dim Shared bdY2(0 To BD_MAX_FX - 1) As Single
+Dim Shared bdD1(0 To BD_MAX_FX - 1) As Single       ' LASER depths
+Dim Shared bdD2(0 To BD_MAX_FX - 1) As Single
+Dim Shared bdFrames(0 To BD_MAX_FX - 1) As Long     ' SPRITE frames per leg
+Dim Shared bdPing(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdFlip(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdImg(0 To BD_MAX_FX - 1) As Integer     ' SPRITE image, 1.. in BD_SPRITE_NAMES
+Dim Shared bdLaserLen(0 To BD_MAX_FX - 1) As Single
+Dim Shared bdMorse(0 To BD_MAX_FX - 1) As String    ' one character per unit, 1 lit and 0 dark; "" = not morse
+Dim Shared bdUnit(0 To BD_MAX_FX - 1) As Long
 Dim Shared bdFxN As Integer
 
 Dim Shared bdErrors As String
@@ -174,7 +212,10 @@ End Function
 ' The keys each verb takes, space-separated; "" for an unknown verb.
 Function BD_KeysOf$ (bkVerb As String)
     Select Case bkVerb
-        Case "BLINK" : BD_KeysOf$ = "at color size glow rise hold fall rest phase"
+        Case "BLINK" : BD_KeysOf$ = "at color size glow rise hold fall rest phase morse unit"
+        Case "SPRITE" : BD_KeysOf$ = "img at to frames rest pingpong flip phase"
+        Case "LASER" : BD_KeysOf$ = "from to color every jitter speed length phase"
+        Case "CAMERA" : BD_KeysOf$ = "fov horizon"
         Case "SPARK" : BD_KeysOf$ = "at color count every jitter size speed gravity life dir spread phase"
         Case Else    : BD_KeysOf$ = ""
     End Select
@@ -212,19 +253,37 @@ Function BD_Opt% (boKey As String, boDef As Single, boLo As Single, boHi As Sing
     boOut = boV
 End Function
 
+' key=x,y (bvN = 2) or key=x,y,depth (bvN = 3) into bvOut(0..): x,y within bvMargin pixels of the painting.
+Function BD_ParseVec% (bvKey As String, bvN As Integer, bvMargin As Integer, bvOut() As Single)
+    Dim bvI As Integer, bvV As String, bvP As Integer, bvK As Integer, bvShape As String, bvRest As String, bvCommas As Integer
+    BD_ParseVec% = 0
+    If bvN = 2 Then bvShape = "x,y" Else bvShape = "x,y,depth"
+    bvI = BD_KvIdx%(bvKey)
+    If bvI < 0 Then BD_LineErr bdPVerb + " needs " + bvKey + "=" + bvShape : Exit Function
+    bvV = bdKvVal(bvI)
+    For bvK = 1 To Len(bvV)
+        If Mid$(bvV, bvK, 1) = "," Then bvCommas = bvCommas + 1
+    Next bvK
+    If bvCommas <> bvN - 1 Then BD_LineErr bdPVerb + " " + bvKey + " must be " + bvShape : Exit Function
+    bvRest = bvV + ","
+    For bvK = 0 To bvN - 1
+        bvP = InStr(bvRest, ",")
+        If BD_ParseNum%(Left$(bvRest, bvP - 1), bvOut(bvK)) = 0 Then BD_LineErr bdPVerb + " " + bvKey + " must be " + bvShape + " in pixels, not '" + bvV + "'" : Exit Function
+        bvRest = Mid$(bvRest, bvP + 1)
+    Next bvK
+    If bvOut(0) < -bvMargin Or bvOut(0) > BD_PAINT_W + bvMargin Or bvOut(1) < -bvMargin Or bvOut(1) > BD_PAINT_H + bvMargin Then BD_LineErr bdPVerb + " " + bvKey + "=" + bvV + " is off the " + LTrim$(Str$(BD_PAINT_W)) + "x" + LTrim$(Str$(BD_PAINT_H)) + " painting" : Exit Function
+    If bvN = 3 Then
+        If bvOut(2) < -50 Or bvOut(2) > 500 Then BD_LineErr bdPVerb + " " + bvKey + " depth must be -50 to 500, not '" + bvV + "'" : Exit Function
+    End If
+    BD_ParseVec% = -1
+End Function
+
 ' at=x,y inside the painting.
 Function BD_ParseAt% (baFx As Integer)
-    Dim baI As Integer, baC As Integer, baX As Single, baY As Single, baV As String
-    BD_ParseAt% = 0
-    baI = BD_KvIdx%("at")
-    If baI < 0 Then BD_LineErr bdPVerb + " needs at=x,y" : Exit Function
-    baV = bdKvVal(baI)
-    baC = InStr(baV, ",")
-    If baC = 0 Or InStr(baC + 1, baV, ",") > 0 Then BD_LineErr bdPVerb + " at must be x,y": Exit Function
-    If BD_ParseNum%(Left$(baV, baC - 1), baX) = 0 Or BD_ParseNum%(Mid$(baV, baC + 1), baY) = 0 Then BD_LineErr bdPVerb + " at must be x,y in pixels, not '" + baV + "'" : Exit Function
-    If baX < 0 Or baX > BD_PAINT_W Or baY < 0 Or baY > BD_PAINT_H Then BD_LineErr bdPVerb + " at=" + baV + " is off the " + LTrim$(Str$(BD_PAINT_W)) + "x" + LTrim$(Str$(BD_PAINT_H)) + " painting" : Exit Function
-    bdX(baFx) = baX : bdY(baFx) = baY
-    BD_ParseAt% = -1
+    Dim baV(0 To 2) As Single, baOk As Integer
+    baOk = BD_ParseVec%("at", 2, 0, baV())
+    If baOk Then bdX(baFx) = baV(0) : bdY(baFx) = baV(1)
+    BD_ParseAt% = baOk
 End Function
 
 ' color=rrggbb[,rrggbb...]
@@ -254,13 +313,144 @@ Function BD_SparksAlive& (bsaSet As Integer)
     BD_SparksAlive& = bsaTot
 End Function
 
+' morse=TEXT [unit=6] on a BLINK: bdMorse gets one character per unit, 1 lit and 0 dark. Standard timing: dot 1,
+' dash 3, a unit of dark between the symbols of a letter, 3 between letters, 7 between words.
+Function BD_BuildMorse% (bmFx As Integer)
+    Dim bmText As String, bmI As Integer, bmC As String, bmCode As String, bmK As Integer, bmOut As String, bmPend As String, bmP As Integer, bmV As Single
+    Const bmCodes = ".- -... -.-. -.. . ..-. --. .... .. .--- -.- .-.. -- -. --- .--. --.- .-. ... - ..- ...- .-- -..- -.-- --.. ----- .---- ..--- ...-- ....- ..... -.... --... ---.. ----."
+    BD_BuildMorse% = 0
+    bmText = bdKvVal(BD_KvIdx%("morse"))
+    If Len(bmText) > BD_MORSE_MAX Then BD_LineErr "BLINK morse is at most " + LTrim$(Str$(BD_MORSE_MAX)) + " characters" : Exit Function
+    If Left$(bmText, 1) = "_" Or Right$(bmText, 1) = "_" Or InStr(bmText, "__") > 0 Then BD_LineErr "BLINK morse needs a single _ between words, none at either end" : Exit Function
+    If bdHold(bmFx) > 0 Then BD_LineErr "BLINK hold cannot be used with morse= (the letters set the timing; use unit=, rest=, rise=, fall=)" : Exit Function
+    For bmI = 1 To Len(bmText)
+        bmC = Mid$(bmText, bmI, 1)
+        If bmC = "_" Then
+            bmPend = "0000000"
+        Else
+            If bmC >= "a" And bmC <= "z" Then
+                bmP = Asc(bmC) - 96
+            ElseIf bmC >= "0" And bmC <= "9" Then
+                bmP = Asc(bmC) - 48 + 27
+            Else
+                BD_LineErr "BLINK morse may hold only letters, digits and _ (for a space), not '" + bmC + "'" : Exit Function
+            End If
+            bmCode = BD_Nth$(bmCodes, bmP)
+            bmOut = bmOut + bmPend
+            For bmK = 1 To Len(bmCode)
+                If bmK > 1 Then bmOut = bmOut + "0"
+                If Mid$(bmCode, bmK, 1) = "." Then bmOut = bmOut + "1" Else bmOut = bmOut + "111"
+            Next bmK
+            bmPend = "000"
+        End If
+    Next bmI
+    If BD_Opt%("unit", 6, 1, 60, -1, bmV) = 0 Then Exit Function
+    bdUnit(bmFx) = bmV
+    bdMorse(bmFx) = bmOut
+    BD_BuildMorse% = -1
+End Function
+
+' The bnN-th (from 1) space-separated word of bnText.
+Function BD_Nth$ (bnText As String, bnN As Integer)
+    Dim bnI As Integer, bnS As Integer, bnE As Integer
+    bnS = 1
+    For bnI = 2 To bnN
+        bnS = InStr(bnS, bnText, " ") + 1
+    Next bnI
+    bnE = InStr(bnS, bnText, " ")
+    If bnE = 0 Then bnE = Len(bnText) + 1
+    BD_Nth$ = Mid$(bnText, bnS, bnE - bnS)
+End Function
+
+' The image's number in BD_SPRITE_NAMES (from 1), 0 when there is none of that name.
+Function BD_SpriteIdx% (bsiName As String)
+    Dim bsiK As Integer, bsiN As Integer
+    BD_SpriteIdx% = 0
+    If Len(bsiName) = 0 Then Exit Function
+    bsiN = 1
+    For bsiK = 1 To Len(BD_SPRITE_NAMES)
+        If Mid$(BD_SPRITE_NAMES, bsiK, 1) = " " Then bsiN = bsiN + 1
+    Next bsiK
+    For bsiK = 1 To bsiN
+        If BD_Nth$(BD_SPRITE_NAMES, bsiK) = bsiName Then BD_SpriteIdx% = bsiK : Exit Function
+    Next bsiK
+End Function
+
+Function BD_BuildSprite% (bsFx As Integer)
+    Dim bsV As Single, bsP(0 To 2) As Single, bsName As String, bsI As Integer, bsK As Integer
+    BD_BuildSprite% = 0
+    bsK = BD_KvIdx%("img")
+    If bsK < 0 Then BD_LineErr "SPRITE needs img=name (known: " + BD_SPRITE_NAMES + ")" : Exit Function
+    bsName = bdKvVal(bsK)
+    bsI = BD_SpriteIdx%(bsName)
+    If bsI = 0 Then BD_LineErr "SPRITE img '" + bsName + "' is not a known image (known: " + BD_SPRITE_NAMES + ")" : Exit Function
+    bdImg(bsFx) = bsI
+    If BD_ParseVec%("at", 2, BD_MARGIN, bsP()) = 0 Then Exit Function
+    bdX(bsFx) = bsP(0) : bdY(bsFx) = bsP(1)
+    If BD_ParseVec%("to", 2, BD_MARGIN, bsP()) = 0 Then Exit Function
+    bdX2(bsFx) = bsP(0) : bdY2(bsFx) = bsP(1)
+    If BD_Opt%("frames", 300, 1, 3600, -1, bsV) = 0 Then Exit Function
+    bdFrames(bsFx) = bsV
+    If BD_Opt%("rest", 0, 0, 3600, -1, bsV) = 0 Then Exit Function
+    bdRest(bsFx) = bsV
+    If BD_Opt%("pingpong", 0, 0, 1, -1, bsV) = 0 Then Exit Function
+    bdPing(bsFx) = bsV
+    If BD_Opt%("flip", 0, 0, 1, -1, bsV) = 0 Then Exit Function
+    bdFlip(bsFx) = bsV
+    If bdFlip(bsFx) <> 0 And bdPing(bsFx) = 0 Then BD_LineErr "SPRITE flip=1 needs pingpong=1 (it mirrors the return leg, and there is none without it)" : Exit Function
+    bdKind(bsFx) = BD_KIND_SPRITE
+    BD_BuildSprite% = -1
+End Function
+
+Function BD_BuildLaser% (blFx As Integer)
+    Dim blV As Single, blP(0 To 2) As Single
+    BD_BuildLaser% = 0
+    If BD_ParseVec%("from", 3, 0, blP()) = 0 Then Exit Function
+    bdX(blFx) = blP(0) : bdY(blFx) = blP(1) : bdD1(blFx) = blP(2)
+    If BD_ParseVec%("to", 3, 0, blP()) = 0 Then Exit Function
+    bdX2(blFx) = blP(0) : bdY2(blFx) = blP(1) : bdD2(blFx) = blP(2)
+    If bdX(blFx) = bdX2(blFx) And bdY(blFx) = bdY2(blFx) And bdD1(blFx) = bdD2(blFx) Then BD_LineErr "LASER from and to are the same point" : Exit Function
+    If BD_ParseColors%(blFx, 1) = 0 Then Exit Function
+    If BD_Opt%("every", 60, 1, 3600, -1, blV) = 0 Then Exit Function
+    bdEvery(blFx) = blV
+    If BD_Opt%("jitter", 0, 0, 3599, -1, blV) = 0 Then Exit Function
+    bdJitter(blFx) = blV
+    If bdJitter(blFx) >= bdEvery(blFx) Then BD_LineErr "LASER jitter must be less than every (" + LTrim$(Str$(bdEvery(blFx))) + ")" : Exit Function
+    If BD_Opt%("speed", 4, 0.1, 50, 0, blV) = 0 Then Exit Function
+    bdSpeed(blFx) = blV
+    If BD_Opt%("length", 12, 0.5, 200, 0, blV) = 0 Then Exit Function
+    bdLaserLen(blFx) = blV
+    bdKind(blFx) = BD_KIND_LASER
+    BD_BuildLaser% = -1
+End Function
+
+' CAMERA fov=<degrees across the painting> horizon=<y of the horizon, painting pixels>, once per backdrop.
+Sub BD_BuildCamera ()
+    Dim bcV As Single, bcSet As Integer
+    bcSet = bdSets - 1
+    If bdSetCam(bcSet) Then BD_LineErr "CAMERA is given twice in backdrop '" + bdSetName(bcSet) + "'" : Exit Sub
+    If BD_Opt%("fov", BD_CAM_FOV, 10, 120, 0, bcV) = 0 Then Exit Sub
+    bdSetFov(bcSet) = bcV
+    If BD_Opt%("horizon", BD_CAM_HORIZON, 0, BD_PAINT_H, 0, bcV) = 0 Then Exit Sub
+    bdSetHor(bcSet) = bcV
+    bdSetCam(bcSet) = -1
+End Sub
+
 ' One effect line (verb in bdPVerb, key=value words already in the bdKv tables) into the next slot.
 Sub BD_BuildEffect ()
     Dim bfFx As Integer, bfV As Single, bfI As Integer, bfAlive As Long
     bfFx = bdFxN
     bdFxLine(bfFx) = bdPLine
-    If BD_ParseAt%(bfFx) = 0 Then Exit Sub
-    If bdPVerb = "BLINK" Then
+    bdFxSet(bfFx) = bdSets - 1
+    bdMorse(bfFx) = ""
+    If bdPVerb <> "SPRITE" And bdPVerb <> "LASER" Then
+        If BD_ParseAt%(bfFx) = 0 Then Exit Sub
+    End If
+    If bdPVerb = "SPRITE" Then
+        If BD_BuildSprite%(bfFx) = 0 Then Exit Sub
+    ElseIf bdPVerb = "LASER" Then
+        If BD_BuildLaser%(bfFx) = 0 Then Exit Sub
+    ElseIf bdPVerb = "BLINK" Then
         If BD_ParseColors%(bfFx, 1) = 0 Then Exit Sub
         bdKind(bfFx) = BD_KIND_BLINK
         If BD_Opt%("size", 1, 0, 8, -1, bfV) = 0 Then Exit Sub
@@ -275,7 +465,13 @@ Sub BD_BuildEffect ()
         bdFall(bfFx) = bfV
         If BD_Opt%("rest", 0, 0, 600, -1, bfV) = 0 Then Exit Sub
         bdRest(bfFx) = bfV
-        If bdRise(bfFx) + bdHold(bfFx) + bdFall(bfFx) + bdRest(bfFx) < 1 Then BD_LineErr "BLINK needs a loop: rise + hold + fall + rest must add up to at least 1 frame (for example hold=30 rest=30)" : Exit Sub
+        If BD_KvIdx%("morse") >= 0 Then
+            If BD_BuildMorse%(bfFx) = 0 Then Exit Sub
+        ElseIf BD_KvIdx%("unit") >= 0 Then
+            BD_LineErr "BLINK unit only goes with morse=" : Exit Sub
+        ElseIf bdRise(bfFx) + bdHold(bfFx) + bdFall(bfFx) + bdRest(bfFx) < 1 Then
+            BD_LineErr "BLINK needs a loop: rise + hold + fall + rest must add up to at least 1 frame (for example hold=30 rest=30)" : Exit Sub
+        End If
     Else
         If BD_ParseColors%(bfFx, BD_MAX_COL) = 0 Then Exit Sub
         bdKind(bfFx) = BD_KIND_SPARK
@@ -320,6 +516,7 @@ Sub BD_BeginSet (bbName As String)
     If BD_Find%(bbName) >= 0 Then BD_LineErr "backdrop '" + bbName + "' is listed twice" : Exit Sub
     If bdSets >= BD_MAX_SETS Then BD_LineErr "more than BD_MAX_SETS (" + LTrim$(Str$(BD_MAX_SETS)) + ") backdrops" : Exit Sub
     bdSetName(bdSets) = bbName : bdSetFrom(bdSets) = bdFxN : bdSetN(bdSets) = 0 : bdSetLine(bdSets) = bdPLine
+    bdSetFov(bdSets) = BD_CAM_FOV : bdSetHor(bdSets) = BD_CAM_HORIZON : bdSetCam(bdSets) = 0
     bdSets = bdSets + 1
 End Sub
 
@@ -361,7 +558,7 @@ Function BD_Parse% (bpSrc As String)
         End If
         bpVerb = UCase$(bpW(0))
         bpKeys = BD_KeysOf$(bpVerb)
-        If Len(bpKeys) = 0 Then BD_LineErr "unknown effect '" + bpW(0) + "' (BLINK SPARK)" : GoTo bpNext
+        If Len(bpKeys) = 0 Then BD_LineErr "unknown effect '" + bpW(0) + "' (BLINK SPARK SPRITE LASER CAMERA)" : GoTo bpNext
         If bdSets = 0 Or bpHdr = 0 Then BD_LineErr bpVerb + " before any backdrop: header" : GoTo bpNext
         bdKvN = 0
         For bpK = 1 To bpN - 1
@@ -372,6 +569,8 @@ Function BD_Parse% (bpSrc As String)
             If BD_KvIdx%(bpKey) >= 0 Then BD_LineErr bpVerb + " key '" + bpKey + "' is given twice" : GoTo bpNext
             bdKvKey(bdKvN) = bpKey : bdKvVal(bdKvN) = LCase$(Mid$(bpW(bpK), bpEq + 1)) : bdKvN = bdKvN + 1
         Next bpK
+        bdPVerb = bpVerb
+        If bpVerb = "CAMERA" Then BD_BuildCamera : GoTo bpNext
         If bdFxN >= BD_MAX_FX Then
             If InStr(bdErrors, "more than BD_MAX_FX") = 0 Then BD_LineErr "more than BD_MAX_FX (" + LTrim$(Str$(BD_MAX_FX)) + ") effects"
             GoTo bpNext
@@ -392,6 +591,11 @@ Function BD_Validate$ ()
     For bvI = 0 To bdSets - 1
         If InStr(" title emperor dock ", " " + bdSetName(bvI) + " ") = 0 Then bvOut = bvOut + "line " + LTrim$(Str$(bdSetLine(bvI))) + ": backdrop '" + bdSetName(bvI) + "' is not a painted screen (title emperor dock)" + Chr$(10)
         If bdSetN(bvI) = 0 Then bvOut = bvOut + "line " + LTrim$(Str$(bdSetLine(bvI))) + ": backdrop '" + bdSetName(bvI) + "' has no effects" + Chr$(10)
+    Next bvI
+    For bvI = 0 To bdFxN - 1
+        If bdKind(bvI) = BD_KIND_LASER Then
+            If BD_LaserTravel!(bvI) / bdEvery(bvI) >= BD_LASER_BOLTS Then bvOut = bvOut + "line " + LTrim$(Str$(bdFxLine(bvI))) + ": LASER takes " + LTrim$(Str$(Int(BD_LaserTravel!(bvI)))) + " frames to cross but fires every " + LTrim$(Str$(bdEvery(bvI))) + ", so more than " + LTrim$(Str$(BD_LASER_BOLTS - 1)) + " bolts would be in flight (raise every or speed)" + Chr$(10)
+        End If
     Next bvI
     BD_Validate$ = bvOut
 End Function
@@ -416,6 +620,7 @@ End Function
 ' How lit a BLINK is on frame bbFrame: 0..1, from its envelope (rise, hold, fall, rest), eased with a half cosine.
 Function BD_BlinkLevel! (bbFx As Integer, bbFrame As Long)
     Dim bbPer As Long, bbP As Long
+    If Len(bdMorse(bbFx)) > 0 Then BD_BlinkLevel! = BD_MorseLevel!(bbFx, bbFrame) : Exit Function
     bbPer = bdRise(bbFx) + bdHold(bbFx) + bdFall(bbFx) + bdRest(bbFx)
     bbP = (bbFrame + bdPhase(bbFx)) Mod bbPer
     If bbP < bdRise(bbFx) Then BD_BlinkLevel! = 0.5 - 0.5 * Cos(3.14159265 * bbP / bdRise(bbFx)) : Exit Function
@@ -424,6 +629,123 @@ Function BD_BlinkLevel! (bbFx As Integer, bbFrame As Long)
     bbP = bbP - bdHold(bbFx)
     If bbP < bdFall(bbFx) Then BD_BlinkLevel! = 0.5 + 0.5 * Cos(3.14159265 * bbP / bdFall(bbFx)) : Exit Function
     BD_BlinkLevel! = 0
+End Function
+
+' 0..1 brightness of a Morse BLINK: each flash is eased in over `rise` frames and out over `fall`, shortest of the two ramps wins.
+Function BD_MorseLevel! (bmFx As Integer, bmFrame As Long)
+    Dim bmU As Long, bmN As Long, bmP As Long, bmSlot As Long, bmS0 As Long, bmS1 As Long, bmT As Long, bmLen As Long, bmLv As Single, bmR As Single
+    bmU = bdUnit(bmFx) : bmN = Len(bdMorse(bmFx))
+    bmP = (bmFrame + bdPhase(bmFx)) Mod (bmN * bmU + bdRest(bmFx))
+    BD_MorseLevel! = 0
+    If bmP >= bmN * bmU Then Exit Function
+    bmSlot = bmP \ bmU + 1
+    If Mid$(bdMorse(bmFx), bmSlot, 1) = "0" Then Exit Function
+    bmS0 = bmSlot : bmS1 = bmSlot
+    Do While bmS0 > 1
+        If Mid$(bdMorse(bmFx), bmS0 - 1, 1) = "0" Then Exit Do
+        bmS0 = bmS0 - 1
+    Loop
+    Do While bmS1 < bmN
+        If Mid$(bdMorse(bmFx), bmS1 + 1, 1) = "0" Then Exit Do
+        bmS1 = bmS1 + 1
+    Loop
+    bmT = bmP - (bmS0 - 1) * bmU
+    bmLen = (bmS1 - bmS0 + 1) * bmU
+    bmLv = 1
+    If bdRise(bmFx) > 0 And bmT < bdRise(bmFx) Then bmLv = 0.5 - 0.5 * Cos(3.14159265 * bmT / bdRise(bmFx))
+    If bdFall(bmFx) > 0 And bmT >= bmLen - bdFall(bmFx) Then
+        bmR = 0.5 + 0.5 * Cos(3.14159265 * (bmT - (bmLen - bdFall(bmFx))) / bdFall(bmFx))
+        If bmR < bmLv Then bmLv = bmR
+    End If
+    BD_MorseLevel! = bmLv
+End Function
+
+' Where SPRITE bsFx is on frame bsFrame, in painting pixels. 0 when it is not on the painting (the rest
+' after a one-way trip; with pingpong it waits at the ends instead). bsFlip = 1 on the return leg when flip=1.
+Function BD_SpriteAt% (bsFx As Integer, bsFrame As Long, bsX As Single, bsY As Single, bsFlip As Integer)
+    Dim bsP As Long, bsT As Single, bsF As Long, bsR As Long
+    bsF = bdFrames(bsFx) : bsR = bdRest(bsFx)
+    bsFlip = 0
+    BD_SpriteAt% = 0
+    If bdPing(bsFx) Then
+        bsP = (bsFrame + bdPhase(bsFx)) Mod (2 * (bsF + bsR))
+        If bsP < bsF Then
+            bsT = bsP / bsF
+        ElseIf bsP < bsF + bsR Then
+            bsT = 1
+        ElseIf bsP < 2 * bsF + bsR Then
+            bsT = 1 - (bsP - bsF - bsR) / bsF
+            bsFlip = bdFlip(bsFx)
+        Else
+            bsT = 0
+        End If
+    Else
+        bsP = (bsFrame + bdPhase(bsFx)) Mod (bsF + bsR)
+        If bsP >= bsF Then Exit Function
+        bsT = bsP / bsF
+    End If
+    bsX = bdX(bsFx) + (bdX2(bsFx) - bdX(bsFx)) * bsT
+    bsY = bdY(bsFx) + (bdY2(bsFx) - bdY(bsFx)) * bsT
+    BD_SpriteAt% = -1
+End Function
+
+' --- the painting's fixed camera ---
+' A pinhole camera at depth -F looking along +depth, the vanishing point at (BD_CAM_VPX, horizon): F is the
+' focal length in painting pixels, so fov is the angle the painting's 320 pixels span at depth 0. A LASER's
+' x,y,depth names where a point shows on the painting AT that depth: BD_World finds the world point that
+' projects there, so depth never moves x,y, it only sets the scale (F / (F + depth)) and the perspective.
+
+Function BD_CamF! (bcSet As Integer)
+    BD_CamF! = (BD_PAINT_W / 2) / Tan(bdSetFov(bcSet) * 0.5 * 3.14159265 / 180)
+End Function
+
+Sub BD_World (bwSet As Integer, bwX As Single, bwY As Single, bwD As Single, bwWX As Single, bwWY As Single, bwWZ As Single)
+    Dim bwK As Single
+    bwK = (BD_CamF!(bwSet) + bwD) / BD_CamF!(bwSet)
+    bwWX = BD_CAM_VPX + (bwX - BD_CAM_VPX) * bwK
+    bwWY = bdSetHor(bwSet) + (bwY - bdSetHor(bwSet)) * bwK
+    bwWZ = bwD
+End Sub
+
+' Row-major clip matrix bcmM(0 To 3, 0 To 3) of the camera: with the usual divide by row 3, a world point lands
+' on a BD_PAINT_W x BD_PAINT_H screen (the same layout as the game's vpMat, so the bolt renderer takes it).
+Sub BD_CamMatrix (bcmSet As Integer, bcmM() As Single)
+    Dim bcmF As Single, bcmI As Integer, bcmJ As Integer
+    bcmF = BD_CamF!(bcmSet)
+    For bcmI = 0 To 3
+        For bcmJ = 0 To 3 : bcmM(bcmI, bcmJ) = 0 : Next bcmJ
+    Next bcmI
+    bcmM(0, 0) = bcmF / (BD_PAINT_W / 2) : bcmM(0, 3) = -BD_CAM_VPX * bcmF / (BD_PAINT_W / 2)
+    bcmM(1, 1) = -bcmF / (BD_PAINT_H / 2) : bcmM(1, 2) = 1 - bdSetHor(bcmSet) / (BD_PAINT_H / 2) : bcmM(1, 3) = bcmF
+    bcmM(2, 2) = 1
+    bcmM(3, 2) = 1 : bcmM(3, 3) = bcmF
+End Sub
+
+' Length of a LASER's path in world units, and how many frames a bolt takes to cross it.
+Function BD_LaserPath! (blpFx As Integer)
+    Dim blpX1 As Single, blpY1 As Single, blpZ1 As Single, blpX2 As Single, blpY2 As Single, blpZ2 As Single
+    BD_World bdFxSet(blpFx), bdX(blpFx), bdY(blpFx), bdD1(blpFx), blpX1, blpY1, blpZ1
+    BD_World bdFxSet(blpFx), bdX2(blpFx), bdY2(blpFx), bdD2(blpFx), blpX2, blpY2, blpZ2
+    BD_LaserPath! = Sqr((blpX2 - blpX1) ^ 2 + (blpY2 - blpY1) ^ 2 + (blpZ2 - blpZ1) ^ 2)
+End Function
+
+Function BD_LaserTravel! (bltFx As Integer)
+    BD_LaserTravel! = BD_LaserPath!(bltFx) / bdSpeed(bltFx)
+End Function
+
+' Whether the bhJ-th newest bolt (0 = newest) of LASER bhFx is in flight on frame bhFrame; bhDist is how far
+' along the path (world units) its head has gone. Bolt k leaves on frame k * every (+ a hashed delay up to jitter).
+Function BD_LaserHead% (bhFx As Integer, bhFrame As Long, bhJ As Integer, bhDist As Single)
+    Dim bhRel As Long, bhK As Long, bhAge As Long
+    BD_LaserHead% = 0
+    bhRel = bhFrame + bdPhase(bhFx)
+    bhK = bhRel \ bdEvery(bhFx) - bhJ
+    If bhK < 0 Then Exit Function
+    bhAge = bhRel - (bhK * bdEvery(bhFx) + Int(BD_Hash!(bhK, bhFx, 2000) * (bdJitter(bhFx) + 1)))
+    If bhAge < 0 Then Exit Function
+    bhDist = bhAge * bdSpeed(bhFx)
+    If bhDist > BD_LaserPath!(bhFx) Then Exit Function
+    BD_LaserHead% = -1
 End Function
 
 Function BD_SparksLive% ()

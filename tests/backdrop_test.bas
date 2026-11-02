@@ -12,6 +12,9 @@
 '   8. the pool: a file that could overflow it is an error; a full pool drops and counts
 '   9. screen entry: frame 0 on entry, a gap or another backdrop starts over, a repeat is ignored
 '  10. no RNG stream is read, so nothing else in the game shifts
+'  13. SPRITE: path, rest, pingpong, flip, phase, and its parse errors
+'  14. LASER and CAMERA: emission timing, the fixed camera's projection, parse errors
+'  15. Morse on BLINK: SOS on/off sequence, unit, rest, rise/fall, parse errors
 '
 ' Build: tools/dev test (builds and runs every test)
 ' Run:   builds/backdrop_test   (exit 0 = all pass)
@@ -20,6 +23,7 @@ $CONSOLE:ONLY
 OPTION _EXPLICIT
 
 $EMBED:'assets/backdrops.txt':'BACKDROPS'
+$EMBED:'assets/backdrops/tug.png':'BDIMGTUG'
 
 '$INCLUDE:'../src/2d/backdrop.bas'
 
@@ -115,7 +119,7 @@ Print ""
 
 Print "--- 2. parse failures name their line ---"
 BT_Assert BT_Fails%(BT_Src$("    GLOW at=10,10 color=ff0000"), 2, "unknown effect 'GLOW'"), "2.01  unknown verb"
-BT_Assert BT_Fails%(BT_Src$("    SPRITE at=10,10 color=ff0000"), 2, "unknown effect"), "2.02  SPRITE is not an effect yet"
+BT_Assert BT_Fails%(BT_Src$("    SPRITES at=10,10 color=ff0000"), 2, "unknown effect"), "2.02  an effect name that is not a verb"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 colour=ff0000"), 2, "unknown BLINK key 'colour'"), "2.03  unknown key"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=1 count=3"), 2, "unknown BLINK key 'count'"), "2.04  a SPARK key on a BLINK"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=10,10 color=ff0000 hold=5 hold=6"), 2, "given twice"), "2.05  a key given twice"
@@ -548,6 +552,200 @@ btOk = BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=1 life=64
 btFx = 0
 BD_Reset "title"
 BT_Assert BD_SparksLive% = 16,                          "12.10  a 1024-spark file loads and its first burst starts"
+Print ""
+
+Print "--- 13. SPRITE ---"
+Dim btSX As Single, btSY As Single, btFl As Integer, btVis As Integer
+BT_Assert Len(_Embedded$("BDIMGTUG")) > 0,              "13.01  the tug image is embedded"
+BT_Assert BD_SpriteIdx%("tug") = 1 And BD_SpriteIdx%("nope") = 0 And BD_SpriteIdx%("") = 0, "13.02  image names are looked up"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=0,0 to=100,50 frames=100 rest=50"))
+BT_Assert btOk <> 0 And bdKind(0) = BD_KIND_SPRITE,     "13.03  a one-way sprite parses"
+btVis = BD_SpriteAt%(0, 0, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 0 And btSY = 0,              "13.04  frame 0 is at the start"
+btVis = BD_SpriteAt%(0, 50, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 50 And btSY = 25,            "13.05  halfway is halfway"
+btVis = BD_SpriteAt%(0, 99, btSX, btSY, btFl)
+BT_Assert btVis And Abs(btSX - 99) < 0.001,             "13.06  the last travelling frame is next to the end"
+btVis = BD_SpriteAt%(0, 100, btSX, btSY, btFl)
+BT_Assert btVis = 0,                                    "13.07  it is gone during the rest"
+btVis = BD_SpriteAt%(0, 149, btSX, btSY, btFl)
+BT_Assert btVis = 0,                                    "13.08  ... through the last frame of it"
+btVis = BD_SpriteAt%(0, 150, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 0,                           "13.09  and starts again at the start"
+btVis = BD_SpriteAt%(0, 1050, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 0 And btFl = 0,              "13.10  position comes from the frame alone (frame 1050 = frame 0)"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=0,0 to=100,50 frames=100 rest=50 phase=25"))
+btVis = BD_SpriteAt%(0, 0, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 25,                          "13.11  phase starts it that many frames in"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=0,0 to=100,50 frames=100 rest=20 pingpong=1 flip=1"))
+BT_Assert btOk <> 0,                                    "13.12  pingpong with flip parses"
+btVis = BD_SpriteAt%(0, 60, btSX, btSY, btFl)
+BT_Assert btVis And Abs(btSX - 60) < 0.01 And btFl = 0,    "13.13  out leg: not mirrored"
+btVis = BD_SpriteAt%(0, 110, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 100 And btFl = 0,            "13.14  parked at the far end during the rest, still visible"
+btVis = BD_SpriteAt%(0, 170, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 50 And btSY = 25 And btFl = 1, "13.15  return leg: halfway back, mirrored"
+btVis = BD_SpriteAt%(0, 230, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 0 And btFl = 0,              "13.16  parked at the start, not mirrored"
+btVis = BD_SpriteAt%(0, 240, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 0 And btFl = 0,              "13.17  the loop is 2 * (frames + rest): frame 240 is frame 0"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=0,0 to=100,50 frames=100 pingpong=1"))
+btVis = BD_SpriteAt%(0, 150, btSX, btSY, btFl)
+BT_Assert btVis And btSX = 50 And btFl = 0,             "13.18  pingpong without flip is never mirrored"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=-30,10 to=350,10 frames=100"))
+BT_Assert btOk <> 0,                                    "13.19  a sprite may start and end off the painting edge"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug at=-200,10 to=100,10"), 2, "off the 320x240 painting"), "13.20  but not far off"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=boat at=0,0 to=10,10"), 2, "known: tug"), "13.21  an unknown image lists the known names"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE at=0,0 to=10,10"), 2, "needs img"), "13.22  no img"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug to=10,10"), 2, "needs at"), "13.23  no at"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug at=0,0"), 2, "needs to"), "13.24  no to"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug at=0,0 to=10,10 flip=1"), 2, "flip=1 needs pingpong=1"), "13.25  flip without pingpong is an error"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug at=0,0 to=10,10 pingpong=2"), 2, "pingpong must be"), "13.26  pingpong is 0 or 1"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug at=0,0 to=10,10 frames=0"), 2, "frames must be"), "13.27  frames of at least 1"
+BT_Assert BT_Fails%(BT_Src$("    SPRITE img=tug at=0,0 to=10,10 color=ff0000"), 2, "unknown SPRITE key 'color'"), "13.28  a key SPRITE does not take"
+Print ""
+
+Print "--- 14. LASER and CAMERA ---"
+Dim btCm(0 To 3, 0 To 3) As Single, btWX As Single, btWY As Single, btWZ As Single, btPX As Single, btPY As Single, btPW As Single, btD As Single, btDepth As Single
+btOk = BD_Parse%(BT_Src$("    LASER from=158,104,40 to=60,150,10 color=ff3030 every=90 speed=4 length=12"))
+BT_Assert btOk <> 0 And bdKind(0) = BD_KIND_LASER,      "14.01  the example laser parses"
+BT_Assert bdSetFov(0) = BD_CAM_FOV And bdSetHor(0) = BD_CAM_HORIZON, "14.02  no CAMERA gives the defaults"
+btOk = BD_Parse%(BT_Src$("    CAMERA fov=40 horizon=90" + BT_Nl$ + "    LASER from=158,104,40 to=60,150,10 color=ff3030"))
+BT_Assert btOk <> 0 And bdSetFov(0) = 40 And bdSetHor(0) = 90 And bdFxN = 1, "14.03  CAMERA sets the backdrop's perspective and is not an effect"
+btOk = BD_Parse%(BT_Src$("    LASER from=158,104,40 to=60,150,10 color=ff3030" + BT_Nl$ + "    CAMERA horizon=60"))
+BT_Assert btOk <> 0 And bdSetFov(0) = BD_CAM_FOV And bdSetHor(0) = 60, "14.04  CAMERA may come after the effects; a missing key keeps its default"
+btOk = BD_Parse%("backdrop:title" + BT_Nl$ + "    CAMERA fov=40" + BT_Nl$ + "    BLINK at=1,1 color=ff0000 hold=1" + BT_Nl$ + "backdrop:dock" + BT_Nl$ + "    BLINK at=1,1 color=ff0000 hold=1" + BT_Nl$)
+BT_Assert btOk <> 0 And bdSetFov(0) = 40 And bdSetFov(1) = BD_CAM_FOV, "14.05  a CAMERA belongs to its own backdrop"
+BT_Assert BT_Fails%(BT_Src$("    CAMERA fov=40" + BT_Nl$ + "    CAMERA fov=50"), 3, "CAMERA is given twice"), "14.06  CAMERA twice in a backdrop"
+BT_Assert BT_Fails%(BT_Src$("    CAMERA fov=5"), 2, "fov must be"), "14.07  fov out of range"
+BT_Assert BT_Fails%(BT_Src$("    CAMERA horizon=300"), 2, "horizon must be"), "14.08  horizon off the painting"
+BT_Assert BT_Fails%(BT_Src$("    CAMERA zoom=2"), 2, "unknown CAMERA key 'zoom'"), "14.09  unknown CAMERA key"
+BT_Assert BT_Fails%("    CAMERA fov=40" + BT_Nl$, 1, "before any backdrop"), "14.10  CAMERA before a header"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1 to=2,2,3 color=ff0000"), 2, "from must be x,y,depth"), "14.11  from needs a depth"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,1 to=2,2 color=ff0000"), 2, "to must be x,y,depth"), "14.12  to needs a depth"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,1 to=2,2,2"), 2, "needs color"), "14.13  no color"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,1 to=1,1,1 color=ff0000"), 2, "same point"), "14.14  from and to the same"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=400,1,1 to=2,2,2 color=ff0000"), 2, "off the 320x240 painting"), "14.15  x off the painting"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,900 to=2,2,2 color=ff0000"), 2, "depth must be"), "14.16  depth out of range"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,1 to=2,2,2 color=ff0000,00ff00"), 2, "at most 1 colour"), "14.17  one colour only"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,1 to=2,2,2 color=ff0000 every=10 jitter=10"), 2, "jitter must be less than every"), "14.18  jitter below every"
+BT_Assert BT_Fails%(BT_Src$("    LASER from=1,1,1 to=2,2,2 color=ff0000 at=3,3"), 2, "unknown LASER key 'at'"), "14.19  at is not a LASER key"
+' the camera: every point projects back to its own painting x,y, at any depth
+btOk = BD_Parse%(BT_Src$("    CAMERA fov=50 horizon=100" + BT_Nl$ + "    LASER from=158,104,40 to=60,150,10 color=ff3030"))
+BD_CamMatrix 0, btCm()
+btOk = -1
+For btDepth = -40 To 400 Step 40
+    BD_World 0, 77, 181, btDepth, btWX, btWY, btWZ
+    btPW = btWX * btCm(3, 0) + btWY * btCm(3, 1) + btWZ * btCm(3, 2) + btCm(3, 3)
+    btPX = ((btWX * btCm(0, 0) + btWY * btCm(0, 1) + btWZ * btCm(0, 2) + btCm(0, 3)) / btPW + 1) * BD_PAINT_W * 0.5
+    btPY = (1 - (btWX * btCm(1, 0) + btWY * btCm(1, 1) + btWZ * btCm(1, 2) + btCm(1, 3)) / btPW) * BD_PAINT_H * 0.5
+    If Abs(btPX - 77) > 0.05 Or Abs(btPY - 181) > 0.05 Then btOk = 0
+Next btDepth
+BT_Assert btOk,                                         "14.20  a point projects back to its painting x,y at every depth"
+BD_World 0, 160, 100, 0, btWX, btWY, btWZ
+btPW = btWX * btCm(3, 0) + btWY * btCm(3, 1) + btWZ * btCm(3, 2) + btCm(3, 3)
+BT_Assert Abs(btPW - BD_CamF!(0)) < 0.01 And Abs(btWX - 160) < 0.001 And Abs(btWY - 100) < 0.001, "14.21  at depth 0 world and painting coincide, w = the focal length"
+BT_Assert Abs(BD_CamF!(0) - 160 / Tan(25 * 3.14159265 / 180)) < 0.01, "14.22  fov is the angle the 320 pixel width spans at depth 0"
+BD_World 0, 160 + 50, 100, 100, btWX, btWY, btWZ
+btPW = btWX * btCm(3, 0) + btWY * btCm(3, 1) + btWZ * btCm(3, 2) + btCm(3, 3)
+btPX = ((btWX * btCm(0, 0) + btWY * btCm(0, 1) + btWZ * btCm(0, 2) + btCm(0, 3)) / btPW + 1) * BD_PAINT_W * 0.5
+BT_Assert Abs(btPX - 210) < 0.05 And Abs(btPW - (BD_CamF!(0) + 100)) < 0.01, "14.23  the divisor at depth d is F + d, so a world length shrinks as F / (F + d)"
+BD_World 0, 160, 100, 200, btWX, btWY, btWZ
+BT_Assert Abs(btWX - 160) < 0.001 And Abs(btWY - 100) < 0.001, "14.24  the vanishing point (160, horizon) stays put at any depth"
+BD_World 0, 60, 100, 200, btWX, btWY, btWZ
+BT_Assert btWX < 60 And Abs(btWY - 100) < 0.001,        "14.25  a deeper point at the same painting x lies farther from the vanishing point in the world"
+' emission timing
+btOk = BD_Parse%(BT_Src$("    LASER from=100,100,0 to=200,100,0 color=ff0000 every=90 speed=10 length=12"))
+btD = BD_LaserPath!(0)
+BT_Assert Abs(btD - 100) < 0.01,                        "14.26  depth 0 path length is the pixel distance"
+btOk = BD_LaserHead%(0, 0, 0, btDepth)
+BT_Assert btOk And btDepth = 0,                         "14.27  a bolt leaves on frame 0"
+btOk = BD_LaserHead%(0, 5, 0, btDepth)
+BT_Assert btOk And btDepth = 50,                        "14.28  it moves speed units a frame"
+btOk = BD_LaserHead%(0, 10, 0, btDepth)
+BT_Assert btOk And btDepth = 100,                       "14.29  it is still drawn arriving on the end"
+btOk = BD_LaserHead%(0, 11, 0, btDepth)
+BT_Assert btOk = 0,                                     "14.30  and gone after it"
+btOk = BD_LaserHead%(0, 89, 0, btDepth)
+BT_Assert btOk = 0,                                     "14.31  nothing in flight before the next shot"
+btOk = BD_LaserHead%(0, 90, 0, btDepth)
+BT_Assert btOk And btDepth = 0,                         "14.32  the next bolt leaves on frame 90 (every)"
+btOk = BD_LaserHead%(0, 95, 1, btDepth)
+BT_Assert btOk = 0,                                     "14.33  the older bolt is long gone"
+btOk = BD_Parse%(BT_Src$("    LASER from=100,100,0 to=200,100,0 color=ff0000 every=4 speed=10 length=12"))
+btOk = BD_LaserHead%(0, 9, 0, btDepth)
+btA = -(btDepth = 10)
+btOk = BD_LaserHead%(0, 9, 2, btDepth) And btA
+BT_Assert btOk And btDepth = 90,                        "14.34  a fast shooter has several bolts in flight: the newest has gone 10 units, the one 2 back 90"
+btOk = BD_Parse%(BT_Src$("    LASER from=100,100,0 to=200,100,0 color=ff0000 every=90 speed=10 phase=85"))
+btOk = BD_LaserHead%(0, 0, 0, btDepth)
+btA = BD_LaserHead%(0, 5, 0, btDepth)
+BT_Assert btOk = 0 And btA <> 0 And btDepth = 0, "14.35  phase shifts it: the shot leaves at frame 5"
+btOk = BD_Parse%(BT_Src$("    LASER from=100,100,0 to=200,100,0 color=ff0000 every=60 speed=10 jitter=20"))
+btN = 0 : btOk = -1
+For btF = 0 To 599
+    If BD_LaserHead%(0, btF, 0, btDepth) Then
+        If btDepth = 0 Then
+            btN = btN + 1
+            If btF Mod 60 > 20 Then btOk = 0
+        End If
+    End If
+Next btF
+BT_Assert btN = 10 And btOk,                            "14.36  jitter delays each shot by up to that many frames, one shot per every"
+btS = "" : btT = ""
+For btF = 0 To 599
+    If BD_LaserHead%(0, btF, 0, btDepth) Then btS = btS + Str$(btF) + ":" + Str$(btDepth) + ";"
+Next btF
+For btF = 0 To 599
+    If BD_LaserHead%(0, btF, 0, btDepth) Then btT = btT + Str$(btF) + ":" + Str$(btDepth) + ";"
+Next btF
+BT_Assert btS = btT And Len(btS) > 0,                   "14.37  the same frames give the same bolts"
+btOk = BD_Parse%(BT_Src$("    LASER from=1,1,0 to=300,1,0 color=ff0000 every=10 speed=1"))
+btErr = BD_Validate$
+BT_Assert InStr(btErr, "bolts would be in flight") > 0 And InStr(btErr, "line 2") > 0, "14.38  a shooter that could have more bolts than the limit in flight fails validation"
+Print ""
+
+Print "--- 15. Morse ---"
+Dim btM As String
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sos unit=2 rest=10"))
+BT_Assert btOk <> 0 And Len(bdMorse(0)) > 0,            "15.01  a morse blink parses"
+BT_Assert bdMorse(0) = "10101" + "000" + "11101110111" + "000" + "10101", "15.02  SOS is dot dot dot, dash dash dash, dot dot dot, with letter gaps of 3"
+' the on/off sequence a frame at a time: unit 2, so each slot is two frames
+btS = ""
+For btF = 0 To 2 * Len(bdMorse(0)) + 10 - 1
+    If BD_BlinkLevel!(0, btF) > 0.5 Then btS = btS + "1" Else btS = btS + "0"
+Next btF
+btT = ""
+For btI = 1 To Len(bdMorse(0))
+    btT = btT + Mid$(bdMorse(0), btI, 1) + Mid$(bdMorse(0), btI, 1)
+Next btI
+btT = btT + String$(10, "0")
+BT_Assert btS = btT,                                    "15.03  on/off per frame is the slots doubled for unit=2, then 10 dark frames of rest"
+BT_Assert Len(bdMorse(0)) = 27,                        "15.04  SOS is 27 units"
+BT_Assert BD_BlinkLevel!(0, 2 * Len(bdMorse(0)) + 10) = BD_BlinkLevel!(0, 0), "15.05  and then it repeats"
+BT_Assert BD_BlinkLevel!(0, 1) = 1 And BD_BlinkLevel!(0, 2) = 0, "15.06  with no rise or fall a flash is hard-edged: lit 1 slot, dark 1 slot"
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sos unit=2 rest=10 phase=2"))
+BT_Assert BD_BlinkLevel!(0, 0) = 0 And BD_BlinkLevel!(0, 2) = 1, "15.07  phase shifts the sequence"
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=e unit=10 rise=4 fall=4"))
+BT_Assert bdMorse(0) = "1",                             "15.08  E is one dot"
+BT_Assert BD_BlinkLevel!(0, 0) = 0 And BD_BlinkLevel!(0, 2) > 0.4 And BD_BlinkLevel!(0, 2) < 0.6 And BD_BlinkLevel!(0, 4) = 1, "15.09  rise eases the flash in over those frames"
+BT_Assert BD_BlinkLevel!(0, 6) = 1 And BD_BlinkLevel!(0, 8) > 0.4 And BD_BlinkLevel!(0, 8) < 0.6, "15.10  fall eases it out over the last frames of the flash"
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=t unit=10 rise=30 fall=30"))
+BT_Assert bdMorse(0) = "111" And BD_BlinkLevel!(0, 15) > 0.4 And BD_BlinkLevel!(0, 15) < 0.6 And BD_BlinkLevel!(0, 0) = 0, "15.11  ramps longer than the flash meet in the middle, never above the shorter ramp"
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=a_b unit=1"))
+BT_Assert bdMorse(0) = "10111" + "0000000" + "111010101", "15.12  a word gap is 7 dark units in all, between the words' symbols"
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=5"))
+BT_Assert bdMorse(0) = "101010101" And bdUnit(0) = 6, "15.13  digits work and unit defaults to 6"
+btOk = BD_Parse%(BT_Src$("    BLINK at=5,5 color=ffffff morse=SoS"))
+BT_Assert btOk <> 0 And Len(bdMorse(0)) = 27,         "15.14  the text is not case sensitive"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=s.s"), 2, "only letters, digits and _"), "15.15  other characters are an error"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=_sos"), 2, "single _"), "15.16  a leading _"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=a__b"), 2, "single _"), "15.17  a doubled _"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sos hold=5"), 2, "hold cannot be used with morse"), "15.18  hold with morse"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff hold=5 unit=3"), 2, "unit only goes with morse"), "15.19  unit without morse"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sos unit=0"), 2, "unit must be"), "15.20  unit of at least 1"
+BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sossossossossossossossossos"), 2, "at most 24"), "15.21  too long"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=5,5 color=ffffff morse=sos"), 2, "unknown SPARK key 'morse'"), "15.22  morse is a BLINK key only"
 Print ""
 
 Print "=== " + LTrim$(Str$(btPass + btFail)) + " tests: " _

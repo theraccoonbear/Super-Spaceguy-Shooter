@@ -1,6 +1,6 @@
 # Backdrops: dynamic matte paintings
 
-The title, the emperor card and the dock are still paintings. `assets/backdrops.txt` gives each one a few looping effects: a light that blinks, sparks that fly off a weld. Code: `src/2d/backdrop.bas` (the file, the timing; no game state) and `src/2d/backdropdraw.bas` (drawing, `--backdrop-dev`). Issue #369.
+The title, the emperor card and the dock are still paintings. `assets/backdrops.txt` gives each one a few looping effects: a light that blinks, sparks that fly off a weld, a tug that drives across the tarmac, a laser bolt between two ships. Code: `src/2d/backdrop.bas` (the file, the timing; no game state) and `src/2d/backdropdraw.bas` (drawing, `--backdrop-dev`). Issue #369.
 
 ## The file
 
@@ -31,6 +31,48 @@ backdrop:dock
 | `dir=` `spread=` | | 0-360, default 270 / 120 | launch direction in degrees (0 right, 90 down, 270 up) and the fan around it |
 | `phase=` | 0-9999 | 0-9999 | start that many frames into the loop |
 
+SPRITE, LASER and CAMERA have their own keys, below. BLINK also takes `morse=` and `unit=`.
+
+## Morse on a BLINK
+
+`morse=TEXT` makes a BLINK flash a message instead of an envelope. `TEXT` is letters and digits, with `_` for a space (at most 24 characters; case does not matter; anything else, or a `_` at either end or doubled, is an error). Standard timing, in units: dot 1, dash 3, 1 dark between the symbols of a letter, 3 between letters, 7 between words. `unit=N` (1-60, default 6) is a unit in frames. `rest=` is the dark time after the whole message before it repeats; `rise=` and `fall=` ease each flash in and out (the shorter ramp wins when a flash is shorter than `rise + fall`); `phase=` shifts the loop. `hold=` is an error with `morse=` (the letters set the timing), and so is `unit=` without `morse=`.
+
+```
+    BLINK at=78,67 color=ff3030 size=2 glow=6 morse=sos unit=6 rest=120 rise=1 fall=2
+```
+
+## SPRITE: a small image on a straight path
+
+```
+    SPRITE img=tug at=130,214 to=290,182 frames=600 rest=300 pingpong=1 flip=1
+```
+
+An image from `assets/backdrops/<name>.png` (embedded; the placeholder is `tug.png`, 24x12, facing right) goes from `at` to `to` at a constant speed over `frames` (1-3600, default 300), then waits `rest` (0-3600, default 0) and repeats. Position is a pure function of the frame counter, as for BLINK, so screenshots are deterministic; `phase=` starts it that many frames in. `at` and `to` are the image's centre, in painting pixels, and may lie up to 64 pixels off the painting so a sprite can drive on and off the edge. The image is scaled with the painting.
+
+- Without `pingpong=1` the sprite is hidden during `rest` and then starts again at `at`.
+- With `pingpong=1` it drives back from `to` to `at` over another `frames`, and waits `rest` at both ends (visible there). The loop is `2 * (frames + rest)`.
+- `flip=1` mirrors the image for the whole return leg. It only means something with `pingpong=1`, so `flip=1` without it is a parse error.
+- An unknown `img` is an error that lists the known names (`BD_SPRITE_NAMES` in `backdrop.bas`).
+
+To swap in real art: put the PNG in `assets/backdrops/` (keep it facing right), and replace `tug.png`, or for a new name add it to `BD_SPRITE_NAMES`, add a `$EMBED:'assets/backdrops/<name>.png':'BDIMG<NAME>'` line to `sss.bas` and `tests/backdrop_test.bas`, and a load line in `BACKDROP_LoadArt`.
+
+## LASER and CAMERA: a bolt in perspective
+
+```
+    CAMERA fov=60 horizon=120
+    LASER from=158,104,40 to=60,150,10 color=ff3030 every=90 speed=4 length=12
+```
+
+Every `every` frames (1-3600, default 60) a bolt leaves `from` and flies to `to`, then disappears. `from` and `to` are `x,y,depth`. `speed` (0.1-50, default 4) is world units a frame and `length` (0.5-200, default 12) is the bolt's tail, both measured at depth 0 (one unit is one painting pixel there). `jitter=` delays each shot by up to that many frames (below `every`), `phase=` shifts the loop. The bolt is drawn by the game's bolt renderer (`COMBAT_DrawBoltM`) through a fixed camera of the backdrop's own. It never reads `vpMat`, so it is the same on the title, the dock and in the middle of a run. If the bolts could overlap more than 7 at a time the file does not load.
+
+**The camera.** `CAMERA fov=<degrees> horizon=<y>` (at most once per backdrop, anywhere among its lines). `fov` (10-120, default 60) is the angle the painting's 320 pixel width spans at depth 0; a small value is a long lens with weak perspective. `horizon` (0-240, default 120) is the painting row of the vanishing point, which sits at x = 160. Depth increases away from the viewer: depth 0 is the painting plane, a positive depth is farther, a negative one nearer (down to -50).
+
+The mapping is chosen so `x,y` can be read off the painting: **a point written as `x,y,depth` shows up at exactly painting pixel `x,y`, whatever the depth.** Depth changes only how that point behaves in motion: things at depth `d` are scaled by `F / (F + d)` with `F = 160 / tan(fov / 2)`, so a far bolt is smaller, thinner and crosses fewer painting pixels per frame, and a bolt flying to a greater depth than it started at converges on the vanishing point `(160, horizon)`. In practice: put `from` and `to` on the spots of the painting where the bolt should appear and vanish, give a far shooter a large depth and a near target a small one, and use `fov` and `horizon` to bend the path (a lower `horizon` pulls it up toward the sky). The camera is a plain pinhole built in `BD_CamMatrix`; `tests/backdrop_test.bas` checks the projection.
+
+## Dev workflow notes for the new effects
+
+With `--backdrop-dev` each SPRITE and LASER is marked with a small cross at the path's start and end, labelled `S0, S1...` and `L0, L1...` in file order within the backdrop, and the path faintly between them. A backdrop with a LASER also shows a faint horizon line and a `VP` cross at the vanishing point. R reloads the verbs and CAMERA like everything else.
+
 ### Landing lights
 
 One envelope, three lights, `phase=` stepping each 10 frames behind the last, makes a chase:
@@ -45,7 +87,7 @@ Each loop is 60 frames; the lights peak 10 frames apart (the `phase=20` one firs
 
 ## Errors and limits
 
-A problem is reported as `line N: ...`. Unknown effects and keys, bad numbers and colours, positions off the painting, a missing `at=` or `color=` are all errors, and a file with any error draws nothing. The tables are fixed (96 effects, 12 backdrops, 1024 sparks alive at once per screen); going over is an error, never a silently dropped line. The spark limit is checked from `count`, `life` and `every - jitter` (the closest two bursts can come), so a file that could overflow the pool does not load.
+A problem is reported as `line N: ...`. Unknown effects (BLINK SPARK SPRITE LASER CAMERA) and keys, bad numbers and colours, positions off the painting, a missing `at=` or `color=` are all errors, and a file with any error draws nothing. The tables are fixed (96 effects, 12 backdrops, 1024 sparks alive at once per screen); going over is an error, never a silently dropped line. The spark limit is checked from `count`, `life` and `every - jitter` (the closest two bursts can come), so a file that could overflow the pool does not load.
 
 ## What it must not disturb
 
@@ -69,4 +111,4 @@ Do not commit a change to the effects without checking the golden screenshots: `
 
 ## Tests
 
-`tests/backdrop_test.bas` parses the real file, covers every failure case, the blink timing, the hash, spark determinism, the pool limit, table overflow and screen entry.
+`tests/backdrop_test.bas` parses the real file, covers every failure case, the blink and Morse timing, SPRITE paths, LASER emission and the CAMERA projection, the hash, spark determinism, the pool limit, table overflow and screen entry.
