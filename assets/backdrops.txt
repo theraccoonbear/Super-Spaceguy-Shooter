@@ -7,6 +7,7 @@ backdrop:title
     BLINK at=66,123 color=ff3030 size=1 hold=8 rest=52
     BLINK at=178,155 color=ff3030 size=1 hold=8 rest=52
     BLINK at=16,157 color=7777da size=3 glow=4 rise=20 fall=20
+    BLINK at=192,210 color=7777da size=3 glow=4 rise=20 fall=20
 
     ; enemy ships
     BLINK at=158,104 color=ff3030 size=1 hold=8 rest=52 phase=30
@@ -18,6 +19,9 @@ backdrop:title
     BLINK at=241,148 color=ffffcc size=2 glow=3 rise=10 fall=10 rest=40 phase=10
     BLINK at=265,137 color=ffffcc size=1 glow=2 rise=10 fall=10 rest=40
 
+    ; stars
+    BLINK at=26,81 color=ffffcc size=1 glow=2 rise=20 fall=20 rest=100
+    BLINK at=288,61 color=ccffff size=2 glow=2 rise=40 fall=40 rest=150
 
     ; warning lights on the tunnel mouth, out of step with each other
     BLINK at=256,113 color=ff4040 size=4 rise=45 fall=45
