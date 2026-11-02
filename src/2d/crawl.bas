@@ -16,10 +16,12 @@ DIM SHARED crawlTimer AS INTEGER
 DIM SHARED crawlSpkOverlay AS INTEGER  ' 0=off 1=on; ` key toggles
 DIM SHARED crawlBtWas AS INTEGER       ' edge-detect state for backtick
 DIM SHARED crawlNextState AS INTEGER   ' 0 = SEQ_Advance on exit; nonzero = jump to that gameState
+DIM SHARED crawlVoiced AS INTEGER      ' 0 = this crawl is never narrated (voice=0 in sequence.txt), 1 = narrated when the setting is on
 
 SUB CRAWL_Prep(cpKey AS STRING, cpStartY AS SINGLE)
     crawlTimer = 0
-    CRAWL_Start GTEXT_Get$(cpKey), settingNarration * settingNarrSpeed, cpStartY, scrH - CRAWL_LINE_H
+    crawlVoiced = SEQ_CrawlVoiced%(cpKey)
+    CRAWL_Start GTEXT_Get$(cpKey), settingNarration * settingNarrSpeed * crawlVoiced, cpStartY, scrH - CRAWL_LINE_H
     crawlBtWas = 0
 END SUB
 

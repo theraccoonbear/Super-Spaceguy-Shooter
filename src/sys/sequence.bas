@@ -7,7 +7,8 @@
 '     TASK key=val ...    task line (must be indented); a block's tasks run in order
 '
 ' Task types: CRAWL EMPEROR TITLE PLAY ARRIVE DOCK
-'   CRAWL  txt=<gtext-key>  mus=<cue>
+'   CRAWL  txt=<gtext-key>  mus=<cue>  [voice=0]
+'     voice=0: scrolls at the normal crawl speed and is never narrated, whatever the narration setting
 '   EMPEROR mus=<cue>
 '   TITLE  mus=<cue>
 '   PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
@@ -288,6 +289,18 @@ Function SEQ_GetKV$(seqgSval As String, seqgKey As String)
     seqgEnd   = InStr(seqgStart, seqgSval, " ")
     If seqgEnd = 0 Then seqgEnd = Len(seqgSval) + 1
     SEQ_GetKV$ = Mid$(seqgSval, seqgStart, seqgEnd - seqgStart)
+End Function
+
+' 0 when a CRAWL task in the sequence plays gametext block seqcvKey with voice=0, else 1
+' (code-started crawls such as death_final have no task and stay voiced).
+Function SEQ_CrawlVoiced%(seqcvKey As String)
+    Dim seqcvI As Integer
+    SEQ_CrawlVoiced% = 1
+    For seqcvI = 0 To seqCount - 1
+        If seqKind(seqcvI) = SEQ_CRAWL Then
+            If SEQ_GetKV$(seqSval$(seqcvI), "txt") = seqcvKey And SEQ_GetKV$(seqSval$(seqcvI), "voice") = "0" Then SEQ_CrawlVoiced% = 0 : Exit Function
+        End If
+    Next seqcvI
 End Function
 
 ' A NEXT step: the block's exit, not a task (no seqKind entry). The target drops its colon

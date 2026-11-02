@@ -26,7 +26,7 @@ Sub CRAWLBROWSE_Plan ()
     Dim cbpI As Integer
     For cbpI = 0 To seqCrawlCount - 1
         CRAWL_Layout GTEXT_Get$(seqCrawlKey$(cbpI))
-        CRAWL_PlanDurations cbLevel
+        CRAWL_PlanDurations cbLevel * SEQ_CrawlVoiced%(seqCrawlKey$(cbpI))
         cbSpeed(cbpI) = CRAWL_PlanSpeed!(scrH, scrH - CRAWL_LINE_H, CRAWL_TOP_FADE)
     Next cbpI
 End Sub
