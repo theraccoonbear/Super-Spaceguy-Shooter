@@ -108,9 +108,13 @@ Next btI
 BT_Assert btN >= 2 And btN < bdFxN,                     "1.07  both BLINK and SPARK are in use"
 btOk = -1
 For btI = 0 To bdFxN - 1
-    If bdX(btI) < 0 Or bdX(btI) > 320 Or bdY(btI) < 0 Or bdY(btI) > 240 Then btOk = 0
+    If bdKind(btI) = BD_KIND_SPRITE Then
+        If bdX(btI) < -BD_MARGIN Or bdX(btI) > 320 + BD_MARGIN Or bdY(btI) < -BD_MARGIN Or bdY(btI) > 240 + BD_MARGIN Then btOk = 0
+    ElseIf bdX(btI) < 0 Or bdX(btI) > 320 Or bdY(btI) < 0 Or bdY(btI) > 240 Then
+        btOk = 0
+    End If
 Next btI
-BT_Assert btOk,                                         "1.08  every effect sits on the painting"
+BT_Assert btOk,                                         "1.08  every effect sits on the painting (a sprite may start or end just off it)"
 btFx = BD_Find%("dock")
 btN = 0 : btA = 0
 For btI = bdSetFrom(btFx) To bdSetFrom(btFx) + bdSetN(btFx) - 1

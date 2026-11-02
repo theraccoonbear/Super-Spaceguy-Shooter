@@ -14,6 +14,9 @@ backdrop:title
     BLINK at=205,108 color=ff3030 size=1 hold=8 rest=52 phase=20
     BLINK at=238,121 color=ff3030 size=1 hold=8 rest=52 phase=20
 
+    ; sos
+    BLINK at=228,106 color=ff3030 size=1 glow=1 morse=sos
+
     ; "landing lights"
     BLINK at=207,166 color=ffffcc size=3 glow=6 rise=10 fall=10 rest=40 phase=20
     BLINK at=241,148 color=ffffcc size=2 glow=3 rise=10 fall=10 rest=40 phase=10
@@ -32,7 +35,7 @@ backdrop:title
     SPARK at=120,187 color=ffffff,c0f0ff count=5 every=6 speed=1.2 gravity=0 life=18 dir=120 spread=60 size=3 phase=3
 
     ; an enemy ship fires toward the player's ship
-    LASER from=158,104,40 to=60,150,10 color=ff3030 every=90 speed=4 length=12
+    ; LASER from=158,104,40 to=60,150,10 color=ff3030 every=90 speed=6 length=8
 
 backdrop:dock
     ; stars
@@ -44,6 +47,9 @@ backdrop:dock
     BLINK at=158,70 color=ffc040 size=2 glow=5 rise=60 fall=60
     BLINK at=197,72 color=ffc040 size=1 glow=3 rise=60 fall=60
     BLINK at=251,68 color=ffc040 size=1 glow=3 rise=60 fall=60
+
+    ; easter egg
+    BLINK at=29,65 color=ff3030 size=1 glow=1 morse=fires_kindling_daily
 
     ; a crew at work on the red ship: three welds at different points, each on its own uneven beat
     SPARK at=19,105 color=ffd080,ffffff count=4 every=79 jitter=40 speed=1.2 gravity=0.05 life=20 dir=270 spread=150
@@ -61,7 +67,7 @@ backdrop:dock
     BLINK at=218,100 color=ffffcc size=1 glow=1 rise=10 fall=10 rest=70
 
     ; a baggage train coming toward the viewer along the strip of tarmac in front of the red ship, clear of the panels
-    SPRITE img=baggage_cart at=6,146 to=84,156 frames=420 rest=240 scale=0.4,0.55 bob=1,12
+    SPRITE img=baggage_cart at=-10,165 to=140,245 frames=420 rest=240 scale=0.4,0.55 bob=1,12
 
 backdrop:emperor
     ; left torch
