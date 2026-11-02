@@ -39,7 +39,7 @@
 Const BD_MAX_FX = 96          ' effects in the whole file
 Const BD_MAX_SETS = 12        ' backdrops in the whole file
 Const BD_MAX_COL = 4          ' colours on one effect
-Const BD_POOL = 64            ' sparks alive at once
+Const BD_POOL = 1024          ' sparks alive at once
 Const BD_MAX_WORDS = 16
 Const BD_KIND_BLINK = 1
 Const BD_KIND_SPARK = 2
@@ -99,6 +99,7 @@ Dim Shared bdPLife(0 To BD_POOL - 1) As Long
 Dim Shared bdPCol(0 To BD_POOL - 1) As Long
 Dim Shared bdPFx(0 To BD_POOL - 1) As Integer
 Dim Shared bdPDropped As Long         ' sparks that found the pool full (never, in a file that validates)
+Dim Shared bdPFirst As Integer        ' every slot below this one is in use: spawning starts its search here
 
 Sub BD_Err (beLine As Integer, beMsg As String)
     bdErrors = bdErrors + "line " + LTrim$(Str$(beLine)) + ": " + beMsg + Chr$(10)
@@ -436,7 +437,7 @@ End Function
 Sub BD_Spawn (bsFx As Integer, bsFrame As Long)
     Dim bsP As Integer, bsSlot As Integer, bsAng As Single, bsSp As Single, bsK As Long
     For bsP = 0 To bdCount(bsFx) - 1
-        bsSlot = 0
+        bsSlot = bdPFirst
         Do While bsSlot < BD_POOL
             If bdPAlive(bsSlot) = 0 Then Exit Do
             bsSlot = bsSlot + 1
@@ -446,6 +447,7 @@ Sub BD_Spawn (bsFx As Integer, bsFrame As Long)
         bsAng = (bdDir(bsFx) + (BD_Hash!(bsFrame, bsFx, bsK) - 0.5) * bdSpread(bsFx)) * 0.0174533
         bsSp = bdSpeed(bsFx) * (0.5 + 0.5 * BD_Hash!(bsFrame, bsFx, bsK + 1))
         bdPAlive(bsSlot) = -1
+        bdPFirst = bsSlot + 1
         bdPX(bsSlot) = bdX(bsFx) : bdPY(bsSlot) = bdY(bsFx)
         bdPVX(bsSlot) = Cos(bsAng) * bsSp : bdPVY(bsSlot) = Sin(bsAng) * bsSp
         bdPAge(bsSlot) = 0 : bdPLife(bsSlot) = bdLife(bsFx)
@@ -463,6 +465,7 @@ Sub BD_Tick (btFrame As Long)
             bdPAge(btI) = bdPAge(btI) + 1
             If bdPAge(btI) >= bdPLife(btI) Then
                 bdPAlive(btI) = 0
+                If btI < bdPFirst Then bdPFirst = btI
             Else
                 bdPX(btI) = bdPX(btI) + bdPVX(btI)
                 bdPY(btI) = bdPY(btI) + bdPVY(btI)
@@ -487,6 +490,7 @@ End Sub
 Sub BD_Reset (brName As String)
     Dim brI As Integer
     For brI = 0 To BD_POOL - 1 : bdPAlive(brI) = 0 : Next brI
+    bdPFirst = 0
     bdCur = BD_Find%(brName)
     bdFrame = 0
     BD_Tick 0
@@ -508,3 +512,35 @@ Sub BD_Advance (baMain As Long, baName As String)
     End If
     bdLastMain = baMain
 End Sub
+
+' --- wrapping the parse problems for the dev screen ---
+
+' Breaks bwtText (lines ended by Chr$(10)) into rows of at most bwtWidth characters, at spaces; a
+' word longer than a row is cut. The first bwtMax rows go to bwtOut(0..); returns how many rows
+' the whole text needs, which is more than bwtMax when some did not fit.
+Function BD_WrapText% (bwtText As String, bwtWidth As Integer, bwtOut() As String, bwtMax As Integer)
+    Dim bwtP As Long, bwtNL As Long, bwtRest As String, bwtN As Integer, bwtCut As Integer, bwtRow As String
+    bwtP = 1
+    Do While bwtP <= Len(bwtText)
+        bwtNL = InStr(bwtP, bwtText, Chr$(10))
+        If bwtNL = 0 Then bwtNL = Len(bwtText) + 1
+        bwtRest = Mid$(bwtText, bwtP, bwtNL - bwtP)
+        bwtP = bwtNL + 1
+        Do
+            If Len(bwtRest) <= bwtWidth Then
+                bwtRow = bwtRest : bwtRest = ""
+            Else
+                bwtCut = bwtWidth
+                Do While bwtCut > 0
+                    If Mid$(bwtRest, bwtCut + 1, 1) = " " Then Exit Do
+                    bwtCut = bwtCut - 1
+                Loop
+                If bwtCut = 0 Then bwtCut = bwtWidth
+                bwtRow = RTrim$(Left$(bwtRest, bwtCut)) : bwtRest = LTrim$(Mid$(bwtRest, bwtCut + 1))
+            End If
+            If bwtN < bwtMax Then bwtOut(bwtN) = bwtRow
+            bwtN = bwtN + 1
+        Loop While Len(bwtRest) > 0
+    Loop
+    BD_WrapText% = bwtN
+End Function

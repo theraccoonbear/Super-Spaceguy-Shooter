@@ -45,7 +45,7 @@ Each loop is 60 frames; the lights peak 10 frames apart (the `phase=20` one firs
 
 ## Errors and limits
 
-A problem is reported as `line N: ...`. Unknown effects and keys, bad numbers and colours, positions off the painting, a missing `at=` or `color=` are all errors, and a file with any error draws nothing. The tables are fixed (96 effects, 12 backdrops, 64 sparks alive at once per screen); going over is an error, never a silently dropped line. The spark limit is checked from `count`, `life` and `every - jitter` (the closest two bursts can come), so a file that could overflow the pool does not load.
+A problem is reported as `line N: ...`. Unknown effects and keys, bad numbers and colours, positions off the painting, a missing `at=` or `color=` are all errors, and a file with any error draws nothing. The tables are fixed (96 effects, 12 backdrops, 1024 sparks alive at once per screen); going over is an error, never a silently dropped line. The spark limit is checked from `count`, `life` and `every - jitter` (the closest two bursts can come), so a file that could overflow the pool does not load.
 
 ## What it must not disturb
 
@@ -56,7 +56,7 @@ A problem is reported as `line N: ...`. Unknown effects and keys, bad numbers an
 
 ## Dev workflow
 
-`--backdrop-dev` (dev builds only; a release build rejects it) shows the painting coordinates under the mouse cursor in the top-left corner, with a cross at the cursor, and re-reads `assets/backdrops.txt` from disk on **R**. A reload restarts the loops and says "reloaded N" (the effect count) in small text beside the readout for half a second, with no panel behind it. Parse problems are listed in small red text under the readout (at most four lines) and stay until the file is fixed, with the effects off; the game does not stop. R is not used by the title (its menu hotkeys are A C S L T Q N and P), the emperor card or the dock; it is the one letter the helper takes.
+`--backdrop-dev` (dev builds only; a release build rejects it) shows the painting coordinates under the mouse cursor in the top-left corner, with a cross at the cursor, and re-reads `assets/backdrops.txt` from disk on **R**. A reload restarts the loops and says "reloaded N" (the effect count) in small text beside the readout for half a second, with no panel behind it. Parse problems are listed in small red text under the readout (wrapped to the 320 pixel width, at most eight rows) and stay until the file is fixed, with the effects off; the game does not stop. R is not used by the title (its menu hotkeys are A C S L T Q N and P), the emperor card or the dock; it is the one letter the helper takes.
 
 ```
 tools/dev run --backdrop-dev --scene title --no-telem

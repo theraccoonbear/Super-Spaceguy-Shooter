@@ -10,6 +10,7 @@
 ' There is no additive blending, so a glow is a stack of translucent circles, as for the bolts.
 
 Const BD_DEV_NOTE_FRAMES = 30   ' a successful reload is mentioned for this long
+Const BD_DEV_ROWS = 8          ' rows of parse problems shown (about three problems of two lines)
 Const BD_DEV_FILE = "assets/backdrops.txt"
 
 Dim Shared bdDevWas As Integer
@@ -96,7 +97,8 @@ Sub BACKDROP_DrawSparks ()
 End Sub
 
 Sub BACKDROP_DrawDev ()
-    Dim bddI As Integer, bddMX As Integer, bddMY As Integer, bddNL As Integer, bddS As String, bddP As Integer
+    Dim bddN As Integer, bddMX As Integer, bddMY As Integer, bddNL As Integer, bddS As String
+    Dim bddRows(0 To BD_DEV_ROWS - 1) As String
     Do While _MouseInput : Loop
     _MouseShow
     bddMX = _MouseX : bddMY = _MouseY
@@ -114,14 +116,11 @@ Sub BACKDROP_DrawDev ()
         If bdDevErr = 0 Then
             If gameFrame - bdDevAt < BD_DEV_NOTE_FRAMES Then UI_Text 10, bdDevMsg, Len(bddS) * FONT_CHAR_W + 8, 0, 255
         Else
-            bddNL = 0 : bddP = 1
-            Do While bddP <= Len(bdDevMsg)
-                bddI = InStr(bddP, bdDevMsg, Chr$(10))
-                If bddI = 0 Then bddI = Len(bdDevMsg) + 1
-                If bddNL = 4 Then UI_Text 12, "(and more)", 2, FONT_CHAR_H * 5, 255 : Exit Do
-                UI_Text 12, Left$(Mid$(bdDevMsg, bddP, bddI - bddP), 40), 2, FONT_CHAR_H * (1 + bddNL), 255
-                bddNL = bddNL + 1 : bddP = bddI + 1
-            Loop
+            bddN = BD_WrapText%(bdDevMsg, 40, bddRows(), BD_DEV_ROWS)
+            If bddN > BD_DEV_ROWS Then bddRows(BD_DEV_ROWS - 1) = "(and more)" : bddN = BD_DEV_ROWS
+            For bddNL = 0 To bddN - 1
+                UI_Text 12, bddRows(bddNL), 2, FONT_CHAR_H * (1 + bddNL), 255
+            Next bddNL
         End If
     End If
 End Sub

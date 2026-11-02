@@ -373,21 +373,21 @@ BT_Assert btA = Int(bdPVX(0) * 1000),                   "7.16  entering the scre
 Print ""
 
 Print "--- 8. the pool ---"
-BT_Assert BT_Fails%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=10 life=45" + Chr$(10), 2, "pool holds 64"), "8.01  16 sparks per 10 frames living 45 could reach 80: an error"
-BT_Assert BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=10 life=40" + Chr$(10)) <> 0, "8.02  exactly 64 alive at once is allowed"
-BT_Assert BT_Fails%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=10 every=60 life=60" + Chr$(10) + "    SPARK at=2,2 color=ff0000 count=10 every=60 life=60 phase=7" + Chr$(10) + "    SPARK at=3,3 color=ff0000 count=10 every=60 life=60 phase=9" + Chr$(10) + "    SPARK at=4,4 color=ff0000 count=10 every=60 life=60 phase=11" + Chr$(10) + "    SPARK at=5,5 color=ff0000 count=10 every=60 life=60 phase=13" + Chr$(10) + "    SPARK at=6,6 color=ff0000 count=10 every=60 life=60 phase=15" + Chr$(10) + "    SPARK at=7,7 color=ff0000 count=10 every=60 life=60 phase=17" + Chr$(10), 8, "pool"), "8.03  the effects of one backdrop add up (the error is on the line that tips it)"
-BT_Assert BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=10 life=40" + Chr$(10) + "backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=10 life=40" + Chr$(10)) <> 0, "8.04  the pool is per screen: two backdrops of 64 are fine"
-btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=10 life=40" + Chr$(10))
+BT_Assert BT_Fails%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=65" + Chr$(10), 2, "pool holds 1024"), "8.01  16 sparks a frame living 65 could reach 1040: an error"
+BT_Assert BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=64" + Chr$(10)) <> 0, "8.02  exactly 1024 alive at once is allowed"
+BT_Assert BT_Fails%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=10" + Chr$(10) + "    SPARK at=2,2 color=ff0000 count=16 every=1 life=10 phase=7" + Chr$(10) + "    SPARK at=3,3 color=ff0000 count=16 every=1 life=10 phase=9" + Chr$(10) + "    SPARK at=4,4 color=ff0000 count=16 every=1 life=10 phase=11" + Chr$(10) + "    SPARK at=5,5 color=ff0000 count=16 every=1 life=10 phase=13" + Chr$(10) + "    SPARK at=6,6 color=ff0000 count=16 every=1 life=10 phase=15" + Chr$(10) + "    SPARK at=7,7 color=ff0000 count=16 every=1 life=10 phase=17" + Chr$(10), 8, "pool"), "8.03  the effects of one backdrop add up (the error is on the line that tips it)"
+BT_Assert BD_Parse%("backdrop:title" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=64" + Chr$(10) + "backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=64" + Chr$(10)) <> 0, "8.04  the pool is per screen: two backdrops of 1024 are fine"
+btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=64" + Chr$(10))
 bdLastMain = -9 : bdPDropped = 0
 btN = 0
 For btF = 0 To 399
     BD_Advance 2000 + btF, "dock"
     If BD_SparksLive% > btN Then btN = BD_SparksLive%
 Next btF
-BT_Assert btN = 64 And bdPDropped = 0,                  "8.05  a file at the bound reaches 64 alive and never overflows"
+BT_Assert btN = 1024 And bdPDropped = 0,                  "8.05  a file at the bound reaches 1024 alive and never overflows"
 For btI = 0 To BD_POOL - 1 : bdPAlive(btI) = -1 : Next btI
 BD_Spawn 0, 12
-BT_Assert BD_SparksLive% = 64 And bdPDropped = 16,      "8.06  a full pool takes no more and counts what it turned away"
+BT_Assert BD_SparksLive% = 1024 And bdPDropped = 16,      "8.06  a full pool takes no more and counts what it turned away"
 BD_Reset "dock"
 BT_Assert BD_SparksLive% = 16,                          "8.07  entering a screen clears the pool"
 Print ""
@@ -446,9 +446,9 @@ BT_Assert BT_Fails%(BT_Src$("    BLINK at=1,1 color=ff0000 hold=1 size=8 jitter=
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 every=30 jitter=30"), 2, "jitter must be less than every (30)"), "11.11  jitter must stay under every"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 every=3600 jitter=3600"), 2, "jitter must be"), "11.12  jitter has an upper limit"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 jitter=x"), 2, "jitter must be a whole number"), "11.13  jitter must be a number"
-BT_Assert BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=10 life=40")) <> 0, "11.14  64 alive with no jitter is allowed"
-BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=10 jitter=5 life=40"), 2, "pool holds 64"), "11.15  jitter closes the gap between bursts, so the pool bound uses every - jitter"
-BT_Assert BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=8 every=10 jitter=5 life=40")) <> 0, "11.16  8 sparks with jitter fits (8 bursts of 8 never exceed 64)"
+BT_Assert BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=1 life=64")) <> 0, "11.14  1024 alive with no jitter is allowed"
+BT_Assert BT_Fails%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=10 jitter=9 life=65"), 2, "pool holds 1024"), "11.15  jitter closes the gap between bursts, so the pool bound uses every - jitter"
+BT_Assert BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=8 every=10 jitter=9 life=100")) <> 0, "11.16  8 sparks with jitter fits (800 at most, under 1024)"
 ' bursts of an effect: the frames on which sparks of age 0 exist, as "f,f,f,"
 btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=1 every=50 jitter=20 life=5" + Chr$(10) + "    SPARK at=2,2 color=ff0000 count=1 every=50 jitter=20 life=5" + Chr$(10))
 bdLastMain = -9
@@ -515,6 +515,39 @@ BT_Assert btN = 20 And btOk,                            "11.21  jitter=0 keeps t
 btOk = BD_Parse%("backdrop:dock" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=1 every=1000 speed=0 gravity=0 life=30 size=3" + Chr$(10))
 BD_Reset "dock"
 BT_Assert bdSize(bdPFx(0)) = 3,                         "11.22  a spark reads its size from its effect"
+Print ""
+
+Print "--- 12. wrapping parse problems for the dev screen ---"
+Dim btRows(0 To 7) As String, btMsg As String, btJoin As String
+btMsg = "backdrop 'emperor' could have 90 sparks alive at once, the pool holds 1024 (lower count or life, or raise every)"
+btN = BD_WrapText%(btMsg, 40, btRows(), 8)
+btOk = -1 : btJoin = ""
+For btI = 0 To btN - 1
+    If Len(btRows(btI)) > 40 Or Len(btRows(btI)) = 0 Then btOk = 0
+    If btI > 0 Then btJoin = btJoin + " "
+    btJoin = btJoin + btRows(btI)
+Next btI
+BT_Assert btN = 3 And btOk,                             "12.01  a 113 character problem is three rows of at most 40"
+BT_Assert btJoin = btMsg,                               "12.02  and nothing is lost: the rows read back as the original"
+btN = BD_WrapText%("line 2: short", 40, btRows(), 8)
+BT_Assert btN = 1 And btRows(0) = "line 2: short",      "12.03  a short problem is one row"
+btN = BD_WrapText%("abcdefghijklmnopqrstuvwxyz", 10, btRows(), 8)
+BT_Assert btN = 3 And btRows(0) = "abcdefghij" And btRows(1) = "klmnopqrst" And btRows(2) = "uvwxyz", "12.04  a word longer than a row is cut"
+btN = BD_WrapText%("one two" + Chr$(10) + "three four five", 9, btRows(), 8)
+BT_Assert btN = 3 And btRows(0) = "one two" And btRows(1) = "three" And btRows(2) = "four five", "12.05  each problem starts on a new row"
+btN = BD_WrapText%("line 1: a" + Chr$(10) + Chr$(10) + "line 3: b" + Chr$(10), 40, btRows(), 8)
+BT_Assert btN = 3 And btRows(1) = "",                  "12.06  a blank line stays a blank row, a trailing line end adds none"
+btN = BD_WrapText%("", 40, btRows(), 8)
+BT_Assert btN = 0,                                      "12.07  nothing to show is no rows"
+btN = BD_WrapText%("aaa bbb ccc ddd eee fff ggg hhh iii jjj", 3, btRows(), 4)
+BT_Assert btN = 10 And btRows(0) = "aaa" And btRows(3) = "ddd", "12.08  more rows than fit: the count says so and the first rows are kept"
+btOk = BD_Parse%("backdrop:emperor" + Chr$(10) + "    SPARK at=1,1 color=ff0000 count=16 every=1 life=65" + Chr$(10))
+btN = BD_WrapText%(bdErrors, 40, btRows(), 8)
+BT_Assert btN >= 2 And btN <= 8 And Left$(btRows(0), 7) = "line 2:", "12.09  a real parse problem wraps inside the cap"
+btOk = BD_Parse%(BT_Src$("    SPARK at=1,1 color=ff0000 count=16 every=1 life=64"))
+btFx = 0
+BD_Reset "title"
+BT_Assert BD_SparksLive% = 16,                          "12.10  a 1024-spark file loads and its first burst starts"
 Print ""
 
 Print "=== " + LTrim$(Str$(btPass + btFail)) + " tests: " _
