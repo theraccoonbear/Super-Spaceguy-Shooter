@@ -21,6 +21,30 @@ Where it happened: `enemy_killed`, `powerup_collected`, `powerup_missed`, `enemy
 
 Events fired today (see call sites in `gameplay/`, `state/`, `sys/sequence.bas`): `session_start` (player_id, version, build, nerf, difficulty: the run's difficulty level from `assets/config/difficulty.ini`, e.g. `easy`, `normal`, `hard`; flags: the dev flags in use, comma-separated from `god`, `nerf`, `scene`, `credits`, `ships`, `shields`, `fuel`, `pup`, `seed`, `script` for `--input-script`, so test and cheat sessions can be told apart; empty in a normal session, and always empty in a release build, where those flags are compiled out), `enemy_killed`, `powerup_collected` (kind: points, shield or fuel; amount applied, 0 when the gauge was full and it paid score instead; score, shield, fuel, wave), `powerup_missed` (kind, wave: a power-up drifted past uncaught), `enemy_escaped`, `fuel_exhausted`, `player_damaged`, `player_death`, `boss_reached`, `boss_phase`, `boss_defeated`, `upgrade_bought` (item, level, price, credits_left; one per dock purchase), `fuel_bought` (amount, price, unit, mult, chapter, credits_left: fuel bought by the amount at a dock, `unit` the price per unit after the chapter's surcharge `mult`), `shield_bought` (amount, price, chapter, credits_left), `stage_clear` (chapter, fuel_used, seconds, fuel_left, credits: once per planet arrival; `fuel_used` and `seconds` cover the leg since the last dock or the start, and `fuel_used` counts what the leg burned even after the tank ran dry, for fitting the fuel need in `assets/config/economy.ini`), `credits_earned` (earned, spent, left; logged just before `session_end`), `credit_bonus` (credits, rate, points, score; once per run that ends in a win, a death or stranded, when leftover credits become score), `run_stranded` (chapter, fuel, need, credits, fuel_price: the run ended at a dock where the tank plus every unit the credits buy falls short of the next jump; logged before the cash-out, and `session_end` then has `exit=stranded`), `session_end` (exit, score, kills, wave, boss, shots, hits, misses, escapes; secs: seconds since the session started, counted the same way as `ev_time`, pauses included; the chapter and stage progress, and for `exit=quit` also `state`, the `GS_*` screen it happened in). `TELEM_SessionEnd` is idempotent (guarded on `telemSession` being non-empty) since it can be reached from more than one exit path.
 
+### Per-leg counters and schema version (#387)
+
+`session_start` ends with `tv=2` (the telemetry schema version). A leg runs from the run start or a dock to the next planet arrival; its counters are appended to `stage_clear` and, for the unfinished last leg, to `session_end`, then reset. Everything is counted in frames and events, never wall time, so the determinism check can diff the CSV. The counters live in `telemetry.bas` and the game reaches them through `TELEM_NoteFire`, `TELEM_NoteRoll`, `TELEM_NoteNova`, `TELEM_NoteDodge`, `TELEM_NoteRegen`, `TELEM_NoteArmour` and `TELEM_NovaKill`.
+
+| Field | Meaning |
+|---|---|
+| `fire_f` | frames with fire held in play |
+| `starve_f` | of those, frames with the gun ready but the laser below its shot cost |
+| `starve_n` | starved episodes (consecutive starved frames; ends on release or a shot) |
+| `lshots`, `lhits` | shots fired and hit this leg |
+| `roll_have` | 1 when the evasive roll is owned |
+| `roll_n` | rolls started |
+| `roll_lock` | roll presses with the upgrade not owned |
+| `roll_cool` | roll presses refused while rolling or cooling |
+| `dodge` | hits the roll avoided; frames in a row from a per-frame source (spore, cut) count once |
+| `nova_max` | nova charges the upgrade holds (0 = not owned) |
+| `nova_n` | novas fired |
+| `nova_dry` | presses with the upgrade owned and no charge left |
+| `nova_kills` | ships downed by a nova; their `enemy_killed` rows end with `src=nova` |
+| `regen` | shield points restored by shield regen |
+| `armour_saved` | collision damage absorbed by hull armour |
+
+`player_death` also carries `nova_left` (charges left) and `roll_ready` (1 when the roll is owned and cooled down). The longest payload (every counter at its maximum) is about 475 characters, checked by `death_telem_test` against the Worker's 1024-character cap. The expected key lists of the payloads are in `tests/input/telemetry_rows.txt`, which `death_telem_test` checks the builders against.
+
 ### Backend schema
 
 The tables are defined in [`server/migrations/`](../../server/migrations/) and the routes and validation in [`server/src/index.ts`](../../server/src/index.ts), with tests in `server/test/`:

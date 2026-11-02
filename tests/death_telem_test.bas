@@ -108,6 +108,7 @@ Dim Shared settingsDir       As String
 Dim Shared telemBatchRows    As Long
 Dim Shared telemT0           As Long
 Dim Shared gameFrame         As Long
+Dim Shared novaMax As Integer, novaCharges As Integer, rollCoolMax As Integer, rollCool As Integer
 Dim Shared telemFlags        As String
 Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
 Dim Shared telemExitReason   As String
@@ -299,7 +300,7 @@ DT_Telem
 TC_Assert InStr(telemBatch, "|flags=god,fuel,script") > 0, "9.01  flags= carries the list"
 telemFlags = ""
 DT_Telem
-TC_Assert InStr(telemBatch, "|flags=" + Chr$(34)) > 0 Or InStr(telemBatch, "|flags=}") > 0, "9.02  no flags: the field is empty"
+TC_Assert InStr(telemBatch, "|flags=|tv=2") > 0, "9.02  no flags: the field is empty"
 TELEM_SessionEnd
 Print ""
 
@@ -379,6 +380,216 @@ Next dtI
 TC_Assert dtOk, "13.02  no post over 1000 rows or the 128 KB body cap"
 TC_Assert dtTotal = 2503 And telemBatch = "", "13.03  every row posted once: start + 2500 + credits_earned + end (" + LTrim$(Str$(dtTotal)) + ")"
 TC_Assert Left$(dtBatch(1), 1) = "[" And Right$(dtBatch(dtBatchN), 1) = "]", "13.04  each post is a JSON array"
+telemOn = 0 : ioReadOnly = 0
+Print ""
+
+' The data of the last row of this event in everything the session has queued.
+Function DT_Data$ (dtdEvent As String)
+    Dim dtdAll As String, dtdP As Long, dtdLast As Long, dtdE As Long
+    dtdAll = DT_AllRows$
+    dtdP = InStr(dtdAll, "event:" + dtdEvent + ",")
+    Do While dtdP > 0
+        dtdLast = dtdP
+        dtdP = InStr(dtdP + 1, dtdAll, "event:" + dtdEvent + ",")
+    Loop
+    If dtdLast = 0 Then DT_Data$ = "(no row)" : Exit Function
+    dtdP = InStr(dtdLast, dtdAll, "data:") + 5
+    dtdE = InStr(dtdP, dtdAll, "}")
+    DT_Data$ = Mid$(dtdAll, dtdP, dtdE - dtdP)
+End Function
+
+' "a=1|b=2" -> "a b"
+Function DT_Keys$ (dtkData As String)
+    Dim dtkP As Long, dtkQ As Long, dtkOut As String, dtkPart As String, dtkEq As Long
+    dtkP = 1
+    Do
+        dtkQ = InStr(dtkP, dtkData, "|")
+        If dtkQ = 0 Then dtkPart = Mid$(dtkData, dtkP) Else dtkPart = Mid$(dtkData, dtkP, dtkQ - dtkP)
+        dtkEq = InStr(dtkPart, "=")
+        If dtkEq > 0 Then dtkPart = Left$(dtkPart, dtkEq - 1)
+        If Len(dtkOut) > 0 Then dtkOut = dtkOut + " "
+        dtkOut = dtkOut + dtkPart
+        If dtkQ = 0 Then Exit Do
+        dtkP = dtkQ + 1
+    Loop
+    DT_Keys$ = dtkOut
+End Function
+
+' The key list the fixture expects for a shape ("event" or "event/variant"); "" when absent.
+Function DT_Fixture$ (dtfName As String)
+    Dim dtfPath As String, dtfF As Integer, dtfLine As String, dtfSp As Long
+    dtfPath = _StartDir$ + "/tests/input/telemetry_rows.txt"
+    dtfF = FreeFile
+    Open dtfPath For Input As #dtfF
+    Do While Not EOF(dtfF)
+        Line Input #dtfF, dtfLine
+        dtfSp = InStr(dtfLine, " ")
+        If Left$(dtfLine, 1) <> "#" And dtfSp > 0 Then
+            If Left$(dtfLine, dtfSp - 1) = dtfName Then DT_Fixture$ = Mid$(dtfLine, dtfSp + 1) : Exit Do
+        End If
+    Loop
+    Close #dtfF
+End Function
+
+Sub DT_Shape (dtsName As String, dtsEvent As String)
+    Dim dtsWant As String, dtsGot As String
+    dtsWant = DT_Fixture$(dtsName)
+    dtsGot = DT_Keys$(DT_Data$(dtsEvent))
+    TC_Assert Len(dtsWant) > 0 And dtsGot = dtsWant, "payload shape " + dtsName
+    If dtsGot <> dtsWant Then Print "      got:  " + dtsGot : Print "      want: " + dtsWant
+End Sub
+
+Print "--- 14. every event keeps the shape in tests/input/telemetry_rows.txt (#387) ---"
+telemFlags = "" : levelNum = 2 : stageKills = 4 : stageKillTarget = 20
+novaMax = 2 : novaCharges = 1 : rollCoolMax = 600 : rollCool = 0
+DT_Telem
+TELEM_EnemyKilled
+DT_Shape "enemy_killed", "enemy_killed"
+TELEM_NovaKill
+DT_Shape "enemy_killed/nova", "enemy_killed"
+TELEM_StageClear 2, 40.4, 61.2, 55
+DT_Shape "stage_clear", "stage_clear"
+TELEM_PlayerDeath
+DT_Shape "player_death", "player_death"
+telemExitReason = "death"
+TELEM_SessionEnd
+DT_Shape "session_start", "session_start"
+DT_Shape "session_end/death", "session_end"
+DT_Telem
+telemExitReason = "quit"
+TELEM_SessionEnd
+DT_Shape "session_end/quit", "session_end"
+TC_Assert InStr(DT_AllRows$, "|flags=|tv=2") > 0, "14.08  session_start carries the schema version tv=2"
+Print ""
+
+Print "--- 15. starved frames and episodes come from PLAYER_Fire (#387) ---"
+DT_Telem
+gameState = GS_PLAYING : fireTimer = 0 : laserEnergy = 0 : held(E3D_KEY_SPACE) = -1
+Dim dtF As Integer
+For dtF = 1 To 5 : PLAYER_Fire : Next dtF
+TC_Assert InStr(TELEM_Leg$, "|fire_f=5|starve_f=5|starve_n=1|") > 0, "15.01  5 frames held with no energy: 5 starved, one episode"
+held(E3D_KEY_SPACE) = 0 : PLAYER_Fire
+held(E3D_KEY_SPACE) = -1
+For dtF = 1 To 3 : PLAYER_Fire : Next dtF
+TC_Assert InStr(TELEM_Leg$, "|fire_f=8|starve_f=8|starve_n=2|") > 0, "15.02  letting go and pressing again starts a second episode"
+laserEnergy = 100 : fireTimer = 0
+PLAYER_Fire
+TC_Assert InStr(TELEM_Leg$, "|fire_f=9|starve_f=8|starve_n=2|") > 0, "15.03  a frame that fires is held but not starved"
+TC_Assert fireTimer > 0, "15.04  the shot went out"
+laserEnergy = 0
+PLAYER_Fire
+TC_Assert InStr(TELEM_Leg$, "|fire_f=10|starve_f=8|starve_n=2|") > 0, "15.05  held while the gun cools: not starved yet"
+fireTimer = 0
+PLAYER_Fire
+TC_Assert InStr(TELEM_Leg$, "|starve_f=9|starve_n=3|") > 0, "15.06  cooled down and dry: starved again, a new episode"
+held(E3D_KEY_SPACE) = 0 : gameState = GS_CINEMATIC : fireTimer = 0
+PLAYER_Fire
+TC_Assert InStr(TELEM_Leg$, "|fire_f=11|") > 0, "15.07  a release or a screen change counts no held frame"
+gameState = GS_PLAYING
+Print ""
+
+Print "--- 16. dodges are hits avoided, not frames of a per-frame source (#387) ---"
+DT_Telem
+rollTimer = 10 : lives = 100 : deathTimer = 0
+gameFrame = 200 : PLAYER_TakeDamage 5, 1, 1
+gameFrame = 201 : PLAYER_TakeDamage 5, 1, 1
+gameFrame = 202 : PLAYER_TakeDamage 5, 1, 1
+TC_Assert InStr(TELEM_Leg$, "|dodge=1|") > 0 And lives = 100, "16.01  three frames in a row are one dodge, no damage"
+gameFrame = 230 : PLAYER_TakeDamage 5, 1, 1
+TC_Assert InStr(TELEM_Leg$, "|dodge=2|") > 0, "16.02  a later hit is another dodge"
+rollTimer = 0 : gameFrame = 231 : PLAYER_TakeDamage 5, 1, 1
+TC_Assert InStr(TELEM_Leg$, "|dodge=2|") > 0 And lives = 95, "16.03  a hit with no roll is damage, not a dodge"
+Print ""
+
+Print "--- 17. the leg summary, its counters and its reset (#387) ---"
+DT_Telem
+novaMax = 3 : rollCoolMax = 0
+TELEM_NoteRoll 0
+TELEM_NoteRoll 0
+rollCoolMax = 600
+TELEM_NoteRoll 0
+TELEM_NoteRoll -1
+TELEM_NoteNova -1
+TELEM_NoteNova 0
+TELEM_NoteNova 0
+novaMax = 0
+TELEM_NoteNova 0
+novaMax = 3
+TELEM_NoteRegen 4
+TELEM_NoteRegen 3
+TELEM_NoteArmour 5
+TELEM_NoteArmour 0
+telemShotsFired = telemShotsFired + 12 : telemShotsHit = telemShotsHit + 7
+TELEM_NovaKill
+TC_Assert InStr(TELEM_Leg$, "|roll_have=1|roll_n=1|roll_lock=2|roll_cool=1|") > 0, "17.01  roll: owned, rolled once, two presses locked, one on cooldown"
+TC_Assert InStr(TELEM_Leg$, "|nova_max=3|nova_n=1|nova_dry=2|nova_kills=1|") > 0, "17.02  nova: fired once, two dry presses (a locked press isn't dry), one nova kill"
+TC_Assert InStr(TELEM_Leg$, "|regen=7|armour_saved=5") > 0, "17.03  regen and armour totals"
+TC_Assert InStr(TELEM_Leg$, "|lshots=12|lhits=7|") > 0, "17.04  leg shots and hits since the leg began"
+TELEM_StageClear 1, 10, 30, 80
+Dim dtSc As String : dtSc = DT_Data$("stage_clear")
+TC_Assert InStr(dtSc, "|roll_n=1|roll_lock=2|") > 0 And InStr(dtSc, "|lshots=12|lhits=7|") > 0, "17.05  stage_clear carries the summary"
+TC_Assert InStr(TELEM_Leg$, "|fire_f=0|starve_f=0|starve_n=0|lshots=0|lhits=0|roll_have=1|roll_n=0|roll_lock=0|roll_cool=0|dodge=0|nova_max=3|nova_n=0|nova_dry=0|nova_kills=0|regen=0|armour_saved=0") > 0, "17.06  the next leg starts at zero (ownership stays)"
+TELEM_NoteNova -1
+telemExitReason = "quit"
+TELEM_SessionEnd
+TC_Assert InStr(DT_Data$("session_end"), "|nova_n=1|") > 0 And InStr(DT_Data$("session_end"), "|roll_n=0|") > 0, "17.07  session_end carries the unfinished last leg only"
+DT_Telem
+TC_Assert InStr(TELEM_Leg$, "|nova_n=0|") > 0 And InStr(TELEM_Leg$, "|lshots=0|") > 0, "17.08  a new session starts a fresh leg"
+Print ""
+
+Print "--- 18. player_death: nova charges left and roll readiness (#387) ---"
+DT_Telem
+novaCharges = 2 : rollCoolMax = 0 : rollCool = 0
+TELEM_PlayerDeath
+TC_Assert Right$(DT_Data$("player_death"), 25) = "|nova_left=2|roll_ready=0", "18.01  no roll owned: not ready"
+rollCoolMax = 600 : rollCool = 0 : novaCharges = 0
+TELEM_PlayerDeath
+TC_Assert Right$(DT_Data$("player_death"), 25) = "|nova_left=0|roll_ready=1", "18.02  roll owned and cooled down: ready"
+rollCool = 40
+TELEM_PlayerDeath
+TC_Assert Right$(DT_Data$("player_death"), 12) = "roll_ready=0", "18.03  roll cooling: not ready"
+Print ""
+
+Print "--- 19. every payload stays well under the Worker's 1024-character data cap (#387) ---"
+Const DT_BIG = 2147483647
+telemFlags = "god,nerf,scene,credits,ships,shields,fuel,pup,seed,script"
+telemPlayerID = "00000000-0000-4000-8000-000000000000"
+runDifficulty = "normal"
+settingNerf = 32767 : levelNum = 32767 : stageKills = DT_BIG : stageKillTarget = DT_BIG
+score = DT_BIG : waveType = 32767
+telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = DT_BIG
+novaMax = 32767 : novaCharges = 32767 : rollCoolMax = 32767 : rollCool = 0
+DT_Telem
+telemKills = DT_BIG - 5
+telemDeathCause = "enemy_col"
+TELEM_EnemyKilled
+TELEM_NovaKill
+TELEM_PlayerDeath
+Sub DT_MaxLeg
+    telemShotsFired = DT_BIG : telemShotsHit = DT_BIG
+    telemLegFireF = DT_BIG : telemLegStarveF = DT_BIG : telemLegStarveN = DT_BIG
+    telemLegRollN = DT_BIG : telemLegRollLock = DT_BIG : telemLegRollCool = DT_BIG : telemLegDodge = DT_BIG
+    telemLegNovaN = DT_BIG : telemLegNovaDry = DT_BIG : telemLegNovaKills = DT_BIG
+    telemLegRegen = DT_BIG : telemLegArmour = DT_BIG
+End Sub
+DT_MaxLeg
+TELEM_StageClear 32767, 3.4E+38, 3.4E+38, 3.4E+38
+DT_MaxLeg
+gameFrame = DT_BIG
+telemExitReason = "quit"
+TELEM_SessionEnd
+Dim dtCapAll As String, dtCapP As Long, dtCapE As Long, dtCapLen As Long, dtCapMax As Long, dtCapRows As Long
+dtCapAll = DT_AllRows$
+dtCapP = InStr(dtCapAll, "data:")
+Do While dtCapP > 0
+    dtCapE = InStr(dtCapP, dtCapAll, "}")
+    dtCapLen = dtCapE - (dtCapP + 5)
+    If dtCapLen > dtCapMax Then dtCapMax = dtCapLen
+    dtCapRows = dtCapRows + 1
+    dtCapP = InStr(dtCapE, dtCapAll, "data:")
+Loop
+Print "      longest data= " + LTrim$(Str$(dtCapMax)) + " characters over " + LTrim$(Str$(dtCapRows)) + " rows"
+TC_Assert dtCapRows >= 7 And dtCapMax < 600, "19.01  every row's data under 600 characters at maximum counters"
 telemOn = 0 : ioReadOnly = 0
 Print ""
 
