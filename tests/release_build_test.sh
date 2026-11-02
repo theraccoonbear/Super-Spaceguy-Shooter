@@ -30,8 +30,12 @@ run_bin() {
 }
 timed_out() { [ "$1" -eq 124 ] || [ "$1" -eq 137 ]; }
 
-DEV_FLAGS=(--scene --crawls --god --nerf --difficulty --credits --ships --shields --fuel --pup --input-script
-           --script-override --frames --realtime --gate-tutorial --backdrop-dev --seed --screenshot-at --leaderboard-file --settings-dir --debug)
+DEV_FLAGS=()
+while IFS= read -r flag || [ -n "$flag" ]; do
+    flag="${flag%$'\r'}"
+    case "$flag" in ""|"#"*) continue ;; esac
+    DEV_FLAGS+=("$flag")
+done < "$REPO/tests/dev_flags.txt"
 
 fails=0
 fail() { echo "FAIL: $1"; fails=$((fails + 1)); }

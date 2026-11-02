@@ -1,0 +1,22 @@
+# Dev-only flags a release build must reject, one per line. Blank lines and # comments are ignored.
+--scene
+--crawls
+--god
+--nerf
+--difficulty
+--credits
+--ships
+--shields
+--fuel
+--pup
+--input-script
+--script-override
+--frames
+--realtime
+--gate-tutorial
+--backdrop-dev
+--seed
+--screenshot-at
+--leaderboard-file
+--settings-dir
+--debug
