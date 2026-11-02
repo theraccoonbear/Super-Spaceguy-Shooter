@@ -15,7 +15,46 @@ Const DOCK_ROW_H = 17
 Const DOCK_NEWS_W = 24     ' characters the news ticker shows at once
 Const DOCK_NEWS_RATE = 7   ' frames per character it scrolls
 
+Const DOCK_CARD_X = 4      ' the selected item's picture card, top left over the art's sky
+Const DOCK_CARD_Y = 4
+Const DOCK_CARD_SIZE = 38  ' 32 px picture plus the panel border
+
 Dim Shared dockNews As String, dockNewsTick As Long
+Dim Shared dockArtImg(1 To DOCK_ART_COUNT) As Long
+
+' Load the item pictures (assets/32px, embedded as DKART + the name without underscores); after the screen is set.
+Sub DOCK_LoadArt
+    DOCK_LoadArtOne 1, _Embedded$("DKARTREFUEL")
+    DOCK_LoadArtOne 2, _Embedded$("DKARTSHIELDS")
+    DOCK_LoadArtOne 3, _Embedded$("DKARTTWINCANNONS")
+    DOCK_LoadArtOne 4, _Embedded$("DKARTSPREADSHOT")
+    DOCK_LoadArtOne 5, _Embedded$("DKARTLASERCAPACITOR")
+    DOCK_LoadArtOne 6, _Embedded$("DKARTRAPIDFIRE")
+    DOCK_LoadArtOne 7, _Embedded$("DKARTSHIELDCAPACITY")
+    DOCK_LoadArtOne 8, _Embedded$("DKARTSHIELDREGEN")
+    DOCK_LoadArtOne 9, _Embedded$("DKARTHULLARMOUR")
+    DOCK_LoadArtOne 10, _Embedded$("DKARTNOVAPULSE")
+    DOCK_LoadArtOne 11, _Embedded$("DKARTTHRUSTERS")
+    DOCK_LoadArtOne 12, _Embedded$("DKARTEVASIVEROLL")
+    DOCK_LoadArtOne 13, _Embedded$("DKARTTRACTORBEAM")
+    DOCK_LoadArtOne 14, _Embedded$("DKARTFUELTANK")
+End Sub
+
+Sub DOCK_LoadArtOne (dlaId As Integer, dlaData As String)
+    dockArtImg(dlaId) = _LoadImage(dlaData, 32, "memory")
+    If dockArtImg(dlaId) < -1 Then _Blend dockArtImg(dlaId)
+End Sub
+
+' The picture of the selected row in its card; nothing for a row with none (LAUNCH).
+Sub DOCK_DrawArt
+    Dim ddaId As Integer
+    ddaId = DOCK_ArtOf%(dockSel)
+    If ddaId = 0 Then Exit Sub
+    If dockArtImg(ddaId) >= -1 Then Exit Sub
+    UI_Panel DOCK_CARD_X, DOCK_CARD_Y, DOCK_CARD_X + DOCK_CARD_SIZE - 1, DOCK_CARD_Y + DOCK_CARD_SIZE - 1
+    _Blend backBuffer
+    _PutImage (DOCK_CARD_X + 3, DOCK_CARD_Y + 3), dockArtImg(ddaId), backBuffer
+End Sub
 
 ' On arrival the dock reads the news once (#277): gametext.txt's dock_news<chapter>, the
 ' Emperor's blockade of the refinery world and the fuel price it drives up.
@@ -115,6 +154,7 @@ Sub DOCK_Draw
     End If
 
     DOCK_DrawStatus
+    DOCK_DrawArt
 
     UI_Panel DOCK_PX1, DOCK_PY1, DOCK_PX2, DOCK_PY2
     dkdCC = _RGB(0, 210, 255)
