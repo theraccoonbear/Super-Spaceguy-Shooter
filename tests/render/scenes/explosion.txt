@@ -1,0 +1,5 @@
+# Boss explosion at 20: the flash (22), then debris and the shock ring (35), then embers and smoke (60).
+#! group: gameplay
+#! seed: 1
+#! args: --god --no-telem --scene playing2 --explode boss@20
+#! shots: 22,35,60

@@ -296,7 +296,7 @@ Sub TUT_Frame
         If stageKills >= tutStreamKills Then
             For tgI = 1 To MAX_ENEMIES
                 If enemies(tgI).active Then
-                    FX_SpawnBurst enemies(tgI).px, enemies(tgI).py, enemies(tgI).pz, 12, 0.28, 20, 10, _RGB(160, 230, 255)
+                    XP_Spawn xpIdNovaKill, enemies(tgI).px, enemies(tgI).py, enemies(tgI).pz, enemies(tgI).vx, enemies(tgI).vy, enemies(tgI).vz, 1
                     enemies(tgI).active = 0
                 End If
             Next tgI

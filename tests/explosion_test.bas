@@ -14,6 +14,8 @@
 '  10. shapes: sphere speed, ring planarity (YZ), cone spread
 '  11. colour: the list and the ramp
 '  12. name lookup and required names
+'  13. depth scale, pixel clamp, near fade and the dot and life fades
+'  14. --explode parsing
 '
 ' Build: tools/dev test (builds and runs every test)
 ' Run:   builds/explosion_test   (exit 0 = all pass)
@@ -390,6 +392,38 @@ ET_Assert XP_Find%("t") = 0 And XP_Find%("nope") = -1, "lookup by name"
 ET_Assert InStr(XP_Validate$, "explosion 'boss' is used by the game but not defined") > 0 And InStr(XP_Validate$, "explosion 'enemy' is used by the game") > 0, "validation names the missing required explosions"
 ET_Assert xpIdBoss = -1 And xpIdEnemy = -1, "and their ids stay -1"
 
+
+' --- 13. depth scale, clamp and near fade ---
+Dim etF As Single, etStr As String
+etF = XP_Focal!(240, 60)
+ET_Assert ET_Near%(etF, 207.846, 0.01), "focal length is (height / 2) / tan(fov / 2)"
+ET_Assert ET_Near%(XP_PxRadius!(1, etF, 10), etF / 10, 0.001) And ET_Near%(XP_PxRadius!(2, etF, 20), XP_PxRadius!(1, etF, 10), 0.001), "radius scales with size over view depth"
+ET_Assert ET_Near%(XP_PxRadius!(0.5, etF, 5) / XP_PxRadius!(0.5, etF, 10), 2, 0.001), "twice as far is half the radius"
+ET_Assert XP_MaxPx!(0) = 16 And XP_MaxPx!(9) = 9 And XP_MaxPx!(64) = 64, "maxpx: 0 is the default 16, a number stands"
+ET_Assert XP_NearFade!(0.3) = 0 And XP_NearFade!(0.6) = 0 And XP_NearFade!(2) = 1 And XP_NearFade!(50) = 1, "nothing closer than 0.6, full from 2"
+ET_Assert ET_Near%(XP_NearFade!(1.3), 0.5, 0.001), "the near fade is linear between 0.6 and 2"
+ET_Assert XP_DotFade!(3, 1) = 1 And XP_DotFade!(1, 1) = 1 And ET_Near%(XP_DotFade!(0.5, 1), 0.25, 0.001), "under 1 px a speck fades with the square of its radius"
+ET_Assert ET_Near%(XP_DotFade!(1, 2), 0.25, 0.001) And XP_DotFade!(2, 2) = 1 And XP_DotFade!(0, 1) = 0, "under minpx the same, from minpx"
+ET_Assert XP_LifeFade!(0, 20) = 1 And XP_LifeFade!(15, 20) = 1 And ET_Near%(XP_LifeFade!(17.5, 20), 0.5, 0.001) And XP_LifeFade!(20, 20) = 0, "a particle fades over the last quarter of its life"
+
+' --- 14. --explode ---
+etOkAll = XP_ParseExplode%("boss@20")
+ET_Assert etOkAll And xjCount = 1 And xjName(0) = "boss" And xjFrame(0) = 20, "--explode reads name@frame"
+etOkAll = XP_ParseExplode%("boss@20,Enemy@0,x_1@400")
+ET_Assert etOkAll And xjCount = 3 And xjName(1) = "enemy" And xjFrame(1) = 0 And xjFrame(2) = 400, "a list, case folded"
+ET_Assert XP_ParseExplode%("") = 0 And InStr(xjErr, "needs") > 0, "empty is refused"
+ET_Assert XP_ParseExplode%("boss") = 0 And InStr(xjErr, "name@frame") > 0, "a missing frame is refused"
+ET_Assert XP_ParseExplode%("boss@") = 0 And XP_ParseExplode%("boss@-3") = 0 And XP_ParseExplode%("boss@1.5") = 0, "frames are whole numbers"
+ET_Assert XP_ParseExplode%("@5") = 0 And XP_ParseExplode%("bo ss@5") = 0 And XP_ParseExplode%("bo-ss@5") = 0, "names are a-z 0-9 _"
+ET_Assert XP_ParseExplode%("boss@1,,enemy@2") = 0, "an empty entry is refused"
+etStr = ""
+For etI = 1 To 17 : etStr = etStr + "a@" + LTrim$(Str$(etI)) + "," : Next etI
+ET_Assert XP_ParseExplode%(Left$(etStr, Len(etStr) - 1)) = 0 And InStr(xjErr, "at most") > 0, "more than 16 entries are refused"
+etOkAll = XP_Parse%(_Embedded$("EXPLOSIONS"))
+etOkAll = XP_ParseExplode%("boss@3,enemy@4")
+ET_Assert XP_ExplodeMissing$ = "", "the shipped names resolve"
+etOkAll = XP_ParseExplode%("boss@3,nope@4")
+ET_Assert XP_ExplodeMissing$ = "nope", "an unknown name is reported"
 Print
 Print "Passed:" + Str$(etPass) + "  Failed:" + Str$(etFail)
 If etFail > 0 Then System 1

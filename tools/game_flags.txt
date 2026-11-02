@@ -16,6 +16,8 @@
 --realtime
 --gate-tutorial
 --backdrop-dev
+--explosion-dev
+--explode
 --seed
 --credits
 --ships

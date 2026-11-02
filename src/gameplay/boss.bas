@@ -15,8 +15,8 @@ Const BOSS_SHOT1         = 0.26  ' phase 1 laser speed
 Const BOSS_SHOT2         = 0.30  ' phase 2 laser speed
 Const BOSS_SHOT3         = 0.35  ' phase 3 laser speed
 Const BOSS_DIM_FLOOR     = 0.35  ' minimum lighting factor for boss (keeps it visible at range)
-Const BOSS_DEATH_PARTS   = 35    ' particle count on boss death
 Const BOSS_ATTITUDE_LERP = 0.07  ' attitude settle rate (< player 0.09 = heavier feel)
+Const BOSS_DEATH_SCALE   = 3    ' world size of the death explosion: the boss is far, so it is drawn big
 
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssSpd As Single
@@ -231,7 +231,7 @@ Sub BOSS_Update
                 bullets(bssJ).active = 0
                 telemShotsHit = telemShotsHit + 1
                 If bossShieldT > 0 Then
-                    FX_SpawnBurst bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, 4, 0.12, 10, 5, _RGB(140, 230, 255)
+                    XP_Spawn xpIdSpark, bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, 0, 0, 0, 1
                     _Continue
                 End If
                 BOSS_Hit 1
@@ -260,7 +260,6 @@ End Sub
 
 ' The boss is beaten (by lasers or a nova pulse): score, credits, telemetry, the stage transition.
 Sub BOSS_Defeat
-    Dim bsdP As Integer, bsdPK As Integer
     If debugMode Then DBG_Print "[boss] defeated  score=" + LTrim$(Str$(score))
     TELEM_BossDefeated
     boss.active  = 0
@@ -270,21 +269,7 @@ Sub BOSS_Defeat
     DEV_Clear
     score = score + 2000
     scorePopTimer = 40 : scorePopY = scrH * 0.38 : scorePopVal = 2000
-    bsdPK = 0
-    For bsdP = 1 To FX_MAX_PARTICLES
-        If fxPartActive(bsdP) = 0 And bsdPK < BOSS_DEATH_PARTS Then
-            fxPartActive(bsdP) = -1
-            fxPartPX(bsdP) = boss.px + (RNG!(RNG_FX) - 0.5) * 5
-            fxPartPY(bsdP) = boss.py + (RNG!(RNG_FX) - 0.5) * 5
-            fxPartPZ(bsdP) = boss.pz + (RNG!(RNG_FX) - 0.5) * 5
-            fxPartVX(bsdP) = (RNG!(RNG_FX) - 0.5) * 0.40
-            fxPartVY(bsdP) = (RNG!(RNG_FX) - 0.5) * 0.40
-            fxPartVZ(bsdP) = (RNG!(RNG_FX) - 0.5) * 0.40
-            fxPartLife(bsdP) = 35 + Int(RNG!(RNG_FX) * 25)
-            fxPartClr(bsdP)  = _RGB(255, Int(RNG!(RNG_FX) * 140) + 60, 0)
-            bsdPK = bsdPK + 1
-        End If
-    Next bsdP
+    XPD_Boom xpIdBoss, boss.px, boss.py, boss.pz, boss.vx, boss.vy, boss.vz, BOSS_DEATH_SCALE
     MUS_SetCue "game"
     CR_Add crBoss
 End Sub

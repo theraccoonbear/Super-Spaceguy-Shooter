@@ -20,7 +20,6 @@ Sub ENEMY_Update
     Dim enDX As Single, enDY As Single, enDZ As Single, enMag As Single
     Dim enLead As Single
     Dim enTrlR As Integer, enTrlG As Integer, enTrlB As Integer
-    Dim enPartR As Integer, enPartG As Integer, enPartB As Integer
     Dim enHit As Integer
     Dim enHomingLerp As Single, enHomingRange As Single
     Dim enBDY As Single, enBDZ As Single
@@ -133,15 +132,7 @@ Sub ENEMY_Update
                         CR_Add crKill
                         SND_Boom
                         scorePopTimer = 30 : scorePopY = scrH * 0.45 : scorePopVal = SCORE_ENEMY
-                        Select Case enemies(enI).meshIdx
-                        Case MESH_ENEMY        : enPartR = 255 : enPartG =  80 : enPartB =  60
-                        Case MESH_ENEMY_ARROW  : enPartR = 255 : enPartG = 140 : enPartB =   0
-                        Case MESH_ENEMY_HLINE  : enPartR =  60 : enPartG = 210 : enPartB =  80
-                        Case MESH_ENEMY_VCOL   : enPartR =  60 : enPartG = 220 : enPartB = 235
-                        Case MESH_ENEMY_PINCER : enPartR = 235 : enPartG = 225 : enPartB =  50
-                        Case Else              : enPartR = 185 : enPartG =  80 : enPartB = 255
-                        End Select
-                        FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
+                        XP_Spawn xpIdEnemy, enemies(enI).px, enemies(enI).py, enemies(enI).pz, enemies(enI).vx, enemies(enI).vy, enemies(enI).vz, 1
                     ElseIf diffScale > 0.1 Then
                         ' near-miss break: bullet passed close without hitting
                         If Abs(bullets(enJ).px - enemies(enI).px) < 3.0 Then
@@ -161,16 +152,8 @@ Sub ENEMY_Update
             enemies(enI).px, enemies(enI).py, enemies(enI).pz, boxLib(enemies(enI).meshIdx), enHit
             If enHit And invTimer = 0 Then
                 enemies(enI).active = 0
-                Select Case enemies(enI).meshIdx
-                Case MESH_ENEMY        : enPartR = 255 : enPartG =  80 : enPartB =  60
-                Case MESH_ENEMY_ARROW  : enPartR = 255 : enPartG = 140 : enPartB =   0
-                Case MESH_ENEMY_HLINE  : enPartR =  60 : enPartG = 210 : enPartB =  80
-                Case MESH_ENEMY_VCOL   : enPartR =  60 : enPartG = 220 : enPartB = 235
-                Case MESH_ENEMY_PINCER : enPartR = 235 : enPartG = 225 : enPartB =  50
-                Case Else              : enPartR = 185 : enPartG =  80 : enPartB = 255
-                End Select
                 SND_Boom
-                FX_SpawnBurst enemies(enI).px, enemies(enI).py, enemies(enI).pz, 10, 0.22, 18, 8, _RGB(enPartR, enPartG, enPartB)
+                XP_Spawn xpIdEnemyCol, enemies(enI).px, enemies(enI).py, enemies(enI).pz, enemies(enI).vx, enemies(enI).vy, enemies(enI).vz, 1
                 telemDeathCause = "enemy_col"
                 PLAYER_TakeHit DLV_Dmg%(DMG_COLLISION), SHAKE_COLLISION, FLASH_COLLISION
             End If

@@ -98,6 +98,8 @@ Sub GS_PLAYING_Update ()
         END IF
     END IF
 
+    IF gameState = GS_PLAYING THEN XPD_Frame
+
     ' --- physics (skipped when camera orbit is active) ---
     IF gspSkipPhysics = 0 THEN
         tt = tt + 0.025
@@ -128,6 +130,7 @@ Sub GS_PLAYING_Update ()
                 END IF
             END IF
             FX_Update
+            XP_Update
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
         ELSE
             PLAYER_Update held(E3D_KEY_UP) OR held(E3D_KEY_W), held(E3D_KEY_DOWN) OR held(E3D_KEY_S), held(E3D_KEY_LEFT) OR held(E3D_KEY_A), held(E3D_KEY_RIGHT) OR held(E3D_KEY_D)
@@ -230,6 +233,7 @@ Sub GS_PLAYING_Update ()
             DEV_Pull player.py, player.pz, boss.py, boss.pz
             player.py = player.py + devPullY : player.pz = player.pz + devPullZ
             FX_Update
+            XP_Update
             E3D_StarfieldUpdate cam.POS.x, cam.POS.y, cam.POS.z
             IF bltActive THEN BELT_Update scrW, scrH
 
@@ -328,6 +332,7 @@ Sub GS_PLAYING_Update ()
 
     GS_PLAYING_PupHalos
     E3D_SceneFlush vpMat, scrW, scrH
+    XPD_Draw
 
     COMBAT_OverlayDraw
     GS_PLAYING_PupMarks
@@ -336,6 +341,7 @@ Sub GS_PLAYING_Update ()
     FX_Draw vpMat, scrW, scrH
     HUD_Draw
     TUT_Draw
+    XPD_DevDraw
 
     IF camF.orbitMode THEN
         _DEST backBuffer

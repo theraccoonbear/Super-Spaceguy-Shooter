@@ -51,7 +51,7 @@ Sub ABL_Nova
     For abnI = 1 To MAX_EBULLETS
         If ebullets(abnI).active Then
             ebullets(abnI).active = 0
-            FX_SpawnBurst ebullets(abnI).px, ebullets(abnI).py, ebullets(abnI).pz, 3, 0.08, 10, 5, _RGB(140, 230, 255)
+            XP_Spawn xpIdSpark, ebullets(abnI).px, ebullets(abnI).py, ebullets(abnI).pz, 0, 0, 0, 1
         End If
     Next abnI
     For abnI = 1 To MAX_ENEMIES
@@ -63,7 +63,7 @@ Sub ABL_Nova
                 stageKills = stageKills + 1
                 TELEM_EnemyKilled
                 CR_Add crKill
-                FX_SpawnBurst enemies(abnI).px, enemies(abnI).py, enemies(abnI).pz, 12, 0.25, 18, 8, _RGB(160, 230, 255)
+                XP_Spawn xpIdNovaKill, enemies(abnI).px, enemies(abnI).py, enemies(abnI).pz, enemies(abnI).vx, enemies(abnI).vy, enemies(abnI).vz, 1
             End If
         End If
     Next abnI
@@ -73,7 +73,7 @@ Sub ABL_Nova
             If abnDX * abnDX + abnDY * abnDY + abnDZ * abnDZ <= abnR2 Then
                 asteroids(abnI).active = 0
                 CR_Add crAstKill
-                FX_SpawnBurst asteroids(abnI).px, asteroids(abnI).py, asteroids(abnI).pz, 10, 0.2, 18, 8, _RGB(170, 140, 110)
+                XP_Spawn xpIdNovaKill, asteroids(abnI).px, asteroids(abnI).py, asteroids(abnI).pz, asteroids(abnI).vx, asteroids(abnI).vy, asteroids(abnI).vz, 1.5
             End If
         End If
     Next abnI
@@ -84,7 +84,7 @@ Sub ABL_Nova
             If boss.hp <= 0 Then BOSS_Defeat
         End If
     End If
-    FX_SpawnBurst player.px, player.py, player.pz, 40, 0.5, 22, 8, _RGB(170, 240, 255)
+    XP_Spawn xpIdNova, player.px, player.py, player.pz, 0, 0, 0, 1
     novaFxTimer = NOVA_FX_FRAMES
     fxShakeTimer = 10   ' no fxFlashTimer: that red flash means "you were hit"
     SND_Boom
