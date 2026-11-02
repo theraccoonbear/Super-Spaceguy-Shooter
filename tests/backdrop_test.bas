@@ -105,13 +105,12 @@ For btI = 0 To bdFxN - 1
     If bdX(btI) < 0 Or bdX(btI) > 320 Or bdY(btI) < 0 Or bdY(btI) > 240 Then btOk = 0
 Next btI
 BT_Assert btOk,                                         "1.08  every effect sits on the painting"
-' the dock's list panel covers x >= 104: nothing is placed under it
-btOk = -1
 btFx = BD_Find%("dock")
+btN = 0 : btA = 0
 For btI = bdSetFrom(btFx) To bdSetFrom(btFx) + bdSetN(btFx) - 1
-    If bdX(btI) >= 104 Then btOk = 0
+    If bdKind(btI) = BD_KIND_BLINK Then btN = btN + 1 Else btA = btA + 1
 Next btI
-BT_Assert btOk,                                         "1.09  the dock's effects are clear of the list panel"
+BT_Assert btN >= 1 And btA >= 1,                        "1.09  the dock has both lights and sparks"
 Print ""
 
 Print "--- 2. parse failures name their line ---"

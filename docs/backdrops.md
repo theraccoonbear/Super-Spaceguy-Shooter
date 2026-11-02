@@ -63,7 +63,7 @@ tools/dev run --backdrop-dev --scene title --no-telem
 tools/dev run --backdrop-dev --scene dock2 --credits 400 --no-telem
 ```
 
-Edit `assets/backdrops.txt` on the host, switch to the game and press R. `tools/dev run` starts in the repository folder, so the file on disk is found; a native build finds it from the launch folder or one level up from the executable. The mouse reads the painting position even where a dock panel covers the art; on the dock only about 100x160 pixels of painting stay visible (the list panel covers x >= 104, the status panel x 4-94, y 162-234), so keep effects clear of text.
+Edit `assets/backdrops.txt` on the host, switch to the game and press R. `tools/dev run` starts in the repository folder, so the file on disk is found; a native build finds it from the launch folder or one level up from the executable. The mouse reads the painting position even where a dock panel covers the art; on the dock the list panel (x >= 104) and the status panel (x 4-94, y 162-234) are see-through but carry text, so effects behind them show only faintly; keep bright effects clear of text.
 
 Do not commit a change to the effects without checking the golden screenshots: `tools/dev render` fails on the title and dock scenes, and `tools/dev render --update` re-blesses them (look at every changed PNG).
 
