@@ -13,6 +13,17 @@
 Const TELEM_MAX_ROWS = 1000   ' the Worker rejects a batch over 1000 rows
 Const TELEM_MAX_BYTES = 100000 ' under the 128 KB POST body cap in curl_qb64.h
 
+' Per-leg counters (#387): a leg runs from the run start or a dock to the next planet arrival.
+' The Note subs are called from player.bas, abilities.bas and the dock; everything is counted in frames
+' and events, never wall time, so a scripted run agrees at any speed.
+Dim Shared telemLegFireF As Long, telemLegStarveF As Long, telemLegStarveN As Long, telemLegStarving As Integer
+Dim Shared telemLegShots0 As Long, telemLegHits0 As Long
+Dim Shared telemLegRollN As Long, telemLegRollLock As Long, telemLegRollCool As Long
+Dim Shared telemLegDodge As Long, telemLegDodgeLast As Long
+Dim Shared telemLegNovaN As Long, telemLegNovaDry As Long, telemLegNovaKills As Long
+Dim Shared telemLegRegen As Long, telemLegArmour As Long
+Dim Shared telemCashedOut As Integer, telemCashedLeft As Long
+
 Function TELEM_NewUUID$
     Dim uuidStr As String
     Dim uuidByte As Integer
@@ -108,6 +119,82 @@ Function TELEM_Elapsed& (tleNow As Long, tleF0 As Long)
     TELEM_Elapsed& = (tleNow - tleF0) \ 60
 End Function
 
+Function TELEM_N$ (tlnV As Long)
+    TELEM_N$ = LTrim$(Str$(tlnV))
+End Function
+
+' Start a fresh leg: counters to zero, shots and hits measured from now.
+Sub TELEM_LegReset
+    telemLegFireF = 0 : telemLegStarveF = 0 : telemLegStarveN = 0 : telemLegStarving = 0
+    telemLegShots0 = telemShotsFired : telemLegHits0 = telemShotsHit
+    telemLegRollN = 0 : telemLegRollLock = 0 : telemLegRollCool = 0
+    telemLegDodge = 0 : telemLegDodgeLast = -10
+    telemLegNovaN = 0 : telemLegNovaDry = 0 : telemLegNovaKills = 0
+    telemLegRegen = 0 : telemLegArmour = 0
+End Sub
+
+' One PLAYER_Fire frame: 0 fire not held, 1 held but the gun is cooling, 2 held and ready but
+' the laser is below its cost (starved), 3 fired. A starved episode ends on release or a shot.
+Sub TELEM_NoteFire (tlnfMode As Integer)
+    If tlnfMode = 0 Then telemLegStarving = 0 : Exit Sub
+    telemLegFireF = telemLegFireF + 1
+    If tlnfMode = 2 Then
+        telemLegStarveF = telemLegStarveF + 1
+        If telemLegStarving = 0 Then telemLegStarveN = telemLegStarveN + 1 : telemLegStarving = -1
+    ElseIf tlnfMode = 3 Then
+        telemLegStarving = 0
+    End If
+End Sub
+
+' A roll key press: rolled, else refused because the upgrade isn't owned or the roll is cooling.
+Sub TELEM_NoteRoll (tlnrOk As Integer)
+    If tlnrOk Then
+        telemLegRollN = telemLegRollN + 1
+    ElseIf rollCoolMax <= 0 Then
+        telemLegRollLock = telemLegRollLock + 1
+    Else
+        telemLegRollCool = telemLegRollCool + 1
+    End If
+End Sub
+
+' A nova key press: fired, else dry (charges spent) when the upgrade is owned.
+Sub TELEM_NoteNova (tlnnOk As Integer)
+    If tlnnOk Then
+        telemLegNovaN = telemLegNovaN + 1
+    ElseIf novaMax > 0 Then
+        telemLegNovaDry = telemLegNovaDry + 1
+    End If
+End Sub
+
+' A hit the roll let through. Spore and cut call every frame, so frames in a row are one dodge.
+Sub TELEM_NoteDodge
+    If gameFrame - telemLegDodgeLast > 1 Then telemLegDodge = telemLegDodge + 1
+    telemLegDodgeLast = gameFrame
+End Sub
+
+Sub TELEM_NoteRegen (tlnrgN As Integer)
+    If tlnrgN > 0 Then telemLegRegen = telemLegRegen + tlnrgN
+End Sub
+
+Sub TELEM_NoteArmour (tlnaN As Integer)
+    If tlnaN > 0 Then telemLegArmour = telemLegArmour + tlnaN
+End Sub
+
+' The leg's counters as key=value fields, appended to stage_clear and session_end.
+Function TELEM_Leg$
+    Dim tlgHave As Long
+    If rollCoolMax > 0 Then tlgHave = 1
+    TELEM_Leg$ = "|fire_f=" + TELEM_N$(telemLegFireF) + "|starve_f=" + TELEM_N$(telemLegStarveF) _
+        + "|starve_n=" + TELEM_N$(telemLegStarveN) _
+        + "|lshots=" + TELEM_N$(telemShotsFired - telemLegShots0) + "|lhits=" + TELEM_N$(telemShotsHit - telemLegHits0) _
+        + "|roll_have=" + TELEM_N$(tlgHave) + "|roll_n=" + TELEM_N$(telemLegRollN) _
+        + "|roll_lock=" + TELEM_N$(telemLegRollLock) + "|roll_cool=" + TELEM_N$(telemLegRollCool) _
+        + "|dodge=" + TELEM_N$(telemLegDodge) _
+        + "|nova_max=" + TELEM_N$((novaMax)) + "|nova_n=" + TELEM_N$(telemLegNovaN) _
+        + "|nova_dry=" + TELEM_N$(telemLegNovaDry) + "|nova_kills=" + TELEM_N$(telemLegNovaKills) _
+        + "|regen=" + TELEM_N$(telemLegRegen) + "|armour_saved=" + TELEM_N$(telemLegArmour)
+End Function
+
 ' The chapter and how far into its stage: kills made of the kills the stage needs.
 Function TELEM_At$
     TELEM_At$ = "chapter=" + LTrim$(Str$(levelNum)) + "|stage_kills=" + LTrim$(Str$(stageKills)) _
@@ -131,12 +218,21 @@ Sub TELEM_SessionStart()
     telemKills = 0 : telemBossReached = 0 : telemBossPhaseLog = 0 : telemDeathCause = ""
     telemShotsFired = 0 : telemShotsHit = 0 : telemEscapes = 0 : telemBatch = ""
     telemExitReason = "" : telemBatchRows = 0 : telemT0 = gameFrame
-    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty + "|flags=" + telemFlags
+    telemCashedOut = 0 : telemCashedLeft = 0
+    TELEM_LegReset
+    TELEM_Row "session_start", "player_id=" + telemPlayerID + "|version=" + VERSION$ + "|build=" + BUILD_KIND$ + "|nerf=" + LTrim$(Str$(settingNerf)) + "|difficulty=" + runDifficulty + "|flags=" + telemFlags + "|tv=2"
 End Sub
 
 Sub TELEM_EnemyKilled()
     telemKills = telemKills + 1
     TELEM_Row "enemy_killed", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|wave=" + LTrim$(Str$(waveType)) + "|" + TELEM_At$
+End Sub
+
+' A kill made by the nova pulse: the same row, marked src=nova, and counted in the leg.
+Sub TELEM_NovaKill()
+    telemKills = telemKills + 1
+    telemLegNovaKills = telemLegNovaKills + 1
+    TELEM_Row "enemy_killed", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) + "|wave=" + LTrim$(Str$(waveType)) + "|" + TELEM_At$ + "|src=nova"
 End Sub
 
 Sub TELEM_PowerupCollected(tlpKind As String, tlpAmt As Single)
@@ -167,9 +263,12 @@ Sub TELEM_PlayerDamaged()
 End Sub
 
 Sub TELEM_PlayerDeath()
+    Dim tlpdReady As Long
+    If rollCoolMax > 0 And rollCool <= 0 Then tlpdReady = 1
     TELEM_Row "player_death", "score=" + LTrim$(Str$(score)) + "|kills=" + LTrim$(Str$(telemKills)) _
             + "|wave=" + LTrim$(Str$(waveType)) + "|boss=" + LTrim$(Str$(telemBossReached)) _
-            + "|cause=" + telemDeathCause + "|" + TELEM_At$
+            + "|cause=" + telemDeathCause + "|" + TELEM_At$ _
+            + "|nova_left=" + TELEM_N$((novaCharges)) + "|roll_ready=" + TELEM_N$(tlpdReady)
 End Sub
 
 Sub TELEM_BossReached()
@@ -218,11 +317,23 @@ End Sub
 Sub TELEM_StageClear(tlscCh As Integer, tlscFuelUsed As Single, tlscSecs As Single, tlscFuelLeft As Single)
     TELEM_Row "stage_clear", "chapter=" + LTrim$(Str$(tlscCh)) + "|fuel_used=" + LTrim$(Str$(Int(tlscFuelUsed + 0.5))) _
             + "|seconds=" + LTrim$(Str$(Int(tlscSecs + 0.5))) + "|fuel_left=" + LTrim$(Str$(Int(tlscFuelLeft))) _
-            + "|credits=" + LTrim$(Str$(credits))
+            + "|credits=" + LTrim$(Str$(credits)) + TELEM_Leg$
+    TELEM_LegReset
+End Sub
+
+' A dock visit ends (#387): what the player had, spent and left, how long, and what they looked at.
+' The lists are "key:count" (bought, denied) or keys (afford: next level within the credits left but
+' not bought; seen: rows the cursor visited), lv the upgrade levels in UPG_* order.
+Sub TELEM_DockVisit (tldvExit As String, tldvIn As Long, tldvUpg As Long, tldvFuel As Long, tldvShield As Long, tldvFrames As Long, tldvBought As String, tldvDenied As String, tldvAfford As String, tldvSeen As String, tldvLv As String)
+    TELEM_Row "dock_visit", "chapter=" + LTrim$(Str$(levelNum)) + "|credits_in=" + TELEM_N$(tldvIn) _
+            + "|spent_upg=" + TELEM_N$(tldvUpg) + "|spent_fuel=" + TELEM_N$(tldvFuel) + "|spent_shield=" + TELEM_N$(tldvShield) _
+            + "|credits_out=" + TELEM_N$((credits)) + "|secs=" + TELEM_N$(tldvFrames \ 60) + "|exit=" + tldvExit _
+            + "|bought=" + tldvBought + "|denied=" + tldvDenied + "|afford=" + tldvAfford + "|seen=" + tldvSeen + "|lv=" + tldvLv
 End Sub
 
 ' End of a run (#268): leftover credits cashed in for score, logged once per run.
 Sub TELEM_CreditBonus(tlcbCredits As Long, tlcbRate As Double, tlcbPts As Long)
+    telemCashedOut = -1 : telemCashedLeft = tlcbCredits
     TELEM_Row "credit_bonus", "credits=" + LTrim$(Str$(tlcbCredits)) + "|rate=" + LTrim$(Str$(tlcbRate)) _
             + "|points=" + LTrim$(Str$(tlcbPts)) + "|score=" + LTrim$(Str$(score))
 End Sub
@@ -230,8 +341,11 @@ End Sub
 Sub TELEM_SessionEnd()
     If tutorialRun Then Exit Sub
     If Len(telemSession) = 0 Then Exit Sub  ' idempotent: already ended or never started
+    Dim tlLeft As Long
+    tlLeft = credits
+    If telemCashedOut Then tlLeft = telemCashedLeft
     TELEM_Row "credits_earned", "earned=" + LTrim$(Str$(creditsEarned)) + "|spent=" + LTrim$(Str$(creditsSpent)) _
-            + "|left=" + LTrim$(Str$(credits))
+            + "|left=" + LTrim$(Str$(tlLeft))
     Dim tlMisses As Long : tlMisses = telemShotsFired - telemShotsHit
     Dim tlData As String
     tlData = "exit=" + telemExitReason _
@@ -242,6 +356,7 @@ Sub TELEM_SessionEnd()
            + "|misses=" + LTrim$(Str$(tlMisses)) + "|escapes=" + LTrim$(Str$(telemEscapes)) _
            + "|secs=" + LTrim$(Str$(TELEM_Elapsed&(gameFrame, telemT0))) + "|" + TELEM_At$
     If telemExitReason = "quit" Then tlData = tlData + "|state=" + DBG_StateName$(gameState)
+    tlData = tlData + TELEM_Leg$
     TELEM_Row "session_end", tlData  ' also appends to telemBatch
     DBG_Print "TELEM: SessionEnd rows=" + LTrim$(Str$(Len(telemBatch))) + " bytes"
     TELEM_FlushBatch

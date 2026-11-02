@@ -62,6 +62,7 @@ Dim Shared settingsDir       As String
 Dim Shared telemBatchRows    As Long
 Dim Shared telemT0           As Long
 Dim Shared gameFrame         As Long
+Dim Shared novaMax As Integer, novaCharges As Integer, rollCoolMax As Integer, rollCool As Integer
 Dim Shared telemFlags        As String
 Dim Shared levelNum          As Integer
 Dim Shared stageKills        As Long

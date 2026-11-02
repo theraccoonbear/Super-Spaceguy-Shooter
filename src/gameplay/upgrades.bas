@@ -18,6 +18,7 @@
 '   ok = UPG_NovaTry%              spend a nova charge
 '   UPG_RegenTick                  once per frame in play: shield regen after regenDelay
 '   d = UPG_ArmourDmg%(dmg)        collision damage after hull armour
+'   s = UPG_LevelsStr$             the levels in UPG_* order, comma-separated (dock_visit telemetry)
 ' Local variable prefix: upg* / cr*
 
 Const UPG_COUNT   = 11
@@ -253,6 +254,16 @@ Sub UPG_RegenTick
         lives = lives + 1
     End If
 End Sub
+
+' The levels in UPG_* order, comma-separated: "2,0,1,...".
+Function UPG_LevelsStr$
+    Dim uplsI As Integer, uplsOut As String
+    For uplsI = 1 To UPG_COUNT
+        If uplsI > 1 Then uplsOut = uplsOut + ","
+        uplsOut = uplsOut + LTrim$(Str$(upgLevel(uplsI)))
+    Next uplsI
+    UPG_LevelsStr$ = uplsOut
+End Function
 
 Function UPG_ArmourDmg% (uadDmg As Integer)
     UPG_ArmourDmg% = CInt(uadDmg * armourMul)

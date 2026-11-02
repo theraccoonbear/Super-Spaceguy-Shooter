@@ -1,0 +1,12 @@
+# Expected telemetry payload shapes: the data= keys of each event, in order, as the game builds them.
+# One line per shape: <event>[/<variant>] <key> <key> ... Lines starting with # are comments.
+# Read by tests/death_telem_test.bas; the Worker stores data as free-form key=value text.
+session_start player_id version build nerf difficulty flags tv
+enemy_killed score kills wave chapter stage_kills stage_target
+enemy_killed/nova score kills wave chapter stage_kills stage_target src
+stage_clear chapter fuel_used seconds fuel_left credits fire_f starve_f starve_n lshots lhits roll_have roll_n roll_lock roll_cool dodge nova_max nova_n nova_dry nova_kills regen armour_saved
+player_death score kills wave boss cause chapter stage_kills stage_target nova_left roll_ready
+session_end/death exit score kills wave boss shots hits misses escapes secs chapter stage_kills stage_target fire_f starve_f starve_n lshots lhits roll_have roll_n roll_lock roll_cool dodge nova_max nova_n nova_dry nova_kills regen armour_saved
+session_end/quit exit score kills wave boss shots hits misses escapes secs chapter stage_kills stage_target state fire_f starve_f starve_n lshots lhits roll_have roll_n roll_lock roll_cool dodge nova_max nova_n nova_dry nova_kills regen armour_saved
+credits_earned earned spent left
+dock_visit chapter credits_in spent_upg spent_fuel spent_shield credits_out secs exit bought denied afford seen lv

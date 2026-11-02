@@ -28,7 +28,7 @@ while IFS= read -r f; do
   case "$f" in
     '') ;;
     .github/*) game=1 server=1 ;;
-    tests/input/leaderboard.json) game=1 server=1 ;;
+    tests/input/leaderboard.json|tests/input/telemetry_rows.txt) game=1 server=1 ;;
     server/*) server=1 ;;
     assets/*) game=1 ;;
     docs/*|*.md) ;;
