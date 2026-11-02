@@ -53,13 +53,13 @@ Sub E3D_StarfieldAddLayer (camX As Single, camY As Single, camZ As Single, count
         If E3D_sfCount < E3D_SF_MAX Then
             E3D_sfCount = E3D_sfCount + 1
             n = E3D_sfCount
-            E3D_sfX(n)   = camX + RNG!(RNG_FX) * rangeX
-            E3D_sfY(n)   = camY + RNG!(RNG_FX) * rangeY - rangeY * 0.5
-            E3D_sfZ(n)   = camZ + RNG!(RNG_FX) * rangeZ - rangeZ * 0.5
-            E3D_sfVX(n)  = -(spdMin + RNG!(RNG_FX) * (spdMax - spdMin))
+            E3D_sfX(n)   = camX + RNG!(RNG_STARS) * rangeX
+            E3D_sfY(n)   = camY + RNG!(RNG_STARS) * rangeY - rangeY * 0.5
+            E3D_sfZ(n)   = camZ + RNG!(RNG_STARS) * rangeZ - rangeZ * 0.5
+            E3D_sfVX(n)  = -(spdMin + RNG!(RNG_STARS) * (spdMax - spdMin))
             E3D_sfRY(n)  = rangeY
             E3D_sfRZ(n)  = rangeZ
-            E3D_sfClr(n) = colors(Int(RNG!(RNG_FX) * 3))
+            E3D_sfClr(n) = colors(Int(RNG!(RNG_STARS) * 3))
         End If
     Next i
 End Sub
@@ -81,9 +81,9 @@ Sub E3D_StarfieldUpdate (camX As Single, camY As Single, camZ As Single)
         If E3D_sfX(i) < camX - 2 Then
             ry = E3D_sfRY(i)
             rz = E3D_sfRZ(i)
-            E3D_sfX(i) = camX + 20 + RNG!(RNG_FX) * 30
-            E3D_sfY(i) = camY + RNG!(RNG_FX) * ry - ry * 0.5
-            E3D_sfZ(i) = camZ + RNG!(RNG_FX) * rz - rz * 0.5
+            E3D_sfX(i) = camX + 20 + RNG!(RNG_STARS) * 30
+            E3D_sfY(i) = camY + RNG!(RNG_STARS) * ry - ry * 0.5
+            E3D_sfZ(i) = camZ + RNG!(RNG_STARS) * rz - rz * 0.5
         End If
     Next i
 End Sub

@@ -4,12 +4,13 @@
 ' or the audio device's timing can't shift what gameplay draws:
 '
 '   RNG_GAME    waves, enemies, boss behaviour and attack picks
-'   RNG_FX      particles, screen shake, VCR effect, starfield
+'   RNG_FX      particles, screen shake, VCR effect
+'   RNG_STARS   starfield respawns (so particle counts can't move the stars)
 '   RNG_AUDIO   sound tables, speech, blips
 '   RNG_UNIQUE  telemetry session ids, auto pilot names: always clock-seeded, even with
 '               --seed, so two seeded runs never share an id
 '
-'   RNG_Seed master     seed GAME/FX/AUDIO from master (UNIQUE from the clock)
+'   RNG_Seed master     seed GAME/FX/AUDIO/STARS from master (UNIQUE from the clock)
 '   x = RNG!(stream)    next value in [0, 1), like Rnd
 '
 ' A stream that was never seeded starts from a fixed default, so a test that includes a
@@ -21,7 +22,8 @@ Const RNG_GAME   = 1
 Const RNG_FX     = 2
 Const RNG_AUDIO  = 3
 Const RNG_UNIQUE = 4
-Const RNG_COUNT  = 4
+Const RNG_STARS  = 5
+Const RNG_COUNT  = 5
 
 Dim Shared rngState(1 To RNG_COUNT) As _Unsigned Long
 
@@ -61,6 +63,7 @@ Sub RNG_Seed(rngSeed As _Unsigned Long)
     For rngK = RNG_GAME To RNG_AUDIO
         rngState(rngK) = RNG_StreamState~&(rngSeed, rngK)
     Next rngK
+    rngState(RNG_STARS) = RNG_StreamState~&(rngSeed, RNG_STARS)
     rngState(RNG_UNIQUE) = RNG_StreamState~&(RNG_ClockSeed~&, RNG_UNIQUE)
 End Sub
 
