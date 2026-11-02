@@ -31,8 +31,10 @@ Type E3D_Face
     nz As Single
 End Type
 
+Const E3D_MESH_VMAX = 8192
+
 Type E3D_Mesh
-    verts(1 To 8192) As E3D_Coord
+    verts(1 To E3D_MESH_VMAX) As E3D_Coord
     vCount As Integer
     faces(1 To 8192) As E3D_Face
     fCount As Integer

@@ -1,3 +1,6 @@
+' World-space vertex workspace for E3D_GetMeshFacesLit — Shared so it is not allocated and zeroed on every call.
+Dim Shared E3D_gmfWorldVerts(1 To E3D_MESH_VMAX) As E3D_Coord
+
 Sub E3D_MakeMesh (mesh As E3D_Mesh)
     mesh.vCount = 0
     mesh.fCount = 0
@@ -6,6 +9,11 @@ End Sub
 Sub E3D_AddMeshVert (mesh As E3D_Mesh, x As Single, y As Single, z As Single)
     Dim idx As Integer
     idx = mesh.vCount + 1
+    If idx > E3D_MESH_VMAX Then
+        _Dest _Console
+        Print "E3D_AddMeshVert: mesh exceeds" + Str$(E3D_MESH_VMAX) + " vertices"
+        System 1
+    End If
     mesh.vCount = idx
     mesh.verts(idx).x = x
     mesh.verts(idx).y = y
@@ -297,7 +305,6 @@ End Sub
 ' Lit version — flat shading from a directional light. Used by sss.bas.
 ' Face baseClr drives the color; if 0, falls back to hue cycle.
 Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3D_Coord, tt As Single, lightDir As E3D_Coord, facePolys() As E3D_Polygon, faceClrs() As Long, faceDepths() As Single, faceCount As Integer)
-    Dim E3D_worldVerts(1 To 8192) As E3D_Coord
     Dim i As Integer, fi As Integer, vi As Integer
     Dim fv1 As Integer, fvn As Integer, fvi As Integer
     Dim fnx As Single, fny As Single, fnz As Single
@@ -308,7 +315,7 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
     Dim baseR As Integer, baseG As Integer, baseB As Integer
 
     For i = 1 To mesh.vCount
-        E3D_MatTransformCoord mesh.verts(i), modelMat, E3D_worldVerts(i)
+        E3D_MatTransformCoord mesh.verts(i), modelMat, E3D_gmfWorldVerts(i)
     Next i
 
     faceCount = 0
@@ -318,17 +325,17 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
         fny = mesh.faces(fi).nx * modelMat.m(1,0) + mesh.faces(fi).ny * modelMat.m(1,1) + mesh.faces(fi).nz * modelMat.m(1,2)
         fnz = mesh.faces(fi).nx * modelMat.m(2,0) + mesh.faces(fi).ny * modelMat.m(2,1) + mesh.faces(fi).nz * modelMat.m(2,2)
         fv1 = mesh.faces(fi).vIdx(1)
-        vvx = camPos.x - E3D_worldVerts(fv1).x
-        vvy = camPos.y - E3D_worldVerts(fv1).y
-        vvz = camPos.z - E3D_worldVerts(fv1).z
+        vvx = camPos.x - E3D_gmfWorldVerts(fv1).x
+        vvy = camPos.y - E3D_gmfWorldVerts(fv1).y
+        vvz = camPos.z - E3D_gmfWorldVerts(fv1).z
         If fnx * vvx + fny * vvy + fnz * vvz > 0 Then
             fvn = mesh.faces(fi).vCount
             depthSum = 0
             E3D_MakePolygon facePoly
             For vi = 1 To fvn
                 fvi = mesh.faces(fi).vIdx(vi)
-                E3D_AddCoord facePoly, E3D_worldVerts(fvi)
-                depthSum = depthSum + E3D_worldVerts(fvi).x
+                E3D_AddCoord facePoly, E3D_gmfWorldVerts(fvi)
+                depthSum = depthSum + E3D_gmfWorldVerts(fvi).x
             Next vi
             faceCount = faceCount + 1
             facePolys(faceCount) = facePoly
