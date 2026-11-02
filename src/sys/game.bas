@@ -61,6 +61,7 @@ Sub GAME_LoadTuning
     If PUP_Load% = 0 Then GAME_Usage pupLoadErr
     If WVT_Load% = 0 Then GAME_Usage wvtLoadErr
     If BHP_Load% = 0 Then GAME_Usage bhpLoadErr
+    If AIM_Set%(Val(CFG_Get$(cfgWaves, "player_nose_blend")), Val(CFG_Get$(cfgWaves, "enemy_fire_arc_deg"))) = 0 Then GAME_Usage aimLoadErr
 End Sub
 
 Sub GAME_NewGame

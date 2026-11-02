@@ -206,6 +206,7 @@ Function GTEXT_Get$ (k As String) : GTEXT_Get$ = "" : End Function
 '$INCLUDE:'../src/sys/sequence.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/gameplay/credits.bas'
+'$INCLUDE:'../src/gameplay/aim.bas'
 '$INCLUDE:'../src/gameplay/player.bas'
 
 Dim Shared rePass As Integer, reFail As Integer

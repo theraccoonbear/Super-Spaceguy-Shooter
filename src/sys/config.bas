@@ -7,7 +7,7 @@
 '   assets/config/upgrades.ini    the dock's upgrade table and descriptions (cfgUpgrades)
 '   assets/config/abilities.ini   nova / roll behaviour and their launch hints (cfgAbilities)
 '   assets/config/powerups.ini    power-up odds, amounts, spawn lane and grab size (cfgPowerups)
-'   assets/config/waves.ini       combat waves: timing, size, spawn distance, enemy fire, the clear-out (cfgWaves)
+'   assets/config/waves.ini       combat waves: timing, size, spawn distance, enemy fire, the clear-out, shot direction (cfgWaves)
 '   assets/config/bosses.ini      boss hit points, phases and the phase-change shield (cfgBosses)
 '   assets/config/difficulty.ini  difficulty levels and their multipliers (cfgDifficulty, in difficulty.bas)
 ' sss.bas parses each embedded file once at startup:

@@ -90,6 +90,7 @@ Sub PLAYER_Fire
     Dim plfOff As Single, plfSp As Single, plfSide As Integer
     Dim plfAaDX As Single, plfAaDY As Single, plfAaDZ As Single, plfAaDist As Single
     Dim plfAaBest As Single, plfAaNY As Single, plfAaNZ As Single
+    Dim plfHx As Single, plfHy As Single, plfHz As Single
 
     If held(E3D_KEY_SPACE) = 0 Or gameState <> GS_PLAYING Then Exit Sub
     If fireTimer > 0 Or laserEnergy < LASER_COST Then Exit Sub
@@ -145,6 +146,10 @@ Sub PLAYER_Fire
     If plfAaBest < 1e9 Then
         plfNy = plfNy + (plfAaNY - plfNy) * AIM_ASSIST
         plfNz = plfNz + (plfAaNZ - plfNz) * AIM_ASSIST
+    End If
+    If aimNoseBlend > 0 Then
+        AIM_Nose player.rx, player.ry, player.rz, plfHx, plfHy, plfHz
+        AIM_Blend plfNx, plfNy, plfNz, plfHx, plfHy, plfHz, aimNoseBlend, plfNx, plfNy, plfNz
     End If
 
     plfFired = 0

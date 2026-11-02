@@ -19,6 +19,7 @@ Sub ENEMY_Update
     Dim enAttDY As Single, enAttDZ As Single
     Dim enDX As Single, enDY As Single, enDZ As Single, enMag As Single
     Dim enLead As Single
+    Dim enNX As Single, enNY As Single, enNZ As Single, enFireOk As Integer
     Dim enTrlR As Integer, enTrlG As Integer, enTrlB As Integer
     Dim enHit As Integer
     Dim enHomingLerp As Single, enHomingRange As Single
@@ -85,6 +86,7 @@ Sub ENEMY_Update
             ' fire: lead-compensated aim (EFIRE_LEAD fraction of perfect intercept)
             enemyFireTimer(enI) = enemyFireTimer(enI) - 0.025
             If enemyFireTimer(enI) <= 0 And enemies(enI).px > player.px And enemies(enI).px < player.px + EFIRE_RANGE Then
+                enFireOk = -1
                 enDX = player.px - enemies(enI).px
                 enDY = player.py - enemies(enI).py
                 enDZ = player.pz - enemies(enI).pz
@@ -95,7 +97,13 @@ Sub ENEMY_Update
                     enDZ = (player.pz + playerVZ * enLead) - enemies(enI).pz
                     enMag = SQR(enDX * enDX + enDY * enDY + enDZ * enDZ)
                     enDX = enDX / enMag : enDY = enDY / enMag : enDZ = enDZ / enMag
+                    If aimArcDeg > 0 Then
+                        AIM_Nose enemies(enI).rx, enemies(enI).ry, enemies(enI).rz, enNX, enNY, enNZ
+                        enNX = -enNX : enNY = -enNY : enNZ = -enNZ
+                        enFireOk = AIM_Arc%(enNX, enNY, enNZ, enDX, enDY, enDZ, aimArcDeg, enDX, enDY, enDZ)
+                    End If
                     For enEJ = 1 To MAX_EBULLETS
+                        If enFireOk = 0 Then Exit For
                         If ebullets(enEJ).active = 0 Then
                             ebullets(enEJ).active  = -1
                             ebullets(enEJ).meshIdx = enemies(enI).meshIdx
@@ -110,7 +118,7 @@ Sub ENEMY_Update
                         End If
                     Next enEJ
                 End If
-                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum) * dlvFEnemyFire
+                If enFireOk Then enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum) * dlvFEnemyFire
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped

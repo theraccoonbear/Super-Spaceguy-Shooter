@@ -20,6 +20,7 @@ Const BOSS_DEATH_SCALE   = 3    ' world size of the death explosion: the boss is
 
 Sub BOSS_Update
     Dim bssDX As Single, bssDY As Single, bssDZ As Single, bssSpd As Single
+    Dim bssNX As Single, bssNY As Single, bssNZ As Single, bssFireOk As Integer
     Dim bssEJ As Integer, bssJ As Integer
     Dim bssShots As Integer
     Dim bssHit As Integer
@@ -154,6 +155,13 @@ Sub BOSS_Update
             End Select
             BOSS_SetEvasion boss.phase
         Else
+            bssFireOk = -1
+            If aimArcDeg > 0 Then
+                AIM_Nose boss.rx, boss.ry, boss.rz, bssNX, bssNY, bssNZ
+                bssNX = -bssNX : bssNY = -bssNY : bssNZ = -bssNZ
+                bssFireOk = AIM_Arc%(bssNX, bssNY, bssNZ, bssDX, bssDY, bssDZ, aimArcDeg, bssDX, bssDY, bssDZ)
+            End If
+            If bssFireOk Then
             Select Case boss.phase
             Case 1  ' 3-shot Y fan
                 bssShots = 0
@@ -211,6 +219,7 @@ Sub BOSS_Update
                 boss.fireTimer = BOSS_FIRE3 * dlvFBossFire
                 BOSS_SetEvasion boss.phase
             End Select
+            End If
         End If
     End If
 

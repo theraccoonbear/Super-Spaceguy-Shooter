@@ -204,6 +204,7 @@ Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / p
 '$INCLUDE:'../src/sys/sequence.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/gameplay/credits.bas'
+'$INCLUDE:'../src/gameplay/aim.bas'
 '$INCLUDE:'../src/gameplay/player.bas'
 
 Dim Shared rePass As Integer, reFail As Integer

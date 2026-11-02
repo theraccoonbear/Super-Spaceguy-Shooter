@@ -146,6 +146,7 @@ Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / p
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/gameplay/credits.bas'
+'$INCLUDE:'../src/gameplay/aim.bas'
 '$INCLUDE:'../src/gameplay/player.bas'
 
 Dim Shared tcPass As Integer, tcFail As Integer
