@@ -9,9 +9,13 @@
 
 ## Build requirement
 - Always do a test build after any code change. Fix all errors before reporting back.
-- Build command: from the repo root, run `./tools/buildqb sss.bas`  (script auto-creates `qb64pe-dir/assets → repo/assets` symlink so `$EMBED:'assets/...'` resolves correctly from QB64-PE's binary dir)
-- After building, always smoke-test: run `builds/sss --version` and confirm it prints the version and exits cleanly. This catches launch crashes without needing a display.
-- No native QB64-PE? `tools/dev build` / `tools/dev test` run the same build, smoke test, and full suite in a Podman/Docker container (see [`docs/container.md`](docs/container.md)).
+- **Agents build, test and run only through `tools/dev`** (Podman/Docker container, see [`docs/container.md`](docs/container.md)): `tools/dev build` (the build plus the `--version` smoke test), `tools/dev test`, `tools/dev render`. Never native `./tools/buildqb` (parallel native builds collide, #239), and never run `builds/sss` on the host.
+- The native path (`./tools/buildqb sss.bas`, then `builds/sss --version`) is for a person with QB64-PE installed; it is documented in README.md and docs/building.md, not used by agents.
+
+## Commands in PRs, issues and docs written for the user
+- The user plays and tests through the container. Every run command in a "How to test (by hand)" section is `tools/dev run <game flags>` (or `tools/dev headless …` for a scripted run). Never `builds/sss`, `tools/buildqb`, or "rebuild": `tools/dev run` rebuilds a stale binary by itself.
+- Use only flags and scene names that exist. Check `docs/cli.md` or `GAME_Usage` before writing one; never invent a flag. Scenes: `--scene playingN` (level N's flight; level 4 is the asteroid stage), `bossN`, `dockN`, `title`, `emperor`, `tutorial`, `crawl:<key>`.
+- Give one copy-pasteable command per check. If a value is meant to be tuned by feel, the PR ships a dev flag that adjusts or reloads it live (like `--backdrop-dev` and `--explosion-dev`), not an edit-the-ini-and-rebuild loop.
 - After any change to `assets/gametext.txt` or `assets/gamevalues.ini`: run `bash tools/bake_speech_dict` from the repo root and commit the updated `assets/speech_dict.txt`. CI will fail otherwise.
 
 ## QB64-PE gotchas
@@ -48,8 +52,8 @@
 ## Checklist and PR order
 The branch goes up as a draft PR as soon as it builds, so it can be pulled and played while the long checks run.
 
-1. **Build**: `./tools/buildqb sss.bas` (or `tools/dev build`) — must complete with no errors
-2. **Smoke test**: `builds/sss --version` — must print the version and exit 0
+1. **Build**: `tools/dev build` — must complete with no errors
+2. **Smoke test**: part of `tools/dev build` (`builds/sss --version` inside the container) — must print the version and exit 0
    - Steps 1 and 2 must pass before every push. Then commit, push, and open the PR as a **draft** (`gh pr create --draft`) with `Closes #N` and its "How to test (by hand)" section.
    - Steps 3 to 5 follow on the draft. Fix what they find and push again. Once they pass and CI is green, mark the PR ready (`gh pr ready`).
 3. **All automated tests**: `tools/test` (or `tools/dev test` in the container). It builds and runs every test in `tests/` in parallel, exactly as CI does on Linux, macOS and Windows (`.github/scripts/qb64test.sh`), then prints each test's output and a pass/fail summary. All tests must pass (exit 0) before the PR is marked ready. No exceptions.

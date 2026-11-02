@@ -183,29 +183,22 @@ These cause incorrect code in this codebase:
 ## Build and test quick reference
 
 ```bash
-# Full build (from repo root 3d/)
-tools/buildqb sss.bas
+# Build + --version smoke test, in the container (agents always use tools/dev; native: tools/buildqb sss.bas)
+tools/dev build
 
-# Smoke test
-builds/sss --version                      # must print version and exit 0
-
-# Jump straight to a named scene (fastest manual test)
-builds/sss --scene boss3                  # stage 3 boss fight
-builds/sss --scene playing2               # stage 2 combat
-builds/sss --scene tutorial               # the tutorial: one guided flight, no record, cannot be failed (#240)
+# Jump straight to a named scene (fastest manual test; rebuilds a stale binary first)
+tools/dev run --scene boss3               # stage 3 boss fight
+tools/dev run --scene playing2            # stage 2 combat
+tools/dev run --scene playing4            # the asteroid stage
+tools/dev run --scene tutorial            # the tutorial: one guided flight, no record, cannot be failed (#240)
 tests/tutorial/run.sh                      # scripted run of the whole tutorial (in the container: tools/dev shell tests/tutorial/run.sh) (also: waiver, gated)
 
 # Full test suite (same as CI)
 tools/test                                # native, uses the qb64pe on PATH
 tools/dev test                            # in the container
 
-# Individual tests
-tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
-tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test
-tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
-tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
-tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
-tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
+# Individual tests (inside the container)
+tools/dev shell bash -c "tools/buildqb tests/seq_trace_test.bas && builds/seq_trace_test"
 tools/http_queue_test                          # builds and starts the QB64-PE mock HTTP server (tools/http_mock_server.bas) itself
 
 # Golden-screenshot render tests (tests/render/; --update re-blesses goldens)
@@ -214,7 +207,7 @@ tools/dev render
 # Rebake speech dict (required after gametext changes)
 bash tools/bake_speech_dict
 
-# Preview a 3D mesh without booting the game
+# Preview a 3D mesh without booting the game (native QB64-PE; opens a window)
 tools/buildqb viewer.bas && builds/viewer
 ```
 
