@@ -15,6 +15,7 @@
 '       SPARK at=x,y color=rrggbb[,rrggbb...] [count=3] [every=60] [speed=0.6] [gravity=0.05]
 '             [life=20] [dir=270] [spread=120] [phase=0] [jitter=0] [size=1]
 '       SPRITE img=name at=x,y to=x,y [frames=300] [rest=0] [pingpong=0] [flip=0] [phase=0]
+'              [scale=1[,1]] [bob=amp,period[,angle]]
 '       LASER from=x,y,depth to=x,y,depth color=rrggbb [every=60] [speed=4] [length=12] [jitter=0] [phase=0]
 ' Positions are pixels on the 320x240 painting. Frames run at 60 per second.
 '   BLINK  a light on a looping envelope: it fades up over `rise` frames, stays at full for `hold`,
@@ -29,6 +30,8 @@
 '          soften each flash; hold is not allowed with it.
 '   SPRITE an image from assets/backdrops/ goes at -> to over `frames`, then waits `rest` (hidden, or
 '          parked at the end with pingpong=1, which drives it back; flip=1 mirrors the return leg).
+'          scale=a[,b] is its size along the path (linear from at to to); bob=amp,period[,angle] a hop
+'          of amp pixels (times the scale) every `period` frames while it moves, angle 0 right, 90 down, 270 up.
 '   LASER  every `every` frames a bolt flies from -> to at `speed` world units a frame, `length` long,
 '          through the backdrop's own CAMERA. x,y is where the bolt shows on the painting at that depth.
 '   glow   pixels of soft glow around a BLINK core.
@@ -45,7 +48,7 @@
 ' BD_Find%(name)       the backdrop's number, -1 when it has none
 ' BD_Advance           call once per drawn frame; resets when a screen is entered
 ' BD_BlinkLevel!(fx,f) 0..1 brightness of a BLINK (or its Morse) at frame f
-' BD_SpriteAt%(fx,f,x,y,flip)  where a SPRITE is on frame f (0 = hidden)
+' BD_SpriteAt%(fx,f,x,y,flip)  where a SPRITE is on frame f (0 = hidden); BD_SpriteState% adds its size and hop offset
 ' BD_LaserHead%(fx,f,j,dist)   whether the j-th newest bolt of a LASER is in flight, and how far it has gone
 ' BD_World / BD_CamMatrix       the painting's fixed camera (CAMERA), so a LASER never reads the game's vpMat
 ' Shared state is bd*; every routine's locals carry their own two-letter prefix
@@ -59,7 +62,7 @@ Const BD_KIND_BLINK = 1
 Const BD_KIND_SPARK = 2
 Const BD_KIND_SPRITE = 3
 Const BD_KIND_LASER = 4
-Const BD_SPRITE_NAMES = "tug"      ' images in assets/backdrops/, each embedded as BDIMG + the name in capitals
+Const BD_SPRITE_NAMES = "tug baggage_cart"      ' images in assets/backdrops/, each embedded as BDIMG + the name in capitals without underscores
 Const BD_CAM_FOV = 60                ' CAMERA defaults
 Const BD_CAM_HORIZON = 120
 Const BD_CAM_VPX = 160               ' the vanishing point's x: the middle of the painting
@@ -107,6 +110,11 @@ Dim Shared bdD2(0 To BD_MAX_FX - 1) As Single
 Dim Shared bdFrames(0 To BD_MAX_FX - 1) As Long     ' SPRITE frames per leg
 Dim Shared bdPing(0 To BD_MAX_FX - 1) As Integer
 Dim Shared bdFlip(0 To BD_MAX_FX - 1) As Integer
+Dim Shared bdScaleA(0 To BD_MAX_FX - 1) As Single    ' SPRITE size at `at` and at `to`
+Dim Shared bdScaleB(0 To BD_MAX_FX - 1) As Single
+Dim Shared bdBobAmp(0 To BD_MAX_FX - 1) As Single    ' SPRITE hop: height in pixels, frames per hop, direction in degrees
+Dim Shared bdBobPer(0 To BD_MAX_FX - 1) As Single
+Dim Shared bdBobAng(0 To BD_MAX_FX - 1) As Single
 Dim Shared bdImg(0 To BD_MAX_FX - 1) As Integer     ' SPRITE image, 1.. in BD_SPRITE_NAMES
 Dim Shared bdLaserLen(0 To BD_MAX_FX - 1) As Single
 Dim Shared bdMorse(0 To BD_MAX_FX - 1) As String    ' one character per unit, 1 lit and 0 dark; "" = not morse
@@ -213,7 +221,7 @@ End Function
 Function BD_KeysOf$ (bkVerb As String)
     Select Case bkVerb
         Case "BLINK" : BD_KeysOf$ = "at color size glow rise hold fall rest phase morse unit"
-        Case "SPRITE" : BD_KeysOf$ = "img at to frames rest pingpong flip phase"
+        Case "SPRITE" : BD_KeysOf$ = "img at to frames rest pingpong flip phase scale bob"
         Case "LASER" : BD_KeysOf$ = "from to color every jitter speed length phase"
         Case "CAMERA" : BD_KeysOf$ = "fov horizon"
         Case "SPARK" : BD_KeysOf$ = "at color count every jitter size speed gravity life dir spread phase"
@@ -376,7 +384,30 @@ Function BD_SpriteIdx% (bsiName As String)
     Next bsiK
 End Function
 
+' key=n[,n[,n]] (bvMin to bvMax numbers) into bvOut(0..), their count in bvCount. A missing key is fine (count 0, 1 returned).
+Function BD_ParseList% (blKey As String, blMin As Integer, blMax As Integer, blOut() As Single, blCount As Integer)
+    Dim blI As Integer, blV As String, blRest As String, blP As Integer
+    BD_ParseList% = -1
+    blCount = 0
+    blOut(0) = 1
+    blI = BD_KvIdx%(blKey)
+    If blI < 0 Then Exit Function
+    BD_ParseList% = 0
+    blV = bdKvVal(blI)
+    blRest = blV + ","
+    Do While Len(blRest) > 0
+        blP = InStr(blRest, ",")
+        If blCount >= blMax Then BD_LineErr bdPVerb + " " + blKey + " takes at most " + LTrim$(Str$(blMax)) + " numbers, not '" + blV + "'" : Exit Function
+        If BD_ParseNum%(Left$(blRest, blP - 1), blOut(blCount)) = 0 Then BD_LineErr bdPVerb + " " + blKey + " must be numbers separated by commas, not '" + blV + "'" : Exit Function
+        blCount = blCount + 1
+        blRest = Mid$(blRest, blP + 1)
+    Loop
+    If blCount < blMin Then BD_LineErr bdPVerb + " " + blKey + " needs at least " + LTrim$(Str$(blMin)) + " numbers, not '" + blV + "'" : Exit Function
+    BD_ParseList% = -1
+End Function
+
 Function BD_BuildSprite% (bsFx As Integer)
+    Dim bsL(0 To 2) As Single, bsN As Integer
     Dim bsV As Single, bsP(0 To 2) As Single, bsName As String, bsI As Integer, bsK As Integer
     BD_BuildSprite% = 0
     bsK = BD_KvIdx%("img")
@@ -398,6 +429,26 @@ Function BD_BuildSprite% (bsFx As Integer)
     If BD_Opt%("flip", 0, 0, 1, -1, bsV) = 0 Then Exit Function
     bdFlip(bsFx) = bsV
     If bdFlip(bsFx) <> 0 And bdPing(bsFx) = 0 Then BD_LineErr "SPRITE flip=1 needs pingpong=1 (it mirrors the return leg, and there is none without it)" : Exit Function
+    If BD_ParseList%("scale", 1, 2, bsL(), bsN) = 0 Then Exit Function
+    bdScaleA(bsFx) = bsL(0)
+    If bsN = 2 Then bdScaleB(bsFx) = bsL(1) Else bdScaleB(bsFx) = bsL(0)
+    If BD_KvIdx%("scale") < 0 Then bdScaleA(bsFx) = 1 : bdScaleB(bsFx) = 1
+    If BD_KvIdx%("scale") >= 0 Then
+        For bsK = 0 To bsN - 1
+            If bsL(bsK) < 0.1 Or bsL(bsK) > 4 Then BD_LineErr "SPRITE scale must be 0.1 to 4, not '" + bdKvVal(BD_KvIdx%("scale")) + "'" : Exit Function
+        Next bsK
+    End If
+    bdBobAmp(bsFx) = 0 : bdBobPer(bsFx) = 1 : bdBobAng(bsFx) = 270
+    If BD_ParseList%("bob", 2, 3, bsL(), bsN) = 0 Then Exit Function
+    If BD_KvIdx%("bob") >= 0 Then
+        If bsL(0) < 0 Or bsL(0) > 64 Then BD_LineErr "SPRITE bob amplitude must be 0 to 64 pixels, not '" + bdKvVal(BD_KvIdx%("bob")) + "'" : Exit Function
+        If bsL(1) < 2 Or bsL(1) > 3600 Then BD_LineErr "SPRITE bob period must be 2 to 3600 frames, not '" + bdKvVal(BD_KvIdx%("bob")) + "'" : Exit Function
+        If bsN = 3 Then
+            If bsL(2) < 0 Or bsL(2) > 360 Then BD_LineErr "SPRITE bob angle must be 0 to 360 degrees, not '" + bdKvVal(BD_KvIdx%("bob")) + "'" : Exit Function
+            bdBobAng(bsFx) = bsL(2)
+        End If
+        bdBobAmp(bsFx) = bsL(0) : bdBobPer(bsFx) = bsL(1)
+    End If
     bdKind(bsFx) = BD_KIND_SPRITE
     BD_BuildSprite% = -1
 End Function
@@ -663,30 +714,46 @@ End Function
 ' Where SPRITE bsFx is on frame bsFrame, in painting pixels. 0 when it is not on the painting (the rest
 ' after a one-way trip; with pingpong it waits at the ends instead). bsFlip = 1 on the return leg when flip=1.
 Function BD_SpriteAt% (bsFx As Integer, bsFrame As Long, bsX As Single, bsY As Single, bsFlip As Integer)
-    Dim bsP As Long, bsT As Single, bsF As Long, bsR As Long
+    Dim bsSc As Single, bsDX As Single, bsDY As Single
+    BD_SpriteAt% = BD_SpriteState%(bsFx, bsFrame, bsX, bsY, bsFlip, bsSc, bsDX, bsDY)
+End Function
+
+' BD_SpriteAt plus the sprite's size (scale=, linear along the path, so it follows the point on the return
+' leg) and its hop offset in painting pixels (bob=, already multiplied by the size). The hop counts the frames
+' of the current leg, so it stands still (offset 0) while the sprite waits at an end.
+Function BD_SpriteState% (bsFx As Integer, bsFrame As Long, bsX As Single, bsY As Single, bsFlip As Integer, bsScale As Single, bsDX As Single, bsDY As Single)
+    Dim bsP As Long, bsT As Single, bsF As Long, bsR As Long, bsLeg As Long, bsMoving As Integer, bsOff As Single, bsA As Single
     bsF = bdFrames(bsFx) : bsR = bdRest(bsFx)
-    bsFlip = 0
-    BD_SpriteAt% = 0
+    bsFlip = 0 : bsMoving = -1 : bsLeg = 0
+    BD_SpriteState% = 0
+    bsDX = 0 : bsDY = 0 : bsScale = 1
     If bdPing(bsFx) Then
         bsP = (bsFrame + bdPhase(bsFx)) Mod (2 * (bsF + bsR))
         If bsP < bsF Then
-            bsT = bsP / bsF
+            bsT = bsP / bsF : bsLeg = bsP
         ElseIf bsP < bsF + bsR Then
-            bsT = 1
+            bsT = 1 : bsMoving = 0
         ElseIf bsP < 2 * bsF + bsR Then
             bsT = 1 - (bsP - bsF - bsR) / bsF
+            bsLeg = bsP - bsF - bsR
             bsFlip = bdFlip(bsFx)
         Else
-            bsT = 0
+            bsT = 0 : bsMoving = 0
         End If
     Else
         bsP = (bsFrame + bdPhase(bsFx)) Mod (bsF + bsR)
         If bsP >= bsF Then Exit Function
-        bsT = bsP / bsF
+        bsT = bsP / bsF : bsLeg = bsP
     End If
     bsX = bdX(bsFx) + (bdX2(bsFx) - bdX(bsFx)) * bsT
     bsY = bdY(bsFx) + (bdY2(bsFx) - bdY(bsFx)) * bsT
-    BD_SpriteAt% = -1
+    bsScale = bdScaleA(bsFx) + (bdScaleB(bsFx) - bdScaleA(bsFx)) * bsT
+    If bsMoving And bdBobAmp(bsFx) > 0 Then
+        bsOff = bdBobAmp(bsFx) * Abs(Sin(3.14159265 * bsLeg / bdBobPer(bsFx))) * bsScale
+        bsA = bdBobAng(bsFx) * 0.0174533
+        bsDX = Cos(bsA) * bsOff : bsDY = Sin(bsA) * bsOff
+    End If
+    BD_SpriteState% = -1
 End Function
 
 ' --- the painting's fixed camera ---

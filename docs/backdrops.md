@@ -44,17 +44,19 @@ SPRITE, LASER and CAMERA have their own keys, below. BLINK also takes `morse=` a
 ## SPRITE: a small image on a straight path
 
 ```
-    SPRITE img=tug at=130,214 to=290,182 frames=600 rest=300 pingpong=1 flip=1
+    SPRITE img=baggage_cart at=6,146 to=84,156 frames=420 rest=240 scale=0.4,0.55 bob=1,12
 ```
 
-An image from `assets/backdrops/<name>.png` (embedded; the placeholder is `tug.png`, 24x12, facing right) goes from `at` to `to` at a constant speed over `frames` (1-3600, default 300), then waits `rest` (0-3600, default 0) and repeats. Position is a pure function of the frame counter, as for BLINK, so screenshots are deterministic; `phase=` starts it that many frames in. `at` and `to` are the image's centre, in painting pixels, and may lie up to 64 pixels off the painting so a sprite can drive on and off the edge. The image is scaled with the painting.
+An image from `assets/backdrops/<name>.png` (embedded; `baggage_cart.png` is 64 px wide, heading down-right, and `tug.png` is a 24x12 placeholder facing right) goes from `at` to `to` at a constant speed over `frames` (1-3600, default 300), then waits `rest` (0-3600, default 0) and repeats. Position is a pure function of the frame counter, as for BLINK, so screenshots are deterministic; `phase=` starts it that many frames in. `at` and `to` are the image's centre, in painting pixels, and may lie up to 64 pixels off the painting so a sprite can drive on and off the edge. The image is scaled with the painting.
 
 - Without `pingpong=1` the sprite is hidden during `rest` and then starts again at `at`.
 - With `pingpong=1` it drives back from `to` to `at` over another `frames`, and waits `rest` at both ends (visible there). The loop is `2 * (frames + rest)`.
 - `flip=1` mirrors the image for the whole return leg. It only means something with `pingpong=1`, so `flip=1` without it is a parse error.
+- `scale=a[,b]` (0.1 to 4 each, default 1) is the sprite's size along the path: `a` at `at`, `b` at `to`, linear in between. One value is a fixed size. The size follows the point on the path, so on the pingpong return leg it shrinks or grows back. The image is drawn into the scaled rectangle centred on the path point. A far-to-near route is `scale=0.4,0.55`.
+- `bob=amp,period[,angle]` makes it hop like a wheeled thing on a rough road: its offset is `amp * |sin(pi * t / period)|` pixels along `angle`, times the current scale, where `t` counts frames of the current leg. `amp` is 0 to 64, `period` (frames per hop) 2 to 3600. `angle` is in degrees on the screen with the same convention as `dir=` on SPARK: 0 is right, 90 is **down**, 270 is **up** (the default). The hop pauses (offset 0) while the sprite waits at a pingpong end, so a parked vehicle does not bounce, and each leg starts its count at 0; for a clean stop make `frames` a multiple of `period`.
 - An unknown `img` is an error that lists the known names (`BD_SPRITE_NAMES` in `backdrop.bas`).
 
-To swap in real art: put the PNG in `assets/backdrops/` (keep it facing right), and replace `tug.png`, or for a new name add it to `BD_SPRITE_NAMES`, add a `$EMBED:'assets/backdrops/<name>.png':'BDIMG<NAME>'` line to `sss.bas` and `tests/backdrop_test.bas`, and a load line in `BACKDROP_LoadArt`.
+To swap in real art: shrink the picture once to the size it is drawn at its largest (for example `magick big.png -filter Box -resize 64x assets/backdrops/name.png`, which keeps the alpha), commit that small file, and then use `scale=` of 1 or less at run time rather than scaling a large image down every frame (`baggage_cart.png` is 256x149 shrunk to 64 wide, drawn at 0.4 to 0.55). To replace an image keep its file name; for a new one add its name to `BD_SPRITE_NAMES`, add an `$EMBED:'assets/backdrops/<name>.png':'BDIMG<NAME>' (no underscores in the handle)` line to `sss.bas` and `tests/backdrop_test.bas`, and a load line in `BACKDROP_LoadArt`.
 
 ## LASER and CAMERA: a bolt in perspective
 

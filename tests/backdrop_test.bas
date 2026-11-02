@@ -14,6 +14,7 @@
 '  10. no RNG stream is read, so nothing else in the game shifts
 '  13. SPRITE: path, rest, pingpong, flip, phase, and its parse errors
 '  14. LASER and CAMERA: emission timing, the fixed camera's projection, parse errors
+'  16. SPRITE scale= and bob=: size along the path, both legs, the hop, its angle, the pause at the ends
 '  15. Morse on BLINK: SOS on/off sequence, unit, rest, rise/fall, parse errors
 '
 ' Build: tools/dev test (builds and runs every test)
@@ -24,6 +25,7 @@ OPTION _EXPLICIT
 
 $EMBED:'assets/backdrops.txt':'BACKDROPS'
 $EMBED:'assets/backdrops/tug.png':'BDIMGTUG'
+$EMBED:'assets/backdrops/baggage_cart.png':'BDIMGBAGGAGECART'
 
 '$INCLUDE:'../src/2d/backdrop.bas'
 
@@ -556,8 +558,8 @@ Print ""
 
 Print "--- 13. SPRITE ---"
 Dim btSX As Single, btSY As Single, btFl As Integer, btVis As Integer
-BT_Assert Len(_Embedded$("BDIMGTUG")) > 0,              "13.01  the tug image is embedded"
-BT_Assert BD_SpriteIdx%("tug") = 1 And BD_SpriteIdx%("nope") = 0 And BD_SpriteIdx%("") = 0, "13.02  image names are looked up"
+BT_Assert Len(_Embedded$("BDIMGTUG")) > 0 And Len(_Embedded$("BDIMGBAGGAGECART")) > 0, "13.01  the sprite images are embedded"
+BT_Assert BD_SpriteIdx%("tug") = 1 And BD_SpriteIdx%("baggage_cart") = 2 And BD_SpriteIdx%("nope") = 0 And BD_SpriteIdx%("") = 0, "13.02  image names are looked up"
 btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=0,0 to=100,50 frames=100 rest=50"))
 BT_Assert btOk <> 0 And bdKind(0) = BD_KIND_SPRITE,     "13.03  a one-way sprite parses"
 btVis = BD_SpriteAt%(0, 0, btSX, btSY, btFl)
@@ -746,6 +748,78 @@ BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff hold=5 unit=3"), 2, "
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sos unit=0"), 2, "unit must be"), "15.20  unit of at least 1"
 BT_Assert BT_Fails%(BT_Src$("    BLINK at=5,5 color=ffffff morse=sossossossossossossossossos"), 2, "at most 24"), "15.21  too long"
 BT_Assert BT_Fails%(BT_Src$("    SPARK at=5,5 color=ffffff morse=sos"), 2, "unknown SPARK key 'morse'"), "15.22  morse is a BLINK key only"
+Print ""
+
+Print "--- 16. SPRITE scale and bob ---"
+Dim btSc As Single, btBX As Single, btBY As Single
+Const btSprP = "    SPRITE img=tug at=0,0 to=100,0 frames=100 rest=20 pingpong=1"
+btOk = BD_Parse%(BT_Src$(btSprP))
+btVis = BD_SpriteState%(0, 40, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btVis And btSc = 1 And btBX = 0 And btBY = 0, "16.01  no scale or bob: size 1, no hop"
+btOk = BD_Parse%(BT_Src$(btSprP + " scale=2"))
+btVis = BD_SpriteState%(0, 0, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btSc = 2,                                     "16.02  one value is a fixed size ..."
+btVis = BD_SpriteState%(0, 77, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btSc = 2,                                     "16.03  ... all along the path"
+btOk = BD_Parse%(BT_Src$(btSprP + " scale=0.5,2"))
+BT_Assert btOk <> 0,                                    "16.04  two values parse"
+btVis = BD_SpriteState%(0, 0, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btVis And btSc = 0.5,                         "16.05  the start has the first size"
+btVis = BD_SpriteState%(0, 50, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btSc - 1.25) < 0.001,                     "16.06  the middle is halfway between"
+btVis = BD_SpriteState%(0, 110, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btSc = 2,                                     "16.07  parked at the far end it has the second size"
+btVis = BD_SpriteState%(0, 170, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btSc - 1.25) < 0.001 And Abs(btSX - 50) < 0.01, "16.08  on the return leg the size follows the position on the path"
+btVis = BD_SpriteState%(0, 239, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btSc = 0.5,                                   "16.09  parked at the start it has the first size again"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " scale=0.05"), 2, "scale must be 0.1 to 4"), "16.10  too small"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " scale=1,4.5"), 2, "scale must be 0.1 to 4"), "16.11  too big"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " scale=1,2,3"), 2, "at most 2"), "16.12  three values"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " scale=big"), 2, "scale must be numbers"), "16.13  not a number"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " scale=1,"), 2, "scale must be numbers"), "16.14  a trailing comma"
+btOk = BD_Parse%(BT_Src$(btSprP + " bob=10,20"))
+btVis = BD_SpriteState%(0, 10, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBX) < 0.01 And Abs(btBY + 10) < 0.01,   "16.15  the hop peaks amp pixels up (the default angle, 270, is up on screen) halfway through a period"
+btVis = BD_SpriteState%(0, 20, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBX) < 0.01 And Abs(btBY) < 0.01,        "16.16  and is back on the ground at the end of it"
+btVis = BD_SpriteState%(0, 30, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBY + 10) < 0.01,                        "16.17  and hops again: |sin|, never below the ground"
+btVis = BD_SpriteState%(0, 5, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btBY < 0 And Abs(btBY + 10 * Sin(3.14159265 / 4)) < 0.01, "16.18  a quarter in is amp * sin(pi/4)"
+btOk = BD_Parse%(BT_Src$(btSprP + " bob=10,20,0"))
+btVis = BD_SpriteState%(0, 10, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBX - 10) < 0.01 And Abs(btBY) < 0.01,   "16.19  angle 0 hops to the right"
+btOk = BD_Parse%(BT_Src$(btSprP + " bob=10,20,90"))
+btVis = BD_SpriteState%(0, 10, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBX) < 0.01 And Abs(btBY - 10) < 0.01,   "16.20  angle 90 hops down (as dir= on SPARK)"
+btOk = BD_Parse%(BT_Src$(btSprP + " scale=2,2 bob=10,20"))
+btVis = BD_SpriteState%(0, 10, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBY + 20) < 0.01,                        "16.21  the hop is multiplied by the size"
+btOk = BD_Parse%(BT_Src$(btSprP + " scale=1,3 bob=10,20"))
+btVis = BD_SpriteState%(0, 10, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBY + 10 * btSc) < 0.01 And btSc > 1.1,  "16.22  with a size that changes it uses the current one"
+btOk = BD_Parse%(BT_Src$(btSprP + " bob=10,20"))
+btVis = BD_SpriteState%(0, 110, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btVis And btBX = 0 And btBY = 0,              "16.23  parked at the far end it does not hop (frame 110 would be mid-hop)"
+btVis = BD_SpriteState%(0, 130, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBY + 10) < 0.01,                        "16.24  the return leg starts its hop count afresh"
+btVis = BD_SpriteState%(0, 230, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btBX = 0 And btBY = 0,                        "16.25  and it stands still at the start end too"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=tug at=0,0 to=100,0 frames=100 rest=20 bob=10,20"))
+btVis = BD_SpriteState%(0, 10, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert Abs(btBY + 10) < 0.01,                        "16.26  a one-way sprite hops too"
+btVis = BD_SpriteState%(0, 105, btSX, btSY, btFl, btSc, btBX, btBY)
+BT_Assert btVis = 0,                                    "16.27  hidden during rest, so no hop to speak of"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=10"), 2, "bob needs at least 2"), "16.28  amplitude only"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=10,20,90,1"), 2, "bob takes at most 3"), "16.29  four values"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=-1,20"), 2, "bob amplitude must be"), "16.30  negative amplitude"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=99,20"), 2, "bob amplitude must be"), "16.31  huge amplitude"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=5,1"), 2, "bob period must be"), "16.32  period under 2 frames"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=5,20,400"), 2, "bob angle must be"), "16.33  angle over 360"
+BT_Assert BT_Fails%(BT_Src$(btSprP + " bob=a,b"), 2, "bob must be numbers"), "16.34  not numbers"
+btOk = BD_Parse%(BT_Src$("    SPRITE img=baggage_cart at=26,166 to=80,205 scale=0.3,0.75"))
+BT_Assert btOk <> 0 And bdImg(0) = 2,                   "16.35  the baggage cart is the second image"
 Print ""
 
 Print "=== " + LTrim$(Str$(btPass + btFail)) + " tests: " _

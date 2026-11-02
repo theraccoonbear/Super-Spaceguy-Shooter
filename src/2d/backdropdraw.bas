@@ -32,9 +32,10 @@ Sub BACKDROP_Load ()
     BACKDROP_LoadArt
 End Sub
 
-' The SPRITE images, one line per name in BD_SPRITE_NAMES and in its order (assets/backdrops/<name>.png, embedded as BDIMG + the name in capitals).
+' The SPRITE images, one line per name in BD_SPRITE_NAMES and in its order (assets/backdrops/<name>.png, embedded as BDIMG + the name in capitals without underscores).
 Sub BACKDROP_LoadArt ()
     bdImgHandle(1) = UI_LoadArt&(_Embedded$("BDIMGTUG"))
+    bdImgHandle(2) = UI_LoadArt&(_Embedded$("BDIMGBAGGAGECART"))
 End Sub
 
 ' assets/backdrops.txt on disk: the launch folder (tools/dev run starts in the repository), else
@@ -108,14 +109,16 @@ Sub BACKDROP_DrawSparks ()
 End Sub
 
 Sub BACKDROP_DrawSprite (bdpFx As Integer)
-    Dim bdpX As Single, bdpY As Single, bdpFlip As Integer, bdpImg As Long
+    Dim bdpX As Single, bdpY As Single, bdpFlip As Integer, bdpImg As Long, bdpSc As Single, bdpBX As Single, bdpBY As Single
     Dim bdpW As Integer, bdpH As Integer, bdpX1 As Integer, bdpY1 As Integer, bdpX2 As Integer, bdpY2 As Integer
     bdpImg = bdImgHandle(bdImg(bdpFx))
     If bdpImg >= -1 Then Exit Sub
-    If BD_SpriteAt%(bdpFx, bdFrame, bdpX, bdpY, bdpFlip) = 0 Then Exit Sub
-    bdpW = Int(_Width(bdpImg) * (bdDevX2 - bdDevX1 + 1) / BD_PAINT_W + 0.5)
-    bdpH = Int(_Height(bdpImg) * (bdDevY2 - bdDevY1 + 1) / BD_PAINT_H + 0.5)
-    bdpX1 = BACKDROP_ScreenX%(bdpX) - bdpW \ 2 : bdpY1 = BACKDROP_ScreenY%(bdpY) - bdpH \ 2
+    If BD_SpriteState%(bdpFx, bdFrame, bdpX, bdpY, bdpFlip, bdpSc, bdpBX, bdpBY) = 0 Then Exit Sub
+    bdpW = Int(_Width(bdpImg) * bdpSc * (bdDevX2 - bdDevX1 + 1) / BD_PAINT_W + 0.5)
+    bdpH = Int(_Height(bdpImg) * bdpSc * (bdDevY2 - bdDevY1 + 1) / BD_PAINT_H + 0.5)
+    If bdpW < 1 Then bdpW = 1
+    If bdpH < 1 Then bdpH = 1
+    bdpX1 = BACKDROP_ScreenX%(bdpX + bdpBX) - bdpW \ 2 : bdpY1 = BACKDROP_ScreenY%(bdpY + bdpBY) - bdpH \ 2
     bdpX2 = bdpX1 + bdpW - 1 : bdpY2 = bdpY1 + bdpH - 1
     If bdpFlip Then _PutImage (bdpX2, bdpY1)-(bdpX1, bdpY2), bdpImg, backBuffer Else _PutImage (bdpX1, bdpY1)-(bdpX2, bdpY2), bdpImg, backBuffer
 End Sub
