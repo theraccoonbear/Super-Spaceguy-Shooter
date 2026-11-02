@@ -12,75 +12,18 @@ $CONSOLE:ONLY
 OPTION _EXPLICIT
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+
 Const VERSION$ = "0.0.0-test"
 Const BUILD_KIND$ = "dev"
-Const UN_MAX_LEN = 32
-Const CAM_DEFAULT_PHI = 0.1545
-Const CAM_DEFAULT_R   = 6.80
-Const CAM_CHASE_X     = CAM_DEFAULT_R * COS(CAM_DEFAULT_PHI)
-Const CAM_CHASE_Y     = CAM_DEFAULT_R * SIN(CAM_DEFAULT_PHI)
 
-Type BossObj
-    active  As Integer
-    meshIdx As Integer
-    px As Single : py As Single : pz As Single
-    hp As Integer
-    phase As Integer
-End Type
 
-Type CamFollow
-    angleLocked AS INTEGER
-    orbitTheta  AS SINGLE
-    orbitPhi    AS SINGLE
-    orbitR      AS SINGLE
-End Type
 
 Dim Shared DB_URL As String
 Dim Shared DB_KEY As String
-Dim Shared boss              As BossObj
-Dim Shared camF              As CamFollow
-Dim Shared ioReadOnly        As Integer
-Dim Shared debugMode         As Integer
-Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single
-Dim Shared settingNarration As Integer, settingNarrSpeed As Integer, settingFullscreen As Integer
-Dim Shared highScore         As Long
-Dim Shared telemOn           As Integer
-Dim Shared telemSession      As String
-Dim Shared telemPlayerID     As String
-Dim Shared telemConsent      As Integer
-Dim Shared telemKills        As Long
-Dim Shared telemBossReached  As Integer
-Dim Shared telemBossPhaseLog As Integer
-Dim Shared telemDeathCause   As String
-Dim Shared telemShotsFired   As Long
-Dim Shared telemShotsHit     As Long
-Dim Shared telemEscapes      As Long
-Dim Shared telemBatch        As String
-Dim Shared telemCsvDir       As String
-Dim Shared telemCsvBuf       As String
-Dim Shared settingsDir       As String
-Dim Shared telemBatchRows    As Long
-Dim Shared telemT0           As Long
-Dim Shared gameFrame         As Long
-Dim Shared novaMax As Integer, novaCharges As Integer, rollCoolMax As Integer, rollCool As Integer
-Dim Shared telemFlags        As String
-Dim Shared levelNum          As Integer
-Dim Shared stageKills        As Long
-Dim Shared stageKillTarget   As Long
-Dim Shared gameState         As Integer
 Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
-Dim Shared telemExitReason   As String
-Dim Shared score             As Long
-Dim Shared waveType          As Integer
-Dim Shared leaderboardPlayerID As String
-Dim Shared telemPlayerName     As String
-Dim Shared settingNerf         As Integer
-Dim Shared lives               As Integer
-Dim Shared credits             As Long
-Dim Shared creditsEarned       As Long
-Dim Shared creditsSpent        As Long
-Dim Shared fuelLevel           As Single
-Dim Shared laserEnergy         As Single
 
 Sub DBG_Print (msg As String) : End Sub
 Sub HTTP_Post (u As String, k As String, b As String, t As String) : End Sub
@@ -88,14 +31,9 @@ Sub HTTP_Get  (u As String, k As String, t As String) : End Sub
 Function JSON_Obj$ (s As String) : JSON_Obj$ = "{" + s + "}" : End Function
 Function JSON_S$   (k As String, v As String) : JSON_S$ = k + ":" + v : End Function
 Function JSON_N$   (k As String, v As String) : JSON_N$ = k + ":" + v : End Function
-Sub E3D_BindsWrite (bwFH As Integer) : End Sub
-Function E3D_BindsLoadLine% (blKey As String, blRaw As String) : E3D_BindsLoadLine% = 0 : End Function
-Sub E3D_PadReselect : End Sub
 
-Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/config.bas'
-'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/sys/settingsio.bas'
 
