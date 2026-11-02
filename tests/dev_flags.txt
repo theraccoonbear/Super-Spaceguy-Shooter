@@ -15,6 +15,8 @@
 --realtime
 --gate-tutorial
 --backdrop-dev
+--explosion-dev
+--explode
 --seed
 --screenshot-at
 --leaderboard-file

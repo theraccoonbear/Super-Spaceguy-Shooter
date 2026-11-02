@@ -1,8 +1,7 @@
 # Explosions: data-defined 3D particles
 
-Issue #198. An explosion is a list of layers (flash, fireball, embers, shock ring, smoke, delayed secondary bursts) in `assets/explosions.txt`. Particles live in world space, so they carry a velocity, slow down, fall and inherit the victim's motion. Code: `src/2d/explosion.bas` (prefix `XP_`): parse, validate, pool, simulate. It has no drawing and no game state; the game does not call it yet.
+Issue #198. An explosion is a list of layers (flash, fireball, embers, shock ring, smoke, delayed secondary bursts) in `assets/explosions.txt`. Particles live in world space, so they carry a velocity, slow down, fall and inherit the victim's motion. Code: `src/2d/explosion.bas` (prefix `XP_`): parse, validate, pool, simulate, no drawing and no game state; `src/2d/explosiondraw.bas` (prefix `XPD_`): drawing and dev tooling.
 
-Status: this is the headless core. Drawing (projection through the game camera, size and glow by distance, the depth-buffer test), the dev tooling (live reload, on-demand detonation, stress test, `--explode name@frame`) and the call sites come in the later parts of #198. Until then nothing on screen changes.
 
 ## The file
 
@@ -42,7 +41,7 @@ explosion:enemy
 | `glow=` | 0 | halo radius as a multiple of size, 0 to 16 |
 | `ramp=c1,c2,...` | | a colour gradient over the particle's life, 1 to 6 `rrggbb` |
 | `color=c1,c2,...` | | one colour per particle, picked from the list, 1 to 6 `rrggbb` |
-| `maxpx=` `minpx=` | 0 / 1 | pixel clamps on the drawn size; `maxpx=0` means no upper clamp |
+| `maxpx=` `minpx=` | 0 / 1 | pixel clamps on the drawn size; `maxpx=0` means the default 16 px; never above 64 |
 | `occlude=` | 1 | 1: ships in front hide the particle; 0: drawn over everything (flashes) |
 
 Exactly one of `ramp=` and `color=` is required. `count`, `delay`, `scatter`, `speed`, `drag`, `gravity`, `inherit`, `life`, `size` (either end) and `glow` take a range `a..b`: each particle picks its own value (`count` and `delay`: each spawn picks one). The other keys take a single number.
@@ -67,6 +66,53 @@ Every random-looking choice is `BD_Hash!` (from `backdrop.bas`) keyed on a per-s
 - **Pending queue:** 32 delayed layers at once. A layer that finds it full is dropped and counted.
 - **Per explosion:** at most 12 BURST lines, 300 particles in all, 8 delayed layers, and a glow x count budget of 3000 (the sum over layers of the largest glow times the largest count). The file holds at most 16 explosions and 64 BURST lines. Going over any of these is a load error, never a silently dropped line.
 
+## Drawing
+
+Code: `src/2d/explosiondraw.bas` (prefix `XPD_`), included after `explosion.bas`. `XPD_Draw` runs in `GS_PLAYING_Update` right after `E3D_SceneFlush` and before `COMBAT_OverlayDraw`, so bolts and warnings stay on top of the particles and the particles on top of the scene.
+
+### Units and depth scale
+
+Particles are projected with the frame's `vpMat` (the same matrix the scene used), so a burst follows camera lag, orbit mode and the cinematic camera. For each particle, clip `w` is the view depth and:
+
+- `focal = (scrH / 2) / tan(cam.fov / 2)`, once per frame (`XP_Focal!`)
+- radius in pixels = `size x focal / w` (`XP_PxRadius!`); the glow radius is `glow x` that radius, at most 48 px
+- the radius is capped at the layer's `maxpx` (`maxpx=0` means 16; never above 64, `XP_MaxPx!`)
+- under `max(minpx, 1)` pixels the particle is one pixel and its alpha is scaled by `(r / that)^2` (`XP_DotFade!`), so a far ember fades out instead of flickering
+- nearer than `w = 0.6` (`XP_NEAR`) it is not drawn; from 0.6 to 2.0 its alpha rises linearly (`XP_NearFade!`)
+- the last quarter of a particle's life fades its alpha to 0 (`XP_LifeFade!`)
+- a particle whose centre is off screen is skipped unless its radius (or glow) reaches into the screen
+
+Colour comes from `XP_Color&` (the layer's ramp at the particle's age, or its own picked colour).
+
+### Occlusion and order
+
+`occlude=1` layers are tested against `E3D_zBuf` with the same NDC z the scene's polygons write (`z / w` of clip row 2, smaller is nearer; the buffer holds 2.0 where nothing was drawn). A small particle tests its centre pixel; a disc over 6 px is filled by scanline, each row split into the runs the buffer lets through. `occlude=0` layers skip the test and draw over ships.
+
+Live bursts (one per `XP_Spawn`) are drawn back to front by the view depth of their spawn point (at most 32 are ordered; any further burst is drawn with the last one). Inside a burst the layers draw in file order. There is no additive blend, so a glow is a stack of translucent fills (a Circle stack up to 6 px, three nested discs above).
+
+### Dev tooling
+
+`--explosion-dev` (dev builds only; a release build rejects it) works in play (`GS_PLAYING`, not while the pause dialog is open):
+
+| Key | |
+|---|---|
+| **Z** | select the next definition |
+| **X** | detonate it 12 world units ahead of the ship (at the boss when one is out) |
+| **C** | reload `assets/explosions.txt` from disk (the launch folder, else the repository next to the executable) |
+| **V** | stress test: `boss` plus 8 `enemy` in one frame |
+
+A readout at the bottom left shows the definition name, live particles and `xpDropped`. A reload error is listed wrapped in red above it (at most 8 rows), the particles are cleared and the effects stay off until the file loads clean; the game does not stop. A SHAKE applies as `fxShakeTimer = max(current, frames)`. Z, X, C and V are not read by play (a player can remap an action onto one of them, which would then also trigger the helper); the pause dialog reads C, but it is a different state.
+
+`--explode name@frame[,name@frame...]` (dev builds only) spawns the named explosions 12 units ahead of the ship when the frame counter (the one `--screenshot-at` uses) reaches `frame` in play, for deterministic render scenes. An unknown name or a malformed value stops the launch with a usage error. `tests/render/scenes/explosion.txt` uses `--explode boss@20` with shots at 22 (flash), 35 (debris and ring) and 60 (embers and smoke).
+
+### Tuning workflow
+
+```
+tools/dev run --scene playing2 --god --explosion-dev
+```
+
+Edit `assets/explosions.txt`, press **C** in the running game, press **X** to see it, **Z** for the next definition, **V** for the worst case. Look at it near and far (fly forward), behind a ship (the ship must hide it), with Tab's camera orbit, and check `drop` stays 0 in the stress test. Then bless a render scene deliberately (`tools/dev render --update gameplay explosion`).
+
 ## Errors
 
 A problem is reported as `line N: ...` in `xpErrors`; a file with any error loads nothing (the tables stay empty). `XP_Validate$()` adds a missing BURST and the names the game looks up (`XP_REQUIRED`: `boss`, `enemy`). `XP_Find%(name)` gives an explosion's id (-1 when absent); `xpIdBoss` and `xpIdEnemy` are resolved when the file loads.
@@ -83,10 +129,13 @@ A problem is reported as `line N: ...` in `xpErrors`; a file with any error load
 | `XP_Update` | one frame |
 | `XP_Clear` | empty the pool and the queue, zero the counters |
 | `XP_Live%`, `XP_Size!(slot)`, `XP_Color&(slot)` | what a renderer reads, with the `xpX/xpY/xpZ`, `xpAlive` and `xpGl` tables |
+| `XP_Focal!`, `XP_PxRadius!`, `XP_MaxPx!`, `XP_NearFade!`, `XP_DotFade!`, `XP_LifeFade!` | the depth-scale maths the drawing uses |
+| `XP_ParseExplode%(text)` | the `--explode` value |
+| `XPD_Draw`, `XPD_Boom id,x,y,z,vx,vy,vz,scale` | draw the pool; `XP_Spawn` plus the SHAKE |
 
 ## Tests
 
-`tests/explosion_test.bas` parses the real file and covers parse errors, ranges, determinism, an untouched `rngState`, pool overflow and reduction, delay timing, the drag and gravity steps, inherit and scale, ring planarity, cone spread, colours and name lookup.
+`tests/explosion_test.bas` parses the real file and covers the depth-scale, pixel clamp, near fade and `--explode` parsing, and parse errors, ranges, determinism, an untouched `rngState`, pool overflow and reduction, delay timing, the drag and gravity steps, inherit and scale, ring planarity, cone spread, colours and name lookup.
 
 ```
 tools/dev test

@@ -136,6 +136,7 @@ emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 dockBgImg       = _LOADIMAGE(_EMBEDDED$("DOCKBG"),     32, "memory")
 BACKDROP_Load
 XP_Load
+IF cliExplode <> "" THEN IF XP_ExplodeMissing$ <> "" THEN GAME_Usage "--explode: no explosion named '" + XP_ExplodeMissing$ + "' in assets/explosions.txt"
 DOCK_LoadArt
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")

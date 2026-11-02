@@ -106,6 +106,7 @@ Sub STAGE_Update
             DEV_Clear
             ATK_Clear
             FX_Clear
+            XP_Clear
             spawnTimer = 0
             boss.warnTimer = 0 : boss.active = 0 : boss.hp = 0 : boss.moveTimer = 0 : boss.state = 0
             planetTimer = 0 : planetSeq = 0 : planetTick = 0 : planetR = 3.0 : planetDefDone = 0

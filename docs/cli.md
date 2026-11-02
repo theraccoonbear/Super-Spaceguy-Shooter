@@ -21,6 +21,8 @@ sss [options]
   --realtime             Keep 60 frames per second in --input-script runs (for recordings, see tools/dev record)
   --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder then starts the tutorial at the first New Game)
   --backdrop-dev         Matte-painting helper on the title, emperor and dock screens: shows the painting coordinates under the mouse, and R reloads `assets/backdrops.txt` from disk, with parse problems shown on screen in small text (see [Backdrops](backdrops.md))
+  --explosion-dev        Explosion helper in play: **Z** picks a definition, **X** detonates it ahead of the ship (at the boss when one is out), **C** reloads `assets/explosions.txt` from disk, **V** runs the stress test; a readout shows the name, live particles and drops (see [Explosions](explosions.md))
+  --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes, e.g. `boss@20`)
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
   --ships N              Start every run with N ships (testing)

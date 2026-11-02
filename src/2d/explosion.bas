@@ -4,7 +4,7 @@
 ' of BURST lines (flash, fireball, embers, shock ring, smoke, delayed secondary bursts) plus a
 ' SHAKE; XP_Spawn starts one at a world position and XP_Update advances every particle one frame.
 ' Particles live in world space. Units are world units and frames; only maxpx and minpx are pixels.
-' Drawing (projection, depth test, dev tooling) is a later change and reads the XP_ tables.
+' src/2d/explosiondraw.bas draws it and reads the XP_ tables.
 '
 ' File format (; starts a comment; verbs are case-insensitive, keys are lower case):
 '   explosion:<name>
@@ -24,7 +24,7 @@
 '   life      frames                          size=a[,b] world radius, a at birth and b at death
 '   glow      halo radius as a multiple of size
 '   ramp      gradient over the particle's life; color  one colour per particle
-'   maxpx minpx   pixel clamps on the drawn size (maxpx=0: no upper clamp)
+'   maxpx minpx   pixel clamps on the drawn size (maxpx=0: XP_MAXPX_DEFAULT; never above XP_MAXPX_CAP)
 '   occlude   1: ships in front hide the particle, 0: drawn over everything
 ' Each frame: v *= drag, vy -= gravity, p += v. Scale in XP_Spawn multiplies size, speed, at and
 ' scatter.
@@ -56,6 +56,11 @@ Const XP_SHAPE_SPHERE = 0
 Const XP_SHAPE_RING = 1
 Const XP_SHAPE_CONE = 2
 Const XP_REQUIRED = "boss enemy"
+Const XP_MAXPX_DEFAULT = 16
+Const XP_MAXPX_CAP = 64
+Const XP_NEAR = 0.6
+Const XP_NEAR_FULL = 2.0
+Const XP_MAX_EXPLODE = 16
 
 Dim Shared xdName(0 To XP_MAX_DEF - 1) As String
 Dim Shared xdFrom(0 To XP_MAX_DEF - 1) As Integer
@@ -134,6 +139,10 @@ Dim Shared xpS0(0 To XP_POOL - 1) As Single
 Dim Shared xpS1(0 To XP_POOL - 1) As Single
 Dim Shared xpGl(0 To XP_POOL - 1) As Single
 Dim Shared xpCol(0 To XP_POOL - 1) As Long
+Dim Shared xpSer(0 To XP_POOL - 1) As Long          ' the spawn it came from
+Dim Shared xpOX(0 To XP_POOL - 1) As Single         ' where that spawn started
+Dim Shared xpOY(0 To XP_POOL - 1) As Single
+Dim Shared xpOZ(0 To XP_POOL - 1) As Single
 Dim Shared xpLive As Long
 Dim Shared xpFirst As Integer         ' every slot below this one is in use
 Dim Shared xpDropped As Long          ' particles the pool or the pending queue could not take
@@ -584,6 +593,7 @@ Sub XP_Emit (xeLay As Integer, xeSer As Long, xeCnt As Long, xeX As Single, xeY 
             xpCol(xeSlot) = xbCol(xeLay, Int(BD_Hash!(xeSer, xeLay, xeB + 7) * xbColN(xeLay)))
         End If
         xpLay(xeSlot) = xeLay
+        xpSer(xeSlot) = xeSer : xpOX(xeSlot) = xeX : xpOY(xeSlot) = xeY : xpOZ(xeSlot) = xeZ
         xpAlive(xeSlot) = -1
         xpLive = xpLive + 1
         xpFirst = xeSlot + 1
@@ -713,4 +723,96 @@ Function XP_Color& (xzSlot As Integer)
     Else
         XP_Color& = xpCol(xzSlot)
     End If
+End Function
+
+' --- depth scale: the maths the drawing uses, here so a test can drive it with plain numbers ---
+
+' Pixels per world unit at view depth 1: (screen height / 2) / tan(fov / 2); fov in degrees, as in E3D_MatPerspective.
+Function XP_Focal! (xfH As Single, xfFov As Single)
+    XP_Focal! = (xfH * 0.5) / Tan(3.14159265 * xfFov / 360)
+End Function
+
+' Projected radius in pixels of a world radius at clip w (the view depth).
+Function XP_PxRadius! (xrSize As Single, xrFocal As Single, xrW As Single)
+    XP_PxRadius! = xrSize * xrFocal / xrW
+End Function
+
+' The largest radius in pixels a layer may draw: its maxpx, the default for 0, never above the cap.
+Function XP_MaxPx! (xmV As Single)
+    If xmV <= 0 Then xmV = XP_MAXPX_DEFAULT
+    If xmV > XP_MAXPX_CAP Then xmV = XP_MAXPX_CAP
+    XP_MaxPx! = xmV
+End Function
+
+' 0 closer than XP_NEAR, 1 from XP_NEAR_FULL on, linear between.
+Function XP_NearFade! (xnW As Single)
+    If xnW <= XP_NEAR Then XP_NearFade! = 0 : Exit Function
+    If xnW >= XP_NEAR_FULL Then XP_NearFade! = 1 : Exit Function
+    XP_NearFade! = (xnW - XP_NEAR) / (XP_NEAR_FULL - XP_NEAR)
+End Function
+
+' Alpha factor of a particle whose radius is xdR pixels: 1 at or above max(minpx, 1), else (r / that)^2, so a speck fades out as it recedes.
+Function XP_DotFade! (xdR As Single, xdMin As Single)
+    Dim xdT As Single
+    xdT = xdMin : If xdT < 1 Then xdT = 1
+    If xdR >= xdT Then XP_DotFade! = 1 : Exit Function
+    If xdR <= 0 Then XP_DotFade! = 0 : Exit Function
+    XP_DotFade! = (xdR / xdT) * (xdR / xdT)
+End Function
+
+' 1 for the first three quarters of a particle's life, then down to 0 at its end.
+Function XP_LifeFade! (xlAge As Single, xlLife As Single)
+    Dim xlF As Single
+    xlF = xlAge / xlLife
+    If xlF <= 0.75 Then XP_LifeFade! = 1 : Exit Function
+    XP_LifeFade! = (1 - xlF) / 0.25
+End Function
+
+' --- --explode name@frame[,name@frame...] (dev) ---
+
+Dim Shared xjName(0 To XP_MAX_EXPLODE - 1) As String
+Dim Shared xjFrame(0 To XP_MAX_EXPLODE - 1) As Long
+Dim Shared xjCount As Integer
+Dim Shared xjErr As String
+
+' Reads the flag's value. 1 when it is a list of name@frame (the name a-z 0-9 _, the frame a whole number), at most XP_MAX_EXPLODE; else 0 with xjErr.
+Function XP_ParseExplode% (xqSrc As String)
+    Dim xqRest As String, xqItem As String, xqPos As Integer, xqAt As Integer, xqName As String, xqFr As String, xqI As Integer, xqCh As String
+    xjCount = 0 : xjErr = ""
+    xqRest = xqSrc
+    If xqRest = "" Then xjErr = "--explode needs name@frame[,name@frame...]" : Exit Function
+    Do While xqRest <> ""
+        xqPos = InStr(xqRest, ",")
+        If xqPos = 0 Then xqPos = Len(xqRest) + 1
+        xqItem = Left$(xqRest, xqPos - 1)
+        xqRest = Mid$(xqRest, xqPos + 1)
+        xqAt = InStr(xqItem, "@")
+        If xqAt < 2 Then xjErr = "--explode takes name@frame, got '" + xqItem + "'" : Exit Function
+        xqName = LCase$(Left$(xqItem, xqAt - 1)) : xqFr = Mid$(xqItem, xqAt + 1)
+        If Len(xqName) > 16 Then xjErr = "--explode name '" + xqName + "' is longer than 16" : Exit Function
+        For xqI = 1 To Len(xqName)
+            xqCh = Mid$(xqName, xqI, 1)
+            If InStr("abcdefghijklmnopqrstuvwxyz0123456789_", xqCh) = 0 Then xjErr = "--explode name '" + xqName + "' may only use a-z 0-9 _" : Exit Function
+        Next xqI
+        If xqFr = "" Or Len(xqFr) > 9 Then xjErr = "--explode frame must be a whole number, got '" + xqFr + "'" : Exit Function
+        For xqI = 1 To Len(xqFr)
+            If InStr("0123456789", Mid$(xqFr, xqI, 1)) = 0 Then xjErr = "--explode frame must be a whole number, got '" + xqFr + "'" : Exit Function
+        Next xqI
+        If xjCount >= XP_MAX_EXPLODE Then xjErr = "--explode takes at most" + Str$(XP_MAX_EXPLODE) + " entries" : Exit Function
+        xjName(xjCount) = xqName : xjFrame(xjCount) = Val(xqFr)
+        xjCount = xjCount + 1
+    Loop
+    XP_ParseExplode% = -1
+End Function
+
+' "" when every --explode name is a defined explosion, else the first missing one.
+Function XP_ExplodeMissing$ ()
+    Dim xmI As Integer
+    For xmI = 0 To xjCount - 1
+        If XP_Find%(xjName(xmI)) < 0 Then XP_ExplodeMissing$ = xjName(xmI) : Exit Function
+    Next xmI
+End Function
+
+Function XP_ExplodeError$ ()
+    XP_ExplodeError$ = xjErr
 End Function
