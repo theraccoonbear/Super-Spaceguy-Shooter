@@ -55,6 +55,7 @@ Sub CLI_Parse()
     cliCrawls   = (InStr(cliLine, "--crawls") > 0)
     cliRealtime = (InStr(cliLine, "--realtime") > 0)
     cliGateTutorial = (InStr(cliLine, "--gate-tutorial") > 0)
+    cliBackdropDev = (InStr(cliLine, "--backdrop-dev") > 0)
 
     cliPos = InStr(cliLine, "--scene ")
     If cliPos > 0 Then

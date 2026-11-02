@@ -15,6 +15,7 @@
 --frames
 --realtime
 --gate-tutorial
+--backdrop-dev
 --seed
 --credits
 --ships

@@ -14,6 +14,7 @@
 --frames
 --realtime
 --gate-tutorial
+--backdrop-dev
 --seed
 --screenshot-at
 --leaderboard-file
