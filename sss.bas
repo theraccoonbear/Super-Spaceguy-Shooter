@@ -55,6 +55,7 @@ $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 $EMBED:'assets/tutorial.txt':'TUTSCRIPT'
 $EMBED:'assets/backdrops.txt':'BACKDROPS'
+$EMBED:'assets/explosions.txt':'EXPLOSIONS'
 $EMBED:'assets/backdrops/tug.png':'BDIMGTUG'
 $EMBED:'assets/backdrops/baggage_cart.png':'BDIMGBAGGAGECART'
 $EMBED:'assets/.env':'ENVCONFIG'
@@ -134,6 +135,7 @@ titleImg        = _LOADIMAGE(_EMBEDDED$("TITLEIMG"),   32, "memory")
 emperorImg      = _LOADIMAGE(_EMBEDDED$("EMPERORIMG"), 32, "memory")
 dockBgImg       = _LOADIMAGE(_EMBEDDED$("DOCKBG"),     32, "memory")
 BACKDROP_Load
+XP_Load
 DOCK_LoadArt
 FONT_BuildPalette fontPalette()
 GTEXT_LoadVars _EMBEDDED$("GAMEVALUES")
