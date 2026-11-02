@@ -6,6 +6,7 @@
 '$INCLUDE:'3d/object.bas'
 '$INCLUDE:'3d/input.bas'
 '$INCLUDE:'3d/collision.bas'
+'$INCLUDE:'3d/outline.bas'
 '$INCLUDE:'3d/scene.bas'
 '$INCLUDE:'3d/starfield.bas'
 '$INCLUDE:'3d/obj.bas'

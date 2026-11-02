@@ -1,7 +1,7 @@
 ' stress.bas — E3D engine stress test
 ' Spawns faceted spheres (32 faces each) to measure polygon throughput.
 ' Each sphere has a unique randomized color palette.
-' Controls: = add sphere   - remove sphere   arrows orbit camera   ESC/Q quit
+' Controls: = add sphere   - remove sphere   O outline on/off   arrows orbit camera   ESC/Q quit
 
 '$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
@@ -31,6 +31,7 @@ Dim frameMs    As Single
 Dim i          As Integer
 Dim addWas     As Integer
 Dim remWas     As Integer
+Dim outWas     As Integer
 Dim fps        As Integer
 Dim polyClr    As Long
 Dim fpsClr     As Long
@@ -46,6 +47,14 @@ Randomize Timer
 For i = 1 To BALL_MAX
     MakeSphere spheres(i), 1.8, Rnd * 6.283
 Next i
+
+' every sphere has the same shape, so one set of edges serves them all
+E3D_BuildMeshEdges spheres(1)
+For i = 2 To BALL_MAX
+    spheres(i).eStart = spheres(1).eStart
+    spheres(i).eCount = spheres(1).eCount
+Next i
+E3D_outlineOn = -1 : E3D_outlineClr = _RGB(8, 8, 16) : E3D_outlineWidth = 1
 
 ' --- scatter positions and spin rates ---
 For i = 1 To BALL_MAX
@@ -92,6 +101,13 @@ Do
         remWas = 0
     End If
 
+    If _KeyDown(111) Then
+        If outWas = 0 Then E3D_outlineOn = Not E3D_outlineOn
+        outWas = -1
+    Else
+        outWas = 0
+    End If
+
     ' --- spin ---
     For i = 1 To ballCount
         ballRot(i).x = ballRot(i).x + ballDRot(i).x
@@ -116,7 +132,7 @@ Do
     E3D_SceneBegin
     For i = 1 To ballCount
         E3D_BuildObjectMat ballPos(i), ballRot(i), 1.0, objMat
-        E3D_SceneAddMeshLit spheres(i), objMat, cam.pos, tt, lightDir
+        E3D_SceneAddMeshLit spheres(i), objMat, cam.pos, tt, lightDir, -1
     Next i
     E3D_SceneFlush vpMat, SCR_W, SCR_H
 
@@ -146,7 +162,7 @@ Do
     Color fpsClr  : _PrintString (2, 18), "FPS   " + LTrim$(Str$(fps))
     Color _RGB(140, 140, 160) : _PrintString (2, 34), "ms    " + Left$(Str$(frameMs + 1000), 6)
     Color _RGB(200, 200, 220) : _PrintString (2, 50), "BALLS " + LTrim$(Str$(ballCount)) + " / " + LTrim$(Str$(BALL_MAX))
-    Color _RGB(160, 160, 130) : _PrintString (2, 66), "[=] add  [-] rem  [ESC/Q] quit"
+    Color _RGB(160, 160, 130) : _PrintString (2, 66), "[=] add  [-] rem  [O] outline  [ESC/Q] quit"
 
     _Limit 60
     _Display

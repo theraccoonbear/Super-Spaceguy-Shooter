@@ -304,7 +304,7 @@ Sub GS_PLAYING_Update ()
     pRot.x = player.rx : pRot.y = player.ry : pRot.z = player.rz
     E3D_BuildObjectMat pPos, pRot, player.scl, objMat
     IF deathTimer = 0 AND (invTimer = 0 OR (invTimer MOD 6) < 3) THEN
-        E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.POS, tt, lightDir
+        E3D_SceneAddMeshLit meshLib(MESH_PLAYER), objMat, cam.POS, tt, lightDir, -1
     END IF
 
     thrusterLight.x = -(0.28 + thrusterScale * 0.85)
@@ -312,7 +312,7 @@ Sub GS_PLAYING_Update ()
     pPos.x = player.px - 0.92 : pPos.y = player.py : pPos.z = player.pz
     E3D_BuildObjectMat pPos, pRot, thrusterScale, objMat
     IF deathTimer = 0 AND (invTimer = 0 OR (invTimer MOD 6) < 3) THEN
-        E3D_SceneAddMeshLit meshLib(MESH_THRUSTER), objMat, cam.POS, tt, thrusterLight
+        E3D_SceneAddMeshLit meshLib(MESH_THRUSTER), objMat, cam.POS, tt, thrusterLight, 0
     END IF
 
     COMBAT_SceneDraw
@@ -325,7 +325,7 @@ Sub GS_PLAYING_Update ()
                 pPos.x = powerups(j).px : pPos.y = powerups(j).py : pPos.z = powerups(j).pz
                 pRot.x = powerups(j).rx : pRot.y = powerups(j).ry : pRot.z = powerups(j).rz
                 E3D_BuildObjectMat pPos, pRot, powerups(j).scl, objMat
-                E3D_SceneAddMeshLit meshLib(powerups(j).meshIdx), objMat, cam.POS, tt, pupLight
+                E3D_SceneAddMeshLit meshLib(powerups(j).meshIdx), objMat, cam.POS, tt, pupLight, 0
             END IF
         END IF
     NEXT j

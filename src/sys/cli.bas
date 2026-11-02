@@ -126,6 +126,11 @@ Sub CLI_Parse()
         Loop
         If cliI > 3 Then GAME_Usage("--pup takes at most 3 kinds")
     End If
+    cliVal = CLI_Value$(cliLine, "--outline ")
+    If cliVal <> "" Or InStr(cliLine, "--outline") > 0 Then
+        If cliVal <> "off" And cliVal <> "1" And cliVal <> "2" Then GAME_Usage("--outline takes off, 1 or 2, got '" + cliVal + "'")
+        cliOutline = cliVal
+    End If
     cliVal = CLI_Value$(cliLine, "--difficulty ")
     If cliVal <> "" Or InStr(cliLine, "--difficulty") > 0 Then
         If DLV_Index%(cliVal) = 0 Then GAME_Usage("--difficulty takes " + DLV_List$ + ", got '" + cliVal + "'")
@@ -183,6 +188,7 @@ Function CLI_FlagList$
     If cliShields > 0 Then cflOut = cflOut + ",shields"
     If cliFuel > 0 Then cflOut = cflOut + ",fuel"
     If cliPup <> "" Then cflOut = cflOut + ",pup"
+    If cliOutline <> "" Then cflOut = cflOut + ",outline"
     If cliSeedSet Then cflOut = cflOut + ",seed"
     If iscActive Then cflOut = cflOut + ",script"
     CLI_FlagList$ = Mid$(cflOut, 2)

@@ -49,6 +49,7 @@ $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 $EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
 $EMBED:'assets/config/waves.ini':'CFGWAVES'
 $EMBED:'assets/config/bosses.ini':'CFGBOSSES'
+$EMBED:'assets/config/render.ini':'CFGRENDER'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
@@ -146,6 +147,8 @@ cfgAbilities = CFG_Parse$(_EMBEDDED$("CFGABILITIES"))
 cfgPowerups  = CFG_Parse$(_EMBEDDED$("CFGPOWERUPS"))
 cfgWaves     = CFG_Parse$(_EMBEDDED$("CFGWAVES"))
 cfgBosses    = CFG_Parse$(_EMBEDDED$("CFGBOSSES"))
+cfgRender    = CFG_Parse$(_EMBEDDED$("CFGRENDER"))
+GAME_LoadRender
 ' every level must load, not just the one this run starts on
 DIM dlvBootI AS INTEGER
 FOR dlvBootI = 1 TO DLV_Count%

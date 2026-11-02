@@ -1,9 +1,14 @@
 ' World-space vertex workspace shared by the mesh face builders — Shared so it is not allocated and zeroed on every call. They never nest.
 Dim Shared E3D_meshWorldVerts(1 To E3D_MESH_VMAX) As E3D_Coord
 
+' -1 when the face last run through E3D_GetMeshFacesLit faces the camera; the outline pass reads it (outline.bas)
+Dim Shared E3D_faceFront(1 To 8192) As Integer
+
 Sub E3D_MakeMesh (mesh As E3D_Mesh)
     mesh.vCount = 0
     mesh.fCount = 0
+    mesh.eStart = 0
+    mesh.eCount = 0
 End Sub
 
 Sub E3D_AddMeshVert (mesh As E3D_Mesh, x As Single, y As Single, z As Single)
@@ -327,6 +332,7 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
         vvy = camPos.y - E3D_meshWorldVerts(fv1).y
         vvz = camPos.z - E3D_meshWorldVerts(fv1).z
         If fnx * vvx + fny * vvy + fnz * vvz > 0 Then
+            E3D_faceFront(fi) = -1
             fvn = mesh.faces(fi).vCount
             depthSum = 0
             E3D_MakePolygon facePoly
@@ -354,6 +360,8 @@ Sub E3D_GetMeshFacesLit (mesh As E3D_Mesh, modelMat As E3D_Matrix4, camPos As E3
                 baseB = _Blue32(mesh.faces(fi).baseClr)
             End If
             faceClrs(faceCount) = _RGB(Int(baseR * lit), Int(baseG * lit), Int(baseB * lit))
+        Else
+            E3D_faceFront(fi) = 0
         End If
     Next fi
 End Sub

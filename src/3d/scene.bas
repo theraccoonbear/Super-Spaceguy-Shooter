@@ -17,11 +17,13 @@ DIM SHARED E3D_tmpDepths(1 TO E3D_SCENE_MAX) AS SINGLE
 
 SUB E3D_SceneBegin ()
     E3D_scnCount = 0
+    E3D_scnEdgeCount = 0
 END SUB
 
-SUB E3D_SceneAddMeshLit (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3D_Coord, tt AS SINGLE, lightDir AS E3D_Coord)
+SUB E3D_SceneAddMeshLit (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3D_Coord, tt AS SINGLE, lightDir AS E3D_Coord, outlined AS INTEGER)
     DIM fc AS INTEGER, i AS INTEGER, v AS INTEGER, n AS INTEGER, vc AS INTEGER
     E3D_GetMeshFacesLit mesh, modelMat, camPos, tt, lightDir, E3D_tmpPolys(), E3D_tmpClrs(), E3D_tmpDepths(), fc
+    IF outlined THEN E3D_OutlineCollect mesh
     FOR i = 1 TO fc
         IF E3D_scnCount < E3D_SCENE_MAX THEN
             E3D_scnCount = E3D_scnCount + 1
@@ -40,9 +42,10 @@ SUB E3D_SceneAddMeshLit (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3
     NEXT i
 END SUB
 
-SUB E3D_SceneAddMeshLitTinted (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3D_Coord, tt AS SINGLE, lightDir AS E3D_Coord, tintR AS SINGLE, tintG AS SINGLE, tintB AS SINGLE)
+SUB E3D_SceneAddMeshLitTinted (mesh AS E3D_Mesh, modelMat AS E3D_Matrix4, camPos AS E3D_Coord, tt AS SINGLE, lightDir AS E3D_Coord, tintR AS SINGLE, tintG AS SINGLE, tintB AS SINGLE, outlined AS INTEGER)
     DIM scntFc AS INTEGER, scntI AS INTEGER, scntV AS INTEGER, scntN AS INTEGER, scntVc AS INTEGER
     E3D_GetMeshFacesLit mesh, modelMat, camPos, tt, lightDir, E3D_tmpPolys(), E3D_tmpClrs(), E3D_tmpDepths(), scntFc
+    IF outlined THEN E3D_OutlineCollect mesh
     FOR scntI = 1 TO scntFc
         IF E3D_scnCount < E3D_SCENE_MAX THEN
             E3D_scnCount = E3D_scnCount + 1
@@ -97,4 +100,5 @@ SUB E3D_SceneFlush (vpMat AS E3D_Matrix4, scrW AS SINGLE, scrH AS SINGLE)
         E3D_ProjectPoly facePoly, vpMat, scrW, scrH, screenPoly
         E3D_DrawPoly screenPoly, E3D_scnClrs(di)
     NEXT scI
+    E3D_OutlineDraw vpMat, scrW, scrH
 END SUB

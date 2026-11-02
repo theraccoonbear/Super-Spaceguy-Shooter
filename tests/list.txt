@@ -41,3 +41,4 @@ settings_dir_test
 tty_probe_test
 cam_default_test
 difficulty_test
+outline_test

@@ -42,6 +42,7 @@ DIM backBuffer AS LONG
 SCREEN _NEWIMAGE(SCR_W, SCR_H, 32)
 _TITLE "SSS Model Viewer"
 backBuffer = _NEWIMAGE(SCR_W, SCR_H, 32)
+E3D_outlineOn = -1 : E3D_outlineClr = _RGB32(8, 8, 16) : E3D_outlineWidth = 1
 
 DIM mdl AS STRING
 mdl = _EMBEDDED$("MODELS")
@@ -49,6 +50,7 @@ DIM mi AS INTEGER
 FOR mi = 1 TO MESH_COUNT
     E3D_LoadMesh mdl, meshNames(mi), meshLib(mi), boxLib(mi)
     E3D_BakeMeshNormals meshLib(mi)
+    E3D_BuildMeshEdges meshLib(mi)
 NEXT mi
 
 DIM totalMeshes AS INTEGER : totalMeshes = MESH_COUNT
@@ -96,6 +98,7 @@ IF LEN(cmdPath) > 0 THEN
         meshNames(totalMeshes) = MID$(cmdPath, slashAt + 1)
         E3D_LoadOBJ objDat, mtlDat, meshLib(totalMeshes), boxLib(totalMeshes), axisRemap, 1.0
         E3D_BakeMeshNormals meshLib(totalMeshes)
+        E3D_BuildMeshEdges meshLib(totalMeshes)
         objStatus = "OBJ: " + meshNames(totalMeshes) + " [" + LTRIM$(STR$(meshLib(totalMeshes).vCount)) + "v " + LTRIM$(STR$(meshLib(totalMeshes).fCount)) + "f]"
     ELSE
         objStatus = "NOT FOUND: " + cmdPath + "  (cwd=" + _CWD$ + ")"
@@ -188,6 +191,7 @@ IF LEN(objRawDat) > 0 THEN
             DIM reloadDat AS STRING : reloadDat = objRawDat
             E3D_LoadOBJ reloadDat, mtlDat, meshLib(totalMeshes), boxLib(totalMeshes), axisRemap, 1.0
             E3D_BakeMeshNormals meshLib(totalMeshes)
+            E3D_BuildMeshEdges meshLib(totalMeshes)
             rot.x = 0 : rot.y = 0 : rot.z = 0
         END IF
         xWas = -1
@@ -256,9 +260,9 @@ E3D_BuildObjectMat objPos, rot, dispScale, objMat
 
 E3D_SceneBegin
 IF litMode THEN
-    E3D_SceneAddMeshLit meshLib(currentMesh), objMat, cam.POS, tt, diagLight
+    E3D_SceneAddMeshLit meshLib(currentMesh), objMat, cam.POS, tt, diagLight, -1
 ELSE
-    E3D_SceneAddMeshLit meshLib(currentMesh), objMat, cam.POS, tt, lightDir
+    E3D_SceneAddMeshLit meshLib(currentMesh), objMat, cam.POS, tt, lightDir, -1
 END IF
 E3D_SceneFlush vpMat, SCR_W, SCR_H
 

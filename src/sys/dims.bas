@@ -372,6 +372,7 @@ DIM SHARED cliShips        AS LONG     ' --ships N: start with N ships (testing:
 DIM SHARED cliShields      AS LONG     ' --shields N: start with N shield points (testing: damaged shields at the dock)
 DIM SHARED cliFuel         AS LONG     ' --fuel N: start with N fuel (testing: a stranded dock)
 DIM SHARED cliPup          AS STRING   ' --pup kinds: place these power-ups once play starts (screenshots, #183)
+DIM SHARED cliOutline      AS STRING   ' --outline off|1|2: override render.ini (A/B by hand, #195)
 DIM SHARED gameFrame       AS LONG     ' frames since the main loop started (input scripts, --frames)
 DIM SHARED cliShotAt(1 TO 64) AS LONG    ' --screenshot-at N,N,...: frames to save as shot-<N>.png
 DIM SHARED cliShotN        AS INTEGER

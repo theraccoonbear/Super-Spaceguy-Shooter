@@ -63,6 +63,14 @@ Sub GAME_LoadTuning
     If BHP_Load% = 0 Then GAME_Usage bhpLoadErr
 End Sub
 
+Sub GAME_LoadRender
+    If E3D_OutlineConfig%(CFG_Get$(cfgRender, "outline"), CFG_Get$(cfgRender, "outline_color"), CFG_Get$(cfgRender, "outline_width")) = 0 Then GAME_Usage E3D_outlineErr
+    $IF RELEASEBUILD = 0 THEN
+    If cliOutline = "off" Then E3D_outlineOn = 0
+    If cliOutline = "1" Or cliOutline = "2" Then E3D_outlineOn = -1 : E3D_outlineWidth = Val(cliOutline)
+    $END IF
+End Sub
+
 Sub GAME_NewGame
     GAME_ResetState
     TELEM_SessionStart
@@ -108,6 +116,7 @@ Sub GAME_InitMeshes
     E3D_LoadMesh gmiMdl, "PUP_POINTS",   meshLib(MESH_PUP_POINTS),   boxLib(MESH_PUP_POINTS)
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
+        E3D_BuildMeshEdges meshLib(gmiI)
     Next gmiI
     For gmiI = MESH_ENEMY To MESH_ENEMY_VWEDGE
         boxLib(gmiI).hx = boxLib(gmiI).hx * HIT_SCALE
@@ -168,6 +177,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --backdrop-dev         Matte paintings: show the painting coordinates under the mouse, and R re-reads assets/backdrops.txt from disk (see docs/backdrops.md)"
     CLI_Emit guFH, "  --explosion-dev        Explosions in play: Z picks a definition, X detonates it ahead of the ship, C re-reads assets/explosions.txt from disk, V stress test (see docs/explosions.md)"
     CLI_Emit guFH, "  --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes)"
+    CLI_Emit guFH, "  --outline off|1|2      Mesh outline off, or on at 1 or 2 pixels, whatever render.ini says (compare with and without)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
     CLI_Emit guFH, "  --ships N              Start every run with N ships (testing)"

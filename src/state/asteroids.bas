@@ -115,7 +115,7 @@ Sub ASTEROIDS_Draw()
                     pPos.x = asteroids(astDJ).px : pPos.y = asteroids(astDJ).py : pPos.z = asteroids(astDJ).pz
                     pRot.x = asteroids(astDJ).rx : pRot.y = asteroids(astDJ).ry : pRot.z = asteroids(astDJ).rz
                     E3D_BuildObjectMat pPos, pRot, asteroids(astDJ).scl, objMat
-                    E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, astDTR, astDTG, astDTB
+                    E3D_SceneAddMeshLitTinted meshLib(MESH_ASTEROID), objMat, cam.POS, tt, lightDir, astDTR, astDTG, astDTB, -1
                 End If
                 astDSkip:
             End If

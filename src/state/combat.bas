@@ -149,7 +149,7 @@ Sub COMBAT_SceneDraw()
                 eLitDir.x = lightDir.x * cbtDDimF
                 eLitDir.y = lightDir.y * cbtDDimF
                 eLitDir.z = lightDir.z * cbtDDimF
-                E3D_SceneAddMeshLit meshLib(enemies(cbtDJ).meshIdx), objMat, cam.POS, tt, eLitDir
+                E3D_SceneAddMeshLit meshLib(enemies(cbtDJ).meshIdx), objMat, cam.POS, tt, eLitDir, -1
             End If
         End If
     Next cbtDJ
@@ -170,7 +170,7 @@ Sub COMBAT_SceneDraw()
         eLitDir.y = lightDir.y * cbtDDimF
         eLitDir.z = lightDir.z * cbtDDimF
         cbtDBossScnBefore = E3D_scnCount
-        E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.POS, tt, eLitDir
+        E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.POS, tt, eLitDir, -1
         If debugMode And cbtDBossDbgLogged = 0 Then
             DBG_Print "[boss-rend] faces_rendered=" + LTrim$(Str$(E3D_scnCount - cbtDBossScnBefore)) + "  dist=" + LTrim$(Str$(boss.px - cam.POS.x))
             cbtDBossDbgLogged = -1

@@ -38,6 +38,8 @@ Type E3D_Mesh
     vCount As Integer
     faces(1 To 8192) As E3D_Face
     fCount As Integer
+    eStart As Integer
+    eCount As Integer
 End Type
 
 Type E3D_AABB
