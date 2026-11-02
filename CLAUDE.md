@@ -45,14 +45,18 @@
 - No AI attribution trailers in commit messages or PR bodies -- no `Co-Authored-By: Claude ...`, no `Claude-Session:`, nothing similar. `.claude/settings.json`'s `attribution` block disables these at the source; `tools/git-hooks/commit-msg` is a backstop that rejects a commit containing one.
 - One-time per clone: `git config core.hooksPath tools/git-hooks` (git does not auto-discover a tracked hooks directory).
 
-## Pre-commit checklist — run ALL of these locally before every commit/push
-1. **Build**: `./tools/buildqb sss.bas` — must complete with no errors
+## Checklist and PR order
+The branch goes up as a draft PR as soon as it builds, so it can be pulled and played while the long checks run.
+
+1. **Build**: `./tools/buildqb sss.bas` (or `tools/dev build`) — must complete with no errors
 2. **Smoke test**: `builds/sss --version` — must print the version and exit 0
-3. **All automated tests**: `tools/test` (or `tools/dev test` in the container). It builds and runs every test in `tests/` in parallel, exactly as CI does on Linux, macOS and Windows (`.github/scripts/qb64test.sh`), then prints each test's output and a pass/fail summary. All tests must pass (exit 0) before committing. No exceptions.
+   - Steps 1 and 2 must pass before every push. Then commit, push, and open the PR as a **draft** (`gh pr create --draft`) with `Closes #N` and its "How to test (by hand)" section.
+   - Steps 3 to 5 follow on the draft. Fix what they find and push again. Once they pass and CI is green, mark the PR ready (`gh pr ready`).
+3. **All automated tests**: `tools/test` (or `tools/dev test` in the container). It builds and runs every test in `tests/` in parallel, exactly as CI does on Linux, macOS and Windows (`.github/scripts/qb64test.sh`), then prints each test's output and a pass/fail summary. All tests must pass (exit 0) before the PR is marked ready. No exceptions.
    - **Adding a test:** add its name on a new line in `tests/list.txt` (`merge=union`, so parallel PRs adding tests do not conflict; a duplicate line fails `tools/dev test`) and make it print `=== <name> ===` first. The runner rejects a binary that doesn't print its own banner, which is how it catches parallel-build mix-ups.
    - **Never run two native QB64-PE builds at once on one install** (e.g. two agents, or `tools/buildqb` in two terminals). On Linux and macOS qb64pe claims its temp folder without a lock, so concurrent compiles can silently produce each other's binaries (#239). `qb64test.sh` gives each worker its own QB64-PE copy; parallel agents should build through `tools/dev`, which runs each build in its own container.
 4. **Render tests**: `tools/dev render` (or `tests/render/run.sh` natively on Linux). It replays the seeded scenes in `tests/render/scenes/` and compares their screenshots with the goldens in `tests/render/golden/`; CI runs it on the Linux job.
-   - **Golden changes are deliberate.** If your change is meant to alter what's on screen, re-bless with `tools/dev render --update`, look at every changed golden PNG before committing it, and list the changed goldens and why in the PR. If a golden fails and you didn't mean to change rendering, fix the code, never the golden. Bless from the container so goldens match CI. See [`docs/testing.md`](docs/testing.md) "Render tests".
+   - **Golden changes are deliberate.** If your change is meant to alter what's on screen, re-bless with `tools/dev render --update`, look at every changed golden PNG before the PR is marked ready, and list the changed goldens and why in the PR. If a golden fails and you didn't mean to change rendering, fix the code, never the golden. Bless from the container so goldens match CI. See [`docs/testing.md`](docs/testing.md) "Render tests".
 5. **Speech dict**: if `assets/gametext.txt` or `assets/gamevalues.ini` changed, run `bash tools/bake_speech_dict` and commit `assets/speech_dict.txt`.
 6. **Full playthrough**: runs in CI as its own non-blocking job (`playthrough`); it doesn't gate PRs, a failure shows as its own red check. Don't run it locally before committing. Run it locally (`tools/dev build && tools/dev shell tests/playthrough/run.sh`, needs an empty `assets/.env`) only to debug a playthrough failure. If the game flow changes on purpose (`assets/sequence.txt`, game states, stages, bosses, crawls, input, the boot screens), update `tests/playthrough/expected.txt` (see [`docs/testing.md`](docs/testing.md)).
 
@@ -61,9 +65,9 @@
 > `tests/` to find which stubs need it.
 
 ## Definition of done — a task is NOT complete until ALL of these are true
-1. Pre-commit checklist above is fully satisfied locally
+1. The checklist above is fully satisfied
 2. All changes are committed and pushed to the PR branch
-3. A PR is open against master with `Closes #N`
+3. A PR is open against master with `Closes #N`, and marked ready (no longer a draft)
 4. **CI is green** — check with `gh pr checks <number>` and wait for all checks to pass before reporting the task complete to the user
 
 Never tell the user a task is done while CI is still running or red. Silence is better than a premature "done."

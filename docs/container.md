@@ -19,7 +19,7 @@ Typical workflow:
 ```bash
 git pull
 tools/dev run --scene boss3 --god   # rebuilds first if any source changed, then plays
-tools/dev test                      # full suite before you commit (pre-commit checklist in CLAUDE.md)
+tools/dev test                      # full suite before the PR leaves draft (checklist in CLAUDE.md)
 ```
 
 `run` takes any [CLI option](cli.md). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--scene dock2 --credits 2000` opens the upgrade dock after stage 2 (docks follow stages 1-5) with 2000 credits to spend, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
