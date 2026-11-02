@@ -70,6 +70,24 @@ For rtI = 11 To 20
 Next rtI
 RT_Assert rtSame, "drawing FX and AUDIO doesn't move GAME"
 
+RNG_Seed 12345
+rtA(1) = RNG!(RNG_STARS)
+For rtI = 1 To 500 : rtV = RNG!(RNG_FX) : rtV = RNG!(RNG_GAME) : Next rtI
+rtA(2) = RNG!(RNG_STARS)
+RNG_Seed 12345
+rtB(1) = RNG!(RNG_STARS) : rtB(2) = RNG!(RNG_STARS)
+RT_Assert rtA(1) = rtB(1) And rtA(2) = rtB(2), "drawing FX and GAME doesn't move STARS"
+RT_Assert rtA(1) <> RNG!(RNG_FX), "STARS is its own stream"
+
+RNG_Seed 12345
+rtA(1) = RNG!(RNG_BELT)
+For rtI = 1 To 500 : rtV = RNG!(RNG_FX) : rtV = RNG!(RNG_STARS) : Next rtI
+rtA(2) = RNG!(RNG_BELT)
+RNG_Seed 12345
+rtB(1) = RNG!(RNG_BELT) : rtB(2) = RNG!(RNG_BELT)
+RT_Assert rtA(1) = rtB(1) And rtA(2) = rtB(2), "drawing FX and STARS doesn't move BELT"
+RT_Assert rtA(1) <> RNG!(RNG_FX), "BELT is its own stream"
+
 Print "--- unseeded default ---"
 rngState(RNG_GAME) = 0
 rtA(1) = RNG!(RNG_GAME) : rtA(2) = RNG!(RNG_GAME)

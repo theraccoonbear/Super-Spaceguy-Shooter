@@ -42,8 +42,7 @@ Sub DOCK_LoadArt
 End Sub
 
 Sub DOCK_LoadArtOne (dlaId As Integer, dlaData As String)
-    dockArtImg(dlaId) = _LoadImage(dlaData, 32, "memory")
-    If dockArtImg(dlaId) < -1 Then _Blend dockArtImg(dlaId)
+    dockArtImg(dlaId) = UI_LoadArt&(dlaData)
 End Sub
 
 ' The picture of the selected row in its card; nothing for a row with none (LAUNCH).
