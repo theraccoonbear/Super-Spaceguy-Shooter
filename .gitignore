@@ -31,7 +31,6 @@ server/.dev.vars
 builds/
 # Test binaries (sources are tests/*_test.bas, which this does not match)
 tests/*_test
-tools/telem_batch_test
 shot-*.png
 tests/render/out/
 

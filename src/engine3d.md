@@ -54,8 +54,6 @@ The actual per-frame path (used by both the game and `viewer.bas`) pools every v
 4. **Build the view-projection matrix** once per frame from the camera: `E3D_MatLookAt` (view) and `E3D_MatPerspective` (projection), combined with `E3D_MatMul`.
 5. **`E3D_SceneFlush(vpMat, scrW, scrH)`**, called once after every object for the frame has been added. It clears the Z-buffer, insertion-sorts the *entire* pooled batch back-to-front by depth (insertion sort because between-frame ordering is usually nearly-sorted already), then for each pooled face in order runs `E3D_ProjectPoly` (multiply by the view-projection matrix, perspective-divide, map NDC `[-1, 1]` to pixel coordinates; a vertex behind the near plane aborts that polygon) followed immediately by `E3D_DrawPoly` (scanline rasterize into the framebuffer, tracking a per-scanline Z-buffer so overlapping polygons within the sorted order still resolve correctly at the pixel level).
 
-`E3D_DrawMesh` and unlit `E3D_GetMeshFaces` (in `mesh.bas`) implement an older, self-contained single-mesh version of this same idea: cull, sort, project, and draw one mesh's faces standalone, no lighting, hue-cycled face colors. Neither has any call sites left anywhere in the game, tools, or tests. Treat them as dead code unless you're reviving them for something new.
-
 ## Mesh authoring workflow
 
 Meshes are hand-written or converted, not modeled directly in this text format:
@@ -74,7 +72,6 @@ This emits an `o SLOT_NAME ... end` block (see the format comment at the top of 
 - **Fixed-size arrays, not dynamic.** `E3D_Mesh` caps at 8192 verts/faces; `E3D_SCENE_MAX` caps the per-frame batched face pool at 8192; `E3D_ZBUF_W`/`E3D_ZBUF_H` cap the Z-buffer at 1280×960. Exceeding any of these silently drops data rather than erroring; there's no bounds-check warning.
 - **No perspective-correct texture mapping or textures at all.** Faces are flat-colored (either a baked base color or a hue-cycle fallback), optionally lit with simple directional flat shading. There's no texture sampling anywhere in this pipeline.
 - **Backface culling assumes consistent winding order.** A face with vertices wound the wrong way culls (or fails to cull) incorrectly. This is a common mistake when hand-authoring `f`/`q` lines in `.e3d` directly rather than via `obj2e3d`.
-- **Dead code still present.** `E3D_DrawMesh` and unlit `E3D_GetMeshFaces` (`mesh.bas`) are an older, self-contained single-mesh render path with no remaining callers. Don't assume either is in use without checking call sites first, and consider removing them (separately from a docs change) if that's confirmed still true.
 - **`E3D_SceneAddMeshLit`/`...Flush` must be paired correctly per frame.** `E3D_SceneBegin` has to run before any `E3D_SceneAddMeshLit*` calls, and `E3D_SceneFlush` after all of them, or you'll draw a stale or partial batch. There's no assertion enforcing the order.
 
 ## Testing in isolation
