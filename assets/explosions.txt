@@ -1,0 +1,25 @@
+; explosions.txt -- data-defined 3D particle explosions (#198). Format and units: docs/explosions.md
+; World units and frames; only maxpx and minpx are pixels. The values are starting points, tuned in the running game.
+; Reference speeds: an enemy burst today is about 0.11 units per frame, a boss about 0.2.
+
+explosion:boss
+    SHAKE frames=40
+    ; hull breach flash
+    BURST count=1 life=8 size=1.2,4 glow=2 ramp=ffffff,ffe080,ff8020 occlude=0
+    ; fireball debris
+    BURST count=70 speed=0.05..0.2 scatter=0.4 drag=0.97 gravity=0.0005 life=40..70 size=0.35,0.05 glow=1.5 ramp=ffe080,ff8020,c02010,301008 inherit=0.5
+    ; embers
+    BURST count=50 speed=0.1..0.3 drag=0.985 gravity=0.002 life=50..100 size=0.06,0.02 glow=3 color=ffe080,ffffff,ff9040 inherit=0.5
+    ; shock ring
+    BURST count=36 shape=ring speed=0.26..0.3 drag=0.95 life=24..30 size=0.15,0.02 glow=1 ramp=ffffff,80a0ff occlude=0
+    ; smoke
+    BURST count=30 delay=6 speed=0.02..0.06 scatter=0.5 drag=0.98 gravity=-0.0008 life=90..140 size=0.4,1.2 ramp=403830,181410
+    ; secondary bursts
+    BURST count=40 delay=20 at=0.8,0.4,0.3 scatter=0.3 speed=0.06..0.18 drag=0.97 gravity=0.0005 life=35..60 size=0.3,0.05 glow=1.5 ramp=ffffff,ff9030,802010
+    BURST count=40 delay=38 at=-0.7,-0.3,-0.5 scatter=0.3 speed=0.06..0.18 drag=0.97 gravity=0.0005 life=35..60 size=0.3,0.05 glow=1.5 ramp=ffffff,ff9030,802010
+
+explosion:enemy
+    SHAKE frames=6
+    BURST count=1 life=5 size=0.4,1.2 glow=2 ramp=ffffff,ffc060 occlude=0
+    BURST count=18 speed=0.03..0.11 drag=0.96 gravity=0.0004 life=20..36 size=0.12,0.02 glow=1.5 ramp=ffe080,ff7020,501808 inherit=0.5
+    BURST count=12 speed=0.06..0.16 drag=0.98 gravity=0.0015 life=25..45 size=0.03,0.01 glow=3 color=ffe080,ffffff inherit=0.5

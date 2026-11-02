@@ -25,6 +25,7 @@
 '$INCLUDE:'sys/tutorial.bas'
 '$INCLUDE:'2d/backdrop.bas'
 '$INCLUDE:'2d/backdropdraw.bas'
+'$INCLUDE:'2d/explosion.bas'
 '$INCLUDE:'2d/crawllayout.bas'
 '$INCLUDE:'2d/crawl.bas'
 '$INCLUDE:'2d/about.bas'
