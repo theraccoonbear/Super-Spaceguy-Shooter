@@ -13,6 +13,7 @@
 --leaderboard-file
 --settings-dir
 --frames
+--bench
 --realtime
 --gate-tutorial
 --backdrop-dev

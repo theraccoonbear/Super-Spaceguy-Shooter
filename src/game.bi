@@ -36,6 +36,7 @@
 '$INCLUDE:'gameplay/wave.bas'
 '$INCLUDE:'gameplay/stage.bas'
 '$INCLUDE:'sys/debug.bas'
+'$INCLUDE:'sys/bench.bas'
 '$INCLUDE:'sys/game.bas'
 '$INCLUDE:'sys/settingsio.bas'
 '$INCLUDE:'sys/settings.bas'

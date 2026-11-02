@@ -163,6 +163,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"
     CLI_Emit guFH, "  --settings-dir <path>  Keep sss_settings.ini in this folder (relative: to the launch folder) instead of the per-user one; --input-script runs use the launch folder"
     CLI_Emit guFH, "  --frames N           Quit after N frames (60 per second)"
+    CLI_Emit guFH, "  --bench <file>         Time each frame's phases over a --frames run and write the table to this file (see tools/dev bench)"
     CLI_Emit guFH, "  --realtime             Keep 60 frames per second in --input-script runs (for recordings)"
     CLI_Emit guFH, "  --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder starts the tutorial at the first New Game)"
     CLI_Emit guFH, "  --backdrop-dev         Matte paintings: show the painting coordinates under the mouse, and R re-reads assets/backdrops.txt from disk (see docs/backdrops.md)"

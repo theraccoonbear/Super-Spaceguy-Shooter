@@ -94,6 +94,15 @@ Sub CLI_Parse()
         If ISC_IsNum%(cliVal) = 0 Then GAME_Usage("--frames needs a whole number, got '" + cliVal + "'")
         cliFrames = Val(cliVal)
     End If
+    cliVal = CLI_Value$(cliLine, "--bench ")
+    If cliVal <> "" Then
+        If cliFrames < 1 Then GAME_Usage("--bench needs --frames N")
+        If Left$(cliVal, 1) <> "/" And Mid$(cliVal, 2, 1) <> ":" Then cliVal = _StartDir$ + "/" + cliVal
+        benchPath = cliVal
+        BENCH_Init
+    ElseIf InStr(cliLine, "--bench") > 0 Then
+        GAME_Usage("--bench needs a file")
+    End If
     cliVal = CLI_Value$(cliLine, "--credits ")
     If cliVal <> "" Then
         If CR_ParseArg%(cliVal, cliCredits) = 0 Then GAME_Usage("--credits needs a whole number 0 or more, got '" + cliVal + "'")

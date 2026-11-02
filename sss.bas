@@ -243,8 +243,9 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
+    BENCH_FrameBegin
     IF _EXIT THEN GAME_Quit
-    IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
+    IF cliFrames > 0 AND gameFrame >= cliFrames THEN BENCH_Report : DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
     ' --- input ---
     KEY_FrameBegin
     IF iscActive THEN
@@ -340,6 +341,7 @@ DO
     IF iscActive = 0 OR cliRealtime THEN _LIMIT 60  ' scripted runs go flat out unless --realtime: gameplay steps per frame, not per second
     _DISPLAY
     IF cliShotN > 0 THEN GAME_MaybeScreenshot
+    BENCH_FrameEnd
     gameFrame = gameFrame + 1
 LOOP
 
