@@ -161,7 +161,6 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 - No unit test framework — tests are self-contained `.bas` programs in `tests/` that exit 0 on pass
 - No class system — QB64-PE has `TYPE` structs but no methods or inheritance
 - Almost no dynamic allocation — array sizes are fixed at compile time (the one `ReDim` is in `E3D_CtrlScan`, `src/3d/input.bas`). A non-`Static` array `Dim`med inside a Sub is allocated on every call, though, so hot-path workspaces are `Dim Shared`
-- **`E3D_DrawMesh` and `E3D_GetMeshFaces` are dead code** — they have no callers in the game, tools, or tests. Do not assume they're in use without checking call sites.
 
 ---
 
