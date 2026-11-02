@@ -126,7 +126,7 @@ Sub BELT_Init(bliW As Single, bliH As Single)
     bltCount  = 0
     bltActive = -1
     For bliI = 1 To BELT_MAX
-        bliR = RNG!(RNG_FX)
+        bliR = RNG!(RNG_BELT)
         If bliR < 0.40 Then
             bltSz(bliI) = 0
         ElseIf bliR < 0.70 Then
@@ -136,15 +136,15 @@ Sub BELT_Init(bliW As Single, bliH As Single)
         Else
             bltSz(bliI) = 3
         End If
-        bltAngle(bliI) = RNG!(RNG_FX) * _PI(2)
-        bltDepth(bliI) = RNG!(RNG_FX) * bltMaxD     ' scatter so they don't all flash from center at once
+        bltAngle(bliI) = RNG!(RNG_BELT) * _PI(2)
+        bltDepth(bliI) = RNG!(RNG_BELT) * bltMaxD     ' scatter so they don't all flash from center at once
         Select Case bltSz(bliI)
-        Case 0 : bltDSpd(bliI) = 0.15 + RNG!(RNG_FX) * 0.20
-        Case 1 : bltDSpd(bliI) = 0.30 + RNG!(RNG_FX) * 0.25
-        Case 2 : bltDSpd(bliI) = 0.55 + RNG!(RNG_FX) * 0.35
-        Case Else : bltDSpd(bliI) = 1.0 + RNG!(RNG_FX) * 0.6
+        Case 0 : bltDSpd(bliI) = 0.15 + RNG!(RNG_BELT) * 0.20
+        Case 1 : bltDSpd(bliI) = 0.30 + RNG!(RNG_BELT) * 0.25
+        Case 2 : bltDSpd(bliI) = 0.55 + RNG!(RNG_BELT) * 0.35
+        Case Else : bltDSpd(bliI) = 1.0 + RNG!(RNG_BELT) * 0.6
         End Select
-        bltClr(bliI) = bliColors(Int(RNG!(RNG_FX) * 5))
+        bltClr(bliI) = bliColors(Int(RNG!(RNG_BELT) * 5))
         bltCount     = bltCount + 1
     Next bliI
 End Sub
@@ -154,8 +154,8 @@ Sub BELT_Update(bluW As Single, bluH As Single)
     For bluI = 1 To bltCount
         bltDepth(bluI) = bltDepth(bluI) + bltDSpd(bluI)
         If bltDepth(bluI) > bltMaxD * 1.05 Then
-            bltAngle(bluI) = RNG!(RNG_FX) * _PI(2)
-            bltDepth(bluI) = RNG!(RNG_FX) * 4
+            bltAngle(bluI) = RNG!(RNG_BELT) * _PI(2)
+            bltDepth(bluI) = RNG!(RNG_BELT) * 4
         End If
     Next bluI
 End Sub
