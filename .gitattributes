@@ -1,0 +1,4 @@
+tests/list.txt merge=union
+tests/dev_flags.txt merge=union
+tools/game_flags.txt merge=union
+tests/render/golden/*.png binary
