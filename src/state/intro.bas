@@ -6,6 +6,7 @@ Sub GS_INTRO_Update ()
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
     IF emperorImg <> 0 THEN
         _PUTIMAGE (10, 0)-(309, scrH - 1), emperorImg, backBuffer
+        BACKDROP_Draw "emperor", 10, 0, 309, scrH - 1
     END IF
     LINE (0, scrH - 38)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 210), BF
     FONT_PrintCenteredAlpha fontPalette(14), backBuffer, emperorName, scrH - 34, scrW, 255

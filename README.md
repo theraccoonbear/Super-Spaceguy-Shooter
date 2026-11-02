@@ -84,6 +84,7 @@ The binary lands in `builds/sss` (`builds/sss.exe` on Windows). If you'd rather 
 | Controls, remapping, menus | [docs/controls.md](docs/controls.md) |
 | Credits, upgrades, fuel and shields | [docs/upgrades-and-economy.md](docs/upgrades-and-economy.md) |
 | Config files in `assets/config/` | [docs/config-files.md](docs/config-files.md) |
+| Matte-painting effects on the title, emperor card and dock | [docs/backdrops.md](docs/backdrops.md) |
 | How the engine works (overview) | [docs/internals.md](docs/internals.md) |
 | Telemetry, leaderboard and deploying the backend | [server/README.md](server/README.md) |
 | 3D engine | [src/engine3d.md](src/engine3d.md) |

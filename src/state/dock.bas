@@ -10,10 +10,11 @@ Const DOCK_PX1 = 104   ' list panel: the right two-thirds, so the art's planet a
 Const DOCK_PY1 = 4
 Const DOCK_PX2 = 315
 Const DOCK_PY2 = 235
-Const DOCK_ROW_Y = 46
+Const DOCK_ROW_Y = 29
 Const DOCK_ROW_H = 17
 Const DOCK_NEWS_W = 24     ' characters the news ticker shows at once
 Const DOCK_NEWS_RATE = 7   ' frames per character it scrolls
+Const DOCK_NAME_W = 24     ' characters the header holds: the planet name and the credits share them
 
 Const DOCK_CARD_X = 4      ' the selected item's picture card, top left over the art's sky
 Const DOCK_CARD_Y = 4
@@ -79,11 +80,7 @@ End Function
 ' The window of the news the ticker shows now: the whole line when it fits, else a
 ' character-stepped crawl round a loop of it.
 Function DOCK_NewsWindow$ (dnwTick As Long)
-    Dim dnwLoop As String, dnwAt As Long
-    If Len(dockNews) <= DOCK_NEWS_W Then DOCK_NewsWindow$ = dockNews : Exit Function
-    dnwLoop = dockNews + "  +++  "
-    dnwAt = (dnwTick \ DOCK_NEWS_RATE) Mod Len(dnwLoop)
-    DOCK_NewsWindow$ = Mid$(dnwLoop + dnwLoop, dnwAt + 1, DOCK_NEWS_W)
+    DOCK_NewsWindow$ = UI_Marquee$(dockNews, DOCK_NEWS_W, DOCK_NEWS_RATE, dnwTick, 0)
 End Function
 
 Sub DOCK_Update
@@ -149,6 +146,7 @@ Sub DOCK_Draw
     _Dest backBuffer
     If dockBgImg < -1 Then
         _PutImage (0, 0)-(scrW - 1, scrH - 1), dockBgImg, backBuffer
+        BACKDROP_Draw "dock", 0, 0, scrW - 1, scrH - 1
     Else
         Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 12), BF
     End If
@@ -160,13 +158,13 @@ Sub DOCK_Draw
     dkdCC = _RGB(0, 210, 255)
     Line (DOCK_PX1 + 2, DOCK_PY1 + 2)-(DOCK_PX2 - 2, DOCK_PY1 + 20), _RGB(0, 28, 68), BF
     Line (DOCK_PX1 + 2, DOCK_PY1 + 20)-(DOCK_PX2 - 2, DOCK_PY1 + 20), _RGB(0, 100, 180)
-    UI_Text 11, "UPGRADE DOCK", DOCK_PX1 + 8, DOCK_PY1 + 3, 255
     dkdCr = "$" + LTrim$(Str$(credits))
-    UI_Text 14, dkdCr, DOCK_PX2 - 7 - Len(dkdCr) * FONT_CHAR_W, DOCK_PY1 + 3, 255
     If planetCurrent >= 1 And planetCurrent <= PLANET_COUNT Then
-        UI_Text 8, UCase$(Left$(planetNames(planetCurrent), 24)), DOCK_PX1 + 8, DOCK_PY1 + 22, 255
+        UI_Text 11, UI_Marquee$(UCase$(planetNames(planetCurrent)), DOCK_NAME_W - Len(dkdCr) - 1, DOCK_NEWS_RATE, dockNewsTick, -1), DOCK_PX1 + 8, DOCK_PY1 + 3, 255
+    Else
+        UI_Text 11, "UPGRADE DOCK", DOCK_PX1 + 8, DOCK_PY1 + 3, 255
     End If
-
+    UI_Text 14, dkdCr, DOCK_PX2 - 7 - Len(dkdCr) * FONT_CHAR_W, DOCK_PY1 + 3, 255
     For dkdRow = 0 To DOCK_VISIBLE - 1
         dkdI = dockTop + dkdRow
         If dkdI > DOCK_LAUNCH Then Exit For
@@ -203,10 +201,10 @@ Sub DOCK_Draw
             UI_Text dkdPal, dkdPrice, dkdX, dkdY, 255
         End If
     Next dkdRow
-    ' scroll hints: small triangles in the gaps above and below the list, clear of the text
-    For dkdI = 0 To 3
-        If dockTop > 1 Then Line (DOCK_PX2 - 12 - dkdI, DOCK_ROW_Y - 6 + dkdI)-(DOCK_PX2 - 12 + dkdI, DOCK_ROW_Y - 6 + dkdI), dkdCC
-        If dockTop + DOCK_VISIBLE - 1 < DOCK_LAUNCH Then Line (DOCK_PX2 - 12 - dkdI, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 1 - dkdI)-(DOCK_PX2 - 12 + dkdI, DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 1 - dkdI), dkdCC
+    ' scroll hints: small triangles in the right margin of the first and last rows, clear of the prices
+    For dkdI = 0 To 2
+        If dockTop > 1 Then Line (DOCK_PX2 - 3 - dkdI, DOCK_ROW_Y + 5 + dkdI)-(DOCK_PX2 - 3 + dkdI, DOCK_ROW_Y + 5 + dkdI), dkdCC
+        If dockTop + DOCK_VISIBLE - 1 < DOCK_LAUNCH Then Line (DOCK_PX2 - 3 - dkdI, DOCK_ROW_Y + (DOCK_VISIBLE - 1) * DOCK_ROW_H + 10 - dkdI)-(DOCK_PX2 - 3 + dkdI, DOCK_ROW_Y + (DOCK_VISIBLE - 1) * DOCK_ROW_H + 10 - dkdI), dkdCC
     Next dkdI
 
     dkdY = DOCK_ROW_Y + DOCK_VISIBLE * DOCK_ROW_H + 2
