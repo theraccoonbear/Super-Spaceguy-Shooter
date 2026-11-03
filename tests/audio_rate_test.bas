@@ -4,8 +4,9 @@
 ' Every sound effect buffer, the UI voice, the engine hum, the narration blip, two fixed speech
 ' lines and four fixed music runs (cue switches, crossfades, drum retriggers) are rendered through
 ' the real modules from a fixed seed and reduced to a length and an FNV-1a hash of the raw Single
-' bits. The golden table at the end was captured from the code before #400 and must be reproduced
-' bit for bit at 48000 Hz.
+' bits. The golden table at the end was captured on Linux (the CI container) from the code before #400 and must be reproduced
+' bit for bit at 48000 Hz. The hashes are only compared on Linux: sin and exp round differently in the Windows and macOS math libraries,
+' so the lengths and the rate-to-rate checks are all that run there.
 '
 ' At 44100, 96000 and 192000 Hz the same renders must last as long (within a sample), sound at the
 ' same pitch (zero crossings per second of the tonal sounds, the wavetable step, the music tempo)
@@ -314,7 +315,9 @@ For arG = 0 To AR_GOLDEN - 1
     Read arGn, arGl, arGh
     AR_Assert RTrim$(arRes(arG).nm) = arGn, "table order: " + arGn
     AR_Assert arRes(arG).n = arGl, arGn + ": length" + Str$(arRes(arG).n) + " = golden" + Str$(arGl)
-    AR_Assert arRes(arG).h = arGh, arGn + ": samples are bit-identical to the golden"
+    If InStr(_OS$, "[LINUX]") Then
+        AR_Assert arRes(arG).h = arGh, arGn + ": samples are bit-identical to the golden"
+    End If
 Next arG
 
 ' the 48000 Hz render is the reference for the other rates
