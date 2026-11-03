@@ -16,7 +16,12 @@ while IFS='=' read -r key val; do
     TOKENS["$key"]="$val"
 done < assets/gamevalues.ini
 
-rendered=$(cat assets/gametext.txt)
+# Crawls marked voice=0 in sequence.txt are never spoken, so their text stays out of the dict.
+mapfile -t UNVOICED < <(awk '$1 == "CRAWL" && / voice=0( |$)/ { for (i = 2; i <= NF; i++) if ($i ~ /^txt=/) print substr($i, 5) }' assets/sequence.txt | sort -u)
+skipRegex=$(printf '%s|' "${UNVOICED[@]}")
+rendered=$(awk -v skip="^(${skipRegex%|})$" '
+    /^\[BLOCK:[^]]*\]/ { name = $0; sub(/^\[BLOCK:/, "", name); sub(/\].*$/, "", name); drop = (skip != "^()$" && name ~ skip) }
+    !drop' assets/gametext.txt)
 for key in "${!TOKENS[@]}"; do
     rendered="${rendered//\{\{$key\}\}/${TOKENS[$key]}}"
 done

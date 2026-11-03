@@ -9,7 +9,9 @@
 ;   non-secret block.
 ;
 ; Task types: CRAWL CARD TITLE PLAY ARRIVE DOCK
-; CRAWL  txt=<gtext-key>  mus=<cue>
+; CRAWL  txt=<gtext-key>  mus=<cue>  [voice=0]
+;   voice=0: scrolls at the normal crawl speed and is never narrated, whatever the narration setting;
+;            tools/bake_speech_dict skips its text. Without it the crawl is narrated when narration is on.
 ; CARD   img=<image-key>  mus=<cue>   (EMPEROR is a backward-compat alias)
 ; TITLE  mus=<cue>
 ; PLAY   type=combat|boss|asteroid  mus=<cue>  [trigger=<n>]
@@ -81,6 +83,7 @@ level:6
 
 outro:
     CRAWL txt=outro mus=crawl
+    CRAWL txt=credits mus=crawl voice=0
     TITLE mus=title
     NEXT end
 

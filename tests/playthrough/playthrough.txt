@@ -2,8 +2,8 @@
 #! seed 1
 #! args --god --nerf
 #! frames 13100
-# from a launch folder with no sss_settings.ini. The outro returns to the title at
-# frame 12622; run.sh checks the milestones against
+# from a launch folder with no sss_settings.ini. The outro and credits return to the title at
+# about frame 12700; run.sh checks the milestones against
 # expected.txt. Every line reacts to the screen it is on (@ lines, #328), taking each
 # screen's quickest way out, so no screen waits on a retry.
 #
@@ -31,6 +31,8 @@
 @GS_CRAWL#6 +60 FIRE ESC
 @GS_CRAWL#7 +60 FIRE ESC
 @GS_CRAWL#8 +60 FIRE ESC
+# The credits crawl follows the outro with no state change, so it is skipped by age from the outro's entry.
+@GS_CRAWL#8 +130 FIRE ESC
 # Emperor card: a fresh ESC skips to the title. The crawl skip just held ESC, so it
 # waits a frame for the card to see ESC up first.
 @GS_INTRO +1 ESC
