@@ -57,6 +57,8 @@
 '$INCLUDE:'gameplay/cuts.bas'
 '$INCLUDE:'gameplay/devour.bas'
 '$INCLUDE:'gameplay/player.bas'
+'$INCLUDE:'gameplay/enemyatk.bas'
+'$INCLUDE:'2d/enemydev.bas'
 '$INCLUDE:'gameplay/enemy.bas'
 '$INCLUDE:'gameplay/boss.bas'
 '$INCLUDE:'gameplay/abilities.bas'
