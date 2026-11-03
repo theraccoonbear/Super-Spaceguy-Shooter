@@ -69,8 +69,11 @@ The comparison is exact by default (`RENDER_TOL=N` allows a per-channel differen
 ```bash
 tools/dev bench                 # 5 runs
 tools/dev bench --repeat 10     # more runs, for a tighter spread
+tools/dev bench --script tests/bench/level1.txt   # level 1 instead of level 2
 tools/dev bench --no-telem      # extra args go to sss
 ```
+
+`--script <file>` picks another input script; `tests/bench/level1.txt` plays level 1 (`--scene playing1`, same movement and fire, no explosions).
 
 Each run prints a table of average, 95th-percentile and worst milliseconds per frame for each phase: `sim` (everything before drawing), `backdrop` (starfield, planet), `scene_build` (queueing the 3D meshes), `raster` (`E3D_SceneFlush`), `particles` (`XPD_Draw`), `overlay` (combat overlays, ability effects), `fx` (`FX_Draw`), `hud` (`HUD_Draw`), `rest` (the remaining draw, audio fill and the display call) and `total`. Frames that never reach the renderer (menus, crawls) are left out. After the runs, the spread of each phase's average across runs is printed (min, median, max, max-min).
 

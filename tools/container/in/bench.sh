@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
 # tools/container/in/bench.sh -- `tools/dev bench`, inside the dev container.
 #
-# Usage (from the repo root, in the container): tools/container/in/bench.sh [--repeat N] [sss args...]
-# Plays tests/bench/bench.txt on an off-screen X server N times (default 5) with frame pacing
+# Usage (from the repo root, in the container): tools/container/in/bench.sh [--repeat N] [--script FILE] [sss args...]
+# Plays FILE (default tests/bench/bench.txt) on an off-screen X server N times (default 5) with frame pacing
 # off, prints each run's per-phase frame-time table, then the spread of the per-run averages.
 set -euo pipefail
 
 REPEAT=5
-if [ "${1:-}" = --repeat ]; then
-    REPEAT="${2:?--repeat needs a count}"
+SCRIPT=tests/bench/bench.txt
+while [ "${1:-}" = --repeat ] || [ "${1:-}" = --script ]; do
+    case "$1" in
+        --repeat) REPEAT="${2:?--repeat needs a count}" ;;
+        --script) SCRIPT="${2:?--script needs a file}" ;;
+    esac
     shift 2
-fi
+done
 [[ "$REPEAT" =~ ^[1-9][0-9]*$ ]] || { echo "Error: --repeat needs a whole number 1 or more, got '$REPEAT'" >&2; exit 1; }
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 for i in $(seq 1 "$REPEAT"); do
-    xvfb-run -a -s "-screen 0 1280x720x24" builds/sss --input-script tests/bench/bench.txt --settings-dir "$tmp" --bench "$tmp/run$i.txt" "$@" > "$tmp/out$i.txt" 2>&1 || {
+    xvfb-run -a -s "-screen 0 1280x720x24" builds/sss --input-script "$SCRIPT" --settings-dir "$tmp" --bench "$tmp/run$i.txt" "$@" > "$tmp/out$i.txt" 2>&1 || {
         grep -v "^ALSA lib" "$tmp/out$i.txt" >&2 || true
         echo "Error: bench run $i failed" >&2
         exit 1
