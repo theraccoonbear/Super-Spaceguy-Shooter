@@ -10,6 +10,7 @@ narr_drain_test
 snd_init_test
 music_test
 telem_creds_test
+cli_telem_test
 death_telem_test
 run_end_test
 tutorial_run_test
