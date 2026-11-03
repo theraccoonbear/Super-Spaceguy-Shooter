@@ -412,3 +412,35 @@ Function SND_UiNext!
     End If
     SND_UiNext! = unS
 End Function
+
+' Engine hum: one output sample's phase step (the mixer calls it once per sample while SFX are on).
+Sub SND_EngineStep
+    sndEnginePhase = sndEnginePhase + 6.2832 * sndEngineFreq / SAMPLE_RATE
+    If sndEnginePhase > 6.2832 Then sndEnginePhase = sndEnginePhase - 6.2832
+End Sub
+
+' The narration blip's next output sample (0 once it has finished); the mixer calls it once per sample.
+Function SND_BlipNext!
+    Dim blpPos As Long, blpEnv As Single, blpOut As Single
+    blpOut = 0
+    If sndBlipTimer > 0 Then
+        blpPos = sndBlipLen - sndBlipTimer
+        If blpPos < sndBlipLen * 0.1 Then
+            blpEnv = blpPos / (sndBlipLen * 0.1)
+        ElseIf blpPos > sndBlipLen * 0.55 Then
+            blpEnv = 1.0 - (blpPos - sndBlipLen * 0.55) / (sndBlipLen * 0.45)
+        Else
+            blpEnv = 1.0
+        End If
+        If blpEnv < 0 Then blpEnv = 0
+        If blpPos < sndBlipPlosLen Then
+            blpOut = (RNG!(RNG_AUDIO) * 2.0 - 1.0) * blpEnv * 0.22
+        Else
+            sndBlipPhase = sndBlipPhase + 6.2832 * sndBlipFreq / SAMPLE_RATE
+            If sndBlipPhase > 6.2832 Then sndBlipPhase = sndBlipPhase - 6.2832
+            blpOut = (Sin(sndBlipPhase) + Sin(sndBlipPhase * 2.0) * 0.35) * blpEnv * 0.26
+        End If
+        sndBlipTimer = sndBlipTimer - 1
+    End If
+    SND_BlipNext! = blpOut
+End Function
