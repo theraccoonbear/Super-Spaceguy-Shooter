@@ -19,18 +19,14 @@
 Option _Explicit
 $CONSOLE:ONLY
 
-Dim Shared held(0 To 32767) As Integer  ' the game's held() (dims.bas); KEY_Pressed% reads it
+' input.bas logs devices through debug.bas, which this test does not include
+Sub DBG_Print (isDbgMsg As String) : End Sub
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
 
-' game states and the shared vars src/state/titlenav.bas uses (must match dims.bas)
-Const GS_TITLE       = 0
-Const GS_OPTIONS     = 7
-Const GS_ABOUT       = 8
-Const GS_LEADERBOARD = 12
-Const GS_CONTROLS    = 13
-Const GS_REMAP       = 16
-Dim Shared gameState As Integer, escWas As Integer, optEscWas As Integer
 
-'$INCLUDE:'../src/3d/input.bas'
+
 '$INCLUDE:'../src/sys/inputscript.bas'
 '$INCLUDE:'../src/state/titlenav.bas'
 
@@ -530,6 +526,3 @@ Function IS_Hits$
     IS_Hits$ = isHs
 End Function
 
-' stub: input.bas logs devices through debug.bas, which this test doesn't include
-Sub DBG_Print(isDbgMsg As String)
-End Sub

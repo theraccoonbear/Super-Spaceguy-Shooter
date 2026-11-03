@@ -19,55 +19,14 @@
 $CONSOLE:ONLY
 OPTION _EXPLICIT
 
-' -- game-state constants (must match dims.bas) --
-Const GS_TITLE       = 0
-Const GS_PLAYING     = 1
-Const GS_GAMEOVER    = 2
-Const GS_PLANET      = 3
-Const GS_CINEMATIC   = 4
-Const GS_INTRO       = 5
-Const GS_CRAWL       = 6
-Const GS_OPTIONS     = 7
-Const GS_ABOUT       = 8
-Const GS_LEADIN      = 9
-Const GS_CONSENT     = 10
-Const GS_USERNAME    = 11
-Const GS_LEADERBOARD = 12
-Const GS_CONTROLS    = 13
-Const GS_CRAWLS      = 14
-Const GS_DOCK        = 15
-Const GS_REMAP       = 16
-Const MAX_ENEMIES = 1
-Const MESH_COUNT  = 1
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
 
-' -- minimal stubs for DBG_Overlay's 3D/game-object dependencies (unused by this test) --
-Type GameObj
-    active  As Integer
-    meshIdx As Integer
-    px As Single : py As Single : pz As Single
-    ry As Single : rz As Single
-End Type
-Type E3D_AABB
-    hx As Single : hy As Single : hz As Single
-End Type
-Type E3D_Matrix4
-    m(0 To 3, 0 To 3) As Single
-End Type
 
-Dim Shared gameState As Integer, prevGameState As Integer
-Dim Shared debugMode As Integer
-Dim Shared dbgTtyOK  As Integer
-Dim Shared dbgOverlay As Integer, dbgGraveWas As Integer
-Dim Shared dbgT0 As Double
-Dim Shared scrW As Single, scrH As Single
-Dim Shared E3D_scnCount As Long
-Dim Shared player As GameObj
-Dim Shared playerVY As Single, playerVZ As Single
-Dim Shared enemies(1 To MAX_ENEMIES) As GameObj
-Dim Shared boxLib(1 To MESH_COUNT) As E3D_AABB
-Dim Shared vpMat As E3D_Matrix4
 
-' -- sequencer and frame counter, as sequence.bas / dims.bas declare them (milestone log) --
+
+' -- sequencer state, as sequence.bas declares it (milestone log) --
 Const SEQ_MAX     = 64
 Const SEQ_CRAWL   = 1
 Const SEQ_EMPEROR = 2
@@ -79,10 +38,6 @@ Dim Shared seqKind(0 To SEQ_MAX - 1) As Integer
 Dim Shared seqSval$(0 To SEQ_MAX - 1)
 Dim Shared seqLabel$(0 To SEQ_MAX - 1)
 Dim Shared seqCount As Integer, seqIdx As Integer
-Dim Shared gameFrame As Long
-Dim Shared dbgMlogPath As String
-Dim Shared dbgMlogState As Integer, dbgMlogSeq As Integer
-Dim Shared dbgMlogNarr As Integer
 Dim Shared crawlSaidCount As Integer
 
 '$INCLUDE:'../src/sys/debug.bas'

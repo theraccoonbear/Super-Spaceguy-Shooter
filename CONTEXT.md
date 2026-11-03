@@ -176,7 +176,7 @@ These cause incorrect code in this codebase:
 - **`STR$(n)` prepends a space** for positive numbers. Use `LTRIM$(STR$(n))` when concatenating.
 - **`CONST` scope**: constants declared inside a Sub are local to it. Module-level constants go at the top of the file before any Sub.
 - **`_COMMAND$(n)` subscript form** is not supported in QB64-PE v4.5.0. Use `COMMAND$` (full string) and parse it manually.
-- **Test stubs replicate shared vars.** Adding a new `$INCLUDE` to `sequence.bas`, `dims.bas`, or any file test stubs replicate means updating every affected test file. Grep for the variable name in `tests/` to find which stubs need it.
+- **Tests include `dims.bas`, they do not copy it.** A test includes `src/sys/rng.bas`, `src/engine3d.bi` and `src/sys/dims.bas` and stubs only the collaborator Subs it cannot include (the sequencer tests share theirs in `tests/seq_stubs.bi`). `tools/check_test_dims` fails the suite when a test declares a `Dim Shared` or `Const` that `dims.bas` also declares.
 
 ---
 
