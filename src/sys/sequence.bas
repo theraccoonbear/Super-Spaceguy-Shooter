@@ -61,6 +61,7 @@ Dim Shared seqJumpTo    As Integer   ' task SEQ_JumpToScene wants SEQ_Advance to
 Dim Shared seqLoadErr   As String    ' first problem SEQ_Load hit (overflow, bad header, task outside a block); "" = clean
 Dim Shared seqCount     As Integer
 Dim Shared seqIdx       As Integer
+Dim Shared seqRoster As String, seqPrevRoster As String   ' the combat level's roster= and the previous combat level's (roster.bas)
 Dim Shared seqLastError As String
 Dim Shared seqRunActive As Integer   ' -1 from a run's first PLAY until the run ends: reaching TITLE only ends a run that started (#331)
 
@@ -278,6 +279,20 @@ Sub SEQ_SplitCSV(sscSrc As String, sscOut() As String, sscCnt As Integer)
         sscStart = sscComma + 1
     Loop
 End Sub
+
+' The roster= of the closest combat PLAY before task seqprAt (not a scripted one), "" if none.
+Function SEQ_PrevRoster$(seqprAt As Integer)
+    Dim seqprI As Integer
+    SEQ_PrevRoster$ = ""
+    For seqprI = seqprAt - 1 To 0 Step -1
+        If seqKind(seqprI) = SEQ_PLAY Then
+            If LCase$(SEQ_GetKV$(seqSval$(seqprI), "type")) = "combat" And Len(SEQ_GetKV$(seqSval$(seqprI), "script")) = 0 Then
+                SEQ_PrevRoster$ = SEQ_GetKV$(seqSval$(seqprI), "roster")
+                Exit Function
+            End If
+        End If
+    Next seqprI
+End Function
 
 ' Extract value for key from a "key=val key2=val2 ..." string.
 Function SEQ_GetKV$(seqgSval As String, seqgKey As String)
@@ -699,6 +714,8 @@ Sub SEQ_Advance()
                     stageKills      = 0
                     spawnTimer      = 0
                     waveStageN      = 0
+                    seqRoster       = SEQ_GetKV$(seqSval$(seqIdx), "roster")
+                    seqPrevRoster   = SEQ_PrevRoster$(seqIdx)
                     planetTimer     = 0   ' an unfinished arrival must not draw last chapter's planet here (#168)
                     planetBgR       = 3.0
                     planetBgAlpha   = 245.0

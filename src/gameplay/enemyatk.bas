@@ -13,6 +13,7 @@
 '   EAT_Spread dx, dy, dz, deg       turn a unit direction sideways (z) by deg degrees
 '   EAT_HomeStep vx, vy, vz, tx, ty, tz, deg   turn a velocity toward target direction t,
 '                                    at most deg degrees, speed unchanged
+'   EAT_SetDebutW v                  dev tuning: the debut weight (eatDebutW, debut_weight in enemies.ini), clamped
 '   s = EAT_Rate!(t)                 shots per unit time relative to the baseline
 ' Local variable prefix: eat*
 
@@ -29,6 +30,11 @@ Const EAT_P_STOP = 6
 
 Dim Shared eatV(0 To EAT_TYPES - 1, 0 To EAT_PARAMS - 1) As Single
 Dim Shared eatLoadErr As String
+Dim Shared eatDebutW As Single
+Const EAT_DEBUT_DEFAULT = 3
+Const EAT_DEBUT_MIN = 1
+Const EAT_DEBUT_MAX = 10
+Const EAT_DEBUT_STEP = 0.25
 
 Function EAT_Type% (eatMesh As Integer)
     Select Case eatMesh
@@ -94,6 +100,7 @@ End Function
 
 Sub EAT_Defaults
     Dim eatDT As Integer
+    eatDebutW = EAT_DEBUT_DEFAULT
     For eatDT = 0 To EAT_TYPES - 1
         eatV(eatDT, EAT_P_SHOTS) = 1 : eatV(eatDT, EAT_P_SPREAD) = 0 : eatV(eatDT, EAT_P_SPEED) = 1
         eatV(eatDT, EAT_P_COOL) = 1 : eatV(eatDT, EAT_P_LEAD) = 1 : eatV(eatDT, EAT_P_HOMING) = 0
@@ -107,6 +114,16 @@ Function EAT_Load% (eatSrc As String)
     eatLoadErr = ""
     EAT_Defaults
     eatStore = CFG_Parse$(eatSrc)
+    eatTxt = CFG_Get$(eatStore, "debut_weight")
+    If Len(eatTxt) > 0 Then
+        eatNum = Val(eatTxt)
+        If eatNum < EAT_DEBUT_MIN Or eatNum > EAT_DEBUT_MAX Then
+            eatLoadErr = "enemies.ini debut_weight:" + Str$(EAT_DEBUT_MIN) + " to" + Str$(EAT_DEBUT_MAX)
+            EAT_Defaults
+            Exit Function
+        End If
+        eatDebutW = eatNum
+    End If
     For eatLT = 0 To EAT_TYPES - 1
         For eatLP = 0 To EAT_PARAMS - 1
             eatKey = EAT_TypeName$(eatLT) + "_" + EAT_ParamName$(eatLP)
@@ -125,6 +142,12 @@ Function EAT_Load% (eatSrc As String)
     Next eatLT
     EAT_Load% = -1
 End Function
+
+Sub EAT_SetDebutW (eatVal As Single)
+    If eatVal < EAT_DEBUT_MIN Then eatVal = EAT_DEBUT_MIN
+    If eatVal > EAT_DEBUT_MAX Then eatVal = EAT_DEBUT_MAX
+    eatDebutW = Int(eatVal * 1000 + 0.5) / 1000
+End Sub
 
 Function EAT_Get! (eatT As Integer, eatP As Integer)
     EAT_Get! = eatV(eatT, eatP)

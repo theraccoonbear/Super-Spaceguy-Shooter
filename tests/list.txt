@@ -44,3 +44,4 @@ difficulty_test
 narr_sync_test
 audio_rate_test
 enemy_attack_test
+roster_test
