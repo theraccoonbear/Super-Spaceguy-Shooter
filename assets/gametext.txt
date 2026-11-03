@@ -25,7 +25,7 @@
 The systems of the {{region_name}} once governed themselves: a thousand worlds, a thousand flags, no single hand on the scale.
 That ended with ~4{{emperor}}~6.
 What followed was not war. It was appetite. One world at a time, ~4{{the_empire}}~6 rose, and the stars grew quiet beneath it.
-~6{{the_empire}} does not risk its own. Its fleets are drones and remote-piloted craft, steered by operators who never leave home.
+~4{{the_empire}}~6 does not risk its own. Its fleets are drones and remote-piloted craft, steered by operators who never leave home.
 This is the story of one pilot who refused to stay quiet too.
 [BLOCK:stage1]
 ~4-~E=~7[ ~3CHAPTER 1 ~7]~E=~4-
