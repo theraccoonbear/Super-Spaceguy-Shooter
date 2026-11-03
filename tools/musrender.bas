@@ -20,6 +20,7 @@ Const SND_UI_SPIN   = 7
 Const SND_UI_SPIN_N = 39
 
 Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single, spkSampleOut As Single
+Dim Shared musHold As Integer, musHoldVol As Single
 Sub SPK_Advance () : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
