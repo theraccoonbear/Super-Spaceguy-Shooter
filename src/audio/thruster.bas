@@ -1,6 +1,6 @@
 ' thruster.bas -- the player's engine sound: thrust demand, config and --thruster-dev (#402)
 '
-' The voice itself (hum, rumble, burst, smoothing) lives in snd.bas (SND_ThrusterFrame,
+' The voice itself (hum, body timbres, smoothing) lives in snd.bas (SND_ThrusterFrame,
 ' SND_RumbleNext!) so the mixer tests need nothing from the game. This file feeds it:
 '   THR_Load       read assets/config/thruster.ini (cfgThruster) into the thr* values
 '   THR_Update     once per frame of play: the thrust demand from the ship's speed and how fast
@@ -11,7 +11,8 @@
 '   1 / 2  rumble level - / +        3 / 4  rumble cutoff range - / +
 '   5 / 6  hum pitch range - / +     7 / 8  attack - / +      9 / 0  release - / +
 '   \      re-read assets/config/thruster.ini from disk
-'   readout: one line per tunable, left edge: RL rumble level, CO cutoff, HP hum pitch, AT attack, RE release
+'   =      next timbre (BRN brown noise + sub, JET band-passed whoosh, SAW detuned saws)
+'   readout: one line per tunable, left edge: RL body level, CO cutoff, HP hum pitch, AT attack, RE release, TB timbre
 '
 ' Local variable prefix: thr*
 
@@ -22,8 +23,8 @@ Const THR_REPEAT_DELAY = 20
 Const THR_REPEAT_EVERY = 3
 
 Dim Shared cfgThruster As String
-Dim Shared thrPrevVY As Single, thrPrevVZ As Single, thrArmed As Integer
-Dim Shared thrHeld(0 To 10) As Integer
+Dim Shared thrPrevVY As Single, thrPrevVZ As Single
+Dim Shared thrHeld(0 To 11) As Integer
 Dim Shared thrMsg As String, thrMsgAt As Long
 Dim Shared thrRaw As Single
 
@@ -47,9 +48,6 @@ Sub THR_Load (thlStore As String)
     THR_Num thlStore, "rumble_idle", thrRumbleIdle
     THR_Num thlStore, "cutoff_min", thrCutMin
     THR_Num thlStore, "cutoff_max", thrCutMax
-    THR_Num thlStore, "burst_level", thrBurstLevel
-    THR_Num thlStore, "burst_threshold", thrBurstThresh
-    THR_Num thlStore, "burst_ms", thrBurstMs
     THR_Num thlStore, "speech_duck", thrDuck
     THR_Num thlStore, "smooth_ms", thrSmoothMs
 End Sub
@@ -74,15 +72,12 @@ End Function
 
 ' Once per frame of play, after PLAYER_Update, before the audio fill.
 Sub THR_Update
-    Dim thuChange As Single, thuBurst As Integer, thuRaw As Single
+    Dim thuChange As Single, thuRaw As Single
     thuRaw = THR_RawDemand!(playerVY, playerVY - thrPrevVY, playerVZ, playerVZ - thrPrevVZ, shipMaxVel, thuChange)
     thrPrevVY = playerVY : thrPrevVZ = playerVZ
     If fuelStranded Then thuRaw = 0 : thuChange = 0
-    thuBurst = 0
-    If thrArmed And thuChange >= thrBurstThresh Then thuBurst = -1 : thrArmed = 0
-    If thuChange < thrBurstThresh * 0.5 Then thrArmed = -1
     thrRaw = thuRaw
-    SND_ThrusterFrame thuRaw, thuBurst
+    SND_ThrusterFrame thuRaw
 End Sub
 
 ' --- --thruster-dev ---
@@ -151,6 +146,8 @@ Sub THR_DevFrame
     thfDown = KEY_Down%(92)
     If thfDown Then thrHeld(10) = thrHeld(10) + 1 Else thrHeld(10) = 0
     If thrHeld(10) = 1 Then THR_DevReload
+    If KEY_Down%(61) Then thrHeld(11) = thrHeld(11) + 1 Else thrHeld(11) = 0
+    If thrHeld(11) = 1 Then SND_ThrusterTimbre thrTimbre + 1
 End Sub
 
 Function THR_F$ (thfV As Single, thfPlaces As Integer)
@@ -176,6 +173,7 @@ Sub THR_DevDraw
     THR_DevLine 3, "HP 5/6 " + THR_F$(thrHumPitchMin, 0) + "-" + THR_F$(thrHumPitchMax, 0)
     THR_DevLine 4, "AT 7/8 " + THR_F$(thrAttackMs, 0)
     THR_DevLine 5, "RE 9/0 " + THR_F$(thrReleaseMs, 0)
-    THR_DevLine 6, "\ reload"
-    If Len(thrMsg) > 0 And gameFrame - thrMsgAt < THR_NOTE_FRAMES Then UI_Text 10, thrMsg, 1, THR_DEV_TOP + 7 * FONT_CHAR_H, 255
+    THR_DevLine 6, "TB = " + Mid$("BRNJETSAW", thrTimbre * 3 + 1, 3)
+    THR_DevLine 7, "\ reload"
+    If Len(thrMsg) > 0 And gameFrame - thrMsgAt < THR_NOTE_FRAMES Then UI_Text 10, thrMsg, 1, THR_DEV_TOP + 8 * FONT_CHAR_H, 255
 End Sub
