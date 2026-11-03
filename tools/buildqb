@@ -1,10 +1,15 @@
 #!/bin/bash
 
 # --release (or SSS_RELEASE=1): a release build of sss.bas, without the dev-only flags (#275)
-if [ "$1" == "--release" ]; then
-    export SSS_RELEASE=1
+# --check: build nothing; exit 0 if the build output is current with its inputs, 1 if stale (#233)
+check_only=0
+while [ "${1:-}" = --release ] || [ "${1:-}" = --check ]; do
+    case "$1" in
+        --release) export SSS_RELEASE=1 ;;
+        --check) check_only=1 ;;
+    esac
     shift
-fi
+done
 
 if [ ! -f "$1" ]; then
     echo "Error: source file '$1' not found" >&2
@@ -14,6 +19,41 @@ fi
 base=$(basename "$1" .bas)
 # SSS_BUILD_OUT=<path>: write the executable there instead of builds/<name>
 old_exe="${SSS_BUILD_OUT:-./builds/$base}"
+
+# The hash of a build's inputs (tools/build-manifest) is stored next to the executable as
+# <exe>.sha1, with the listing in <exe>.manifest, after every successful build (#233).
+if [ "$check_only" = 1 ]; then
+    new_manifest=$(mktemp)
+    "$(dirname "$0")/build-manifest" "$1" > "$new_manifest" || { rm -f "$new_manifest"; exit 2; }
+    if [ ! -e "$old_exe" ] && [ ! -e "$old_exe.exe" ]; then
+        echo "stale: $old_exe does not exist"
+        rm -f "$new_manifest"
+        exit 1
+    fi
+    if [ ! -f "$old_exe.manifest" ]; then
+        echo "stale: no manifest for $old_exe (built before the staleness check, or by hand)"
+        rm -f "$new_manifest"
+        exit 1
+    fi
+    if cmp -s "$new_manifest" "$old_exe.manifest"; then
+        echo "current: $old_exe"
+        rm -f "$new_manifest"
+        exit 0
+    fi
+    echo "stale: $old_exe is out of date with these inputs:"
+    old_keys=$(sed 's/:[^:]*$//' "$old_exe.manifest" | LC_ALL=C sort)
+    new_keys=$(sed 's/:[^:]*$//' "$new_manifest" | LC_ALL=C sort)
+    LC_ALL=C comm -13 <(LC_ALL=C sort "$old_exe.manifest") <(LC_ALL=C sort "$new_manifest") | sed 's/:[^:]*$//' | while IFS= read -r key; do
+        if grep -qxF -- "$key" <<< "$old_keys"; then
+            echo "  changed: $key"
+        else
+            echo "  added:   $key"
+        fi
+    done
+    LC_ALL=C comm -23 <(printf '%s\n' "$old_keys") <(printf '%s\n' "$new_keys") | sed 's/^/  removed: /'
+    rm -f "$new_manifest"
+    exit 1
+fi
 
 if [ "$1" == "sss.bas" ]; then
     echo ">>> Baking in-game spoken text..."
@@ -64,8 +104,12 @@ case "$(uname -s)" in
 esac
 
 
+# Inputs as they are when the compile starts: an edit made during the build must show as stale next time
+build_manifest=$(mktemp)
+"$(dirname "$0")/build-manifest" "$1" > "$build_manifest" || exit 1
+
 # Remove stale executable so a failed build can't be mistaken for success
-rm -f "$old_exe"
+rm -f "$old_exe" "$old_exe.sha1" "$old_exe.manifest"
 echo ">>> Building $1..."
 # -o, not -s:ExeDefaultDir: -s saves into QB64-PE's config.ini on every build
 mkdir -p ./builds "$(dirname "$old_exe")"
@@ -92,6 +136,8 @@ if [ $build_status -ne 0 ] || echo "$build_output" | grep -Eiq 'error|fatal' || 
     exit 1
 fi
 
+mv -f "$build_manifest" "$old_exe.manifest"
+if command -v sha1sum > /dev/null 2>&1; then sha1sum < "$old_exe.manifest"; else shasum -a 1 < "$old_exe.manifest"; fi | cut -d" " -f1 > "$old_exe.sha1"
 echo ">>> done!"
 
 if [ "$2" == "/run" ]; then

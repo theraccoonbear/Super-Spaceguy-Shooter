@@ -11,6 +11,7 @@ QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical 
 tools/buildqb tests/spore_test.bas && builds/spore_test
 tools/http_queue_test   # builds http_queue_test.bas and the QB64-PE mock server (tools/http_mock_server.bas), starts the mock on a local port, runs the test against it
 bash tests/tools_dev_test.sh  # checks the container commands `tools/dev run` and `record` build (display, GPU, controllers; options, DB_URL refusal) and its tab completion
+bash tests/build_stale_test.sh  # checks `tools/buildqb --check` (is builds/sss current with its inputs?) against a throwaway repo
 ```
 
 The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name on a new line in `tests/list.txt`. That file, `tests/dev_flags.txt` (dev-only flags a release build must reject) and `tools/game_flags.txt` (game options for `tools/dev` tab completion) are one entry per line and marked `merge=union` in `.gitattributes`, so two PRs that each add a line merge without a conflict. `qb64test.sh` fails, naming the file and line, if any of the three has a repeated entry.

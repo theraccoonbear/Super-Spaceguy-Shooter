@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# tools/build-manifest -- list every input of a build with a content hash (#233).
+#
+# Usage (from the repo root): tools/build-manifest <file.bas>
+# Prints one "key:sha1" line per input, sorted. Hash the whole listing for a single
+# fingerprint of the build. Inputs:
+#   - <file.bas> and every '$INCLUDE:'..' it pulls in, recursively (paths are relative
+#     to the including file; every $IF branch counts)
+#   - every $EMBED:'..' asset (paths are relative to the repo root)
+#   - when src/sys/version.bas is in the build: the git HEAD, dirty flag and exact tag
+#     tools/make-version.sh turns into the version string, and VERSION. The generated
+#     file itself is left out; those lines stand in for it.
+#   - SSS_RELEASE, the OS, tools/buildqb and tools/make-version.sh, and the QB64-PE version
+# Contents are hashed, never timestamps, so touch and git checkout change nothing.
+# Plain bash with sha1sum (or shasum on macOS), so it runs in Git Bash on Windows too.
+set -euo pipefail
+
+if [ $# -ne 1 ] || [ ! -f "$1" ]; then
+    echo "Usage: tools/build-manifest <file.bas>" >&2
+    exit 2
+fi
+
+REPODIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPODIR"
+
+if command -v sha1sum > /dev/null 2>&1; then
+    sha1_files() { sha1sum "$@" | sed -E 's/^([0-9a-f]+) [ *](.*)$/\2:\1/'; }
+    sha1_str() { printf '%s' "$1" | sha1sum | cut -d' ' -f1; }
+else
+    sha1_files() { shasum -a 1 "$@" | sed -E 's/^([0-9a-f]+) [ *](.*)$/\2:\1/'; }
+    sha1_str() { printf '%s' "$1" | shasum -a 1 | cut -d' ' -f1; }
+fi
+
+# Lexically fold "." and ".." out of a repo-relative path.
+norm_path() {
+    local part out=() IFS=/
+    for part in $1; do
+        case "$part" in
+            "" | .) ;;
+            ..) [ ${#out[@]} -gt 0 ] && unset 'out[${#out[@]}-1]' ;;
+            *) out+=("$part") ;;
+        esac
+    done
+    echo "${out[*]}"
+}
+
+GENERATED=src/sys/version.bas
+files=()
+missing=()
+seen=$'\n'
+queue=("$(norm_path "$1")")
+have_version=0
+
+while [ ${#queue[@]} -gt 0 ]; do
+    cur="${queue[0]}"
+    queue=("${queue[@]:1}")
+    case "$seen" in *$'\n'"$cur"$'\n'*) continue ;; esac
+    seen="$seen$cur"$'\n'
+    if [ "$cur" = "$GENERATED" ]; then
+        have_version=1
+        continue
+    fi
+    if [ ! -f "$cur" ]; then
+        missing+=("$cur")
+        continue
+    fi
+    files+=("$cur")
+    case "$cur" in *.bas | *.bi) ;; *) continue ;; esac
+    dir="$(dirname "$cur")"
+    [ "$dir" = . ] && dir=""
+    while IFS= read -r ref; do
+        queue+=("$(norm_path "${dir:+$dir/}$ref")")
+    done < <(tr -d '\r' < "$cur" | grep -aoiE "\\\$INCLUDE:'[^']+'" | sed "s/^[^']*'//;s/'\$//" || true)
+    while IFS= read -r ref; do
+        queue+=("$(norm_path "$ref")")
+    done < <(tr -d '\r' < "$cur" | grep -aoiE "\\\$EMBED:'[^']+'" | sed "s/^[^']*'//;s/'\$//" || true)
+done
+
+{
+    [ ${#files[@]} -gt 0 ] && sha1_files "${files[@]}"
+    for m in ${missing[@]+"${missing[@]}"}; do echo "$m:missing"; done
+    echo "env/release:$(sha1_str "${SSS_RELEASE:-}")"
+    echo "env/os:$(sha1_str "$(uname -s)")"
+    for f in tools/buildqb tools/make-version.sh; do
+        sha1_files "$f"
+    done
+    echo "qb64/version:$(sha1_str "$(qb64pe -h 2>&1 < /dev/null | tr -d "\r" | head -n 1 || true)")"
+    if [ "$have_version" = 1 ]; then
+        sha1_files VERSION
+        commit="$(git rev-parse --short HEAD 2> /dev/null || echo unknown)"
+        dirty=0
+        if [ "$commit" != unknown ] && ! git diff --quiet HEAD -- 2> /dev/null; then dirty=1; fi
+        tag="$(git describe --tags --exact-match --match 'v[0-9]*' HEAD 2> /dev/null || true)"
+        echo "git/head:$(sha1_str "$commit")"
+        echo "git/dirty:$(sha1_str "$dirty")"
+        echo "git/tag:$(sha1_str "$tag")"
+    fi
+} | LC_ALL=C sort

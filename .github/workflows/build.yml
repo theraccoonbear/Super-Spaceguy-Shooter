@@ -99,6 +99,10 @@ jobs:
         if: runner.os == 'Linux'
         run: bash tests/tools_dev_test.sh
 
+      # tools/buildqb --check: current while input contents are unchanged, stale once they change (#233).
+      - name: Check the build staleness check
+        run: bash tests/build_stale_test.sh
+
       # One worker per vCPU: CI runners' vCPUs aren't desktop hyperthreads, so the
       # script's half-the-CPUs default would leave them idle.
       - name: Build and run all tests
