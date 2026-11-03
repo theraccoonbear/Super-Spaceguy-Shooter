@@ -45,6 +45,7 @@ Function JSON_N$   (k As String, v As String) : JSON_N$ = k + ":" + v : End Func
 Function GTEXT_Get$ (k As String) : GTEXT_Get$ = "" : End Function
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
+'$INCLUDE:'../src/sys/settingslogic.bas'
 '$INCLUDE:'../src/sys/settingsio.bas'
 '$INCLUDE:'../src/sys/tutorial.bas'
 

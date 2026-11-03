@@ -1,13 +1,7 @@
-' settings.bas -- volume config screen
+' options.bas -- the Settings screen (GS_OPTIONS): OPTS_Update reads input and adjusts, OPTS_Draw paints it.
 
 Sub OPTS_Update ()
-    Dim oI As Integer, oY As Integer, oFill As Integer
     Dim oUp As Integer, oDn As Integer, oLf As Integer, oRt As Integer, oEsc As Integer
-    Dim oVols(0 To 4) As Single
-    Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
-
-    oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration * settingNarrSpeed / 3 : oVols(4) = settingFullscreen
-
     ' ---- input ----
     ' held() slots carry the keyboard arrows and the pad stick; ESC's slot also carries pad Start
     oUp  = (held(E3D_KEY_UP) <> 0)
@@ -103,10 +97,16 @@ Sub OPTS_Update ()
 
     optUpWas = oUp : optDnWas = oDn : optLfWas = oLf : optRtWas = oRt : optEscWas = oEsc
 
-    ' refresh local vol copy after adjustments
+    OPTS_Draw
+End Sub
+
+Sub OPTS_Draw ()
+    Dim oI As Integer, oY As Integer, oFill As Integer
+    Dim oVols(0 To 4) As Single
+    Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
+
     oVols(0) = volMusic : oVols(1) = volSfx : oVols(2) = volSpeech : oVols(3) = settingNarration * settingNarrSpeed / 3 : oVols(4) = settingFullscreen
 
-    ' ---- render ----
     _DEST backBuffer
     LINE (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
 
