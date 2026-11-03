@@ -1078,7 +1078,7 @@ SUB SPK_Init()
     END SUB
 
     ' One synthesizer sample (SPK_Advance runs spkTimeScale of these per output sample).
-    SUB SPK_AdvanceOne()
+    SUB SPK_AdvanceOne() STATIC  ' STATIC: its locals are not set up again on every call (once per synth sample)
         DIM phoneID AS INTEGER, stress AS INTEGER, dur AS LONG
         DIM env AS SINGLE, s AS SINGLE, t AS SINGLE
         DIM wIdx AS INTEGER, wNext AS INTEGER, wFrac AS SINGLE
