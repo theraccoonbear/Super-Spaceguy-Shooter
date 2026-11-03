@@ -11,8 +11,8 @@
 #                  re-blesses the goldens)
 #   bake           tools/bake_speech_dict
 #   shell [cmd]    interactive shell in the container, or run one command
-#   run [args]     play the game: builds/sss (rebuilt first if missing or older
-#                  than any source) on your display and audio (X11/XWayland,
+#   run [args]     play the game: builds/sss (rebuilt first if missing or stale
+#                  against its sources: content hash, #233) on your display and audio (X11/XWayland,
 #                  PulseAudio/PipeWire, /dev/dri, controllers via /dev/input)
 #   headless [args]  builds/sss on an off-screen X server (Xvfb), no display or
 #                  audio needed; pair with --input-script/--frames/--seed for
@@ -97,17 +97,13 @@ ensure_image() {
     fi
 }
 
-# Rebuild when the binary is missing or any game source is newer than it (e.g.
-# after a git pull), so `run`/`headless` never play a stale build.
-# Also rebuild a binary built natively on the host: it can need a newer glibc
-# than the container has ("GLIBC_2.xx not found").
+# Rebuild unless builds/sss is current with its inputs (a content hash of the includes, embedded
+# assets, VERSION and git state: tools/buildqb --check, #233), so `run`/`headless`/`bench` never
+# play a stale build after a git pull or an edit. Also rebuild a binary built natively on the
+# host: it can need a newer glibc than the container has ("GLIBC_2.xx not found").
 rebuild_if_stale() {
     [ "$DRYRUN" = 1 ] && return
-    if [ ! -x "$REPO/builds/sss" ] || [ -n "$(cd "$REPO" && find sss.bas src assets VERSION -newer builds/sss -print -quit)" ]; then
-        echo ">>> sources changed since the last build; rebuilding builds/sss..."
-        run_in ./tools/buildqb sss.bas
-    elif ! run_in tools/container/in/libs-ok.sh builds/sss; then
-        echo ">>> builds/sss was built outside the container; rebuilding it here..."
+    if ! run_in tools/container/in/current.sh; then
         run_in ./tools/buildqb sss.bas
     fi
 }
