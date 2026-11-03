@@ -12,6 +12,7 @@
 --input-script
 --script-override
 --frames
+--bench
 --realtime
 --gate-tutorial
 --backdrop-dev

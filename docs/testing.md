@@ -62,6 +62,23 @@ The comparison is exact by default (`RENDER_TOL=N` allows a per-channel differen
 
 **When to update goldens:** only when a change is meant to change what's on screen (a new effect, a HUD tweak, different fonts or colours, changed gameplay timing that moves things). Run `tools/dev render --update`, look at every changed PNG in `git diff` before committing it, and say in the PR which goldens changed and why. If a golden changes and you didn't mean to change rendering, that's the bug the suite is for. Re-bless from the container, not a native build on another distro, so the goldens keep matching CI. To add a scene, write `tests/render/scenes/<name>.txt` (copy an existing one) and run `tools/dev render --update <name>`.
 
+## Frame-time bench
+
+`tools/dev bench` measures how long a frame takes, so a slowdown can be found by comparing commits instead of by feel. It plays `tests/bench/bench.txt` (level 2 under fire with `--god --seed 1`, 1800 frames, a boss explosion every 100 frames, so many enemies, bolts and particles on screen) on an off-screen X server with frame pacing off, and the game itself times each frame in phases with `--bench <file>` (`src/sys/bench.bas`; without the flag the timing calls do nothing).
+
+```bash
+tools/dev bench                 # 5 runs
+tools/dev bench --repeat 10     # more runs, for a tighter spread
+tools/dev bench --script tests/bench/level1.txt   # level 1 instead of level 2
+tools/dev bench --no-telem      # extra args go to sss
+```
+
+`--script <file>` picks another input script; `tests/bench/level1.txt` plays level 1 (`--scene playing1`, same movement and fire, no explosions).
+
+Each run prints a table of average, 95th-percentile and worst milliseconds per frame for each phase: `sim` (everything before drawing), `backdrop` (starfield, planet), `scene_build` (queueing the 3D meshes), `raster` (`E3D_SceneFlush`), `particles` (`XPD_Draw`), `overlay` (combat overlays, ability effects), `fx` (`FX_Draw`), `hud` (`HUD_Draw`), `rest` (the remaining draw, audio fill and the display call) and `total`. Frames that never reach the renderer (menus, crawls) are left out. After the runs, the spread of each phase's average across runs is printed (min, median, max, max-min).
+
+The clock has 1 ms resolution, so averages are good to a small fraction of a millisecond over 1800 frames while single-frame values (p95, worst) are whole milliseconds. Timings depend on the machine and on what else is running (other containers, builds), so compare numbers from the same machine in the same sitting, and look at the spread before believing a small difference. The bench is not part of `tools/dev test` or CI.
+
 ## CI scripts
 
 The workflows in `.github/workflows/` hold no long inline shell: each non-trivial step is one call to a script in `.github/scripts/`, so it can be run and read outside CI. Every script has a usage header (`--help` prints it) and takes its inputs as arguments or documented env vars (`GITHUB_OUTPUT`, `GH_TOKEN`, `RUNNER_OS` and so on).
