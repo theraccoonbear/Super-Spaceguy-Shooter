@@ -58,7 +58,7 @@ Sub EDV_Draw ()
     If cliEnemyDev = 0 Then Exit Sub
     _Dest backBuffer
     If edvType = EAT_TYPES Then
-        edvS = "ENEMY mix debut_weight =" + Str$(eatDebutW) + "  T F - = L"
+        edvS = "ENEMY mix debut_weight =" + Str$(eatDebutW) + " T F - = L"
     Else
         edvS = "ENEMY " + EAT_TypeName$(edvType) + " " + EAT_ParamName$(edvParam) + " =" + Str$(EAT_Get!(edvType, edvParam)) + "  T F - = L"
     End If
