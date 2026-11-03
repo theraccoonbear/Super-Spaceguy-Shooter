@@ -28,22 +28,22 @@ Dim Shared sndEngineAmp   As Single
 ' Thruster (#402): the engine voice follows a thrust demand (0..1) made each frame by THR_Update
 ' (src/audio/thruster.bas) from the ship's input and speed change. Values come from
 ' assets/config/thruster.ini; these defaults are the file's, for programs that never load it.
-Dim Shared thrAttackMs As Single : thrAttackMs = 60
-Dim Shared thrReleaseMs As Single : thrReleaseMs = 380
+Dim Shared thrAttackMs As Single : thrAttackMs = 121
+Dim Shared thrReleaseMs As Single : thrReleaseMs = 120
 Dim Shared thrSpeedW As Single : thrSpeedW = 0.55
 Dim Shared thrAccelW As Single : thrAccelW = 0.75
 Dim Shared thrHumPitchMin As Single : thrHumPitchMin = 75
-Dim Shared thrHumPitchMax As Single : thrHumPitchMax = 150
+Dim Shared thrHumPitchMax As Single : thrHumPitchMax = 435
 Dim Shared thrHumAmpIdle As Single : thrHumAmpIdle = 0.07
 Dim Shared thrHumAmpMax As Single : thrHumAmpMax = 0.2
-Dim Shared thrRumbleLevel As Single : thrRumbleLevel = 0.8
+Dim Shared thrRumbleLevel As Single : thrRumbleLevel = 0.5
 Dim Shared thrRumbleIdle As Single : thrRumbleIdle = 0.2
-Dim Shared thrCutMin As Single : thrCutMin = 120
-Dim Shared thrCutMax As Single : thrCutMax = 700
+Dim Shared thrCutMin As Single : thrCutMin = 158
+Dim Shared thrCutMax As Single : thrCutMax = 924
 Dim Shared thrDuck As Single : thrDuck = 0.6
 Dim Shared thrSmoothMs As Single : thrSmoothMs = 12
 Dim Shared thrDemand As Single   ' smoothed demand, 0..1
-Dim Shared thrTimbre As Integer                      ' 0 brown noise + sub, 1 jet whoosh, 2 detuned saws
+Dim Shared thrTimbre As Integer : thrTimbre = 1                    ' 0 brown noise + sub, 1 jet whoosh, 2 detuned saws
 Const THR_TIMBRES = 3
 Dim Shared thrLevel As Single, thrLevelT As Single   ' body gain now / wanted this frame
 Dim Shared thrCoef As Single, thrCoefT As Single     ' filter coefficient now / wanted

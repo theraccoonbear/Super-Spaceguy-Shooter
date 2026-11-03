@@ -36,6 +36,7 @@ End Sub
 
 ' Set every thr* value from a parsed thruster.ini; a missing key keeps its current value.
 Sub THR_Load (thlStore As String)
+    Dim thlT As String
     THR_Num thlStore, "attack_ms", thrAttackMs
     THR_Num thlStore, "release_ms", thrReleaseMs
     THR_Num thlStore, "speed_weight", thrSpeedW
@@ -50,6 +51,10 @@ Sub THR_Load (thlStore As String)
     THR_Num thlStore, "cutoff_max", thrCutMax
     THR_Num thlStore, "speech_duck", thrDuck
     THR_Num thlStore, "smooth_ms", thrSmoothMs
+    thlT = LCase$(CFG_Get$(thlStore, "timbre"))
+    If thlT = "brn" Then SND_ThrusterTimbre 0
+    If thlT = "jet" Then SND_ThrusterTimbre 1
+    If thlT = "saw" Then SND_ThrusterTimbre 2
 End Sub
 
 ' The frame's raw thrust demand (0..1) for a ship moving at (thdVY, thdVZ) that changed by

@@ -63,14 +63,14 @@ Dim ttD1 As Single, ttD2 As Single, ttFq As Single
 
 Print "=== thruster_test ==="
 
-' attack and release: demand climbs fast and eases back slowly
+' attack and release: demand climbs toward full thrust and eases back
 TT_Reset
 For ttI = 1 To 12 : SND_ThrusterFrame 1 : Next ttI
 ttD1 = thrDemand
 TT_Assert ttD1 > 0.6 And ttD1 < 1, "demand rises toward 1 within 200 ms of full thrust (" + Str$(ttD1) + ")"
 For ttI = 1 To 12 : SND_ThrusterFrame 0 : Next ttI
 ttD2 = thrDemand
-TT_Assert ttD2 > 0.2 And ttD2 < ttD1, "demand falls more slowly than it rose (" + Str$(ttD2) + ")"
+TT_Assert ttD2 > 0.05 And ttD2 < ttD1, "demand falls back toward idle after the thrust stops (" + Str$(ttD2) + ")"
 For ttI = 1 To 120 : SND_ThrusterFrame 1 : Next ttI
 ttFq = sndEngineFreq
 TT_Assert Abs(ttFq - thrHumPitchMax) < 1 And Abs(sndEngineAmp - thrHumAmpMax) < 0.005, "full demand: hum at the top pitch and level"
@@ -118,7 +118,7 @@ For ttT = 0 To THR_TIMBRES - 1
     ttRmsHi = TT_Run!(400, ttStepA)
     TT_Assert ttRmsHi > ttRmsLo * 0.7 And ttRmsHi < ttRmsLo * 1.4, "timbre" + Str$(ttT) + ": level matches at 48000 and 96000 Hz (" + Str$(ttRmsLo) + " vs " + Str$(ttRmsHi) + ")"
 Next ttT
-AUD_SetRate 48000 : thrTimbre = 0
+AUD_SetRate 48000 : thrTimbre = 1
 
 ' device rate: the same level at 48000 and 96000 Hz
 AUD_SetRate 48000 : TT_Reset
