@@ -12,6 +12,7 @@ Option _Explicit
 $CONSOLE:ONLY
 
 '$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/sys/audiorate.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 
@@ -90,7 +91,7 @@ Function ST_PresetWPM! (stwLevel As Integer)
         stwK = Left$(stwKeys, stwP - 1) : stwKeys = Mid$(stwKeys, stwP + 1)
         ST_TallyBlock stwK
     Loop
-    ST_PresetWPM! = stTotWords / (stTotSamples / SAMPLE_RATE / 60)
+    ST_PresetWPM! = stTotWords / (stTotSamples / audTune / 60)
 End Function
 
 Print "=== spk_timing_test ==="
@@ -127,7 +128,7 @@ stTallyLevel = -1 ' natural: SPK_Say leaves speed at 1.0
 stTotWords = 0 : stTotSamples = 0
 ST_TallyBlock "intro" : ST_TallyBlock "stage1" : ST_TallyBlock "stage2" : ST_TallyBlock "stage3"
 ST_TallyBlock "stage4" : ST_TallyBlock "stage5" : ST_TallyBlock "stage6" : ST_TallyBlock "outro" : ST_TallyBlock "death_final"
-stNat = stTotWords / (stTotSamples / SAMPLE_RATE / 60)
+stNat = stTotWords / (stTotSamples / audTune / 60)
 stSlow = ST_PresetWPM!(1)
 stNorm = ST_PresetWPM!(2)
 stFast = ST_PresetWPM!(3)
@@ -145,8 +146,8 @@ ST_Assert SPK_PhoneDur&(SPK_AA, 1) = spkDur(SPK_AA, 1), "SPK_Say resets to natur
 
 Print "--- articulation floor ---"
 SPK_SetPreset 3
-ST_Assert SPK_PhoneDur&(SPK_T, 0) >= SAMPLE_RATE * 0.055, "FAST: unvoiced stop >= 55 ms"
-ST_Assert SPK_PhoneDur&(SPK_S, 0) >= SAMPLE_RATE * 0.09, "FAST: unvoiced fricative >= 90 ms"
+ST_Assert SPK_PhoneDur&(SPK_T, 0) >= audTune * 0.055, "FAST: unvoiced stop >= 55 ms"
+ST_Assert SPK_PhoneDur&(SPK_S, 0) >= audTune * 0.09, "FAST: unvoiced fricative >= 90 ms"
 ST_Assert SPK_PhoneDur&(SPK_SIL, 0) < SPK_PhoneDur&(SPK_T, 0), "FAST: pauses compress below stops"
 SPK_SetPreset 2 : stQ = SPK_PhoneDur&(SPK_AA, 1)
 SPK_SetPreset 0

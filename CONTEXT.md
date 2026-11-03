@@ -57,6 +57,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `JSON_` | `src/sys/json.bas` | Minimal JSON *encoder* only (no decoder; parsing is hand-rolled per consumer) |
 | *(shared state)* | `src/sys/dims.bas` | All `DIM SHARED` global state — the game's shared memory layout (QB64-PE has no module-private state). Every module reads/writes these. |
 | `E3D_` | `src/3d/*.bas` | Software 3D engine (mesh, matrix, poly, camera, scene batching, collision, starfield); see `src/engine3d.md` |
+| `AUD_` | `src/sys/audiorate.bas` | The synthesis rate. Audio is synthesized at the sound device's rate (`SAMPLE_RATE`, set once from `_SNDRATE` by `AUD_SetRate` before `SND_Init`), with every tuned value reinterpreted against `AUTHOR_RATE` = 48000 Hz (see below) |
 | `SPK_` | `src/audio/speech.bas` | Phoneme formant TTS synthesizer; see `src/sys/README-speech.md` |
 | `SND_` | `src/audio/snd.bas` | Sound effect triggers and real-time software mixer |
 | `MUSIC_` | `src/audio/music.bas` | Pattern-based music engine (pseudo-MIDI, no files) |
@@ -149,6 +150,20 @@ Camera trails behind (-X) and above (+Y) the player. All `.e3d` mesh data uses t
 9. **`E3D_SceneBegin`/`E3D_SceneFlush` must be paired per frame.** Unpaired calls draw a stale or partial batch with no assertion.
 10. **`HTTP_Flush` blocks.** Call it only at shutdown paths, never from the main game loop.
 
+---
+
+## Audio sample rate (#400)
+
+`_SNDRAW` plays at the sound device's rate, so the game synthesizes at that rate: `SAMPLE_RATE` is read from `_SNDRATE` at startup (`AUD_SetRate`, `src/sys/audiorate.bas`) and arrays sized from sample counts are sized in `SND_Init`.
+
+**The 48000 Hz tuning reference.** All sounds, music and speech were written against 44100 Hz but heard, and tuned by ear, through a 48000 Hz device (the dev machine's audio server runs every sink at 48000 Hz). That sound is the reference. `AUTHOR_RATE = 48000` anchors it, and at `SAMPLE_RATE = AUTHOR_RATE` every expression reduces to the value the code had before, so the sample stream is bit-identical (`tests/audio_rate_test.bas` checks hashes captured from the old code). Other rates match the 48000 Hz sound in duration and pitch:
+
+- A literal **sample count** (effect lengths, phoneme lengths, fades, crossfades, blip lengths) goes through `AUD_N&(count)`: `count * SAMPLE_RATE / AUTHOR_RATE`.
+- A **frequency, phase step, time constant or envelope time** written against 44100 Hz divides by `audTune` (44100 at the reference rate, scaled with the device rate) where it used to divide by `SAMPLE_RATE`; a decay written in samples multiplies by `audK` (`SAMPLE_RATE / AUTHOR_RATE`).
+- A **per-sample multiplier** (one-pole filter and tail decay: `AUD_Decay#`; pad attack smoothing: `AUD_Smooth!`) is raised to `AUTHOR_RATE / SAMPLE_RATE`, so it decays as fast per second.
+- **Game timing derived from samples** (a frame of speech clock, crawl paragraph length, boss shield length) counts in 735-sample frames of `audTune`, as it did at 44100 Hz (`AUD_FrameSamples&`, `/ audTune`), so what is on screen does not move at any rate.
+
+Unheard scripted runs (`--input-script` without `--realtime`) keep `AUTHOR_RATE`, so tests and goldens do not depend on the machine's audio. New audio code: write counts as counts at 48000 Hz through `AUD_N&`, never as a bare `SAMPLE_RATE` multiple, and leave `Const`-sized buffers to `ReDim` at startup.
 ---
 
 ## Things that do NOT exist (don't hallucinate them)

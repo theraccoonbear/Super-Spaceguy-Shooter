@@ -88,7 +88,7 @@ End Function
 
 Function BHP_ShieldFrames& (bhpfSamples As Long)
     Dim bhpfF As Long, bhpfPerFrame As Long
-    bhpfPerFrame = SAMPLE_RATE \ 60
+    bhpfPerFrame = AUD_FrameSamples&
     bhpfF = (bhpfSamples + bhpfPerFrame - 1) \ bhpfPerFrame + bhpShieldPad
     If bhpfSamples <= 0 Then bhpfF = 0
     If bhpfF < bhpShieldMin Then bhpfF = bhpShieldMin

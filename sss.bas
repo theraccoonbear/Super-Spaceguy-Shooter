@@ -67,6 +67,7 @@ Dim Shared DB_KEY As String
 
 '$INCLUDE:'src/sys/version.bas'
 '$INCLUDE:'src/sys/rng.bas'
+'$INCLUDE:'src/sys/audiorate.bas'
 '$INCLUDE:'src/engine3d.bi'
 '$INCLUDE:'src/sys/dims.bas'
 '$INCLUDE:'src/game.bi'
@@ -188,6 +189,7 @@ E3D_MatPerspective cam, scrW / scrH, projMat
 GAME_InitMeshes
 IF debugMode THEN dbgOverlay = 1
 
+IF iscActive AND cliRealtime = 0 THEN AUD_SetRate AUTHOR_RATE ELSE AUD_SetRate _SNDRATE  ' unheard scripted runs keep the reference rate, so they do not depend on the machine's audio
 SND_Init
 MUS_SetCue "crawl"   ' music from launch: consent, callsign and the lead-in cards run into the intro crawl on one cue
 SPK_Init

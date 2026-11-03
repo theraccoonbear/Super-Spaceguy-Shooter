@@ -10,7 +10,6 @@ Option _Explicit
 $CONSOLE:ONLY
 $EMBED:'assets/music.mus':'MUSICDATA'
 
-Const SAMPLE_RATE = 44100
 Const SND_UI_MOVE   = 1
 Const SND_UI_DENY   = 2
 Const SND_UI_PUP    = 3
@@ -24,6 +23,7 @@ Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single, spkSampleO
 Sub SPK_Advance () : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/sys/audiorate.bas'
 '$INCLUDE:'../src/audio/snd.bas'
 '$INCLUDE:'../src/audio/music.bas'
 

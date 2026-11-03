@@ -1,4 +1,3 @@
-CONST SAMPLE_RATE = 44100  ' audio sample rate; used by speech.bas and snd.bas
 
 ' --- game state constants ---
 CONST GS_TITLE     = 0

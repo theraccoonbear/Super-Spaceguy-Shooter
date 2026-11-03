@@ -12,6 +12,7 @@ $EMBED:'assets/sequence.txt':'SEQTXT'
 
 Sub DBG_Print (dpMsg As String) : End Sub
 '$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/sys/audiorate.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 
