@@ -11,11 +11,13 @@
 '   1 / 2  rumble level - / +        3 / 4  rumble cutoff range - / +
 '   5 / 6  hum pitch range - / +     7 / 8  attack - / +      9 / 0  release - / +
 '   \      re-read assets/config/thruster.ini from disk
+'   readout: one line per tunable, left edge: RL rumble level, CO cutoff, HP hum pitch, AT attack, RE release
 '
 ' Local variable prefix: thr*
 
 Const THR_DEV_FILE = "assets/config/thruster.ini"
 Const THR_NOTE_FRAMES = 90
+Const THR_DEV_TOP = 24
 Const THR_REPEAT_DELAY = 20
 Const THR_REPEAT_EVERY = 3
 
@@ -152,21 +154,28 @@ Sub THR_DevFrame
 End Sub
 
 Function THR_F$ (thfV As Single, thfPlaces As Integer)
-    THR_F$ = LTrim$(Str$(Int(thfV * 10 ^ thfPlaces + 0.5) / 10 ^ thfPlaces))
+    Dim thfS As String
+    thfS = LTrim$(Str$(Int(thfV * 10 ^ thfPlaces + 0.5) / 10 ^ thfPlaces))
+    If Left$(thfS, 1) = "." Then thfS = "0" + thfS
+    THR_F$ = thfS
 End Function
 
+Sub THR_DevLine (thlRow As Integer, thlTxt As String)
+    Dim thlY As Long
+    thlY = THR_DEV_TOP + thlRow * FONT_CHAR_H
+    Line (0, thlY)-(Len(thlTxt) * FONT_CHAR_W + 1, thlY + FONT_CHAR_H - 1), _RGBA(0, 0, 0, 200), BF
+    FONT_PrintAlpha fontPalette(14), backBuffer, thlTxt, 1, thlY, 255
+End Sub
+
 Sub THR_DevDraw
-    Dim thdL1 As String, thdL2 As String, thdL3 As String, thdW As Long
     If cliThrusterDev = 0 Then Exit Sub
     _Dest backBuffer
-    thdL1 = "THR demand " + THR_F$(thrDemand, 2) + "  burst " + THR_F$(thrBurst, 2)
-    thdL2 = "1/2 rumble " + THR_F$(thrRumbleLevel, 2) + "  3/4 cutoff " + THR_F$(thrCutMin, 0) + "-" + THR_F$(thrCutMax, 0) + " Hz  5/6 pitch " + THR_F$(thrHumPitchMin, 0) + "-" + THR_F$(thrHumPitchMax, 0) + " Hz"
-    thdL3 = "7/8 attack " + THR_F$(thrAttackMs, 0) + " ms  9/0 release " + THR_F$(thrReleaseMs, 0) + " ms  \ reload"
-    thdW = Len(thdL2)
-    If Len(thdL3) > thdW Then thdW = Len(thdL3)
-    Line (0, scrH - FONT_CHAR_H * 4 - 2)-(thdW * FONT_CHAR_W + 3, scrH - FONT_CHAR_H - 2), _RGBA(0, 0, 0, 200), BF
-    FONT_PrintAlpha fontPalette(14), backBuffer, thdL1, 2, scrH - FONT_CHAR_H * 4 - 1, 255
-    FONT_PrintAlpha fontPalette(14), backBuffer, thdL2, 2, scrH - FONT_CHAR_H * 3 - 1, 255
-    FONT_PrintAlpha fontPalette(14), backBuffer, thdL3, 2, scrH - FONT_CHAR_H * 2 - 1, 255
-    If Len(thrMsg) > 0 And gameFrame - thrMsgAt < THR_NOTE_FRAMES Then UI_Text 10, thrMsg, 2, scrH - FONT_CHAR_H * 5 - 3, 255
+    THR_DevLine 0, "DM " + THR_F$(thrDemand, 2)
+    THR_DevLine 1, "RL 1/2 " + THR_F$(thrRumbleLevel, 2)
+    THR_DevLine 2, "CO 3/4 " + THR_F$(thrCutMin, 0) + "-" + THR_F$(thrCutMax, 0)
+    THR_DevLine 3, "HP 5/6 " + THR_F$(thrHumPitchMin, 0) + "-" + THR_F$(thrHumPitchMax, 0)
+    THR_DevLine 4, "AT 7/8 " + THR_F$(thrAttackMs, 0)
+    THR_DevLine 5, "RE 9/0 " + THR_F$(thrReleaseMs, 0)
+    THR_DevLine 6, "\ reload"
+    If Len(thrMsg) > 0 And gameFrame - thrMsgAt < THR_NOTE_FRAMES Then UI_Text 10, thrMsg, 1, THR_DEV_TOP + 7 * FONT_CHAR_H, 255
 End Sub
