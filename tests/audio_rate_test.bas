@@ -23,20 +23,13 @@ $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 
-Const SND_UI_MOVE   = 1
-Const SND_UI_DENY   = 2
-Const SND_UI_PUP    = 3
-Const SND_UI_TYPE   = 4
-Const SND_UI_DEL    = 5
-Const SND_UI_COLOR  = 6
-Const SND_UI_SPIN   = 7
-Const SND_UI_SPIN_N = 39
 
-Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single
 Sub DBG_Print (arMsg As String) : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/audiorate.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/audio/speech.bas'
 '$INCLUDE:'../src/audio/snd.bas'
 '$INCLUDE:'../src/audio/music.bas'
