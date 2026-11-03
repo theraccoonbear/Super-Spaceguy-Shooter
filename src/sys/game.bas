@@ -168,6 +168,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --difficulty <level>   Play every run at this level (" + DLV_List$ + "), whatever Settings says"
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"
     CLI_Emit guFH, "  --no-telem             Disable gameplay telemetry for this session"
+    CLI_Emit guFH, "                         Dev, cheat and test flags imply it: any --...-dev flag, --god, --nerf, --scene, --bench, --input-script, --explode, --seed, --frames, --credits, --ships, --shields, --fuel, --pup, --screenshot-at, --leaderboard-file"
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
     CLI_Emit guFH, "  --script-override      Let flags here differ from the input script's #! header (this line wins)"
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"

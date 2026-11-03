@@ -1,6 +1,7 @@
 '$INCLUDE:'gameplay/difficulty.bas'
 '$INCLUDE:'sys/inputscript.bas'
 '$INCLUDE:'sys/menunav.bas'
+'$INCLUDE:'sys/cliflags.bas'
 '$INCLUDE:'sys/cli.bas'
 '$INCLUDE:'sys/config.bas'
 '$INCLUDE:'gameplay/credits.bas'
