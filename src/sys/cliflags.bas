@@ -28,3 +28,37 @@ Function CLI_ImpliesNoTelem% (cliLine As String, reason As String)
         End If
     Loop
 End Function
+
+' Whether telemetry runs this session (-1 on, 0 off), with in why$ the rule that decided it
+' for the --debug line (empty for a plain run). Precedence: --no-telem always wins, then
+' --telem cancels an implied off, then CLI_ImpliesNoTelem%. --telem leaves consent alone.
+' Tokens are compared whole, so --telem is never found inside --no-telem.
+Function CLI_TelemDecision% (cliLine As String, why As String)
+    Dim cdRest As String, cdTok As String, cdPos As Integer
+    Dim cdNo As Integer, cdYes As Integer, cdFlag As String
+    cdRest = LTrim$(cliLine)
+    Do While cdRest <> ""
+        cdPos = InStr(cdRest, " ")
+        If cdPos = 0 Then cdPos = Len(cdRest) + 1
+        cdTok = Left$(cdRest, cdPos - 1)
+        cdRest = LTrim$(Mid$(cdRest, cdPos + 1))
+        If cdTok = "--no-telem" Then cdNo = -1
+        If cdTok = "--telem" Then cdYes = -1
+    Loop
+    why = ""
+    If cdNo Then
+        CLI_TelemDecision% = 0
+        If cdYes Then why = "off, --no-telem wins over --telem" Else why = "off, --no-telem"
+        Exit Function
+    End If
+    If CLI_ImpliesNoTelem%(cliLine, cdFlag) = 0 Then
+        CLI_TelemDecision% = -1
+        If cdYes Then why = "on, --telem given, no dev flag to override"
+    ElseIf cdYes Then
+        CLI_TelemDecision% = -1
+        why = "on, --telem overrides " + cdFlag
+    Else
+        CLI_TelemDecision% = 0
+        why = "off, " + cdFlag + " implies --no-telem"
+    End If
+End Function

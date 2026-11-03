@@ -34,11 +34,7 @@ Sub CLI_Parse()
     $END IF
 
     debugMode   = (InStr(cliLine, "--debug") > 0)
-    telemOn     = (InStr(cliLine, "--no-telem") = 0)
-    telemOffReason = ""
-    If telemOn Then
-        If CLI_ImpliesNoTelem%(cliLine, telemOffReason) Then telemOn = 0
-    End If
+    telemOn     = CLI_TelemDecision%(cliLine, telemRule)
 
     ' A release build has no dev-only flags at all, not just hidden ones (#275).
     $IF RELEASEBUILD = 1 THEN
