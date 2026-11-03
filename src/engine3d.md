@@ -79,8 +79,8 @@ This emits an `o SLOT_NAME ... end` block (see the format comment at the top of 
 There's no automated test for the rendering pipeline itself (pixel output isn't practically assertable in this codebase's test style). To verify a mesh or rendering change:
 
 ```bash
-tools/buildqb viewer.bas
-builds/viewer   # or obj2e3d.bas for conversion-time checks
+tools/dev viewer
+# obj2e3d.bas for conversion-time checks
 ```
 
-`viewer.bas` loads and displays a single named mesh with camera controls, letting you inspect a model or a rendering change without booting the full game. Beyond that, run the game itself (`--scene <name>` to jump straight to a stage, see [`src/sys/README-sequence.md`](sys/README-sequence.md)) and look at it.
+`viewer.bas` loads and displays one mesh at a time (PgUp/PgDn cycles through the meshes of `models.e3d` and the `E2_*` meshes of `models_enemies_v2.e3d`) with camera controls, letting you inspect a model or a rendering change without booting the full game. Beyond that, run the game itself (`--scene <name>` to jump straight to a stage, see [`src/sys/README-sequence.md`](sys/README-sequence.md)) and look at it.

@@ -10,6 +10,7 @@ tools/dev bake    # tools/bake_speech_dict
 tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` runs one command
 tools/dev run     # play the game in the container on your display; args pass through to sss
 tools/dev headless  # run the game on an off-screen display (Xvfb), e.g. for scripted playtests (see [Scripted playtests](cli.md))
+tools/dev viewer    # build and open viewer.bas (the model viewer) on your display; `viewer --sheets <outdir>` renders the enemy review PNGs headless
 tools/dev record  # record the scripted playthrough, with sound, to builds/playthrough.mp4 ([Recording a video](#recording-a-video))
 tools/dev completion  # print the bash tab-completion function (see Tab completion below)
 ```
