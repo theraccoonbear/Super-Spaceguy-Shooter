@@ -59,7 +59,9 @@ CONST MESH_EBULLET      = 12
 CONST MESH_BOSS         = 13
 CONST MESH_PUP_FUEL     = 14
 CONST MESH_PUP_POINTS   = 15
-CONST MESH_COUNT        = 15
+CONST MESH_BOSS2        = 16
+CONST MESH_BOSS3        = 17
+CONST MESH_COUNT        = 17
 
 ' --- boss / stage globals ---
 CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
@@ -256,6 +258,7 @@ DIM SHARED waveType AS INTEGER, waveCount AS INTEGER, wavePrev AS INTEGER
 DIM SHARED waveStageN AS INTEGER   ' waves spawned so far in this combat stage (wavetiming.bas)
 DIM SHARED stageClearT AS LONG    ' frames into the clear-out after a combat stage's kill target (0 = not clearing)
 DIM SHARED bossCfgHp AS INTEGER, bossMaxHP AS INTEGER, bossShieldT AS LONG
+DIM SHARED bossModel AS STRING, bossMeshIdx AS INTEGER   ' the fight model= key (sequence.txt) and the mesh slot it picks (BHP_ModelMesh%)
 DIM SHARED held(0 TO 32767) AS INTEGER
 DIM SHARED fireTimer AS SINGLE
 

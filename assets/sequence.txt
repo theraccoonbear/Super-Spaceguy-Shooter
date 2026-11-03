@@ -19,6 +19,7 @@
 ;              speech=key1,key2,key3  -- comma list of gametext keys (empty entry = no speech)
 ;              seek=N -- boss bullet homing strength per frame (0=straight, 0.05=moderate curve)
 ;              attack=a,b,... -- the boss's attack pool (#26): laser, spore, cut, devour; one picked at random per volley
+;              model=bastion|hydra|orbiter -- the boss's 3D model (S2_BOSS_* in assets/models_ships_v2.e3d; none or unknown = bastion); its hitbox is the model's own extents (bastion: the old boss box)
 ;              hp=N -- the boss's hit points (#90; none = boss_hp_default in assets/config/bosses.ini; --nerf: x 0.1)
 ;              secs=N -- seconds the fight is expected to take, for the dock's NEXT JUMP NEEDS (#90; none = fuel_boss_secs in assets/config/economy.ini)
 ;   trigger=n: combat: enemy kills that end the stage (nerf: * NERF_FACTOR, at least 1); asteroid: parsecs
@@ -54,7 +55,7 @@ level:2
 level:3
     CRAWL txt=stage3 mus=crawl
     PLAY type=combat mus=game trigger=12
-    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore hp=30 secs=22
+    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.015 attack=laser,spore model=bastion hp=30 secs=22
     ARRIVE mus=planet
     DOCK mus=dock
     NEXT level:4
@@ -69,7 +70,7 @@ level:4
 level:5
     CRAWL txt=stage5 mus=crawl
     PLAY type=combat mus=game trigger=18
-    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut hp=90 secs=25
+    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.035 attack=laser,spore,cut model=hydra hp=90 secs=25
     ARRIVE mus=planet
     DOCK mus=dock
     NEXT level:6
@@ -77,7 +78,7 @@ level:5
 level:6
     CRAWL txt=stage6 mus=crawl
     PLAY type=combat mus=game trigger=24
-    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour hp=130 secs=32
+    PLAY type=boss mus=boss,boss2,boss3 speech=,speech_boss_phase2,speech_boss_phase3 seek=0.055 attack=laser,spore,cut,devour model=orbiter hp=130 secs=32
     ARRIVE mus=planet
     NEXT outro
 
