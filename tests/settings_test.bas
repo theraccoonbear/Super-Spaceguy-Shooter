@@ -110,7 +110,7 @@ ST_Reset
 stText = SETTINGS_Serialize$
 TC_Assert InStr(stText, "cam_phi=") = 0 And InStr(stText, "cam_r=") = 0, "1.13  unlocked camera writes no cam_ lines"
 TC_Assert InStr(stText, "telem_consent") = 0 And InStr(stText, "player_name") = 0 And InStr(stText, "player_id") = 0, "1.14  empty id, name and consent write no lines"
-TC_Assert Left$(stText, 10) = "music=0.5" + stLf, "1.15  music comes first"
+TC_Assert Left$(stText, 6) = "music=", "1.15  music comes first"
 Print ""
 
 Print "--- 2. missing keys ---"

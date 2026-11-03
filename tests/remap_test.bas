@@ -298,7 +298,7 @@ rtPath = _StartDir$ + "/remap_test_settings.ini"
 rtFH = FreeFile
 Open rtPath For Output As #rtFH
 Print #rtFH, "music=0.5"
-E3D_BindsWrite rtFH
+Print #rtFH, E3D_BindsLines$;
 Close #rtFH
 
 E3D_KeyDefaults
