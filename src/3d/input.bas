@@ -328,15 +328,16 @@ Sub E3D_BindsParse (bpKind As Integer, bpStr As String)
     Next bpI
 End Sub
 
-' Writes the bindings into the open settings file: keys=<binds>, then one
+' The bindings as settings lines (LF-terminated): keys=<binds>, then one
 ' padbind=<pad name>|<binds> line per pad seen.
-Sub E3D_BindsWrite (bwFH As Integer)
-    Dim bwI As Integer
-    Print #bwFH, "keys=" + E3D_BindsStr$(E3D_BIND_KEY)
-    For bwI = 1 To padSavedN
-        Print #bwFH, "padbind=" + padSavedName$(bwI) + "|" + padSavedBinds$(bwI)
-    Next bwI
-End Sub
+Function E3D_BindsLines$ ()
+    Dim blnI As Integer, blnOut As String
+    blnOut = "keys=" + E3D_BindsStr$(E3D_BIND_KEY) + Chr$(10)
+    For blnI = 1 To padSavedN
+        blnOut = blnOut + "padbind=" + padSavedName$(blnI) + "|" + padSavedBinds$(blnI) + Chr$(10)
+    Next blnI
+    E3D_BindsLines$ = blnOut
+End Function
 
 ' One settings line (key, value) -> bindings. -1 if it was a binding line.
 Function E3D_BindsLoadLine% (blKey As String, blRaw As String)

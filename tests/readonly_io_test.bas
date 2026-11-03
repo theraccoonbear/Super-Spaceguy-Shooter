@@ -38,6 +38,7 @@ Function JSON_N$   (k As String, v As String) : JSON_N$ = k + ":" + v : End Func
 
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
+'$INCLUDE:'../src/sys/settingslogic.bas'
 '$INCLUDE:'../src/sys/settingsio.bas'
 
 ' --- test harness ---
