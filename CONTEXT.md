@@ -60,6 +60,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | `AUD_` | `src/sys/audiorate.bas` | The synthesis rate. Audio is synthesized at the sound device's rate (`SAMPLE_RATE`, set once from `_SNDRATE` by `AUD_SetRate` before `SND_Init`), with every tuned value reinterpreted against `AUTHOR_RATE` = 48000 Hz (see below) |
 | `SPK_` | `src/audio/speech.bas` | Phoneme formant TTS synthesizer; see `src/sys/README-speech.md` |
 | `SND_` | `src/audio/snd.bas` | Sound effect triggers and real-time software mixer |
+| `THR_` | `src/audio/thruster.bas` | The player engine sound (#402): thrust demand from the ship speed and speed change, `assets/config/thruster.ini`, and `--thruster-dev`; the voice (hum, low-passed noise rumble, burst) is `SND_ThrusterFrame` / `SND_RumbleNext!` in snd.bas |
 | `MUSIC_` | `src/audio/music.bas` | Pattern-based music engine (pseudo-MIDI, no files) |
 | `BEH_` | `src/gameplay/behavior.bas` | Enemy AI update functions |
 | `STAGE_` | `src/gameplay/stage.bas` | Level layout and enemy-wave scheduling |

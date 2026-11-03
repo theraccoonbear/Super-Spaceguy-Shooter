@@ -742,7 +742,7 @@ Sub MUS_Fill(musFdoSfx As Integer)
                 If sndWhooshLgPos >= SND_WHOOSH_LEN Then sndWhooshLgPos = -1
             End If
             SPK_Advance
-            _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + musFefx) * volSfx _
+            _SNDRAW ((Sin(sndEnginePhase) + Sin(sndEnginePhase * 2) * 0.4 + Sin(sndEnginePhase * 3) * 0.15) * sndEngineAmp * 0.35 + SND_RumbleNext! + musFefx) * volSfx _
                   + musFsample * volMusic + (spkSampleOut + musFnarBlip) * volSpeech
         Else
             SPK_Advance

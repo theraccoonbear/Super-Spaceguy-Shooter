@@ -18,6 +18,7 @@
 --gate-tutorial
 --backdrop-dev
 --explosion-dev
+--thruster-dev
 --explode
 --seed
 --credits

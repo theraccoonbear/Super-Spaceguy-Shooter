@@ -57,6 +57,7 @@
 '$INCLUDE:'gameplay/cuts.bas'
 '$INCLUDE:'gameplay/devour.bas'
 '$INCLUDE:'gameplay/player.bas'
+'$INCLUDE:'audio/thruster.bas'
 '$INCLUDE:'gameplay/enemy.bas'
 '$INCLUDE:'gameplay/boss.bas'
 '$INCLUDE:'gameplay/abilities.bas'

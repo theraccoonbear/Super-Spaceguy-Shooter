@@ -25,6 +25,34 @@ Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
 Dim Shared sndEngineAmp   As Single
 
+' Thruster (#402): the engine voice follows a thrust demand (0..1) made each frame by THR_Update
+' (src/audio/thruster.bas) from the ship's input and speed change. Values come from
+' assets/config/thruster.ini; these defaults are the file's, for programs that never load it.
+Dim Shared thrAttackMs As Single : thrAttackMs = 60
+Dim Shared thrReleaseMs As Single : thrReleaseMs = 380
+Dim Shared thrSpeedW As Single : thrSpeedW = 0.55
+Dim Shared thrAccelW As Single : thrAccelW = 0.75
+Dim Shared thrHumPitchMin As Single : thrHumPitchMin = 75
+Dim Shared thrHumPitchMax As Single : thrHumPitchMax = 150
+Dim Shared thrHumAmpIdle As Single : thrHumAmpIdle = 0.07
+Dim Shared thrHumAmpMax As Single : thrHumAmpMax = 0.2
+Dim Shared thrRumbleLevel As Single : thrRumbleLevel = 0.8
+Dim Shared thrRumbleIdle As Single : thrRumbleIdle = 0.2
+Dim Shared thrCutMin As Single : thrCutMin = 70
+Dim Shared thrCutMax As Single : thrCutMax = 340
+Dim Shared thrBurstLevel As Single : thrBurstLevel = 0.7
+Dim Shared thrBurstThresh As Single : thrBurstThresh = 1.3
+Dim Shared thrBurstMs As Single : thrBurstMs = 220
+Dim Shared thrDuck As Single : thrDuck = 0.6
+Dim Shared thrSmoothMs As Single : thrSmoothMs = 12
+Dim Shared thrDemand As Single   ' smoothed demand, 0..1
+Dim Shared thrBurst As Single    ' burst envelope, 1 at a trigger, decaying
+Dim Shared thrLevel As Single, thrLevelT As Single   ' rumble gain now / wanted this frame
+Dim Shared thrCoef As Single, thrCoefT As Single     ' low-pass coefficient now / wanted
+Dim Shared thrSmoothC As Single, thrSpkRelC As Single
+Dim Shared thrP1 As Single, thrP2 As Single, thrSpk As Single
+Dim Shared thrNoise As Double : thrNoise = 12345
+
 ReDim Shared sndShoot(0 To 0) As Single
 ReDim Shared sndBoom(0 To 0) As Single
 ReDim Shared sndHit(0 To 0) As Single
@@ -353,14 +381,54 @@ Sub SND_Init()
     MUS_Load
 End Sub
 
-Sub SND_GameFill(isManeuver As Integer)
-    If isManeuver Then
-        sndEngineFreq = sndEngineFreq + (150.0 - sndEngineFreq) * 0.07
-        sndEngineAmp  = sndEngineAmp  + (0.20  - sndEngineAmp)  * 0.07
-    Else
-        sndEngineFreq = sndEngineFreq + (75.0  - sndEngineFreq) * 0.04
-        sndEngineAmp  = sndEngineAmp  + (0.07  - sndEngineAmp)  * 0.04
-    End If
+' One game frame (1/60 s) of the engine voice. thfRaw is the frame's thrust demand (0..1) and thfBurst
+' is nonzero on a sudden direction change. The demand is smoothed with separate attack and release
+' times; the hum's pitch and level, and the rumble's level and cutoff, follow it. The rumble's
+' level and cutoff are then eased per sample by SND_RumbleNext!, so a quick tap never steps.
+Sub SND_ThrusterFrame (thfRaw As Single, thfBurst As Integer)
+    Dim thfTau As Single, thfD As Single, thfFc As Single, thfLv As Single
+    thfTau = thrReleaseMs
+    If thfRaw > thrDemand Then thfTau = thrAttackMs
+    If thfTau < 1 Then thfTau = 1
+    thrDemand = thrDemand + (thfRaw - thrDemand) * (1 - Exp(-(1000 / 60) / thfTau))
+    If thfBurst Then thrBurst = 1
+    If thrBurstMs < 1 Then thrBurstMs = 1
+    thrBurst = thrBurst * Exp(-(1000 / 60) / thrBurstMs)
+    thfD = thrDemand
+    sndEngineFreq = thrHumPitchMin + (thrHumPitchMax - thrHumPitchMin) * thfD
+    sndEngineAmp = thrHumAmpIdle + (thrHumAmpMax - thrHumAmpIdle) * thfD
+    thfFc = thrCutMin + (thrCutMax - thrCutMin) * thfD + (thrCutMax - thrCutMin) * 0.5 * thrBurst
+    If thfFc < 10 Then thfFc = 10
+    If thfFc > SAMPLE_RATE * 0.25 Then thfFc = SAMPLE_RATE * 0.25
+    thrCoefT = 1 - Exp(-6.2832 * thfFc / SAMPLE_RATE)
+    thfLv = thrRumbleLevel * (thrRumbleIdle + (1 - thrRumbleIdle) * thfD) + thrBurstLevel * thrBurst
+    If thfLv < 0 Then thfLv = 0
+    thrLevelT = thfLv * 0.9 / Sqr(thrCoefT)
+    If thrSmoothMs < 1 Then thrSmoothMs = 1
+    thrSmoothC = 1 - Exp(-1000 / (thrSmoothMs * SAMPLE_RATE))
+    thrSpkRelC = 1 - Exp(-1000 / (150 * SAMPLE_RATE))
+End Sub
+
+' The rumble's next output sample: white noise through two cascaded one-pole low-passes, scaled by
+' the eased level, and ducked while narration speaks. The mixer calls it once per sample, before
+' the engine's volSfx. It has its own noise generator so it never advances RNG_AUDIO.
+Function SND_RumbleNext!
+    Dim rnN As Single, rnDuck As Single, rnA As Single
+    thrNoise = thrNoise * 1664525# + 1013904223#
+    thrNoise = thrNoise - Int(thrNoise / 4294967296#) * 4294967296#
+    rnN = CSng(thrNoise / 2147483648# - 1)
+    thrLevel = thrLevel + (thrLevelT - thrLevel) * thrSmoothC
+    thrCoef = thrCoef + (thrCoefT - thrCoef) * thrSmoothC
+    thrP1 = thrP1 + (rnN - thrP1) * thrCoef
+    thrP2 = thrP2 + (thrP1 - thrP2) * thrCoef
+    rnA = Abs(spkSampleOut)
+    If rnA > thrSpk Then thrSpk = thrSpk + (rnA - thrSpk) * 0.01 Else thrSpk = thrSpk + (rnA - thrSpk) * thrSpkRelC
+    rnDuck = 1 - thrDuck * thrSpk * 6
+    If rnDuck < 1 - thrDuck Then rnDuck = 1 - thrDuck
+    SND_RumbleNext! = thrP2 * thrLevel * rnDuck * 0.35
+End Function
+
+Sub SND_GameFill
     MUS_Fill 1
 End Sub
 
