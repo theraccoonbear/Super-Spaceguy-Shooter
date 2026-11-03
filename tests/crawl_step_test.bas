@@ -52,6 +52,7 @@ Dim Shared stPassed As Integer, stFailed As Integer
 Dim Shared cstSaid(0 To 127) As Integer, cstSaidN As Integer, cstSeen As Integer
 Dim Shared cstRefPara(0 To CST_MAX_TICKS) As Integer, cstRefWord(0 To CST_MAX_TICKS) As Integer, cstRefN As Long
 Dim Shared cstTick As Long ' crawl time in ticks (fast-forward frames count CRAWL_FF_X)
+Dim Shared cstLvl As Integer ' narration level handed to the crawl: CST_LEVEL, or 0 for a voice=0 crawl
 
 Sub ST_Assert(condition As Integer, testName As String)
     If condition Then
@@ -65,7 +66,8 @@ End Sub
 
 Sub CST_Begin(cbKey As String)
     SPK_Say ""
-    CRAWL_Start GTEXT_Get$(cbKey), CST_LEVEL, CST_START_Y, CST_TRIG_Y
+    cstLvl = CST_LEVEL * SEQ_CrawlVoiced%(cbKey)
+    CRAWL_Start GTEXT_Get$(cbKey), cstLvl, CST_START_Y, CST_TRIG_Y
     cstSaidN = 0 : cstSeen = 0 : cstTick = 0
 End Sub
 
@@ -85,7 +87,7 @@ End Function
 ' One frame: step the crawl, note any paragraph it started, then a frame of speech time.
 Sub CST_Frame(cfFF As Integer)
     Dim cfEvt As Integer
-    cfEvt = CRAWL_Step%(cfFF, CST_LEVEL)
+    cfEvt = CRAWL_Step%(cfFF, cstLvl)
     If cfFF Then cstTick = cstTick + CRAWL_FF_X Else cstTick = cstTick + 1
     If crawlSaidCount <> cstSeen Then
         cstSaid(cstSaidN) = crawlSaidIdx : cstSaidN = cstSaidN + 1 : cstSeen = crawlSaidCount
@@ -120,6 +122,26 @@ Function CST_AllSaidInOrder%
     CST_AllSaidInOrder% = -1
 End Function
 
+
+' A voice=0 crawl: scrolls to its exit, at one speed, with nothing ever handed to the speech queue,
+' in normal play and with fast-forward held.
+Sub CST_CheckUnvoiced(cuKey As String)
+    Dim cuPass As Integer, cuN As Long, cuSpoke As Integer, cuVel As Single
+    For cuPass = 0 To 1
+        CST_Begin cuKey
+        cuVel = crawlVel : cuSpoke = 0 : cuN = 0
+        Do Until CST_Done% Or cuN > CST_MAX_TICKS
+            CST_Frame (cuPass = 1 And cuN > 60 And cuN < 400)
+            If SPK_IsPlaying% Or crawlSaidCount <> 0 Then cuSpoke = -1
+            cuN = cuN + 1
+        Loop
+        ST_Assert CST_Done%, cuKey + ": unvoiced crawl reaches its exit" + Mid$(" with fast-forward", 1, 18 * cuPass)
+        ST_Assert cuSpoke = 0, cuKey + ": never speaks" + Mid$(" with fast-forward", 1, 18 * cuPass)
+        ST_Assert crawlVel = cuVel, cuKey + ": scroll speed constant" + Mid$(" with fast-forward", 1, 18 * cuPass)
+    Next cuPass
+    CST_Begin cuKey
+    ST_Assert cstLvl = 0, cuKey + ": level handed to the crawl is 0 whatever the narration setting"
+End Sub
 Print "=== crawl_step_test ==="
 Print ""
 
@@ -135,6 +157,7 @@ Dim cstFFAt As Long, cstFFLen As Long, cstBad As Long, cstFirstBad As Long, cstN
 For cstC = 0 To seqCrawlCount - 1
     cstK = seqCrawlKey$(cstC)
     Print "--- " + cstK + " ---"
+    If SEQ_CrawlVoiced%(cstK) = 0 Then CST_CheckUnvoiced cstK : Print "" : _Continue
 
     ' reference: uninterrupted play, recording what is being said each tick
     CST_Begin cstK

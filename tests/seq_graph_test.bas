@@ -61,7 +61,11 @@ sgP = SEQ_Validate$
 If sgP <> "" Then Print sgP
 ST_Assert sgP = "",                                       "1.04  no dangling next, dead end or unreachable block"
 ST_Assert seqBlkNext$(SEQ_FindBlock%("outro")) = "end",   "1.05  the outro is the deliberate terminal"
-ST_Assert seqCount = 33,                                  "1.06  NEXT adds no task (33 tasks: the 31 before plus the tutorial block's 2)"
+ST_Assert seqCount = 34,                                  "1.06  NEXT adds no task (34 tasks: the 33 before the credits crawl plus that one)"
+ST_Assert SEQ_CrawlVoiced%("credits") = 0,                "1.07  the credits crawl is unvoiced (voice=0)"
+ST_Assert SEQ_CrawlVoiced%("outro") = 1 And SEQ_CrawlVoiced%("stage1") = 1 And SEQ_CrawlVoiced%("death_final") = 1, "1.08  other crawls, and code-started ones, stay voiced"
+ST_Assert SEQ_GetKV$(seqSval$(seqBlkFirst(SEQ_FindBlock%("outro")) + 1), "txt") = "credits" And seqKind(seqBlkFirst(SEQ_FindBlock%("outro")) + 2) = SEQ_TITLE, "1.09  the credits crawl follows the outro crawl, then the title"
+ST_Assert SEQ_CrawlVoiced%("x") = 1, "1.10  an unknown key is voiced"
 
 Print "--- 2. failures are detected ---"
 SEQ_Load "a:" + sgNL + "    TITLE" + sgNL + "    NEXT b" + sgNL + "b:" + sgNL + "    CRAWL txt=x" + sgNL + "    NEXT end" + sgNL

@@ -26,6 +26,7 @@ level:6
 
 outro:
     CRAWL txt=outro mus=crawl
+    CRAWL txt=credits mus=crawl voice=0
     TITLE mus=title
     NEXT end
 
@@ -40,7 +41,7 @@ Five task types:
 
 | Task | Fields | Effect |
 |---|---|---|
-| `CRAWL` | `txt=<gtext-key>` `mus=<cue>` | Shows the scrolling narrative crawl (text pulled from `assets/gametext.txt` via the given key) |
+| `CRAWL` | `txt=<gtext-key>` `mus=<cue>` `[voice=0]` | Shows the scrolling narrative crawl (text pulled from `assets/gametext.txt` via the given key). `voice=0` makes it an unvoiced crawl, see below |
 | `CARD` (alias `EMPEROR`, kept for backward compatibility) | `img=<image-key>` `mus=<cue>` | Shows a full-screen cutscene card |
 | `TITLE` | `mus=<cue>` | Shows the title screen |
 | `PLAY` | `type=combat\|boss\|asteroid` `mus=<cue>` `[trigger=<n>]` | Enters gameplay. `trigger` is a score/distance threshold, see below |
@@ -61,6 +62,8 @@ level:3
 
 `trigger` means different things per `PLAY` type: for `combat`, the enemy kills that end the phase (scaled by `NERF_FACTOR` in `--nerf` mode, at least 1; points from power-ups and bonuses don't count, #312); for `asteroid`, distance in parsecs; `boss` ignores it (a boss fight ends when the boss dies, not on a kill count).
 
+
+**Unvoiced crawls (`voice=0`, #386).** A `CRAWL` is narrated whenever the player's narration setting is on. `voice=0` on the task turns that off for this crawl alone: it scrolls at the normal crawl speed (the narration-off reading pace), never hands a paragraph to the speech queue whatever `settingNarration` says, and fast-forward (SPACE) and skip (SPACE then ESC) work as in any crawl. Without the key the crawl is voiced, so existing crawls are unchanged. `SEQ_CrawlVoiced%(key)` answers for a gametext key (0 when a `CRAWL` task with that `txt=` has `voice=0`; code-started crawls such as `death_final` have no task and stay voiced); `CRAWL_Prep` multiplies the narration level by it, and `crawlVoiced` carries it to the per-frame `CRAWL_Step%` call. `tools/bake_speech_dict` skips the gametext blocks of unvoiced crawls, so names and credits never enter the speech dict (and need no pronunciations). The credits roll (`txt=credits`) uses it: it plays right after the outro, before the final `TITLE`. Edit its names in `[BLOCK:credits]` of `assets/gametext.txt`; a `[NAME]` line is a placeholder for a name not yet filled in. The crawl is capped at `CRAWL_MAX_LINES` (64) wrapped lines, blank lines included. `tests/crawl_step_test.bas` proves an unvoiced crawl never speaks, with and without fast-forward; `tests/seq_graph_test.bas` checks the shipped flags.
 Boss `PLAY` lines also take per-phase lists, one comma-separated entry per HP phase: `mus=` (music cues), `speech=` (gametext keys; an empty entry means no line), and `attack=`. `seek=` is a single number, the bullet homing strength. `attack=` is not per phase: it is the boss's attack pool (#26), any of `laser`, `spore` (spore bloom), `cut` (the cut) and `devour` (a pull toward the boss). Each volley the boss picks ONE pool entry at random, never two at once (the one exception: during devour's pull the boss keeps firing lasers, by design); a special that just fired cools down for 4 s, and picking it again in that time fires lasers instead (see `src/gameplay/attacks.bas`). Pools stack across bosses: level 3 is `attack=laser,spore`, level 5 `attack=laser,spore,cut`, level 6 `attack=laser,spore,cut,devour`. HP phases still escalate every attack: bigger, faster laser patterns, one spore cloud per phase reached (`src/gameplay/spores.bas`), one cut per phase reached in a chain (`src/gameplay/cuts.bas`), a stronger devour pull per phase (`src/gameplay/devour.bas`). `hp=` (#90) is the boss's hit points (level 3 `hp=30`, level 5 `hp=90`, level 6 `hp=130`; missing = `boss_hp_default` in `assets/config/bosses.ini`, x 0.1 under `--nerf`, at least 3). Phase 2 and 3 start at 66% and 33% of it, a hit never carries past the next phase's start, and the boss is shielded while each phase callout plays (`src/gameplay/bosshp.bas`). `secs=` (#90) is how long the fight is expected to take, for the dock's NEXT JUMP NEEDS (level 3 `secs=22`, level 5 `secs=25`, level 6 `secs=32`; missing = `fuel_boss_secs` in `assets/config/economy.ini`).
 
 ## Runtime API

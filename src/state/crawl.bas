@@ -19,7 +19,7 @@ Sub GS_CRAWL_Update ()
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
     ' scroll + narration (crawllayout.bas); fast-forward runs both 5x, so only music needs handling here
-    SELECT CASE CRAWL_Step%(held(E3D_KEY_SPACE) AND crawlTimer > 60, settingNarration * settingNarrSpeed)
+    SELECT CASE CRAWL_Step%(held(E3D_KEY_SPACE) AND crawlTimer > 60, settingNarration * settingNarrSpeed * crawlVoiced)
         CASE 1 : crawlFFVolSave = volMusic : volMusic = 0
         CASE 2 : volMusic = crawlFFVolSave
     END SELECT
