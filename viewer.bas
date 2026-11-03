@@ -1,6 +1,6 @@
-' viewer.bas — interactive model viewer for models.e3d and models_enemies_v2.e3d (E2_* meshes)
+' viewer.bas — interactive model viewer for models.e3d, models_enemies_v2.e3d (E2_* meshes) and models_ships_v2.e3d (S2_* player and boss meshes)
 ' Usage: viewer [file.obj]   (OBJ loaded as extra mesh; auto-reads .mtl)
-'        viewer --sheets <outdir>   (headless: write the old/new enemy review PNGs to <outdir>, then exit;
+'        viewer --sheets <outdir>   (headless: write the old/new enemy, player and boss review PNGs to <outdir>, then exit;
 '                                    needs a display for the software renderer, e.g. Xvfb; a relative
 '                                    <outdir> is resolved against the launch directory and created if missing)
 ' Left/Right: rotate model   Up/Down: tilt camera
@@ -12,49 +12,54 @@ Option _Explicit
 $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/models_enemies_v2.e3d':'NEWMODELS'
+$EMBED:'assets/models_ships_v2.e3d':'SHIPMODELS'
 
 '$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
-CONST MESH_COUNT = 21
+CONST MESH_COUNT = 25
 CONST MESH_MAX   = 32
 
-DIM meshNames(1 TO MESH_MAX) AS STRING
+DIM SHARED meshNames(1 TO MESH_MAX) AS STRING
 meshNames(1)  = "PLAYER"
-meshNames(2)  = "ENEMY"
-meshNames(3)  = "E2_SOLO"
-meshNames(4)  = "ASTEROID"
-meshNames(5)  = "BULLET"
-meshNames(6)  = "PUP_SHIELD"
-meshNames(7)  = "ENEMY_ARROW"
-meshNames(8)  = "E2_ARROW"
-meshNames(9)  = "ENEMY_HLINE"
-meshNames(10) = "E2_HLINE"
-meshNames(11) = "ENEMY_VCOL"
-meshNames(12) = "E2_VCOL"
-meshNames(13) = "ENEMY_PINCER"
-meshNames(14) = "E2_PINCER"
-meshNames(15) = "ENEMY_VWEDGE"
-meshNames(16) = "E2_VWEDGE"
-meshNames(17) = "THRUSTER"
-meshNames(18) = "EBULLET"
-meshNames(19) = "BOSS"
-meshNames(20) = "PUP_FUEL"
-meshNames(21) = "PUP_POINTS"
+meshNames(2)  = "S2_PLAYER"
+meshNames(3)  = "ENEMY"
+meshNames(4)  = "E2_SOLO"
+meshNames(5)  = "ASTEROID"
+meshNames(6)  = "BULLET"
+meshNames(7)  = "PUP_SHIELD"
+meshNames(8)  = "ENEMY_ARROW"
+meshNames(9)  = "E2_ARROW"
+meshNames(10) = "ENEMY_HLINE"
+meshNames(11) = "E2_HLINE"
+meshNames(12) = "ENEMY_VCOL"
+meshNames(13) = "E2_VCOL"
+meshNames(14) = "ENEMY_PINCER"
+meshNames(15) = "E2_PINCER"
+meshNames(16) = "ENEMY_VWEDGE"
+meshNames(17) = "E2_VWEDGE"
+meshNames(18) = "THRUSTER"
+meshNames(19) = "EBULLET"
+meshNames(20) = "BOSS"
+meshNames(21) = "S2_BOSS_BASTION"
+meshNames(22) = "S2_BOSS_HYDRA"
+meshNames(23) = "S2_BOSS_ORBITER"
+meshNames(24) = "PUP_FUEL"
+meshNames(25) = "PUP_POINTS"
 
-DIM meshLib(1 TO MESH_MAX) AS E3D_Mesh
-DIM boxLib(1 TO MESH_MAX)  AS E3D_AABB
+DIM SHARED meshLib(1 TO MESH_MAX) AS E3D_Mesh
+DIM SHARED boxLib(1 TO MESH_MAX)  AS E3D_AABB
 
 ' --headless review sheets: viewer --sheets <outdir>
-DIM sheetDir AS STRING
+DIM SHARED sheetDir AS STRING
 DIM argAll AS STRING : argAll = LTRIM$(RTRIM$(COMMAND$))
 IF LEFT$(argAll, 8) = "--sheets" THEN sheetDir = LTRIM$(MID$(argAll, 9))
 
 ' Screen must exist before E3D_LoadMesh so _RGB inside the loader
 ' returns proper 32-bit colors instead of text-mode palette indices.
-DIM backBuffer AS LONG
+DIM SHARED backBuffer AS LONG
 IF LEN(sheetDir) > 0 THEN
     SCREEN _NEWIMAGE(320, 240, 32)
     backBuffer = _NEWIMAGE(320, 240, 32)
@@ -68,9 +73,13 @@ DIM mdl AS STRING
 DIM mdlNew AS STRING
 mdl = _EMBEDDED$("MODELS")
 mdlNew = _EMBEDDED$("NEWMODELS")
+DIM mdlShip AS STRING
+mdlShip = _EMBEDDED$("SHIPMODELS")
 DIM mi AS INTEGER
 FOR mi = 1 TO MESH_COUNT
-    IF LEFT$(meshNames(mi), 3) = "E2_" THEN
+    IF LEFT$(meshNames(mi), 3) = "S2_" THEN
+        E3D_LoadMesh mdlShip, meshNames(mi), meshLib(mi), boxLib(mi)
+    ELSEIF LEFT$(meshNames(mi), 3) = "E2_" THEN
         E3D_LoadMesh mdlNew, meshNames(mi), meshLib(mi), boxLib(mi)
     ELSE
         E3D_LoadMesh mdl, meshNames(mi), meshLib(mi), boxLib(mi)
@@ -95,12 +104,12 @@ IF LEN(sheetDir) > 0 THEN
     CONST SH_DIM_NEAR = 28
     CONST SH_DIM_AMB = 0.22
     DIM shKey(1 TO 6) AS STRING, shOld(1 TO 6) AS INTEGER
-    shKey(1) = "solo"   : shOld(1) = 2
-    shKey(2) = "arrow"  : shOld(2) = 7
-    shKey(3) = "hline"  : shOld(3) = 9
-    shKey(4) = "vcol"   : shOld(4) = 11
-    shKey(5) = "pincer" : shOld(5) = 13
-    shKey(6) = "vwedge" : shOld(6) = 15
+    shKey(1) = "solo"   : shOld(1) = 3
+    shKey(2) = "arrow"  : shOld(2) = 8
+    shKey(3) = "hline"  : shOld(3) = 10
+    shKey(4) = "vcol"   : shOld(4) = 12
+    shKey(5) = "pincer" : shOld(5) = 14
+    shKey(6) = "vwedge" : shOld(6) = 16
     ' a relative path is taken against the launch directory, since QB64-PE starts in the executable's directory
     IF LEFT$(sheetDir, 1) <> "/" AND MID$(sheetDir, 2, 1) <> ":" THEN sheetDir = _STARTDIR$ + "/" + sheetDir
     DO WHILE LEN(sheetDir) > 1 AND (RIGHT$(sheetDir, 1) = "/" OR RIGHT$(sheetDir, 1) = "\")
@@ -165,7 +174,13 @@ IF LEN(sheetDir) > 0 THEN
             NEXT shDist
         NEXT shTy
     NEXT shSet
-    PRINT "wrote 96 sheets to " + sheetDir
+    SHEET_Ship 1, "old", "player", 0
+    SHEET_Ship 2, "new", "player", 0
+    SHEET_Ship 20, "old", "boss", -1
+    SHEET_Ship 21, "new", "boss_bastion", -1
+    SHEET_Ship 22, "new", "boss_hydra", -1
+    SHEET_Ship 23, "new", "boss_orbiter", -1
+    PRINT "wrote sheets to " + sheetDir
     SYSTEM 0
 END IF
 
@@ -480,3 +495,50 @@ END
 ' src/3d/input.bas logs via the game's DBG_Print (src/sys/debug.bas), which this tool doesn't include
 Sub DBG_Print (dbgMsg As String)
 End Sub
+
+' Review sheets for the player (rear views) and a boss (front views), 320x240 like the game.
+' <outdir>/<old|new>_<key>_<view>.png; "chase" is the in-game camera (boss 20 ahead of the player).
+SUB SHEET_Ship (shIdx AS INTEGER, shTag AS STRING, shKey AS STRING, shBoss AS INTEGER)
+    DIM shCam AS E3D_Camera, shViewM AS E3D_Matrix4, shProj AS E3D_Matrix4, shVP AS E3D_Matrix4
+    DIM shPos AS E3D_Coord, shRot AS E3D_Coord, shObj AS E3D_Matrix4, shLit AS E3D_Coord
+    DIM shView AS INTEGER, shViewName AS STRING
+    DIM shEx AS SINGLE, shEy AS SINGLE, shEz AS SINGLE, shTx AS SINGLE, shTy AS SINGLE, shTz AS SINGLE
+    PRINT shTag + " " + shKey + " " + meshNames(shIdx) + " verts=" + LTRIM$(STR$(meshLib(shIdx).vCount)) + " faces=" + LTRIM$(STR$(meshLib(shIdx).fCount))
+    shLit.x = -0.4 : shLit.y = 0.7 : shLit.z = -0.5
+    shPos.x = 0 : shPos.y = 0 : shPos.z = 0
+    IF shBoss THEN shPos.x = 20
+    FOR shView = 1 TO 4
+        SELECT CASE shView
+            CASE 1 : shViewName = "chase" : shEx = -6.72 : shEy = 1.04 : shEz = 0 : shTx = 8 : shTy = 0 : shTz = 0
+            CASE 2
+                IF shBoss THEN
+                    shViewName = "front" : shEx = shPos.x - 15 : shEy = 1.5 : shEz = 0 : shTx = shPos.x : shTy = 0 : shTz = 0
+                ELSE
+                    shViewName = "rear_q3" : shEx = -3.4 : shEy = 1.8 : shEz = 2.2 : shTx = 0 : shTy = 0 : shTz = 0
+                END IF
+            CASE 3
+                IF shBoss THEN
+                    shViewName = "front_q3" : shEx = shPos.x - 12 : shEy = 3 : shEz = 9 : shTx = shPos.x : shTy = 0 : shTz = 0
+                ELSE
+                    shViewName = "rear" : shEx = -3.2 : shEy = 1.1 : shEz = 0 : shTx = 0 : shTy = 0 : shTz = 0
+                END IF
+            CASE 4
+                shViewName = "side" : shEx = shPos.x : shEy = 1 : shEz = 4 : IF shBoss THEN shEz = 18
+                shTx = shPos.x : shTy = 0 : shTz = 0
+        END SELECT
+        E3D_MakeCamera shCam, shEx, shEy, shEz, shTx, shTy, shTz, 72
+        shCam.nearZ = 0.1 : shCam.farZ = 120
+        E3D_MatLookAt shCam, shViewM
+        E3D_MatPerspective shCam, 320 / 240, shProj
+        E3D_MatMul shProj, shViewM, shVP
+        _DEST backBuffer
+        LINE (0, 0)-(319, 239), _RGB(4, 5, 22), BF
+        shRot.x = 0 : shRot.y = 0 : shRot.z = 0
+        E3D_BuildObjectMat shPos, shRot, 1.0, shObj
+        E3D_SceneBegin
+        E3D_SceneAddMeshLit meshLib(shIdx), shObj, shCam.POS, 0, shLit
+        E3D_SceneFlush shVP, 320, 240
+        _DEST 0
+        _SAVEIMAGE sheetDir + "/" + shTag + "_" + shKey + "_" + shViewName + ".png", backBuffer
+    NEXT shView
+END SUB

@@ -116,6 +116,10 @@ Sub GAME_InitMeshes
     E3D_LoadMesh gmiNew, "E2_VCOL",    meshLib(MESH_ENEMY_VCOL),   gmiBox
     E3D_LoadMesh gmiNew, "E2_PINCER",  meshLib(MESH_ENEMY_PINCER), gmiBox
     E3D_LoadMesh gmiNew, "E2_VWEDGE",  meshLib(MESH_ENEMY_VWEDGE), gmiBox
+    ' v2 player and boss meshes (#415) likewise; the old PLAYER and BOSS AABBs stay as the hitboxes
+    gmiNew = _EMBEDDED$("SHIPMODELS")
+    E3D_LoadMesh gmiNew, "S2_PLAYER",       meshLib(MESH_PLAYER), gmiBox
+    E3D_LoadMesh gmiNew, "S2_BOSS_BASTION", meshLib(MESH_BOSS),   gmiBox
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
     Next gmiI
