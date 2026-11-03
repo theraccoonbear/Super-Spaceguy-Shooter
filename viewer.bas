@@ -5,6 +5,7 @@
 '                                    <outdir> is resolved against the launch directory and created if missing)
 ' Left/Right: rotate model   Up/Down: tilt camera
 ' PgUp/PgDn: cycle meshes   R: reset rotation
+' Gamepad: left stick rotate/tilt, d-pad left/right mesh, d-pad up/down tilt, A light, X reset, Back quit
 ' L: toggle light mode       ESC/Q: quit
 
 Option _Explicit
@@ -242,12 +243,62 @@ DIM tt          AS SINGLE
 DIM pgupWas  AS INTEGER, pgdnWas  AS INTEGER
 DIM resetWas AS INTEGER, litWas   AS INTEGER
 DIM xWas     AS INTEGER
+DIM padPrevWas AS INTEGER, padNextWas AS INTEGER, padAWas AS INTEGER, padXWas AS INTEGER
+DIM padHatX AS SINGLE, padHatY AS SINGLE, padStX AS SINGLE, padStY AS SINGLE
+DIM padMeshStep AS INTEGER, padLightHit AS INTEGER, padResetHit AS INTEGER
+DIM heldPad(0 TO 32767) AS INTEGER
+E3D_CtrlInit
 
 ' ============================================================
 ' MAIN LOOP
 ' ============================================================
 DO
     tt = tt + 0.016
+
+    ' --- gamepad: src/3d/input.bas reads and maps the pad; the stick and d-pad are read from its raw axes ---
+    E3D_InputUpdate heldPad()
+    padStX = 0 : padStY = 0 : padHatX = 0 : padHatY = 0
+    IF ctrlDev > 0 THEN
+        IF ABS(padRawAxis(E3D_CTRL_AXIS_X)) > E3D_AXIS_DEADZONE THEN padStX = padRawAxis(E3D_CTRL_AXIS_X)
+        IF ABS(padRawAxis(E3D_CTRL_AXIS_Y)) > E3D_AXIS_DEADZONE THEN padStY = padRawAxis(E3D_CTRL_AXIS_Y)
+        IF ABS(padRawAxis(E3D_CTRL_HAT_X)) > E3D_AXIS_DEADZONE THEN padHatX = padRawAxis(E3D_CTRL_HAT_X)
+        IF ABS(padRawAxis(E3D_CTRL_HAT_Y)) > E3D_AXIS_DEADZONE THEN padHatY = padRawAxis(E3D_CTRL_HAT_Y)
+    END IF
+    padMeshStep = 0
+    IF padHatX < 0 THEN
+        IF padPrevWas = 0 THEN padMeshStep = -1
+        padPrevWas = -1
+    ELSE
+        padPrevWas = 0
+    END IF
+    IF padHatX > 0 THEN
+        IF padNextWas = 0 THEN padMeshStep = 1
+        padNextWas = -1
+    ELSE
+        padNextWas = 0
+    END IF
+    padLightHit = 0
+    IF heldPad(E3D_KEY_PAD_A) <> 0 THEN
+        IF padAWas = 0 THEN padLightHit = -1
+        padAWas = -1
+    ELSE
+        padAWas = 0
+    END IF
+    padResetHit = 0
+    IF heldPad(E3D_KEY_PAD_X) <> 0 THEN
+        IF padXWas = 0 THEN padResetHit = -1
+        padXWas = -1
+    ELSE
+        padXWas = 0
+    END IF
+    IF padMeshStep <> 0 THEN
+        currentMesh = currentMesh + padMeshStep
+        IF currentMesh < 1 THEN currentMesh = totalMeshes
+        IF currentMesh > totalMeshes THEN currentMesh = 1
+        rot.x = 0 : rot.y = 0 : rot.z = 0
+    END IF
+    rot.y = rot.y + padStX * 2.0
+    camPitch = camPitch + padStY * 0.02 + SGN(padHatY) * 0.02
 
     ' --- mesh cycle: PgUp / PgDn ---
     IF _KEYDOWN(18688) THEN          ' PgUp
@@ -282,6 +333,7 @@ IF camPitch < -1.4 THEN camPitch = -1.4
 IF camPitch >  1.4 THEN camPitch =  1.4
 
 ' --- reset rotation: R ---
+IF padResetHit THEN rot.x = 0 : rot.y = 0 : rot.z = 0
 IF _KEYDOWN(82) OR _KEYDOWN(114) THEN
     IF NOT resetWas THEN rot.x = 0 : rot.y = 0 : rot.z = 0
     resetWas = -1
@@ -290,6 +342,7 @@ ELSE
 END IF
 
 ' --- toggle light mode: L ---
+IF padLightHit THEN litMode = NOT litMode
 IF _KEYDOWN(76) OR _KEYDOWN(108) THEN
     IF NOT litWas THEN litMode = NOT litMode
     litWas = -1
@@ -389,9 +442,9 @@ COLOR _RGB(255, 220, 80)
 _PRINTSTRING (4, 2), "[" + LTRIM$(STR$(currentMesh)) + "/" + LTRIM$(STR$(totalMeshes)) + "]  " + meshNames(currentMesh)
 
 ' bottom bar: stats + controls
-LINE (0, SCR_H - 36)-(SCR_W - 1, SCR_H - 1), _RGBA(0, 0, 0, 210), BF
+LINE (0, SCR_H - 52)-(SCR_W - 1, SCR_H - 1), _RGBA(0, 0, 0, 210), BF
 COLOR _RGB(160, 200, 160)
-_PRINTSTRING (4, SCR_H - 34), _
+_PRINTSTRING (4, SCR_H - 50), _
 "V:" + LTRIM$(STR$(meshLib(currentMesh).vCount)) + _
 "  F:" + LTRIM$(STR$(meshLib(currentMesh).fCount)) + _
 "  AABB " + LEFT$(STR$(boxLib(currentMesh).hx + 100), 5) + _
@@ -407,17 +460,20 @@ SELECT CASE axisRemap
 END SELECT
 COLOR _RGB(130, 140, 160)
 IF LEN(objRawDat) > 0 THEN
-    _PRINTSTRING (4, SCR_H - 18), _
+    _PRINTSTRING (4, SCR_H - 34), _
     "[PgUp/Dn]  [</> rot]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [X remap:" + remapLabel + "]  [ESC/Q]"
 ELSE
-    _PRINTSTRING (4, SCR_H - 18), _
+    _PRINTSTRING (4, SCR_H - 34), _
     "[PgUp/Dn mesh]  [</> rotate]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [ESC/Q]"
 END IF
+
+IF ctrlDev > 0 THEN COLOR _RGB(110, 150, 190) ELSE COLOR _RGB(70, 80, 100)
+_PRINTSTRING (4, SCR_H - 18), "PAD: stick rot+tilt  dpad L/R mesh  dpad U/D tilt  A light  X reset  Back quit"
 
 _LIMIT 60
 _DISPLAY
 
-LOOP UNTIL _KEYDOWN(27) OR _KEYDOWN(113) OR _KEYDOWN(81)
+LOOP UNTIL _KEYDOWN(27) OR _KEYDOWN(113) OR _KEYDOWN(81) OR heldPad(E3D_KEY_PAD_SELECT) <> 0
 
 END
 
