@@ -90,6 +90,8 @@ End Function
 Sub GAME_InitMeshes
     Dim gmiMdl As String
     Dim gmiI   As Integer
+    Dim gmiNew As String
+    Dim gmiBox As E3D_AABB
     gmiMdl = _EMBEDDED$("MODELS")
     E3D_LoadMesh gmiMdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
     E3D_LoadMesh gmiMdl, "ENEMY",        meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
@@ -106,6 +108,14 @@ Sub GAME_InitMeshes
     E3D_LoadMesh gmiMdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
     E3D_LoadMesh gmiMdl, "PUP_FUEL",     meshLib(MESH_PUP_FUEL),     boxLib(MESH_PUP_FUEL)
     E3D_LoadMesh gmiMdl, "PUP_POINTS",   meshLib(MESH_PUP_POINTS),   boxLib(MESH_PUP_POINTS)
+    ' v2 enemy meshes (#395) replace the visuals; the old meshes' AABBs stay as the hitboxes, so play is unchanged
+    gmiNew = _EMBEDDED$("NEWMODELS")
+    E3D_LoadMesh gmiNew, "E2_SOLO",    meshLib(MESH_ENEMY),        gmiBox
+    E3D_LoadMesh gmiNew, "E2_ARROW",   meshLib(MESH_ENEMY_ARROW),  gmiBox
+    E3D_LoadMesh gmiNew, "E2_HLINE",   meshLib(MESH_ENEMY_HLINE),  gmiBox
+    E3D_LoadMesh gmiNew, "E2_VCOL",    meshLib(MESH_ENEMY_VCOL),   gmiBox
+    E3D_LoadMesh gmiNew, "E2_PINCER",  meshLib(MESH_ENEMY_PINCER), gmiBox
+    E3D_LoadMesh gmiNew, "E2_VWEDGE",  meshLib(MESH_ENEMY_VWEDGE), gmiBox
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
     Next gmiI

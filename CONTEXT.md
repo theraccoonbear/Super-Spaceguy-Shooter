@@ -233,7 +233,7 @@ tools/dev viewer --sheets builds/sheets   # headless: write the old/new enemy re
 | Where do shared globals live? | `src/sys/dims.bas` — the game's shared memory layout |
 | Where do types/constants live? | `src/3d/types.bi` (3D types), `src/sys/dims.bas` (game types and game-wide constants), and the top of each module for its own constants. `src/game.bi` holds only `$INCLUDE` lines |
 | Where does 3D rendering happen? | `src/3d/matrix.bas` → `src/3d/scene.bas` (batching) → `src/3d/poly.bas` (rasterization) |
-| Where do meshes come from? | `assets/models.e3d` (embedded); `tools/dev viewer` to preview (also loads `assets/models_enemies_v2.e3d`); `obj2e3d.bas` to convert OBJ |
+| Where do meshes come from? | `assets/models.e3d` (embedded; the six enemy types are drawn from `assets/models_enemies_v2.e3d`, with the ENEMY* meshes in models.e3d kept for their hitbox AABBs); `tools/dev viewer` to preview (also loads `assets/models_enemies_v2.e3d`); `obj2e3d.bas` to convert OBJ |
 | Where does HTTP go? | `src/sys/http.bas` (queue/pump) → `src/sys/telemetry.bas` (events) + `src/sys/lbrd.bas` (leaderboard) |
 | Where does the sequence table come from? | `assets/sequence.txt` (data file, not code) |
 | What is the `--scene` name for a stage? | `playingN` (combat), `bossN` (boss), `crawlN` (crawl) where N is the level number |

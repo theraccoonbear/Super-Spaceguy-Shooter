@@ -72,12 +72,12 @@ Sub ENEMY_Update
             ' contrail: staggered by slot so not all ships emit on the same frame
             If (Int(tt * 40) + enI) Mod 3 = 0 Then
                 Select Case enemies(enI).meshIdx
-                Case MESH_ENEMY        : enTrlR = 160 : enTrlG =  50 : enTrlB =  35
-                Case MESH_ENEMY_ARROW  : enTrlR = 160 : enTrlG =  90 : enTrlB =   0
-                Case MESH_ENEMY_HLINE  : enTrlR =  40 : enTrlG = 140 : enTrlB =  55
-                Case MESH_ENEMY_VCOL   : enTrlR =  40 : enTrlG = 140 : enTrlB = 155
-                Case MESH_ENEMY_PINCER : enTrlR = 155 : enTrlG = 150 : enTrlB =  35
-                Case Else              : enTrlR = 120 : enTrlG =  50 : enTrlB = 165
+                Case MESH_ENEMY        : enTrlR = 160 : enTrlG =  25 : enTrlB =  19
+                Case MESH_ENEMY_ARROW  : enTrlR = 160 : enTrlG =  94 : enTrlB =   6
+                Case MESH_ENEMY_HLINE  : enTrlR =  25 : enTrlG = 160 : enTrlB =  44
+                Case MESH_ENEMY_VCOL   : enTrlR =  13 : enTrlG = 148 : enTrlB = 160
+                Case MESH_ENEMY_PINCER : enTrlR = 160 : enTrlG = 150 : enTrlB =  19
+                Case Else              : enTrlR = 126 : enTrlG =  57 : enTrlB = 160
                 End Select
                 FX_SpawnBurst enemies(enI).px + 0.35, enemies(enI).py, enemies(enI).pz, 1, 0.005, 20, 6, _RGB(enTrlR, enTrlG, enTrlB)
             End If
