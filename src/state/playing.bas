@@ -99,6 +99,7 @@ Sub GS_PLAYING_Update ()
     END IF
 
     IF gameState = GS_PLAYING THEN XPD_Frame
+    IF gameState = GS_PLAYING THEN THR_DevFrame
 
     ' --- physics (skipped when camera orbit is active) ---
     IF gspSkipPhysics = 0 THEN
@@ -350,6 +351,7 @@ Sub GS_PLAYING_Update ()
     BENCH_Lap BENCH_HUD
     TUT_Draw
     XPD_DevDraw
+    THR_DevDraw
 
     IF camF.orbitMode THEN
         _DEST backBuffer
@@ -367,7 +369,8 @@ Sub GS_PLAYING_Update ()
     FX_Shake backBuffer
 
     IF gameState = GS_PLAYING THEN
-        SND_GameFill isManeuver
+        THR_Update
+        SND_GameFill
     ELSE
         MUS_Fill 0
     END IF

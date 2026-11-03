@@ -25,6 +25,36 @@ Dim Shared sndEnginePhase As Single
 Dim Shared sndEngineFreq  As Single
 Dim Shared sndEngineAmp   As Single
 
+' Thruster (#402): the engine voice follows a thrust demand (0..1) made each frame by THR_Update
+' (src/audio/thruster.bas) from the ship's input and speed change. Values come from
+' assets/config/thruster.ini; these defaults are the file's, for programs that never load it.
+Dim Shared thrAttackMs As Single : thrAttackMs = 121
+Dim Shared thrReleaseMs As Single : thrReleaseMs = 120
+Dim Shared thrSpeedW As Single : thrSpeedW = 0.55
+Dim Shared thrAccelW As Single : thrAccelW = 0.75
+Dim Shared thrHumPitchMin As Single : thrHumPitchMin = 75
+Dim Shared thrHumPitchMax As Single : thrHumPitchMax = 435
+Dim Shared thrHumAmpIdle As Single : thrHumAmpIdle = 0.07
+Dim Shared thrHumAmpMax As Single : thrHumAmpMax = 0.2
+Dim Shared thrRumbleLevel As Single : thrRumbleLevel = 0.5
+Dim Shared thrRumbleIdle As Single : thrRumbleIdle = 0.2
+Dim Shared thrCutMin As Single : thrCutMin = 158
+Dim Shared thrCutMax As Single : thrCutMax = 924
+Dim Shared thrDuck As Single : thrDuck = 0.6
+Dim Shared thrSmoothMs As Single : thrSmoothMs = 12
+Dim Shared thrDemand As Single   ' smoothed demand, 0..1
+Dim Shared thrTimbre As Integer : thrTimbre = 1                    ' 0 brown noise + sub, 1 jet whoosh, 2 detuned saws
+Const THR_TIMBRES = 3
+Dim Shared thrLevel As Single, thrLevelT As Single   ' body gain now / wanted this frame
+Dim Shared thrCoef As Single, thrCoefT As Single     ' filter coefficient now / wanted
+Dim Shared thrFreq As Single, thrFreqT As Single     ' body pitch (Hz) now / wanted
+Dim Shared thrSmoothC As Single, thrSpkRelC As Single
+Dim Shared thrLow As Single, thrBand As Single       ' state-variable filter, stage 1
+Dim Shared thrLow2 As Single, thrBand2 As Single     ' stage 2
+Dim Shared thrBrown As Single, thrSpk As Single, thrBrownK As Single
+Dim Shared thrPh(0 To 3) As Single, thrSubPh As Single
+Dim Shared thrNoise As Double : thrNoise = 12345
+
 ReDim Shared sndShoot(0 To 0) As Single
 ReDim Shared sndBoom(0 To 0) As Single
 ReDim Shared sndHit(0 To 0) As Single
@@ -353,14 +383,96 @@ Sub SND_Init()
     MUS_Load
 End Sub
 
-Sub SND_GameFill(isManeuver As Integer)
-    If isManeuver Then
-        sndEngineFreq = sndEngineFreq + (150.0 - sndEngineFreq) * 0.07
-        sndEngineAmp  = sndEngineAmp  + (0.20  - sndEngineAmp)  * 0.07
-    Else
-        sndEngineFreq = sndEngineFreq + (75.0  - sndEngineFreq) * 0.04
-        sndEngineAmp  = sndEngineAmp  + (0.07  - sndEngineAmp)  * 0.04
-    End If
+' One game frame (1/60 s) of the engine voice. thfRaw is the frame's thrust demand (0..1), smoothed
+' with separate attack and release times. The hum's pitch and level, and the body's level, filter
+' cutoff and pitch, follow it; SND_RumbleNext! then eases the last three per sample, so no
+' parameter ever steps.
+Sub SND_ThrusterFrame (thfRaw As Single)
+    Dim thfTau As Single, thfD As Single, thfFc As Single, thfLv As Single
+    thfTau = thrReleaseMs
+    If thfRaw > thrDemand Then thfTau = thrAttackMs
+    If thfTau < 1 Then thfTau = 1
+    thrDemand = thrDemand + (thfRaw - thrDemand) * (1 - Exp(-(1000 / 60) / thfTau))
+    thfD = thrDemand
+    sndEngineFreq = thrHumPitchMin + (thrHumPitchMax - thrHumPitchMin) * thfD
+    sndEngineAmp = thrHumAmpIdle + (thrHumAmpMax - thrHumAmpIdle) * thfD
+    thfFc = thrCutMin + (thrCutMax - thrCutMin) * thfD
+    If thfFc < 10 Then thfFc = 10
+    If thfFc > SAMPLE_RATE * 0.15 Then thfFc = SAMPLE_RATE * 0.15
+    thrCoefT = 2 * Sin(3.14159265 * thfFc / SAMPLE_RATE)
+    thfLv = thrRumbleLevel * (thrRumbleIdle + (1 - thrRumbleIdle) * thfD)
+    If thfLv < 0 Then thfLv = 0
+    thrLevelT = thfLv
+    thrFreqT = sndEngineFreq
+    If thrSmoothMs < 1 Then thrSmoothMs = 1
+    thrSmoothC = 1 - Exp(-1000 / (thrSmoothMs * SAMPLE_RATE))
+    thrSpkRelC = 1 - Exp(-1000 / (150 * SAMPLE_RATE))
+    thrBrownK = CSng(AUD_Decay#(0.995#))
+End Sub
+
+' The body's next output sample, in the timbre thrTimbre, scaled by the eased level and ducked while
+' narration speaks. The mixer calls it once per sample, before the engine's volSfx. It has its own
+' noise generator so it never advances RNG_AUDIO.
+'   0  brown noise (white noise integrated, so little above the cutoff) through a 2-pole resonant
+'      low-pass, over a sine an octave below the hum
+'   1  white noise through two cascaded band-passes centred on the cutoff, a jet-style whoosh
+'   2  four detuned saws an octave below the hum through the same 2-pole low-pass, a growl
+Function SND_RumbleNext!
+    Dim rnN As Single, rnDuck As Single, rnA As Single, rnOut As Single, rnHi As Single, rnI As Integer
+    Dim rnStep As Single
+    thrNoise = thrNoise * 1664525# + 1013904223#
+    thrNoise = thrNoise - Int(thrNoise / 4294967296#) * 4294967296#
+    rnN = CSng(thrNoise / 2147483648# - 1)
+    thrLevel = thrLevel + (thrLevelT - thrLevel) * thrSmoothC
+    thrCoef = thrCoef + (thrCoefT - thrCoef) * thrSmoothC
+    thrFreq = thrFreq + (thrFreqT - thrFreq) * thrSmoothC
+    rnStep = thrFreq * 0.5 / SAMPLE_RATE
+    Select Case thrTimbre
+    Case 0
+        thrBrown = thrBrown * thrBrownK + rnN * 0.05 / Sqr(audK)
+        rnHi = thrBrown - thrLow - 0.7 * thrBand
+        thrBand = thrBand + thrCoef * rnHi
+        thrLow = thrLow + thrCoef * thrBand
+        thrSubPh = thrSubPh + rnStep * 6.2832
+        If thrSubPh > 6.2832 Then thrSubPh = thrSubPh - 6.2832
+        rnOut = thrLow * 0.7 + Sin(thrSubPh) * 0.5
+    Case 1
+        rnHi = rnN * Sqr(audK) - thrLow - 1.2 * thrBand
+        thrBand = thrBand + thrCoef * rnHi
+        thrLow = thrLow + thrCoef * thrBand
+        rnHi = thrBand - thrLow2 - 1.2 * thrBand2
+        thrBand2 = thrBand2 + thrCoef * rnHi
+        thrLow2 = thrLow2 + thrCoef * thrBand2
+        rnOut = thrBand2 * 6
+    Case Else
+        rnA = 0
+        For rnI = 0 To 3
+            thrPh(rnI) = thrPh(rnI) + rnStep * (0.994 + 0.0045 * rnI)
+            If thrPh(rnI) >= 1 Then thrPh(rnI) = thrPh(rnI) - 1
+            rnA = rnA + (thrPh(rnI) * 2 - 1)
+        Next rnI
+        rnHi = rnA * 0.25 - thrLow - 0.8 * thrBand
+        thrBand = thrBand + thrCoef * rnHi
+        thrLow = thrLow + thrCoef * thrBand
+        rnHi = thrLow - thrLow2 - 0.8 * thrBand2
+        thrBand2 = thrBand2 + thrCoef * rnHi
+        thrLow2 = thrLow2 + thrCoef * thrBand2
+        rnOut = thrLow2 * 1.5
+    End Select
+    rnA = Abs(spkSampleOut)
+    If rnA > thrSpk Then thrSpk = thrSpk + (rnA - thrSpk) * 0.01 Else thrSpk = thrSpk + (rnA - thrSpk) * thrSpkRelC
+    rnDuck = 1 - thrDuck * thrSpk * 6
+    If rnDuck < 1 - thrDuck Then rnDuck = 1 - thrDuck
+    SND_RumbleNext! = rnOut * thrLevel * rnDuck * 0.22
+End Function
+
+' Switch the body's timbre, clearing the filters so the old one's state never leaks into the new.
+Sub SND_ThrusterTimbre (tbN As Integer)
+    thrTimbre = tbN Mod THR_TIMBRES
+    thrLow = 0 : thrBand = 0 : thrLow2 = 0 : thrBand2 = 0 : thrBrown = 0
+End Sub
+
+Sub SND_GameFill
     MUS_Fill 1
 End Sub
 
