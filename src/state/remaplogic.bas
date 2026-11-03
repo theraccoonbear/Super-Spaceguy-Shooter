@@ -105,7 +105,7 @@ Sub RMP_Leave
     gameState = rmpReturn
     rmpLeft = -1
     escWas = -1 : optEscWas = -1 : pWas = -1 : tabWas = -1
-    escYWas = -1 : escNWas = -1 : escCWas = -1 : escKWas = -1
+    escYWas = -1 : escNWas = -1 : escCWas = -1 : escKWas = -1 : escSWas = -1
     optUpWas = -1 : optDnWas = -1 : optLfWas = -1 : optRtWas = -1
 End Sub
 

@@ -22,28 +22,32 @@ Sub GS_PLAYING_Update ()
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
             CASE PAUSE_REMAP
                 RMP_Open gameState
+            CASE PAUSE_SETTINGS
+                optSavedImg = _COPYIMAGE(backBuffer)
+                OPTS_OpenFromPause gameState
         END SELECT
         IF pauseShown THEN
             ' prompt column, sized to the widest prompt for the device last used
             Dim gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer, gspDev As Integer, gspPal As Integer
-            Dim gspK(0 TO 3) As String, gspL(0 TO 3) As String, gspPals(0 TO 3) As Integer
+            Dim gspK(0 TO 4) As String, gspL(0 TO 4) As String, gspPals(0 TO 4) As Integer
             gspK(0) = UI_Tok$("Y", 0)
             gspK(1) = UI_Tok$("C", E3D_ACT_ROLL)
             gspK(2) = UI_Tok$("K", E3D_ACT_NOVA)
-            gspK(3) = UI_Tok$("ESC", E3D_ACT_BACK)
-            gspL(0) = "CONFIRM RETREAT" : gspL(1) = "CONTROLS" : gspL(2) = "REMAP CONTROLS" : gspL(3) = "CANCEL"
-            gspPals(0) = 14 : gspPals(1) = 9 : gspPals(2) = 9 : gspPals(3) = 8
+            gspK(3) = UI_Tok$("S", 0)
+            gspK(4) = UI_Tok$("ESC", E3D_ACT_BACK)
+            gspL(0) = "CONFIRM RETREAT" : gspL(1) = "CONTROLS" : gspL(2) = "REMAP CONTROLS" : gspL(3) = "SETTINGS" : gspL(4) = "CANCEL"
+            gspPals(0) = 14 : gspPals(1) = 9 : gspPals(2) = 9 : gspPals(3) = 9 : gspPals(4) = 8
             gspDev = INP_LastDevice%
             gspKW = 0
-            FOR gspKi = 0 TO 3
+            FOR gspKi = 0 TO 4
                 IF UI_PromptsW%(gspK(gspKi), gspDev) > gspKW THEN gspKW = UI_PromptsW%(gspK(gspKi), gspDev)
             NEXT gspKi
             gspKW = gspKW + 2 * FONT_CHAR_W
             gspPx = (scrW - gspKW - 15 * FONT_CHAR_W) \ 2
             _DEST backBuffer
-            UI_DrawPanel scrW\2 - 104, scrH\2 - 30, scrW\2 + 104, scrH\2 + 70, "ABORT MISSION"
-            FOR gspKi = 0 TO 3
-                gspRy = scrH\2 - 4 + gspKi * 18
+            UI_DrawPanel scrW\2 - 104, scrH\2 - 40, scrW\2 + 104, scrH\2 + 80, "ABORT MISSION"
+            FOR gspKi = 0 TO 4
+                gspRy = scrH\2 - 14 + gspKi * 18
                 gspPal = gspPals(gspKi)
                 IF gspKi = pauseSel THEN
                     UI_MenuHighlight scrW\2 - 101, gspRy - 2, scrW\2 + 101, gspRy + 14

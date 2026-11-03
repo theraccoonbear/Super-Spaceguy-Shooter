@@ -42,6 +42,7 @@
 '$INCLUDE:'sys/game.bas'
 '$INCLUDE:'sys/settingslogic.bas'
 '$INCLUDE:'sys/settingsio.bas'
+'$INCLUDE:'state/optionsnav.bas'
 '$INCLUDE:'state/options.bas'
 '$INCLUDE:'2d/prompttext.bas'
 '$INCLUDE:'2d/ui.bas'

@@ -334,7 +334,7 @@ DO
     IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
     spkAudioLock = (iscActive = 0)  ' scripted runs keep the frame clock so they stay deterministic (#329)
     IF spkAudioLock THEN spkBuffered = CLNG(_SNDRAWLEN * SAMPLE_RATE)
-    SPK_Tick
+    IF musHold = 0 THEN SPK_Tick
 
     DBG_Overlay
 
