@@ -22,159 +22,25 @@ $CONSOLE:ONLY
 OPTION _EXPLICIT
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+
 Const VERSION$ = "0.0.0-test"
 Const BUILD_KIND$ = "dev"
-Const GS_TITLE     = 0
-Const GS_PLAYING   = 1
-Const GS_PLANET    = 3
-Const GS_CINEMATIC = 4
-Const GS_INTRO     = 5
-Const GS_CRAWL     = 6
-Const LEVEL_COMBAT   = 0
-Const LEVEL_ASTEROID = 1
-Const LEVEL_BOSS     = 2
-Const PLANET_COUNT   = 6
-Const NERF_FACTOR    = 0.1
-Const BOSS_WARN_FRAMES  = 120
-Const DIFF_RAMP_DURATION = 600.0
-Const DIFF_STAGE_COUNT   = 6.0
-Const CAM_OFFSET_X = 6.5
-Const CAM_OFFSET_Y = 2.0
-Const MAX_ENEMIES  = 35
-Const MAX_BULLETS  = 256
-Const BULLET_SPEED = 0.35
-Const BULLET_RANGE = 110
-Const FIRE_TICK    = 0.025
-Const MESH_BULLET  = 4
 Const E3D_KEY_SPACE = 32
-Const CAM_LAG_RATE  = 0.1
-Const CAM_FWD_RATE  = 0.1
 
-Type BossObj
-    active  As Integer
-    meshIdx As Integer
-    px As Single : py As Single : pz As Single
-    hp As Integer
-    warnTimer As Integer
-End Type
 
-Type ReObj
-    active  As Integer
-    meshIdx As Integer
-    px As Single : py As Single : pz As Single
-    vx As Single : vy As Single : vz As Single
-    rx As Single : ry As Single : rz As Single
-    life As Single
-    scl As Single
-End Type
 
-Type CamFollow
-    lagY As Single : lagZ As Single
-    fwdY As Single : fwdZ As Single
-End Type
 
 ' shared by player.bas / telemetry.bas / credits.bas
 Dim Shared DB_URL As String
 Dim Shared DB_KEY As String
-Dim Shared boss              As BossObj
-Dim Shared player            As ReObj
-Dim Shared bullets(1 To MAX_BULLETS) As ReObj
-Dim Shared enemies(1 To MAX_ENEMIES) As ReObj
-Dim Shared camF              As CamFollow
-Dim Shared held(0 To 32767)  As Integer
-Dim Shared gameState         As Integer
-Dim Shared fuelStranded      As Integer
-Dim Shared cinPhase          As Single
-Dim Shared playerVY          As Single
-Dim Shared playerVZ          As Single
-Dim Shared isManeuver        As Integer
-Dim Shared fireTimer         As Single
-Dim Shared laserEnergy       As Single
-Dim Shared fuelLevel         As Single
-Dim Shared lives             As Integer
-Dim Shared shieldMax         As Integer : shieldMax = 100
-Dim Shared fuelMax           As Single  : fuelMax = 100
-Dim Shared shipMaxVel        As Single  : shipMaxVel = 0.12
-Dim Shared fireCool          As Single  : fireCool = 0.18
-Dim Shared gunShots          As Integer : gunShots = 1
-Dim Shared gunSpread         As Single
-Dim Shared rollTimer         As Integer
-Dim Shared rollDir           As Integer
-Dim Shared rollFrames        As Integer : rollFrames = 20
-Dim Shared rollSpeed         As Single
-Dim Shared noHitFrames       As Long
-Dim Shared credits           As Long
-Dim Shared creditsEarned     As Long
-Dim Shared creditsSpent      As Long
 Function UPG_ArmourDmg% (d As Integer) : UPG_ArmourDmg% = d : End Function
-Dim Shared shipLives         As Integer
-Dim Shared deathTimer        As Integer
-Dim Shared gameOver          As Integer
 Dim Shared fxShakeTimer      As Integer
 Dim Shared fxFlashTimer      As Integer
-Dim Shared telemOn           As Integer
-Dim Shared ioReadOnly        As Integer
-Dim Shared telemSession      As String
-Dim Shared telemPlayerID     As String
-Dim Shared telemConsent      As Integer
-Dim Shared telemKills        As Long
-Dim Shared telemBossReached  As Integer
-Dim Shared telemBossPhaseLog As Integer
-Dim Shared telemDeathCause   As String
-Dim Shared telemShotsFired   As Long
-Dim Shared telemShotsHit     As Long
-Dim Shared telemEscapes      As Long
-Dim Shared telemBatch        As String
-Dim Shared telemCsvDir       As String
-Dim Shared telemCsvBuf       As String
-Dim Shared settingsDir       As String
-Dim Shared telemBatchRows    As Long
-Dim Shared telemT0           As Long
-Dim Shared gameFrame         As Long
-Dim Shared novaMax As Integer, novaCharges As Integer, rollCoolMax As Integer, rollCool As Integer
-Dim Shared telemFlags        As String
 Function DBG_StateName$ (s As Integer) : DBG_StateName$ = "GS_TEST" : End Function
-Dim Shared telemExitReason   As String
-Dim Shared score             As Long
-Dim Shared waveType          As Integer
-Dim Shared leaderboardPlayerID As String
-Dim Shared telemPlayerName     As String
-Dim Shared settingNerf         As Integer
-Dim Shared godMode             As Integer
 
-' shared by sequence.bas
-Dim Shared highScore    As Long
-Dim Shared stageKillTarget As Long
-Dim Shared levelNum     As Integer
-Dim Shared levelType    As Integer
-Dim Shared bltActive    As Integer
-Dim Shared diffTime     As Single
-Dim Shared diffScale    As Single
-Dim Shared spawnTimer   As Single
-Dim Shared waveStageN   As Integer
-Dim Shared bossCfgHp    As Integer
-Dim Shared astFieldStart As Single
-Dim Shared astDestName  As String
-Dim Shared planetCurrent As Integer
-Dim Shared planetNameIdx As Integer
-Dim Shared planetTimer  As Integer
-Dim Shared scrH         As Single
-Dim Shared tt           As Single
-Dim Shared planetNames(1 To PLANET_COUNT) As String
-Dim Shared bossMusList$(0 To 7)
-Dim Shared bossMusCnt        As Integer
-Dim Shared bossSpeechList$(0 To 7)
-Dim Shared bossSpeechCnt     As Integer
-Dim Shared bossAttackList$(0 To 7)
-Dim Shared bossAttackCnt     As Integer
-Dim Shared bossSeekStr     As Single
-Dim Shared introTimer As Integer
-Dim Shared stageKills     As Long
-Dim Shared scrW         As Single
-Dim Shared planetR       As Single
-Dim Shared planetBgR     As Single
-Dim Shared planetBgAlpha As Single
-Dim Shared astParsecs    As Integer
 
 Dim Shared reEnds As Integer, reLastExit As String, reLastCue As String, reSaves As Integer
 
@@ -191,17 +57,13 @@ Sub SND_Shoot : End Sub
 Dim Shared xpIdPlayer As Integer
 Sub XP_Spawn (xsId As Integer, xsX As Single, xsY As Single, xsZ As Single, xsVX As Single, xsVY As Single, xsVZ As Single, xsScale As Single) : End Sub
 Sub MUS_SetCue (c As String) : reLastCue = c : End Sub
-Sub StarfieldReset (x As Single, y As Single, z As Single) : End Sub
 Sub CRAWL_Prep (k As String, h As Single) : End Sub
 Sub SETTINGS_Save () : reSaves = reSaves + 1 : End Sub
-Sub BELT_Init (w As Single, h As Single) : End Sub
-Sub DOCK_Enter () : gameState = 15 : End Sub   ' GS_DOCK
+Sub DOCK_Enter () : gameState = GS_DOCK : End Sub
 Sub SPK_Say (s As String) : End Sub
 Function GTEXT_Get$ (k As String) : GTEXT_Get$ = "" : End Function
 
-Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
 '$INCLUDE:'../src/gameplay/difficulty.bas'
-'$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/sys/sequence.bas'
 '$INCLUDE:'../src/sys/telemetry.bas'
 '$INCLUDE:'../src/gameplay/credits.bas'

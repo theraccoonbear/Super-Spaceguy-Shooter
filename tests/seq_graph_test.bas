@@ -24,88 +24,10 @@ $EMBED:'assets/sequence.txt':'SEQTXT'
 
 
 
-' ── game-state constants (must match dims.bas) ──────────────────────────────
-Const GS_TITLE     = 0
-Const GS_PLAYING   = 1
-Const GS_PLANET    = 3
-Const GS_INTRO     = 5
-Const GS_CRAWL     = 6
-Const LEVEL_COMBAT   = 0
-Const LEVEL_ASTEROID = 1
-Const LEVEL_BOSS     = 2
-Const PLANET_COUNT   = 6
-Const NERF_FACTOR    = 0.1
-Const BOSS_WARN_FRAMES  = 120
-Const DIFF_RAMP_DURATION = 600.0
-Const DIFF_STAGE_COUNT   = 6.0
-Const ASTFIELD_DURATION      = 120.0
-Const CAM_OFFSET_X = 6.5
-Const CAM_OFFSET_Y = 2.0
-
-' ── boss state stub ─────────────────────────────────────────────────────────
-Type BossState
-    warnTimer As Integer
-End Type
-
-' ── shared vars referenced by sequence.bas ──────────────────────────────────
-Dim Shared gameState    As Integer
-Dim Shared score        As Long
-Dim Shared highScore    As Long
-Dim Shared stageKillTarget As Long
-Dim Shared levelNum     As Integer
-Dim Shared levelType    As Integer
-Dim Shared bltActive    As Integer
-Dim Shared settingNerf  As Integer
-Dim Shared diffTime     As Single
-Dim Shared diffScale    As Single
-Dim Shared spawnTimer   As Single
-Dim Shared waveStageN   As Integer
-Dim Shared bossCfgHp    As Integer
-Dim Shared astFieldStart As Single
-Dim Shared astDestName  As String
-Dim Shared planetCurrent As Integer
-Dim Shared planetNameIdx As Integer
-Dim Shared planetTimer  As Integer
-Dim Shared scrH         As Single
-Dim Shared boss         As BossState
-Dim Shared tt           As Single
-Dim Shared planetNames(1 To PLANET_COUNT) As String
-Dim Shared telemExitReason As String
-Dim Shared bossMusList$(0 To 7)
-Dim Shared bossMusCnt        As Integer
-Dim Shared bossSpeechList$(0 To 7)
-Dim Shared bossSpeechCnt     As Integer
-Dim Shared bossAttackList$(0 To 7)
-Dim Shared bossAttackCnt     As Integer
-Dim Shared bossSeekStr     As Single
-Dim Shared introTimer As Integer
-Dim Shared stageKills     As Long
-Dim Shared scrW         As Single
-Dim Shared planetR       As Single
-Dim Shared planetBgR     As Single
-Dim Shared planetBgAlpha As Single
-Dim Shared astParsecs    As Integer
-Type GameObj
-    px As Single
-End Type
-Dim Shared player       As GameObj
-
-' ── stubs ────────────────────────────────────────────────────────────────────
-Dim Shared stLastCue As String
-Sub MUS_SetCue(c As String)         : stLastCue = c : End Sub
-Sub StarfieldReset(x As Single, y As Single, z As Single) : End Sub
-Sub CRAWL_Prep(k As String, h As Single) : End Sub
-Sub SETTINGS_Save()                 : End Sub
-Sub BELT_Init(w As Single, h As Single) : End Sub
-Sub CR_StageClear()                 : End Sub
-Sub CR_CashOutWin()                 : End Sub
-Sub DOCK_Enter()                    : gameState = 15 : End Sub
-Sub SPK_Say(s As String)            : End Sub
-Function GTEXT_Get$(k As String)    : GTEXT_Get$ = "" : End Function
-Sub DBG_Print(s As String)          : End Sub
-Sub TELEM_SessionEnd()              : End Sub
-
-Dim Shared tutorialRun As Integer   ' shared by sequence.bas / telemetry.bas / player.bas (dims.bas)
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+'$INCLUDE:'seq_stubs.bi'
 '$INCLUDE:'../src/sys/sequence.bas'
 
 Dim Shared stPassed As Integer, stFailed As Integer
