@@ -56,6 +56,9 @@ for list in tests/list.txt tests/dev_flags.txt tools/game_flags.txt; do
 done
 [ "$dup_fail" -eq 0 ] || exit 1
 
+# A test includes the real src/sys/dims.bas instead of copying its state (#288).
+bash "$REPODIR/tools/check_test_dims" "$REPODIR" || exit 1
+
 if [ -z "${QB64_BIN_DIR:-}" ]; then
   echo "ERROR: QB64_BIN_DIR must be set"
   exit 1

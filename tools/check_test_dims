@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Fails when a test declares a Dim Shared variable or Const that src/sys/dims.bas also declares (#288).
+# Tests include the real dims.bas (with src/engine3d.bi) instead of copying its state, so the
+# copies cannot drift. Run from qb64test.sh; usable on its own: tools/check_test_dims [repo-root].
+set -euo pipefail
+
+REPO="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
+
+# Prints "name<TAB>line" for each Dim Shared variable and Const declared in the file.
+declared() {
+  awk '
+    function strip(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+    function emit(item,   n) {
+      item = strip(item)
+      n = item
+      sub(/[ \t(=$%&!#].*$/, "", n)
+      sub(/[$%&!#]$/, "", n)
+      if (n ~ /^[A-Za-z_][A-Za-z0-9_]*$/) printf "%s\t%d\n", tolower(n), NR
+    }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      gsub(/"[^"]*"/, "\"\"", line)
+      sub(/\047.*$/, "", line)
+      lower = tolower(line)
+      if (lower ~ /^[ \t]*dim[ \t]+shared[ \t]/) { sub(/^[ \t]*[Dd][Ii][Mm][ \t]+[Ss][Hh][Aa][Rr][Ee][Dd][ \t]+/, "", line); kind = 1 }
+      else if (lower ~ /^[ \t]*const[ \t]/)      { sub(/^[ \t]*[Cc][Oo][Nn][Ss][Tt][ \t]+/, "", line); kind = 2 }
+      else next
+      # split on commas outside parentheses
+      depth = 0; item = ""
+      for (i = 1; i <= length(line); i++) {
+        c = substr(line, i, 1)
+        if (c == "(") depth++
+        else if (c == ")") depth--
+        if (c == "," && depth == 0) {
+          emit(item); item = ""
+        } else if (c == ":" && depth == 0) { break }
+        else item = item c
+      }
+      emit(item)
+    }' "$1"
+}
+
+declared "$REPO/src/sys/dims.bas" | cut -f1 | sort -u > "${TMPDIR:-/tmp}/dims_names.$$"
+trap 'rm -f "${TMPDIR:-/tmp}/dims_names.$$"' EXIT
+
+fail=0
+for t in "$REPO"/tests/*.bas; do
+  while IFS=$'\t' read -r name lineno; do
+    if grep -qxF "$name" "${TMPDIR:-/tmp}/dims_names.$$"; then
+      echo "ERROR: tests/$(basename "$t") line $lineno: '$name' is also declared in src/sys/dims.bas; include src/engine3d.bi and src/sys/dims.bas instead of copying it (#288)"
+      fail=1
+    fi
+  done < <(declared "$t")
+done
+exit "$fail"

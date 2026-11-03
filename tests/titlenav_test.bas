@@ -10,27 +10,12 @@
 Option _Explicit
 $CONSOLE:ONLY
 
-' ── game-state constants (must match dims.bas) ──────────────────────────────
-Const GS_TITLE       = 0
-Const GS_PLAYING     = 1
-Const GS_GAMEOVER    = 2
-Const GS_PLANET      = 3
-Const GS_CINEMATIC   = 4
-Const GS_INTRO       = 5
-Const GS_CRAWL       = 6
-Const GS_OPTIONS     = 7
-Const GS_ABOUT       = 8
-Const GS_LEADIN      = 9
-Const GS_CONSENT     = 10
-Const GS_USERNAME    = 11
-Const GS_LEADERBOARD = 12
-Const GS_CONTROLS    = 13
-Const GS_REMAP       = 16
-Const GS_CRAWLS      = 14
+Sub DBG_Print (dpMsg As String) : End Sub
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
 
-Dim Shared gameState As Integer
-Dim Shared escWas    As Integer
-Dim Shared optEscWas As Integer
+
 
 '$INCLUDE:'../src/state/titlenav.bas'
 

@@ -13,14 +13,13 @@
 $CONSOLE:ONLY
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
+Sub DBG_Print (dpMsg As String) : End Sub
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+
 Dim Shared DB_URL As String
 Dim Shared DB_KEY As String
-Const LBRD_MAX = 10
-Dim Shared lbrdName(1 To LBRD_MAX)  As String
-Dim Shared lbrdScore(1 To LBRD_MAX) As Long
-Dim Shared lbrdDiff(1 To LBRD_MAX)  As String
-Dim Shared lbrdCount    As Integer
-Dim Shared lbrdPollDone As Integer
 
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/config.bas'

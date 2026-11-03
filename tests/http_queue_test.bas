@@ -10,17 +10,9 @@
 $CONSOLE:ONLY
 OPTION _EXPLICIT
 
-' --- stubs for http.bas dependencies (normally provided by dims.bas) ---
-TYPE HttpResponse
-    statusCode AS LONG
-    bodyLen    AS LONG
-    headerLen  AS LONG
-END TYPE
-
-DIM SHARED httpLastResp    AS HttpResponse
-DIM SHARED httpLastBody    AS STRING
-DIM SHARED httpLastHeaders AS STRING
-DIM SHARED httpLastTag     AS STRING
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
 
 DIM SHARED hqPass AS INTEGER
 DIM SHARED hqFail AS INTEGER

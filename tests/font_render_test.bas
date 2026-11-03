@@ -13,7 +13,11 @@
 
 $CONSOLE:ONLY
 
-Dim Shared fontPalette(0 To 15) As Long
+Sub DBG_Print (dpMsg As String) : End Sub
+'$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/engine3d.bi'
+'$INCLUDE:'../src/sys/dims.bas'
+
 
 '$INCLUDE:'../src/2d/font.bas'
 
