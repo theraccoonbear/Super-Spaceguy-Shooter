@@ -1,55 +1,173 @@
-' viewer.bas — interactive model viewer for models.e3d
+' viewer.bas — interactive model viewer for models.e3d and models_enemies_v2.e3d (E2_* meshes)
 ' Usage: viewer [file.obj]   (OBJ loaded as extra mesh; auto-reads .mtl)
+'        viewer --sheets <outdir>   (headless: write the old/new enemy review PNGs to <outdir>, then exit;
+'                                    needs a display for the software renderer, e.g. Xvfb; a relative
+'                                    <outdir> is resolved against the launch directory and created if missing)
 ' Left/Right: rotate model   Up/Down: tilt camera
 ' PgUp/PgDn: cycle meshes   R: reset rotation
+' Gamepad: left stick rotate/tilt, d-pad left/right mesh, d-pad up/down tilt, A light, X reset, Back quit
 ' L: toggle light mode       ESC/Q: quit
 
 Option _Explicit
 $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
+$EMBED:'assets/models_enemies_v2.e3d':'NEWMODELS'
 
 '$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
-CONST MESH_COUNT = 15
+CONST MESH_COUNT = 21
 CONST MESH_MAX   = 32
 
 DIM meshNames(1 TO MESH_MAX) AS STRING
 meshNames(1)  = "PLAYER"
 meshNames(2)  = "ENEMY"
-meshNames(3)  = "ASTEROID"
-meshNames(4)  = "BULLET"
-meshNames(5)  = "PUP_SHIELD"
-meshNames(6)  = "ENEMY_ARROW"
-meshNames(7)  = "ENEMY_HLINE"
-meshNames(8)  = "ENEMY_VCOL"
-meshNames(9)  = "ENEMY_PINCER"
-meshNames(10) = "ENEMY_VWEDGE"
-meshNames(11) = "THRUSTER"
-meshNames(12) = "EBULLET"
-meshNames(13) = "BOSS"
-meshNames(14) = "PUP_FUEL"
-meshNames(15) = "PUP_POINTS"
+meshNames(3)  = "E2_SOLO"
+meshNames(4)  = "ASTEROID"
+meshNames(5)  = "BULLET"
+meshNames(6)  = "PUP_SHIELD"
+meshNames(7)  = "ENEMY_ARROW"
+meshNames(8)  = "E2_ARROW"
+meshNames(9)  = "ENEMY_HLINE"
+meshNames(10) = "E2_HLINE"
+meshNames(11) = "ENEMY_VCOL"
+meshNames(12) = "E2_VCOL"
+meshNames(13) = "ENEMY_PINCER"
+meshNames(14) = "E2_PINCER"
+meshNames(15) = "ENEMY_VWEDGE"
+meshNames(16) = "E2_VWEDGE"
+meshNames(17) = "THRUSTER"
+meshNames(18) = "EBULLET"
+meshNames(19) = "BOSS"
+meshNames(20) = "PUP_FUEL"
+meshNames(21) = "PUP_POINTS"
 
 DIM meshLib(1 TO MESH_MAX) AS E3D_Mesh
 DIM boxLib(1 TO MESH_MAX)  AS E3D_AABB
 
+' --headless review sheets: viewer --sheets <outdir>
+DIM sheetDir AS STRING
+DIM argAll AS STRING : argAll = LTRIM$(RTRIM$(COMMAND$))
+IF LEFT$(argAll, 8) = "--sheets" THEN sheetDir = LTRIM$(MID$(argAll, 9))
+
 ' Screen must exist before E3D_LoadMesh so _RGB inside the loader
 ' returns proper 32-bit colors instead of text-mode palette indices.
 DIM backBuffer AS LONG
-SCREEN _NEWIMAGE(SCR_W, SCR_H, 32)
+IF LEN(sheetDir) > 0 THEN
+    SCREEN _NEWIMAGE(320, 240, 32)
+    backBuffer = _NEWIMAGE(320, 240, 32)
+ELSE
+    SCREEN _NEWIMAGE(SCR_W, SCR_H, 32)
+    backBuffer = _NEWIMAGE(SCR_W, SCR_H, 32)
+END IF
 _TITLE "SSS Model Viewer"
-backBuffer = _NEWIMAGE(SCR_W, SCR_H, 32)
 
 DIM mdl AS STRING
+DIM mdlNew AS STRING
 mdl = _EMBEDDED$("MODELS")
+mdlNew = _EMBEDDED$("NEWMODELS")
 DIM mi AS INTEGER
 FOR mi = 1 TO MESH_COUNT
-    E3D_LoadMesh mdl, meshNames(mi), meshLib(mi), boxLib(mi)
+    IF LEFT$(meshNames(mi), 3) = "E2_" THEN
+        E3D_LoadMesh mdlNew, meshNames(mi), meshLib(mi), boxLib(mi)
+    ELSE
+        E3D_LoadMesh mdl, meshNames(mi), meshLib(mi), boxLib(mi)
+    END IF
     E3D_BakeMeshNormals meshLib(mi)
+    IF meshLib(mi).fCount = 0 THEN
+        PRINT "missing mesh " + meshNames(mi)
+        SYSTEM 2
+    END IF
 NEXT mi
+
+IF LEN(sheetDir) > 0 THEN
+    ' Renders each old enemy and its E2_ replacement with the game's camera, light and distance dimming.
+    ' Writes <outdir>/<old|new>_<type>_<near|far>_<chase|q3|side|front>.png at 320x240.
+    ' chase = the in-game camera; the others orbit the enemy at the chase distance (enemies fly nose-first toward -X).
+    CONST SH_FOV = 72
+    CONST SH_CAM_X = 6.72      ' CAM_CHASE_X in src/sys/dims.bas
+    CONST SH_CAM_Y = 1.04      ' CAM_CHASE_Y
+    CONST SH_LEAD = 8
+    CONST SH_SCL = 1.1         ' mid of the 0.9..1.3 spawn range
+    CONST SH_DIM_FAR = 55
+    CONST SH_DIM_NEAR = 28
+    CONST SH_DIM_AMB = 0.22
+    DIM shKey(1 TO 6) AS STRING, shOld(1 TO 6) AS INTEGER
+    shKey(1) = "solo"   : shOld(1) = 2
+    shKey(2) = "arrow"  : shOld(2) = 7
+    shKey(3) = "hline"  : shOld(3) = 9
+    shKey(4) = "vcol"   : shOld(4) = 11
+    shKey(5) = "pincer" : shOld(5) = 13
+    shKey(6) = "vwedge" : shOld(6) = 15
+    ' a relative path is taken against the launch directory, since QB64-PE starts in the executable's directory
+    IF LEFT$(sheetDir, 1) <> "/" AND MID$(sheetDir, 2, 1) <> ":" THEN sheetDir = _STARTDIR$ + "/" + sheetDir
+    DO WHILE LEN(sheetDir) > 1 AND (RIGHT$(sheetDir, 1) = "/" OR RIGHT$(sheetDir, 1) = "\")
+        sheetDir = LEFT$(sheetDir, LEN(sheetDir) - 1)
+    LOOP
+    IF _DIREXISTS(sheetDir) = 0 THEN MKDIR sheetDir
+    IF _DIREXISTS(sheetDir) = 0 THEN
+        PRINT "cannot create output directory " + sheetDir
+        SYSTEM 2
+    END IF
+    DIM shCam AS E3D_Camera, shViewM AS E3D_Matrix4, shProj AS E3D_Matrix4, shVP AS E3D_Matrix4
+    DIM shPos AS E3D_Coord, shRot AS E3D_Coord, shObj AS E3D_Matrix4, shLit AS E3D_Coord, shLightBase AS E3D_Coord
+    DIM shSet AS INTEGER, shTy AS INTEGER, shDist AS INTEGER, shView AS INTEGER, shIdx AS INTEGER
+    DIM shD AS SINGLE, shDimF AS SINGLE, shR AS SINGLE, shEl AS SINGLE
+    DIM shTag AS STRING, shDistName AS STRING, shViewName AS STRING
+    shLightBase.x = -0.4 : shLightBase.y = 0.7 : shLightBase.z = -0.5
+    FOR shSet = 1 TO 2
+        FOR shTy = 1 TO 6
+            IF shSet = 1 THEN shIdx = shOld(shTy) : shTag = "old" ELSE shIdx = shOld(shTy) + 1 : shTag = "new"
+            PRINT shTag + " " + shKey(shTy) + " " + meshNames(shIdx) + " verts=" + LTRIM$(STR$(meshLib(shIdx).vCount)) + " faces=" + LTRIM$(STR$(meshLib(shIdx).fCount))
+            FOR shDist = 1 TO 2
+                IF shDist = 1 THEN shD = 3 : shDistName = "near" ELSE shD = 25 : shDistName = "far"
+                shDimF = 1.0
+                IF shD > SH_DIM_FAR THEN
+                    shDimF = SH_DIM_AMB
+                ELSEIF shD > SH_DIM_NEAR THEN
+                    shDimF = SH_DIM_AMB + (shD - SH_DIM_NEAR) * ((1.0 - SH_DIM_AMB) / (SH_DIM_FAR - SH_DIM_NEAR))
+                END IF
+                shLit.x = shLightBase.x * shDimF : shLit.y = shLightBase.y * shDimF : shLit.z = shLightBase.z * shDimF
+                shR = shD + SH_CAM_X
+                FOR shView = 1 TO 4
+                    SELECT CASE shView
+                        CASE 1 : shViewName = "chase"
+                        CASE 2 : shViewName = "q3"    : shEl = 0.35
+                        CASE 3 : shViewName = "side"  : shEl = 0.12
+                        CASE 4 : shViewName = "front" : shEl = 0.0
+                    END SELECT
+                    shPos.x = shD : shPos.y = 0 : shPos.z = 0
+                    IF shView = 1 THEN
+                        E3D_MakeCamera shCam, -SH_CAM_X, SH_CAM_Y, 0, SH_LEAD, 0, 0, SH_FOV
+                    ELSEIF shView = 4 THEN
+                        E3D_MakeCamera shCam, shD - shR * COS(shEl), shR * SIN(shEl), 0, shD, 0, 0, SH_FOV
+                    ELSEIF shView = 2 THEN
+                        E3D_MakeCamera shCam, shD - shR * COS(shEl) * 0.7071, shR * SIN(shEl), shR * COS(shEl) * 0.7071, shD, 0, 0, SH_FOV
+                    ELSE
+                        E3D_MakeCamera shCam, shD, shR * SIN(shEl), shR * COS(shEl), shD, 0, 0, SH_FOV
+                    END IF
+                    shCam.nearZ = 0.1 : shCam.farZ = 120
+                    E3D_MatLookAt shCam, shViewM
+                    E3D_MatPerspective shCam, 320 / 240, shProj
+                    E3D_MatMul shProj, shViewM, shVP
+                    _DEST backBuffer
+                    LINE (0, 0)-(319, 239), _RGB(4, 5, 22), BF
+                    shRot.x = 0 : shRot.y = 0 : shRot.z = 0
+                    E3D_BuildObjectMat shPos, shRot, SH_SCL, shObj
+                    E3D_SceneBegin
+                    E3D_SceneAddMeshLit meshLib(shIdx), shObj, shCam.POS, 0, shLit
+                    E3D_SceneFlush shVP, 320, 240
+                    _DEST 0
+                    _SAVEIMAGE sheetDir + "/" + shTag + "_" + shKey(shTy) + "_" + shDistName + "_" + shViewName + ".png", backBuffer
+                NEXT shView
+            NEXT shDist
+        NEXT shTy
+    NEXT shSet
+    PRINT "wrote 96 sheets to " + sheetDir
+    SYSTEM 0
+END IF
 
 DIM totalMeshes AS INTEGER : totalMeshes = MESH_COUNT
 DIM objStatus   AS STRING
@@ -125,12 +243,62 @@ DIM tt          AS SINGLE
 DIM pgupWas  AS INTEGER, pgdnWas  AS INTEGER
 DIM resetWas AS INTEGER, litWas   AS INTEGER
 DIM xWas     AS INTEGER
+DIM padPrevWas AS INTEGER, padNextWas AS INTEGER, padAWas AS INTEGER, padXWas AS INTEGER
+DIM padHatX AS SINGLE, padHatY AS SINGLE, padStX AS SINGLE, padStY AS SINGLE
+DIM padMeshStep AS INTEGER, padLightHit AS INTEGER, padResetHit AS INTEGER
+DIM heldPad(0 TO 32767) AS INTEGER
+E3D_CtrlInit
 
 ' ============================================================
 ' MAIN LOOP
 ' ============================================================
 DO
     tt = tt + 0.016
+
+    ' --- gamepad: src/3d/input.bas reads and maps the pad; the stick and d-pad are read from its raw axes ---
+    E3D_InputUpdate heldPad()
+    padStX = 0 : padStY = 0 : padHatX = 0 : padHatY = 0
+    IF ctrlDev > 0 THEN
+        IF ABS(padRawAxis(E3D_CTRL_AXIS_X)) > E3D_AXIS_DEADZONE THEN padStX = padRawAxis(E3D_CTRL_AXIS_X)
+        IF ABS(padRawAxis(E3D_CTRL_AXIS_Y)) > E3D_AXIS_DEADZONE THEN padStY = padRawAxis(E3D_CTRL_AXIS_Y)
+        IF ABS(padRawAxis(E3D_CTRL_HAT_X)) > E3D_AXIS_DEADZONE THEN padHatX = padRawAxis(E3D_CTRL_HAT_X)
+        IF ABS(padRawAxis(E3D_CTRL_HAT_Y)) > E3D_AXIS_DEADZONE THEN padHatY = padRawAxis(E3D_CTRL_HAT_Y)
+    END IF
+    padMeshStep = 0
+    IF padHatX < 0 THEN
+        IF padPrevWas = 0 THEN padMeshStep = -1
+        padPrevWas = -1
+    ELSE
+        padPrevWas = 0
+    END IF
+    IF padHatX > 0 THEN
+        IF padNextWas = 0 THEN padMeshStep = 1
+        padNextWas = -1
+    ELSE
+        padNextWas = 0
+    END IF
+    padLightHit = 0
+    IF heldPad(E3D_KEY_PAD_A) <> 0 THEN
+        IF padAWas = 0 THEN padLightHit = -1
+        padAWas = -1
+    ELSE
+        padAWas = 0
+    END IF
+    padResetHit = 0
+    IF heldPad(E3D_KEY_PAD_X) <> 0 THEN
+        IF padXWas = 0 THEN padResetHit = -1
+        padXWas = -1
+    ELSE
+        padXWas = 0
+    END IF
+    IF padMeshStep <> 0 THEN
+        currentMesh = currentMesh + padMeshStep
+        IF currentMesh < 1 THEN currentMesh = totalMeshes
+        IF currentMesh > totalMeshes THEN currentMesh = 1
+        rot.x = 0 : rot.y = 0 : rot.z = 0
+    END IF
+    rot.y = rot.y + padStX * 2.0
+    camPitch = camPitch + padStY * 0.02 + SGN(padHatY) * 0.02
 
     ' --- mesh cycle: PgUp / PgDn ---
     IF _KEYDOWN(18688) THEN          ' PgUp
@@ -165,6 +333,7 @@ IF camPitch < -1.4 THEN camPitch = -1.4
 IF camPitch >  1.4 THEN camPitch =  1.4
 
 ' --- reset rotation: R ---
+IF padResetHit THEN rot.x = 0 : rot.y = 0 : rot.z = 0
 IF _KEYDOWN(82) OR _KEYDOWN(114) THEN
     IF NOT resetWas THEN rot.x = 0 : rot.y = 0 : rot.z = 0
     resetWas = -1
@@ -173,6 +342,7 @@ ELSE
 END IF
 
 ' --- toggle light mode: L ---
+IF padLightHit THEN litMode = NOT litMode
 IF _KEYDOWN(76) OR _KEYDOWN(108) THEN
     IF NOT litWas THEN litMode = NOT litMode
     litWas = -1
@@ -272,9 +442,9 @@ COLOR _RGB(255, 220, 80)
 _PRINTSTRING (4, 2), "[" + LTRIM$(STR$(currentMesh)) + "/" + LTRIM$(STR$(totalMeshes)) + "]  " + meshNames(currentMesh)
 
 ' bottom bar: stats + controls
-LINE (0, SCR_H - 36)-(SCR_W - 1, SCR_H - 1), _RGBA(0, 0, 0, 210), BF
+LINE (0, SCR_H - 52)-(SCR_W - 1, SCR_H - 1), _RGBA(0, 0, 0, 210), BF
 COLOR _RGB(160, 200, 160)
-_PRINTSTRING (4, SCR_H - 34), _
+_PRINTSTRING (4, SCR_H - 50), _
 "V:" + LTRIM$(STR$(meshLib(currentMesh).vCount)) + _
 "  F:" + LTRIM$(STR$(meshLib(currentMesh).fCount)) + _
 "  AABB " + LEFT$(STR$(boxLib(currentMesh).hx + 100), 5) + _
@@ -290,17 +460,20 @@ SELECT CASE axisRemap
 END SELECT
 COLOR _RGB(130, 140, 160)
 IF LEN(objRawDat) > 0 THEN
-    _PRINTSTRING (4, SCR_H - 18), _
+    _PRINTSTRING (4, SCR_H - 34), _
     "[PgUp/Dn]  [</> rot]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [X remap:" + remapLabel + "]  [ESC/Q]"
 ELSE
-    _PRINTSTRING (4, SCR_H - 18), _
+    _PRINTSTRING (4, SCR_H - 34), _
     "[PgUp/Dn mesh]  [</> rotate]  [up/dn tilt]  [R reset]  [L:" + litLabel + "]  [ESC/Q]"
 END IF
+
+IF ctrlDev > 0 THEN COLOR _RGB(110, 150, 190) ELSE COLOR _RGB(70, 80, 100)
+_PRINTSTRING (4, SCR_H - 18), "PAD: stick rot+tilt  dpad L/R mesh  dpad U/D tilt  A light  X reset  Back quit"
 
 _LIMIT 60
 _DISPLAY
 
-LOOP UNTIL _KEYDOWN(27) OR _KEYDOWN(113) OR _KEYDOWN(81)
+LOOP UNTIL _KEYDOWN(27) OR _KEYDOWN(113) OR _KEYDOWN(81) OR heldPad(E3D_KEY_PAD_SELECT) <> 0
 
 END
 
