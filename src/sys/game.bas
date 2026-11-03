@@ -178,6 +178,7 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --gate-tutorial        Keep the first-play tutorial gate on under --scene and --input-script (a fresh settings folder starts the tutorial at the first New Game)"
     CLI_Emit guFH, "  --backdrop-dev         Matte paintings: show the painting coordinates under the mouse, and R re-reads assets/backdrops.txt from disk (see docs/backdrops.md)"
     CLI_Emit guFH, "  --explosion-dev        Explosions in play: Z picks a definition, X detonates it ahead of the ship, C re-reads assets/explosions.txt from disk, V stress test (see docs/explosions.md)"
+    CLI_Emit guFH, "  --enemy-dev            Enemy attacks in play: T picks an enemy type, F a value, - and = nudge it, L re-reads assets/config/enemies.ini from disk (see docs/cli.md)"
     CLI_Emit guFH, "  --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes)"
     CLI_Emit guFH, "  --seed N               Fixed random seed, so a scripted run repeats exactly"
     CLI_Emit guFH, "  --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)"
