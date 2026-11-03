@@ -254,6 +254,7 @@ Sub GS_PLAYING_Update ()
     TUT_Frame
     IF gameState <> gspTutState THEN EXIT SUB   ' the tutorial ended into a New Game or the title: nothing below is for that screen
 
+    BENCH_Lap BENCH_SIM
     ' --- render (always runs, even in orbit mode) ---
     PLAYER_CamUpdate
     IF gameState = GS_CINEMATIC THEN
@@ -297,6 +298,7 @@ Sub GS_PLAYING_Update ()
     END IF
     STAGE_DrawPlanetBackground
     STAGE_DrawPlanet
+    BENCH_Lap BENCH_BACKDROP
 
     E3D_SceneBegin
 
@@ -330,16 +332,22 @@ Sub GS_PLAYING_Update ()
         END IF
     NEXT j
 
+    BENCH_Lap BENCH_BUILD
     GS_PLAYING_PupHalos
     E3D_SceneFlush vpMat, scrW, scrH
+    BENCH_Lap BENCH_RASTER
     XPD_Draw
+    BENCH_Lap BENCH_PARTICLES
 
     COMBAT_OverlayDraw
     GS_PLAYING_PupMarks
     ABL_Draw
 
+    BENCH_Lap BENCH_OVERLAY
     FX_Draw vpMat, scrW, scrH
+    BENCH_Lap BENCH_FX
     HUD_Draw
+    BENCH_Lap BENCH_HUD
     TUT_Draw
     XPD_DevDraw
 

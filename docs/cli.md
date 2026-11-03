@@ -23,6 +23,7 @@ sss [options]
   --backdrop-dev         Matte-painting helper on the title, emperor and dock screens: shows the painting coordinates under the mouse, and R reloads `assets/backdrops.txt` from disk, with parse problems shown on screen in small text (see [Backdrops](backdrops.md))
   --explosion-dev        Explosion helper in play: **Z** picks a definition, **X** detonates it ahead of the ship (at the boss when one is out), **C** reloads `assets/explosions.txt` from disk, **V** runs the stress test; a readout shows the name, live particles and drops (see [Explosions](explosions.md))
   --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes, e.g. `boss@20`)
+  --bench <file>         Time each frame's phases over a `--frames` run and write the table to this file (see [Frame-time bench](testing.md#frame-time-bench); `tools/dev bench` drives it)
   --seed N               Fixed random seed, so a scripted run repeats exactly
   --credits N            Start every run with N credits (whole number, 0 or more; for trying the upgrade dock)
   --ships N              Start every run with N ships (testing)
@@ -33,7 +34,7 @@ sss [options]
   --settings-dir <path>  Keep sss_settings.ini in this folder instead of the per-user one (--input-script runs use the launch folder)
 ```
 
-**Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
+**Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` (including `crawl:credits`, the unvoiced credits roll after the outro: it never speaks, whatever the narration setting) plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
 
 **Tutorial:** `--scene tutorial` starts the tutorial: the pilot orientation, one guided flight in which nothing is recorded and nothing can fail you (see [the tutorial run](../src/sys/README-sequence.md)). It is also in the title screen's command console (**T**), and the first New Game on a fresh install starts it. `--scene` and `--input-script` runs never start it on their own (so scripted playtests, and `tests/playthrough/expected.txt`, are not affected); `--gate-tutorial` keeps the gate on for them, which `tests/tutorial/run.sh gated` uses. `tests/tutorial/run.sh` plays it from a script.
 

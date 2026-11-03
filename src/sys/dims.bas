@@ -363,6 +363,7 @@ DIM SHARED cliExplosionDev AS INTEGER  ' --explosion-dev (dev): Z cycles, X deto
 DIM SHARED cliExplode      AS STRING   ' --explode name@frame,...: spawn these explosions ahead of the ship on those frames
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
+DIM SHARED benchPath       AS STRING   ' --bench <file> (dev): write the per-phase frame-time table here at the end of a --frames run (src/sys/bench.bas)
 DIM SHARED cliRealtime     AS INTEGER  ' --realtime: keep the 60 fps throttle in scripted runs (recordings)
 DIM SHARED cliSeed         AS LONG     ' --seed N: fixed RNG seed (when cliSeedSet)
 DIM SHARED cliSeedSet      AS INTEGER

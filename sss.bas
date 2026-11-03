@@ -244,8 +244,9 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
+    BENCH_FrameBegin
     IF _EXIT THEN GAME_Quit
-    IF cliFrames > 0 AND gameFrame >= cliFrames THEN DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
+    IF cliFrames > 0 AND gameFrame >= cliFrames THEN BENCH_Report : DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
     ' --- input ---
     KEY_FrameBegin
     IF iscActive THEN

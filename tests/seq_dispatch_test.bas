@@ -122,6 +122,8 @@ End Sub
 ' 27  PLAY  boss        label=level6
 ' 28  ARRIVE            label=level6   (no DOCK after the last stage)
 ' 29  CRAWL outro       label=outro
+' 30  CRAWL credits     label=outro   (voice=0)
+' 31  TITLE            label=outro
 
 Print "=== seq_dispatch_test ==="
 Print ""
@@ -131,7 +133,7 @@ Print ""
 ' ────────────────────────────────────────────────────────────────────────────
 Print "--- 1. parser ---"
 ST_Reset
-ST_Assert seqCount = 33,                                         "1.01  seqCount=33"
+ST_Assert seqCount = 34,                                         "1.01  seqCount=34"
 ST_Assert seqKind(0)  = SEQ_CRAWL,                              "1.02  idx 0 is CRAWL"
 ST_Assert seqLabel$(0) = "crawl0",                              "1.03  idx 0 label=crawl0"
 ST_Assert SEQ_GetKV$(seqSval$(0), "txt") = "intro",             "1.04  idx 0 txt=intro"
@@ -153,7 +155,8 @@ ST_Assert SEQ_GetKV$(seqSval$(17), "type") = "asteroid",        "1.19  idx 17 ty
 ST_Assert seqLabel$(17) = "level4",                             "1.20  idx 17 label=level4"
 ST_Assert seqKind(29) = SEQ_CRAWL,                              "1.21  idx 29 is CRAWL (outro)"
 ST_Assert seqLabel$(29) = "outro",                              "1.22  idx 29 label=outro"
-ST_Assert seqKind(30) = SEQ_TITLE,                              "1.23  idx 30 is TITLE (outro)"
+ST_Assert seqKind(30) = SEQ_CRAWL And seqLabel$(30) = "outro",        "1.23a idx 30 is the CRAWL credits (outro)"
+ST_Assert seqKind(31) = SEQ_TITLE,                              "1.23  idx 31 is TITLE (outro)"
 ST_Assert seqKind(6) = SEQ_DOCK And seqLabel$(6) = "level1",   "1.24  idx 6 is DOCK (level1, after ARRIVE)"
 ST_Assert seqKind(24) = SEQ_DOCK And seqLabel$(24) = "level5", "1.25  idx 24 is DOCK (level5)"
 ST_Assert seqKind(28) = SEQ_ARRIVE And seqKind(29) = SEQ_CRAWL, "1.26  no DOCK after the last stage"
@@ -427,7 +430,9 @@ seqIdx = 28   ' position just before outro CRAWL (29)
 SEQ_Advance   ' advance to outro CRAWL (idx 29)
 ST_Assert seqIdx = 29 And gameState = GS_CRAWL,          "13.01  at outro CRAWL"
 score = 7777 : highScore = 0 : seqRunActive = -1   ' a run was played (#331)
-SEQ_Advance   ' outro CRAWL -> SEQ_TITLE (idx 30) -> save highScore -> rewind to first TITLE
+SEQ_Advance   ' outro CRAWL -> credits CRAWL (idx 30)
+ST_Assert seqIdx = 30 And gameState = GS_CRAWL,          "13.01a credits CRAWL follows the outro"
+SEQ_Advance   ' credits CRAWL -> SEQ_TITLE (idx 31) -> save highScore -> rewind to first TITLE
 ST_Assert gameState = GS_TITLE,                          "13.02  outro TITLE -> GS_TITLE"
 ST_Assert seqKind(seqIdx) = SEQ_TITLE,                   "13.03  parked on first SEQ_TITLE node"
 ST_Assert highScore = 7777,                              "13.04  highScore saved via outro TITLE"
