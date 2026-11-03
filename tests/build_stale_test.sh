@@ -40,7 +40,6 @@ check
 expect "no build yet is stale" 1 "does not exist" "$rc" "$out"
 
 : > builds/main
-chmod +x builds/main
 check
 expect "an executable with no manifest is stale" 1 "no manifest" "$rc" "$out"
 

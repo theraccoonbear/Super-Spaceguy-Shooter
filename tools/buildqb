@@ -25,7 +25,7 @@ old_exe="${SSS_BUILD_OUT:-./builds/$base}"
 if [ "$check_only" = 1 ]; then
     new_manifest=$(mktemp)
     "$(dirname "$0")/build-manifest" "$1" > "$new_manifest" || { rm -f "$new_manifest"; exit 2; }
-    if [ ! -x "$old_exe" ]; then
+    if [ ! -e "$old_exe" ] && [ ! -e "$old_exe.exe" ]; then
         echo "stale: $old_exe does not exist"
         rm -f "$new_manifest"
         exit 1
