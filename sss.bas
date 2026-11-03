@@ -336,6 +336,7 @@ DO
     IF spkAudioLock THEN spkBuffered = CLNG(_SNDRAWLEN * SAMPLE_RATE)
     SPK_Tick
 
+    SPKD_Frame
     DBG_Overlay
 
     If httpEasyH <> 0 Or httpQCount > 0 Then

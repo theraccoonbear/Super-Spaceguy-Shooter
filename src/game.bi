@@ -38,6 +38,7 @@
 '$INCLUDE:'gameplay/wave.bas'
 '$INCLUDE:'gameplay/stage.bas'
 '$INCLUDE:'sys/debug.bas'
+'$INCLUDE:'audio/speechdev.bas'
 '$INCLUDE:'sys/bench.bas'
 '$INCLUDE:'sys/game.bas'
 '$INCLUDE:'sys/settingslogic.bas'

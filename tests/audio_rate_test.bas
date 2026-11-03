@@ -5,7 +5,9 @@
 ' lines and four fixed music runs (cue switches, crossfades, drum retriggers) are rendered through
 ' the real modules from a fixed seed and reduced to a length and an FNV-1a hash of the raw Single
 ' bits. The golden table at the end was captured on Linux (the CI container) from the code before #400 and must be reproduced
-' bit for bit at 48000 Hz. The hashes are only compared on Linux (_OS$ also reports [LINUX] on macOS, hence the [MAC check): sin and exp round differently in the Windows and macOS math libraries,
+' bit for bit at 48000 Hz. The two speech lines are rendered twice: with every clarity feature off
+' (speechNatural, speechFast: still the pre-#400 hashes, so "off" is the old voice exactly) and with all of
+' them on (speechClear, speechClearFast: captured from the #236 code). The hashes are only compared on Linux (_OS$ also reports [LINUX] on macOS, hence the [MAC check): sin and exp round differently in the Windows and macOS math libraries,
 ' so the lengths and the rate-to-rate checks are all that run there.
 '
 ' At 44100, 96000 and 192000 Hz the same renders must last as long (within a sample), sound at the
@@ -36,7 +38,7 @@ Sub DBG_Print (arMsg As String) : End Sub
 '$INCLUDE:'../src/audio/music.bas'
 
 Const AR_MAX = 40
-Const AR_GOLDEN = 29          ' the first AR_GOLDEN renders have a golden hash; the rest are only compared across rates
+Const AR_GOLDEN = 31          ' the first AR_GOLDEN renders have a golden hash; the rest are only compared across rates
 Const AR_PH_MAX = 256
 
 Type AR_Result
@@ -188,9 +190,11 @@ Sub AR_Run
     For arK = 0 To AR_Count&(100000) - 1 : AR_HashAdd MUS_MusicSample! : Next arK
     AR_Record "musSwitch"
 
-    ' speech: two fixed lines, one at natural speed and one at the FAST narration preset
+    ' speech: two fixed lines, one at natural speed and one at the FAST narration preset, first with every
+    ' clarity feature off (#236: the voice from before, bit for bit), then with all of them on
     RNG_Seed 4242
     SPK_Init
+    For arI = 0 To SPK_FX_N - 1 : spkFx(arI) = 0 : Next arI
     AR_HashBegin
     SPK_Say "Attention all pilots. The fleet departs at dawn."
     arPr.phN = spkPhoneCount
@@ -206,6 +210,16 @@ Sub AR_Run
     SPK_SetPreset 3
     Do While spkPhoneIdx < spkPhoneCount : SPK_Advance : AR_HashAdd spkSampleOut : Loop
     AR_Record "speechFast"
+    For arI = 0 To SPK_FX_N - 1 : spkFx(arI) = -1 : Next arI
+    AR_HashBegin
+    SPK_Say "Attention all pilots. The fleet departs at dawn."
+    Do While spkPhoneIdx < spkPhoneCount : SPK_Advance : AR_HashAdd spkSampleOut : Loop
+    AR_Record "speechClear"
+    AR_HashBegin
+    SPK_Say "Shields are holding, but the cruiser is closing fast."
+    SPK_SetPreset 3
+    Do While spkPhoneIdx < spkPhoneCount : SPK_Advance : AR_HashAdd spkSampleOut : Loop
+    AR_Record "speechClearFast"
 
     ' the wavetable step per phoneme stress (voice pitch)
     SPK_BuildWave SPK_AA, 0 : arPr.wave0 = spkWaveStep
@@ -261,7 +275,7 @@ Sub AR_CheckRate (arR As Long)
             Case "uiSpin" : arTol = 39
             Case "musSwitch" : arTol = 3
             Case "uiVoice", "engine" : arTol = 2
-            Case "speechNatural", "speechFast" : arTol = arPr.phN + 1
+            Case "speechNatural", "speechFast", "speechClear", "speechClearFast" : arTol = arPr.phN + 1
             Case "blip" : arTol = 1E9     ' random lengths from a stream the plosive bursts also draw on; the draws are range-checked below
         End Select
         AR_Assert AR_Abs#(arRes(arI).n - arRef(arI).n * arScale) <= arTol, arTag + " " + arName + " lasts as long (" + Str$(arRes(arI).n) + " vs" + Str$(CLng(arRef(arI).n * arScale)) + ")"
@@ -373,3 +387,5 @@ GoldenTable:
     Data "musSwitch", 101500, 3518089085
     Data "speechNatural", 571752, 1302666785
     Data "speechFast", 170178, 771496315
+    Data "speechClear", 571752, 60531365
+    Data "speechClearFast", 170178, 2431367020

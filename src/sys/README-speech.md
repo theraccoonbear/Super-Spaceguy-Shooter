@@ -51,7 +51,8 @@ SPK_Say "Enemy fighters incoming."
 ```
 
 - Strips punctuation into pause tokens (`.`/`!`/`?` → longer pause, `,`/`;`/`:`/` - ` → shorter pause) *before* stripping non-letters, so sentence and clause boundaries still get natural gaps.
-- For each word: dictionary lookup; if not found, tries stripping a trailing `S` (and re-deriving the correct final-`S`/`Z` allophone from the stem's last phoneme) or `IES→Y`; if still not found, spells it letter-by-letter using `spkLetterSeq` (robotic-sounding, but never silently drops a word).
+- For each word: dictionary lookup; if not found, tries stripping a trailing `S` (and adding the suffix back by the stem's last phoneme: `IH0 Z` after a sibilant S Z SH ZH CH JH, `S` after another voiceless consonant P T K F TH HH, `Z` otherwise) or `IES→Y`; if still not found, spells it letter-by-letter using `spkLetterSeq` (robotic-sounding, but never silently drops a word).
+- A word-final possessive `'s` (`Grotuk's`, `boss's`) is looked up as the stem and gets the same suffix (`SPK_AppendSuffix`), inside the word's own record. `s'` (`pilots'`) is just the plural. `tests/spk_suffix_test.bas` covers each suffix class.
 - Records word start/end boundaries in the phoneme queue (`spkWordStart`/`spkWordEnd`/`spkWordText$`) so the crawl UI can highlight the word currently being spoken.
 - **Do not call `SPK_Say` with a string literal.** All spoken text must live in `gametext.txt` so `bake_speech_dict` can see it and bake the pronunciation. A literal string bypasses that entirely and will either fail to speak (unknown word gets spelled out) or, worse, appear to work locally and then break for anyone who rebuilds the dictionary.
 
@@ -59,7 +60,7 @@ SPK_Say "Enemy fighters incoming."
 
 Called once per output sample from the audio fill loop (wired in via `snd.bas`), so it has to be cheap: no trig, no allocation.
 
-- Each of the 40 phonemes (39 ARPAbet + silence) has precomputed formant wavetables (`spkWaveLib`, built once by `SPK_BuildAllWaves` at `SPK_Init`, using additive sine harmonics shaped by resonant peaks at each phoneme's F1/F2/F3 frequencies, with three pitch variants for unstressed/primary/secondary stress). Building these at runtime per-phoneme would stall the real-time audio path; building them all upfront turns the hot path into a fast array copy.
+- Each of the 40 phonemes (39 ARPAbet + silence) has precomputed formant wavetables (`spkWaveLib`, built once by `SPK_BuildAllWaves` at `SPK_Init`, using additive sine harmonics shaped by resonant peaks at each phoneme's F1/F2/F3 frequencies), in two variants (the original 32 harmonics, and the bright HB one) at twelve pitch steps (`spkLvF0`, 92.5 to 174 Hz; steps 3, 6 and 9 are the 110 / 130 / 155 Hz used for unstressed / secondary / primary stress). Building these at runtime per-phoneme would stall the real-time audio path; building them all upfront turns the hot path into a fast array copy.
 - Vowels and sonorants read the wavetable directly. Fricatives and stops add or substitute high-pass-filtered noise (cutoff varies by place of articulation, e.g. alveolar `T` is hissier than bilabial `P`); stops have a silent closure phase before a burst.
 - Diphthongs (`AY`, `EY`, `OW`, `AW`, `OY`) glide from an onset wavetable to a target vowel's wavetable over the phoneme's duration, rather than using a single fixed formant.
 - **Coarticulation**: during a phoneme's 10 ms fade-in, if both it and the previous phoneme are voiced, the waveform crossfades from the previous phoneme's wavetable to the new one. This is what keeps voiced runs from sounding like disconnected clicks.
@@ -67,6 +68,19 @@ Called once per output sample from the audio fill loop (wired in via `snd.bas`),
 - **Speed** comes from `SPK_SetSpeed k` (k = 1.0 is the natural `spkDur` table, about 82 wpm on the crawl text). It compresses unevenly: pauses by k^1.6, vowels by k^1.15, consonants only by k^0.35, because the consonants carry most of the intelligibility in this synth. `SPK_SetPreset 1|2|3` applies the Settings NARRATION presets SLOW / NORMAL / FAST (about 120 / 139 / 161 wpm, checked by `tests/spk_timing_test.bas`).
 - **Every `SPK_Say` starts at natural speed** (title, boss callouts, game over). Only the crawl, and the Settings preview, apply the NARRATION preset, by calling `SPK_SetPreset` right after `SPK_Say`.
 - The crawl measures each paragraph up front with `SPK_TextSamples&(text, level)`, which saves and restores whatever is playing, and plans one constant scroll speed from that (`src/2d/crawllayout.bas`).
+
+### Clarity features (#236)
+
+Six features, each a flag in `spkFx()` that `SPK_Init` turns on and `--speech-dev` switches live (see [docs/cli.md](../../docs/cli.md)). With all six off the output is the voice from before, sample for sample (`tests/audio_rate_test.bas` keeps the old hashes for that). None of them changes a phoneme's length: `SPK_PhoneDur&` and `SPK_QueueSamples&` are the same with any setting.
+
+- **GL glides.** The 10 ms edge fade used to dip the level to zero at every phoneme boundary, inside voiced runs too, and the 10 ms table crossfade ran inside that dip. With GL, vowels and sonorants (L M N NG R W Y) join a voiced neighbour (or the release of B/D/G) without the dip and glide over ~28 ms from what it ended on (a diphthong hands over its end target). Next to an obstruent they glide from, or toward, its locus table (P/B to B, T/D to D, K/G to G, F/V to V, TH/DH to DH, S/Z to Z, SH/ZH/CH/JH to ZH), which carries the F2 transition that tells the stops apart. The level glides with the table.
+- **BU stop bursts.** P/T/K: closure, a ~6 ms burst through a place resonator (P/B ~900 Hz wide, T/D ~4.2 kHz, K/G ~2.2 kHz compact), then aspiration that fades. B/D/G keep their voice bar and get a ~4 ms burst with voicing straight after it. CH/JH get a louder onset.
+- **FR fricatives.** S/Z through a ~5.5 kHz resonator and SH/ZH/CH/JH through a ~2.8 kHz one, instead of a one-pole high-pass that left SH holding all of S's energy; JH gets light voicing. F/V/TH/DH/HH are unchanged.
+- **NL nasals and liquids.** M/N/NG are low-passed at ~600 Hz and played quieter (murmur); L/R/W/Y slightly below vowel level, and the vowel after them glides twice as long.
+- **HB bright tables.** Harmonics up to ~5 kHz at every pitch (32 harmonics stopped at 3.5 kHz on the 110 Hz unstressed pitch), capped below the device Nyquist, plus a fixed F4 at 3.5 kHz.
+- **IN intonation.** `SPK_PlanPitch` gives each queued phoneme a pitch step when the line is queued: each clause declines one step per accented word, primary stress sits five steps up and secondary two, and the clause's last primary stress sets its end (a fall before `.` `!` or the end of the text, a continuation rise before `,` `;` `:`, a rise before `?`). The hot path only picks a different table.
+
+The per-phoneme work (table copies, resonator and low-pass coefficients, glide plans) is done in `SPK_BuildWave` at the phoneme's first sample, and the coefficients are computed from `SAMPLE_RATE` at `SPK_Init`, so the per-sample path has no trig.
 
 ## Public API
 
