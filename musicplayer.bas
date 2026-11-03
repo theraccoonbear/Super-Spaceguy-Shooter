@@ -5,7 +5,6 @@
 ' Controls: up/down to select, space/enter to play, ESC to quit
 $EMBED:'assets/music.mus':'MUSICDATA'
 
-Const SAMPLE_RATE = 44100
 Const SND_UI_MOVE   = 1
 Const SND_UI_DENY   = 2
 Const SND_UI_PUP    = 3
@@ -21,6 +20,7 @@ Dim Shared volSpeech As Single : volSpeech = 0.0
 Dim Shared spkSampleOut As Single
 
 '$INCLUDE:'src/sys/rng.bas'
+'$INCLUDE:'src/sys/audiorate.bas'
 '$INCLUDE:'src/audio/snd.bas'
 '$INCLUDE:'src/audio/music.bas'
 

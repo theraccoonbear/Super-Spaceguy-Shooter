@@ -21,8 +21,8 @@ Const MUS_WAVE_SQR = 3
 ' drum kinds, in DRUM-letter order K S H T C O; a lowercase letter is a soft hit
 Const MUS_DK_N      = 6
 Const MUS_DK_SOFT   = 0.45
-Const MUS_DK_XFADE  = 64      ' a retriggered drum fades its old hit out over this many samples
-Const MUS_TAIL_K    = 0.995   ' a cue switch lets the old cue's last sample decay (~5 ms), never step
+Dim Shared MUS_DK_XFADE As Long  ' 64 samples at AUTHOR_RATE: a retriggered drum fades its old hit out over this many (set by MUS_Load)
+Dim Shared musTailK As Double    ' 0.995 a sample at AUTHOR_RATE: a cue switch lets the old cue's last sample decay (~5 ms), never step (set by MUS_Load)
 Const MUS_TWO_PI    = 6.2831853
 Const MUS_PI        = 3.14159265
 
@@ -250,6 +250,9 @@ Sub MUS_Load()
 
     For musLii = 1 To MUS_HARM_MAX : musInvK(musLii) = 1 / musLii : Next musLii
     For musLii = 0 To MUS_DK_N - 1 : musDkPos(musLii) = -1 : musDkOldPos(musLii) = -1 : Next musLii
+    musInstCnt = 0 : musNCount = 0 : musSeqCnt = 0 : musPadTotal = 0 : musDrumCnt = 0 : musCueCnt = 0 : musLoadErrs = 0 : musLoadErrMsg$ = ""  ' a reload (the device rate changed) starts clean
+    MUS_DK_XFADE = AUD_N&(64)
+    musTailK = AUD_Decay#(0.995#)
 
     musLdat$  = _EMBEDDED$("MUSICDATA")
     musLrest$ = musLdat$
@@ -422,11 +425,11 @@ Sub MUS_Load()
                 musCueTmpl(musLcur, musLvi).gate    = musInstGate(musLsi)
                 musCueTmpl(musLcur, musLvi).atk     = musInstAtk(musLsi)
                 musCueTmpl(musLcur, musLvi).wave    = musInstWave(musLsi)
-                musCueTmpl(musLcur, musLvi).atkN    = CLng(musInstAMs(musLsi) * SAMPLE_RATE / 1000)
-                musCueTmpl(musLcur, musLvi).relN    = CLng(musInstRMs(musLsi) * SAMPLE_RATE / 1000)
+                musCueTmpl(musLcur, musLvi).atkN    = CLng(musInstAMs(musLsi) * audTune / 1000)
+                musCueTmpl(musLcur, musLvi).relN    = CLng(musInstRMs(musLsi) * audTune / 1000)
                 musCueTmpl(musLcur, musLvi).sus     = musInstSus(musLsi)
                 musCueTmpl(musLcur, musLvi).dk      = 1
-                If musInstDec(musLsi) > 0 Then musCueTmpl(musLcur, musLvi).dk = Exp(-1 / (musInstDec(musLsi) * SAMPLE_RATE))
+                If musInstDec(musLsi) > 0 Then musCueTmpl(musLcur, musLvi).dk = Exp(-1 / (musInstDec(musLsi) * audTune))
                 musCueTmpl(musLcur, musLvi).seqBase = musSeqBase(musLsidx)
                 musCueTmpl(musLcur, musLvi).seqLen  = musSeqLen(musLsidx)
                 musCueTmpl(musLcur, musLvi).isPad   = 0
@@ -440,7 +443,7 @@ Sub MUS_Load()
                     If musCueVCnt(musLcur) < MUS_CUE_VMAX Then
                         musLvi = musCueVCnt(musLcur)
                         musCueTmpl(musLcur, musLvi).vol   = musPadVol(musLpi)
-                        musCueTmpl(musLcur, musLvi).atk   = musPadAtk(musLpi)
+                        musCueTmpl(musLcur, musLvi).atk   = AUD_Smooth!(musPadAtk(musLpi))
                         musCueTmpl(musLcur, musLvi).freq  = musPadF(musLpi, musLpni)
                         musCueTmpl(musLcur, musLvi).isPad = -1
                         musCueVCnt(musLcur) = musLvi + 1
@@ -522,12 +525,12 @@ Sub MUS_SetCue(musSCn$)
         musVoice(MUS_OLD + musSCv) = musVoice(musSCv)
     Next musSCv
     musOldCnt = musVoiceCnt : musOldLast = 0
-    musXfN = CLng(musCueXf(musSCi) * SAMPLE_RATE / 1000)
+    musXfN = CLng(musCueXf(musSCi) * audTune / 1000)
     If musXfN < 1 Then musXfN = 1
     musXfT = 0
     musCurCue = musSCi
 
-    musStepDur   = CLng(SAMPLE_RATE) * 60 \ (CLng(musCueBPM(musSCi)) * musCueDiv(musSCi))
+    musStepDur   = Int(CDbl(audTune) * 60 / (CLng(musCueBPM(musSCi)) * musCueDiv(musSCi)))
     musVoiceCnt  = musCueVCnt(musSCi)
 
     For musSCv = 0 To musVoiceCnt - 1
@@ -599,7 +602,7 @@ Function MUS_MusicSample!
         If musMSj < musVoiceCnt Then musMSvi = musMSj Else musMSvi = MUS_OLD + musMSj - musVoiceCnt
         If musVoice(musMSvi).isPad Then
             musVoice(musMSvi).amp   = musVoice(musMSvi).amp + (musVoice(musMSvi).vol - musVoice(musMSvi).amp) * musVoice(musMSvi).atk
-            musVoice(musMSvi).phase = musVoice(musMSvi).phase + MUS_TWO_PI * musVoice(musMSvi).freq / SAMPLE_RATE
+            musVoice(musMSvi).phase = musVoice(musMSvi).phase + MUS_TWO_PI * musVoice(musMSvi).freq / audTune
             If musVoice(musMSvi).phase > MUS_TWO_PI Then musVoice(musMSvi).phase = musVoice(musMSvi).phase - MUS_TWO_PI
             musMSout = Sin(musVoice(musMSvi).phase) * musVoice(musMSvi).amp
         Else
@@ -610,12 +613,12 @@ Function MUS_MusicSample!
                 MUS_NoteStart musMSvi, musVoice(musMSvi).seqBase + musVoice(musMSvi).noteIdx
             End If
             If musVoice(musMSvi).count > musVoice(musMSvi).gateOff And musVoice(musMSvi).freq > 0 Then
-                musVoice(musMSvi).phase = musVoice(musMSvi).phase + MUS_TWO_PI * musVoice(musMSvi).freq / SAMPLE_RATE
+                musVoice(musMSvi).phase = musVoice(musMSvi).phase + MUS_TWO_PI * musVoice(musMSvi).freq / audTune
                 If musVoice(musMSvi).phase > MUS_TWO_PI Then musVoice(musMSvi).phase = musVoice(musMSvi).phase - MUS_TWO_PI
                 musMSph = musVoice(musMSvi).phase
                 Select Case musVoice(musMSvi).wave
                     Case MUS_WAVE_DET
-                        musVoice(musMSvi).phase2 = musVoice(musMSvi).phase2 + MUS_TWO_PI * musVoice(musMSvi).freq * (1.0 + musVoice(musMSvi).h3) / SAMPLE_RATE
+                        musVoice(musMSvi).phase2 = musVoice(musMSvi).phase2 + MUS_TWO_PI * musVoice(musMSvi).freq * (1.0 + musVoice(musMSvi).h3) / audTune
                         If musVoice(musMSvi).phase2 > MUS_TWO_PI Then musVoice(musMSvi).phase2 = musVoice(musMSvi).phase2 - MUS_TWO_PI
                         musMSw = Sin(musMSph) + Sin(musVoice(musMSvi).phase2) * musVoice(musMSvi).h2
                     Case MUS_WAVE_SAW, MUS_WAVE_SQR
@@ -650,7 +653,7 @@ Function MUS_MusicSample!
     musOldLast = musMSold * musMSgOld
     musMSs = musMSs * musMSgNew + musOldLast
     musLastVox = musMSs
-    musTail = musTail * MUS_TAIL_K
+    musTail = musTail * musTailK
     musMSs = musMSs + musTail
 
     If musDrumIdx >= 0 Then
@@ -694,10 +697,7 @@ Sub MUS_Fill(musFdoSfx As Integer)
     If musFillCnt <= 0 Then Exit Sub
 
     For musFk = 0 To musFillCnt - 1
-        If musFdoSfx Then
-            sndEnginePhase = sndEnginePhase + 6.2832 * sndEngineFreq / SAMPLE_RATE
-            If sndEnginePhase > 6.2832 Then sndEnginePhase = sndEnginePhase - 6.2832
-        End If
+        If musFdoSfx Then SND_EngineStep
 
         musFsample = MUS_MusicSample!
 
@@ -708,26 +708,7 @@ Sub MUS_Fill(musFdoSfx As Integer)
             sndDeathPos = sndDeathPos + 1
             If sndDeathPos >= SND_DEATH_LEN Then sndDeathPos = -1
         End If
-        If sndBlipTimer > 0 Then
-            Dim blpPos As Long, blpEnv As Single
-            blpPos = sndBlipLen - sndBlipTimer
-            If blpPos < sndBlipLen * 0.1 Then
-                blpEnv = blpPos / (sndBlipLen * 0.1)
-            ElseIf blpPos > sndBlipLen * 0.55 Then
-                blpEnv = 1.0 - (blpPos - sndBlipLen * 0.55) / (sndBlipLen * 0.45)
-            Else
-                blpEnv = 1.0
-            End If
-            If blpEnv < 0 Then blpEnv = 0
-            If blpPos < sndBlipPlosLen Then
-                musFnarBlip = (RNG!(RNG_AUDIO) * 2.0 - 1.0) * blpEnv * 0.22
-            Else
-                sndBlipPhase = sndBlipPhase + 6.2832 * sndBlipFreq / SAMPLE_RATE
-                If sndBlipPhase > 6.2832 Then sndBlipPhase = sndBlipPhase - 6.2832
-                musFnarBlip = (Sin(sndBlipPhase) + Sin(sndBlipPhase * 2.0) * 0.35) * blpEnv * 0.26
-            End If
-            sndBlipTimer = sndBlipTimer - 1
-        End If
+        musFnarBlip = SND_BlipNext!
 
         If musFdoSfx Then
             If sndShootPos >= 0 Then

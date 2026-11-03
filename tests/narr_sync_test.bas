@@ -24,6 +24,7 @@ $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 Sub DBG_Print(nsDbgMsg As String) : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/sys/audiorate.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/audio/speech.bas'

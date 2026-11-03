@@ -292,7 +292,7 @@ Sub CRAWL_PlanDurations(cpdLevel As Integer)
     Dim cpdI As Integer
     For cpdI = 0 To crawlParaCount - 1
         If cpdLevel > 0 Then
-            crawlParaDur(cpdI) = SPK_TextSamples&(crawlParaText$(cpdI), cpdLevel) / SAMPLE_RATE
+            crawlParaDur(cpdI) = SPK_TextSamples&(crawlParaText$(cpdI), cpdLevel) / audTune
         Else
             crawlParaDur(cpdI) = crawlParaWords(cpdI) / CRAWL_READ_WPM * 60
         End If

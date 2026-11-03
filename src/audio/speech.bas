@@ -7,7 +7,7 @@
 
 CONST SPK_DICT_MAX  = 2048   ' max dictionary word entries — sized well above any plausible game text
 CONST SPK_PHONE_MAX = 2048   ' max queued phonemes per utterance
-CONST SPK_FADE      = 441    ' 10ms fade at phoneme edges (@ 44100)
+DIM SHARED SPK_FADE AS LONG  ' 441 samples at AUTHOR_RATE: fade at phoneme edges; set by SPK_Init
 
 ' ---- ARPAbet phoneme IDs (order must match SPK_NAMES$ below) ----
 CONST SPK_AA=0:CONST SPK_AE=1:CONST SPK_AH=2:CONST SPK_AO=3:CONST SPK_AW=4
@@ -23,7 +23,7 @@ CONST SPK_T=35:CONST SPK_K=36:CONST SPK_CH=37:CONST SPK_JH=38:CONST SPK_SIL=39
 CONST SPK_NAMES = "AA AE AH AO AW AY EH ER EY IH IY OW OY UH UW L M N NG R W Y DH V Z ZH B D G F S SH TH HH P T K CH JH SIL"
 
 ' Duration in samples per phoneme per stress level (0=unstressed 1=primary 2=secondary)
-DIM SHARED spkDur(0 TO 39, 0 TO 2) AS INTEGER
+DIM SHARED spkDur(0 TO 39, 0 TO 2) AS LONG  '  samples at AUTHOR_RATE; SPK_PhoneDur scales them to the device rate
 
 ' Dictionary
 DIM SHARED spkDictCount AS INTEGER
@@ -41,7 +41,7 @@ DIM SHARED spkPhones(0 TO SPK_PHONE_MAX - 1) AS INTEGER
 DIM SHARED spkStress(0 TO SPK_PHONE_MAX - 1) AS INTEGER
 DIM SHARED spkPhoneCount AS INTEGER
 DIM SHARED spkPhoneIdx   AS INTEGER
-DIM SHARED spkSamplePos  AS INTEGER
+DIM SHARED spkSamplePos  AS LONG
 DIM SHARED spkSampleOut  AS SINGLE  ' current sample; written by SPK_Advance, read by snd.bas
 ' The utterance's position in game time (SPK_Tick, once per frame), which SPK_IsPlaying%
 ' and SPK_CurWord$ report. The synth position above moves as fast as the audio device
@@ -50,11 +50,11 @@ DIM SHARED spkClkIdx AS INTEGER
 DIM SHARED spkClkPos AS LONG
 
 ' Audio lock (#393): the frame clock above runs 735 samples per frame, so it falls behind the voice
-' whenever frames run slower than the device drains, or the device runs faster than SAMPLE_RATE.
+' whenever frames run slower than the device drains.
 ' With spkAudioLock on, SPK_Tick also moves the clock up to the sample the listener is hearing:
 ' the synth position (spkSynthTotal) at the output sample that is spkBuffered samples behind the
 ' newest one (spkSynthAt ring). The clock never falls behind that, and never runs backwards.
-CONST SPK_RING = 8192
+CONST SPK_RING = 32768  ' a power of two above AUDIO_BUFFER_TARGET seconds at the highest device rate (192000 Hz)
 DIM SHARED spkAudioLock AS INTEGER
 DIM SHARED spkBuffered AS LONG       ' output samples queued in the audio device; set by the main loop before SPK_Tick
 DIM SHARED spkSynthTotal AS LONG     ' synth samples produced while an utterance was queued
@@ -105,6 +105,7 @@ DIM SHARED spkWordCount AS INTEGER
 ' ============================================================
 SUB SPK_Init()
     DIM i AS INTEGER
+    SPK_FADE = AUD_N&(441)
 
     ' Vowels 0-14: duration driven by stress
     ' Typical English stressed vowel ~150-200ms, unstressed ~70-90ms
@@ -319,9 +320,9 @@ SUB SPK_Init()
         NEXT bwJ
 
         SELECT CASE stress
-        CASE 1    : bwSIdx = 1 : spkWaveStep = SPK_WAVE_LEN * 155.0 / SAMPLE_RATE
-        CASE 2    : bwSIdx = 2 : spkWaveStep = SPK_WAVE_LEN * 130.0 / SAMPLE_RATE
-        CASE ELSE : bwSIdx = 0 : spkWaveStep = SPK_WAVE_LEN * 110.0 / SAMPLE_RATE
+        CASE 1    : bwSIdx = 1 : spkWaveStep = SPK_WAVE_LEN * 155.0 / audTune
+        CASE 2    : bwSIdx = 2 : spkWaveStep = SPK_WAVE_LEN * 130.0 / audTune
+        CASE ELSE : bwSIdx = 0 : spkWaveStep = SPK_WAVE_LEN * 110.0 / audTune
         END SELECT
 
         FOR bwJ = 0 TO SPK_WAVE_LEN - 1
@@ -329,14 +330,14 @@ SUB SPK_Init()
         NEXT bwJ
 
         SELECT CASE phoneID
-        CASE SPK_S, SPK_Z              : spkHpCoeff = 0.607
-        CASE SPK_SH, SPK_ZH, SPK_CH, SPK_JH : spkHpCoeff = 0.774
-        CASE SPK_F, SPK_V, SPK_TH, SPK_DH   : spkHpCoeff = 0.843
-        CASE SPK_HH                    : spkHpCoeff = 0.958
-        CASE SPK_P                     : spkHpCoeff = 0.870  ' bilabial burst fc~800Hz
-        CASE SPK_T                     : spkHpCoeff = 0.607  ' alveolar burst fc~3500Hz (hissy)
-        CASE SPK_K                     : spkHpCoeff = 0.720  ' velar burst fc~2000Hz
-        CASE ELSE                      : spkHpCoeff = 0.900
+        CASE SPK_S, SPK_Z              : spkHpCoeff = AUD_Decay#(0.607#)
+        CASE SPK_SH, SPK_ZH, SPK_CH, SPK_JH : spkHpCoeff = AUD_Decay#(0.774#)
+        CASE SPK_F, SPK_V, SPK_TH, SPK_DH   : spkHpCoeff = AUD_Decay#(0.843#)
+        CASE SPK_HH                    : spkHpCoeff = AUD_Decay#(0.958#)
+        CASE SPK_P                     : spkHpCoeff = AUD_Decay#(0.870#)  ' bilabial burst fc~800Hz
+        CASE SPK_T                     : spkHpCoeff = AUD_Decay#(0.607#)  ' alveolar burst fc~3500Hz (hissy)
+        CASE SPK_K                     : spkHpCoeff = AUD_Decay#(0.720#)  ' velar burst fc~2000Hz
+        CASE ELSE                      : spkHpCoeff = AUD_Decay#(0.900#)
         END SELECT
         spkHpX1 = 0.0 : spkHpY1 = 0.0
     END SUB
@@ -492,11 +493,11 @@ SUB SPK_Init()
         SPK_HeardSynth& = sphV
     END FUNCTION
 
-    ' One game frame of speech: SAMPLE_RATE / 60 output samples (spkTimeScale synth samples
+    ' One game frame of speech: AUD_FrameSamples& (735 at the reference rate) output samples (spkTimeScale synth samples
     ' each), however much audio the fill synthesised this frame.
     SUB SPK_Tick()
         DIM sptLeft AS LONG, sptD AS LONG, sptHeard AS LONG
-        sptLeft = (SAMPLE_RATE \ 60) * spkTimeScale
+        sptLeft = AUD_FrameSamples& * spkTimeScale
         IF spkAudioLock THEN
             sptHeard = SPK_HeardSynth&(spkBuffered)
             IF sptHeard - spkClkTotal > sptLeft THEN sptLeft = sptHeard - spkClkTotal
@@ -532,9 +533,9 @@ SUB SPK_Init()
     FUNCTION SPK_PhoneDur&(spdPh AS INTEGER, spdSt AS INTEGER)
         DIM spdD AS LONG
         SELECT CASE spdPh
-            CASE SPK_SIL : spdD = INT(spkDur(spdPh, spdSt) * spkScaleSil)
-            CASE SPK_AA TO SPK_UW : spdD = INT(spkDur(spdPh, spdSt) * spkScaleVow)
-            CASE ELSE : spdD = INT(spkDur(spdPh, spdSt) * spkScaleCons)
+            CASE SPK_SIL : spdD = AUD_N&(INT(spkDur(spdPh, spdSt) * spkScaleSil))
+            CASE SPK_AA TO SPK_UW : spdD = AUD_N&(INT(spkDur(spdPh, spdSt) * spkScaleVow))
+            CASE ELSE : spdD = AUD_N&(INT(spkDur(spdPh, spdSt) * spkScaleCons))
         END SELECT
         IF spdD < 2 THEN spdD = 2
         SPK_PhoneDur& = spdD
@@ -555,7 +556,7 @@ SUB SPK_Init()
         DIM stsPh(0 TO SPK_PHONE_MAX - 1) AS INTEGER, stsSt(0 TO SPK_PHONE_MAX - 1) AS INTEGER
         DIM stsWS(0 TO SPK_MAX_WORDS - 1) AS INTEGER, stsWE(0 TO SPK_MAX_WORDS - 1) AS INTEGER
         DIM stsWT(0 TO SPK_MAX_WORDS - 1) AS STRING, stsWO(0 TO SPK_MAX_WORDS - 1) AS INTEGER
-        DIM stsN AS INTEGER, stsIdx AS INTEGER, stsPos AS INTEGER, stsWN AS INTEGER, stsI AS INTEGER
+        DIM stsN AS INTEGER, stsIdx AS INTEGER, stsPos AS LONG, stsWN AS INTEGER, stsI AS INTEGER
         DIM stsPhase AS SINGLE, stsPrev AS INTEGER, stsSil AS SINGLE, stsVow AS SINGLE, stsCons AS SINGLE
         DIM stsClkIdx AS INTEGER, stsClkPos AS LONG, stsClkTotal AS LONG, stsBase AS LONG
 
@@ -799,7 +800,7 @@ SUB SPK_Init()
 
     ' One synthesizer sample (SPK_Advance runs spkTimeScale of these per output sample).
     SUB SPK_AdvanceOne()
-        DIM phoneID AS INTEGER, stress AS INTEGER, dur AS INTEGER
+        DIM phoneID AS INTEGER, stress AS INTEGER, dur AS LONG
         DIM env AS SINGLE, s AS SINGLE, t AS SINGLE
         DIM wIdx AS INTEGER, wNext AS INTEGER, wFrac AS SINGLE
         DIM newBuzz AS SINGLE, prevBuzz AS SINGLE, blendT AS SINGLE, buzz AS SINGLE

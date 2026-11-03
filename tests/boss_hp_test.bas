@@ -21,6 +21,7 @@ Sub TELEM_CreditBonus (btcC As Long, btcR As Double, btcP As Long) : End Sub
 
 '$INCLUDE:'../src/gameplay/difficulty.bas'
 '$INCLUDE:'../src/sys/rng.bas'
+'$INCLUDE:'../src/sys/audiorate.bas'
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 '$INCLUDE:'../src/sys/config.bas'
