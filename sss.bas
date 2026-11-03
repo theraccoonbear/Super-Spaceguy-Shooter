@@ -341,7 +341,6 @@ DO
     IF iscActive = 0 OR cliRealtime THEN _LIMIT 60  ' scripted runs go flat out unless --realtime: gameplay steps per frame, not per second
     _DISPLAY
     IF cliShotN > 0 THEN GAME_MaybeScreenshot
-    BENCH_FrameEnd
     gameFrame = gameFrame + 1
 LOOP
 

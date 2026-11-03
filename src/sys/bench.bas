@@ -28,6 +28,7 @@ End Sub
 Sub BENCH_FrameBegin ()
     Dim bfI As Integer
     If benchOn = 0 Then Exit Sub
+    If benchStart > 0 Then BENCH_FrameEnd
     For bfI = 0 To 9
         benchAcc(bfI) = 0
     Next bfI
@@ -45,10 +46,9 @@ Sub BENCH_Lap (blPhase As Integer)
     If blPhase = BENCH_RASTER Then benchRendered = -1
 End Sub
 
-' Frames that never reached the renderer (menus, crawls, pause) are left out.
+' Closes the previous frame, started by BENCH_FrameBegin, so the main loop needs no call of its own at the end. Frames that never reached the renderer (menus, crawls, pause) are left out.
 Sub BENCH_FrameEnd ()
     Dim beI As Integer
-    If benchOn = 0 Then Exit Sub
     BENCH_Lap BENCH_REST
     If benchRendered = 0 Or benchN >= cliFrames Then Exit Sub
     benchN = benchN + 1
