@@ -696,6 +696,14 @@ Sub MUS_Fill(musFdoSfx As Integer)
     musFillCnt = Int((AUDIO_BUFFER_TARGET - _SNDRAWLEN) * SAMPLE_RATE)
     If musFillCnt <= 0 Then Exit Sub
 
+    ' Settings open mid-run: music and narration stand still, only UI blips (at the adjusted row's volume) are heard
+    If musHold Then
+        For musFk = 0 To musFillCnt - 1
+            _SNDRAW (SND_UiNext! + SND_BlipNext!) * musHoldVol
+        Next musFk
+        Exit Sub
+    End If
+
     For musFk = 0 To musFillCnt - 1
         If musFdoSfx Then SND_EngineStep
 

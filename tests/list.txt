@@ -32,6 +32,7 @@ upgrade_test
 dock_test
 remap_test
 menu_test
+pause_settings_test
 callsign_pad_test
 powerup_test
 wave_timing_test
