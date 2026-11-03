@@ -17,6 +17,10 @@
 #   headless [args]  builds/sss on an off-screen X server (Xvfb), no display or
 #                  audio needed; pair with --input-script/--frames/--seed for
 #                  scripted playtests
+#   bench [--repeat N] [--script F] [args]  frame-time bench: plays F (default tests/bench/bench.txt) headless,
+#                  unthrottled, N times (default 5); prints avg, p95 and worst
+#                  per phase (simulation, backdrop, scene build, raster, particles,
+#                  overlay, effects, HUD) and the spread across runs
 #   record [opts] [sss args]  record a scripted run, picture and sound, to an
 #                  MP4, headless (Xvfb + a null PulseAudio sink + ffmpeg).
 #                  Default: the full playthrough to builds/playthrough.mp4.
@@ -52,7 +56,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n '2,48p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n "2,52p" "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -223,6 +227,11 @@ cmd_headless() {
     pick_engine; ensure_image
     rebuild_if_stale
     run_in tools/container/in/headless.sh "$@"
+}
+cmd_bench() {
+    pick_engine; ensure_image
+    rebuild_if_stale
+    run_in tools/container/in/bench.sh "$@"
 }
 cmd_record() {
     rec_out=builds/playthrough.mp4
