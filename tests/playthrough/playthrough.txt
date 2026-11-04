@@ -47,5 +47,5 @@
 @GS_PLAYING +120 60 every 240 RIGHT
 @GS_PLAYING +180 60 every 240 DOWN
 # Planet arrivals and cinematics play out by themselves.
-# Upgrade docks (after stages 1-5): L launches at once, buying nothing.
-@GS_DOCK +0 L
+# Upgrade docks (after stages 1-5): L launches, buying nothing. Two frames in, so the key is seen going down (the dock ignores an L already held when it opens).
+@GS_DOCK +2 L
