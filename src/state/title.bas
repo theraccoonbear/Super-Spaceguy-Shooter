@@ -24,9 +24,9 @@ Sub GS_TITLE_Update ()
     IF titleEscConfirm THEN
         Dim gstKX As Integer, gstSelY As Integer, gstBY As Integer
         gstBY = scrH\2 - 9   ' the console grew a row: it moves up half of it, clear of PRESS P TO PLAY
-        UI_DrawPanel scrW\2 - 76, gstBY - 72, scrW\2 + 76, gstBY + 84, "COMMAND CONSOLE"
+        UI_DrawDialog UI_DLG_HALF_S, gstBY - 72, gstBY + 84, "COMMAND CONSOLE"
         gstSelY = gstBY - 46 + titleConSel * 18
-        UI_MenuHighlight scrW\2 - 66, gstSelY - 3, scrW\2 + 66, gstSelY + 11
+        UI_MenuRow scrW\2 - 66, scrW\2 + 66, gstSelY
         ' labels, then (keyboard) each hotkey letter overwritten in bright; the pad has only its cancel button
         gstKX = scrW\2 - 44
         FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",       gstKX, gstBY - 46, 255
@@ -52,9 +52,9 @@ Sub GS_TITLE_Update ()
     IF titleEscConfirm = 0 THEN HUD_RunTally
     IF launchOpen THEN
         Dim gstLY As Integer, gstLP As String
-        UI_DrawPanel scrW\2 - 80, scrH\2 - 48, scrW\2 + 80, scrH\2 + 40, "LAUNCH NOW?"
+        UI_DrawDialog UI_DLG_HALF_S, scrH\2 - 48, scrH\2 + 40, "LAUNCH NOW?"
         gstLY = scrH\2 - 20 + launchSel * 18
-        UI_MenuHighlight scrW\2 - 66, gstLY - 3, scrW\2 + 66, gstLY + 11
+        UI_MenuRow scrW\2 - 66, scrW\2 + 66, gstLY
         UI_TextCentered 9, "YES", scrH\2 - 20, 255
         UI_TextCentered 9, "NO",  scrH\2 - 2,  255
         gstLP = UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " GO  " + UI_Tok$("ESC", E3D_ACT_BACK) + " BACK"
