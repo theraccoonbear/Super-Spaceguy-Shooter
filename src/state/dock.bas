@@ -247,7 +247,7 @@ Sub DOCK_Draw
     ElseIf Len(dockNews) > 0 Then
         UI_Text 11, DOCK_NewsWindow$(dockNewsTick), DOCK_PX1 + 8, dkdY + 32, 255
     End If
-    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("L", E3D_ACT_NOVA) + " LAUNCH  " + UI_Tok$("ESC", E3D_ACT_PAUSE) + " MENU", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
+    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("L", E3D_ACT_NOVA) + " GO  " + UI_Tok$("ESC", E3D_ACT_PAUSE) + " MENU", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
     If dockAsk Then DOCK_DrawStrandAsk
 
     _Dest 0
