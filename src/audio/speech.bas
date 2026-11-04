@@ -70,9 +70,63 @@ DIM SHARED spkF2(0 TO 39) AS SINGLE
 ' Voiced-source wavetable (512 samples per phoneme+stress; library pre-built at init)
 ' Building at runtime from trig would stall the audio fill loop and kill _SNDRAW.
 CONST SPK_WAVE_LEN = 512
-DIM SHARED spkWaveLib(0 TO 39, 0 TO 2, 0 TO SPK_WAVE_LEN - 1) AS SINGLE  ' [phone][stress][sample]
+' Pitch steps (#236): a quantized ladder of voice pitches, about a semitone apart. Steps 3, 6 and 9
+' are the 110 / 130 / 155 Hz the voice always used for unstressed / secondary / primary stress.
+CONST SPK_NLV = 12
+' [variant][phone][pitch step][sample]; variant 0 is the original 32-harmonic table, 1 the bright one (HB)
+DIM SHARED spkWaveLib(0 TO 1, 0 TO 39, 0 TO SPK_NLV - 1, 0 TO SPK_WAVE_LEN - 1) AS SINGLE
+DIM SHARED spkLvF0(0 TO SPK_NLV - 1) AS SINGLE
 DIM SHARED spkWave(0 TO SPK_WAVE_LEN - 1) AS SINGLE      ' active phoneme wavetable
 DIM SHARED spkWavePrev(0 TO SPK_WAVE_LEN - 1) AS SINGLE  ' previous phoneme (coarticulation blend)
+DIM SHARED spkWaveB(0 TO SPK_WAVE_LEN - 1) AS SINGLE     ' diphthong glide target
+DIM SHARED spkWaveNext(0 TO SPK_WAVE_LEN - 1) AS SINGLE  ' GL: locus of the next obstruent, glided toward at the end
+
+' Clarity features (#236), each switchable live by --speech-dev; SPK_Init turns them all on.
+' With all of them off the output is the voice from before #236, sample for sample.
+CONST SPK_FX_N = 6
+CONST SPK_FX_GL = 0   ' glides: no level notch between voiced sounds, formant glides into and out of consonants
+CONST SPK_FX_BU = 1   ' stop bursts shaped by place, aspiration, B/D/G release bursts
+CONST SPK_FX_FR = 2   ' S/Z and SH/ZH/CH/JH through resonators instead of a one-pole high-pass
+CONST SPK_FX_NL = 3   ' nasal murmur (low-passed, quieter M/N/NG), liquids slightly below vowels and glided
+CONST SPK_FX_HB = 4   ' bright tables: harmonics to ~5 kHz plus a fixed F4
+CONST SPK_FX_IN = 5   ' phrase intonation on the pitch-step ladder
+DIM SHARED spkFx(0 TO SPK_FX_N - 1) AS INTEGER
+DIM SHARED spkPF0(0 TO SPK_PHONE_MAX - 1) AS SINGLE   ' IN: voice pitch in Hz per queued phoneme (SPK_PlanPitch)
+DIM SHARED spkBrk(0 TO SPK_PHONE_MAX - 1) AS INTEGER  ' break after a clause at this phoneme: 1 comma, 2 period, 3 question
+CONST SPK_IN_REF = 110     ' IN: pitches are semitones from this (the old unstressed pitch)
+CONST SPK_IN_START = 2     ' a sentence starts this many semitones up
+CONST SPK_IN_FLOOR = -2    ' declination stops here
+CONST SPK_IN_LO = -3       ' the pitch range the tables cover (92.5 to 174 Hz)
+CONST SPK_IN_HI = 8
+' IN prosody knobs (#236): defaults here, assets/config/speech.ini overrides them (speechcfg.bas),
+' --speech-dev nudges them live
+CONST SPK_PK_N = 10
+CONST SPK_PK_STEP = 0      ' pitch quantum, semitones
+CONST SPK_PK_DECL = 1      ' declination per word, semitones
+CONST SPK_PK_ACC = 2       ' accent size, semitones
+CONST SPK_PK_NACC = 3      ' accents per phrase (the first words with a primary stress)
+CONST SPK_PK_FALL = 4      ' final fall at . ! or the end, semitones
+CONST SPK_PK_RISE = 5      ' lift at , ; : (a question lifts 1.5 times as much), semitones
+CONST SPK_PK_SPREAD = 6    ' stress pitch spread inside a word: 0 flat .. 1 the old 110/130/155 Hz
+CONST SPK_PK_GPITCH = 7    ' GL also slides pitch over a glide (0 off: pitch only ever steps)
+CONST SPK_PK_LIQ = 8       ' NL: glide length into a vowel after L R W Y, times the normal glide
+CONST SPK_PK_LOUD = 9      ' unstressed vowels this many dB quieter (IN)
+DIM SHARED spkPk(0 TO SPK_PK_N - 1) AS SINGLE
+DIM SHARED spkPkDef(0 TO SPK_PK_N - 1) AS SINGLE, spkPkMin(0 TO SPK_PK_N - 1) AS SINGLE
+DIM SHARED spkPkMax(0 TO SPK_PK_N - 1) AS SINGLE, spkPkInc(0 TO SPK_PK_N - 1) AS SINGLE
+DIM SHARED spkPkKey(0 TO SPK_PK_N - 1) AS STRING
+DIM SHARED spkStepPrev AS SINGLE, spkStepCur AS SINGLE  ' GL with glide pitch: the step slid from, and this phoneme's
+' Per-phoneme state SPK_BuildWave sets for SPK_AdvanceOne
+DIM SHARED spkCurLv AS INTEGER, spkCurVar AS INTEGER
+DIM SHARED spkFadeIn AS INTEGER, spkFadeOut AS INTEGER  ' GL: edge fades still applied (0 = joined to a voiced neighbour)
+DIM SHARED spkGlIn AS LONG, spkGlOut AS LONG            ' GL: glide lengths in samples (0 = none)
+DIM SHARED spkGainA AS SINGLE, spkGainB AS SINGLE       ' level glided from, and this phoneme's own level
+DIM SHARED spkRelAt AS LONG                             ' stops/affricates: sample of the release
+DIM SHARED spkNasal AS INTEGER, spkLpY AS SINGLE, spkLpInit AS INTEGER, spkNasC AS SINGLE
+DIM SHARED spkGLIDE AS LONG, spkBURST AS LONG, spkBURSTV AS LONG
+' Two-pole noise resonators per phoneme (BU, FR), coefficients from SAMPLE_RATE at SPK_Init
+DIM SHARED spkRsA1(0 TO 39) AS SINGLE, spkRsA2(0 TO 39) AS SINGLE, spkRsG(0 TO 39) AS SINGLE
+DIM SHARED spkRA1 AS SINGLE, spkRA2 AS SINGLE, spkRG AS SINGLE, spkRY1 AS SINGLE, spkRY2 AS SINGLE
 DIM SHARED spkWavePhase AS SINGLE  ' position in wavetable [0, SPK_WAVE_LEN)
 DIM SHARED spkWaveStep  AS SINGLE  ' samples advanced per audio sample
 ' F3 formant, previous-phoneme tracking, fricative HP filter
@@ -230,6 +284,29 @@ SUB SPK_Init()
         spkDiEnd(SPK_AW) = SPK_UH   ' /aʊ/ out, down, power → AA onset → UH
         spkDiEnd(SPK_OY) = SPK_IY   ' /ɔɪ/ boy, point, void → AO onset → IY
 
+        spkLvF0(0) = 92.5 : spkLvF0(1) = 98 : spkLvF0(2) = 104 : spkLvF0(3) = 110
+        spkLvF0(4) = 116.5 : spkLvF0(5) = 123 : spkLvF0(6) = 130 : spkLvF0(7) = 138
+        spkLvF0(8) = 146 : spkLvF0(9) = 155 : spkLvF0(10) = 164 : spkLvF0(11) = 174
+        FOR spkDiI = 0 TO SPK_FX_N - 1 : spkFx(spkDiI) = -1 : NEXT spkDiI
+        spkGLIDE = AUD_N&(1323) : spkBURST = AUD_N&(290) : spkBURSTV = AUD_N&(200)
+        spkNasC = AUD_Smooth!(0.0755)   ' one-pole low-pass at ~600 Hz
+        SPK_SetReso SPK_P, 900, 1400 : SPK_SetReso SPK_B, 900, 1400
+        SPK_SetReso SPK_T, 4200, 2000 : SPK_SetReso SPK_D, 4200, 2000
+        SPK_SetReso SPK_K, 2200, 700 : SPK_SetReso SPK_G, 2200, 700
+        SPK_SetReso SPK_S, 5500, 3000 : SPK_SetReso SPK_Z, 5500, 3000
+        SPK_SetReso SPK_SH, 2800, 1500 : SPK_SetReso SPK_ZH, 2800, 1500
+        SPK_SetReso SPK_CH, 2800, 1500 : SPK_SetReso SPK_JH, 2800, 1500
+        SPK_PkDefine SPK_PK_STEP, "step_semitones", 1, 0.25, 4, 0.25
+        SPK_PkDefine SPK_PK_DECL, "declination_per_word", 0.25, 0, 1.5, 0.05
+        SPK_PkDefine SPK_PK_ACC, "accent_semitones", 1.5, 0, 6, 0.5
+        SPK_PkDefine SPK_PK_NACC, "accents_per_phrase", 1, 0, 4, 1
+        SPK_PkDefine SPK_PK_FALL, "final_fall_semitones", 3, 0, 8, 0.5
+        SPK_PkDefine SPK_PK_RISE, "rise_semitones", 2, 0, 6, 0.5
+        SPK_PkDefine SPK_PK_SPREAD, "stress_pitch_spread", 0, 0, 1, 0.1
+        SPK_PkDefine SPK_PK_GPITCH, "glide_pitch", 0, 0, 1, 1
+        SPK_PkDefine SPK_PK_LIQ, "liquid_glide", 1, 1, 3, 0.25
+        SPK_PkDefine SPK_PK_LOUD, "stress_loudness_db", 2, 0, 6, 0.5
+
         spkTimeScale = 1
         SPK_SetSpeed 1.0
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0 : spkClkIdx = 0 : spkClkPos = 0
@@ -241,31 +318,38 @@ SUB SPK_Init()
     END SUB
 
     ' ============================================================
-    ' Pre-build all phoneme wavetables at startup (120 builds, done once).
+    ' Pre-build every phoneme wavetable at startup: 2 variants x 40 phonemes x SPK_NLV pitch steps.
     ' Called from SPK_Init before any audio fill loop starts.
     ' Doing this upfront keeps SPK_BuildWave (called per phoneme in the
     ' real-time audio path) down to a fast array copy instead of trig.
+    ' Variant 0 at steps 3, 6 and 9 is the original math, unchanged; the rest use a sine lookup.
     ' ============================================================
     SUB SPK_BuildAllWaves()
-        DIM bwPhone AS INTEGER, bwSt AS INTEGER, bwK AS INTEGER, bwI AS INTEGER
+        DIM bwPhone AS INTEGER, bwLv AS INTEGER, bwVar AS INTEGER, bwK AS INTEGER, bwI AS INTEGER
         DIM bwF0 AS SINGLE, bwF1 AS SINGLE, bwF2 AS SINGLE, bwF3 AS SINGLE
-        DIM bwHf AS SINGLE, bwR1 AS SINGLE, bwR2 AS SINGLE, bwR3 AS SINGLE
-        DIM bwG1 AS SINGLE, bwG2 AS SINGLE, bwG3 AS SINGLE, bwG AS SINGLE
+        DIM bwHf AS SINGLE, bwR1 AS SINGLE, bwR2 AS SINGLE, bwR3 AS SINGLE, bwR4 AS SINGLE
+        DIM bwG1 AS SINGLE, bwG2 AS SINGLE, bwG3 AS SINGLE, bwG4 AS SINGLE, bwG AS SINGLE
         DIM bwPh AS SINGLE, bwS AS SINGLE, bwPk AS SINGLE
         DIM bwRa AS SINGLE, bwGa AS SINGLE  ' anti-resonance (L lateral notch)
-        CONST bwQ1 = 9.0 : CONST bwQ2 = 12.0 : CONST bwQ3 = 10.0 : CONST bwNH = 32
+        DIM bwNH AS INTEGER, bwClassic AS INTEGER, bwTop AS SINGLE
+        DIM bwGain(1 TO 255) AS SINGLE, bwSin(0 TO SPK_WAVE_LEN - 1) AS SINGLE
+        CONST bwQ1 = 9.0 : CONST bwQ2 = 12.0 : CONST bwQ3 = 10.0
 
-        FOR bwSt = 0 TO 2
-            SELECT CASE bwSt
-            CASE 1    : bwF0 = 155.0
-            CASE 2    : bwF0 = 130.0
-            CASE ELSE : bwF0 = 110.0
-            END SELECT
-            FOR bwPhone = 0 TO 39
-                bwF1 = spkF1(bwPhone) : bwF2 = spkF2(bwPhone) : bwF3 = spkF3(bwPhone)
-                FOR bwI = 0 TO SPK_WAVE_LEN - 1
-                    bwPh = 6.2832 * bwI / SPK_WAVE_LEN
-                    bwS = 0.0
+        FOR bwI = 0 TO SPK_WAVE_LEN - 1 : bwSin(bwI) = SIN(6.283185307179586# * bwI / SPK_WAVE_LEN) : NEXT bwI
+        bwTop = 0.45 * SAMPLE_RATE : IF bwTop > 5000 THEN bwTop = 5000
+
+        FOR bwVar = 0 TO 1
+            FOR bwLv = 0 TO SPK_NLV - 1
+                bwF0 = spkLvF0(bwLv)
+                bwClassic = (bwVar = 0 AND (bwLv = 3 OR bwLv = 6 OR bwLv = 9))
+                IF bwVar = 0 THEN
+                    bwNH = 32
+                ELSE
+                    bwNH = INT(bwTop / bwF0) : IF bwNH > 255 THEN bwNH = 255
+                    IF bwNH < 1 THEN bwNH = 1
+                END IF
+                FOR bwPhone = 0 TO 39
+                    bwF1 = spkF1(bwPhone) : bwF2 = spkF2(bwPhone) : bwF3 = spkF3(bwPhone)
                     FOR bwK = 1 TO bwNH
                         bwHf = bwK * bwF0
                         IF bwF1 > 0 THEN
@@ -287,47 +371,208 @@ SUB SPK_Init()
                             bwG3 = 0.0
                         END IF
                         bwG = (bwG1 + bwG2 + bwG3 * 0.5) / bwK
+                        IF bwVar = 1 AND bwF1 > 0 THEN
+                            ' HB: a fixed F4 at 3.5 kHz for presence
+                            bwR4 = bwHf / 3500.0
+                            bwG4 = 1.0 / SQR(1.0 + 100.0*(bwR4 - 1.0/bwR4)*(bwR4 - 1.0/bwR4))
+                            bwG = bwG + bwG4 * 0.25 / bwK
+                        END IF
                         ' L: subtract anti-resonance notch ~1800Hz for lateral quality
                         IF bwPhone = SPK_L THEN
                             bwRa = bwHf / 1800.0
                             bwGa = 1.0 / SQR(1.0 + 10.0*10.0*(bwRa - 1.0/bwRa)*(bwRa - 1.0/bwRa))
                             bwG = bwG - bwGa * 0.35 : IF bwG < 0.0 THEN bwG = 0.0
                         END IF
-                        bwS = bwS + SIN(bwK * bwPh) * bwG
+                        bwGain(bwK) = bwG
                     NEXT bwK
-                    spkWaveLib(bwPhone, bwSt, bwI) = bwS
-                NEXT bwI
-                bwPk = 0.001
-                FOR bwI = 0 TO SPK_WAVE_LEN - 1
-                    IF ABS(spkWaveLib(bwPhone, bwSt, bwI)) > bwPk THEN bwPk = ABS(spkWaveLib(bwPhone, bwSt, bwI))
-                NEXT bwI
-                FOR bwI = 0 TO SPK_WAVE_LEN - 1
-                    spkWaveLib(bwPhone, bwSt, bwI) = spkWaveLib(bwPhone, bwSt, bwI) / bwPk
-                NEXT bwI
-            NEXT bwPhone
-        NEXT bwSt
+                    FOR bwI = 0 TO SPK_WAVE_LEN - 1
+                        bwS = 0.0
+                        IF bwClassic THEN
+                            bwPh = 6.2832 * bwI / SPK_WAVE_LEN
+                            FOR bwK = 1 TO bwNH
+                                bwS = bwS + SIN(bwK * bwPh) * bwGain(bwK)
+                            NEXT bwK
+                        ELSE
+                            FOR bwK = 1 TO bwNH
+                                bwS = bwS + bwSin((bwK * bwI) AND (SPK_WAVE_LEN - 1)) * bwGain(bwK)
+                            NEXT bwK
+                        END IF
+                        spkWaveLib(bwVar, bwPhone, bwLv, bwI) = bwS
+                    NEXT bwI
+                    bwPk = 0.001
+                    FOR bwI = 0 TO SPK_WAVE_LEN - 1
+                        IF ABS(spkWaveLib(bwVar, bwPhone, bwLv, bwI)) > bwPk THEN bwPk = ABS(spkWaveLib(bwVar, bwPhone, bwLv, bwI))
+                    NEXT bwI
+                    FOR bwI = 0 TO SPK_WAVE_LEN - 1
+                        spkWaveLib(bwVar, bwPhone, bwLv, bwI) = spkWaveLib(bwVar, bwPhone, bwLv, bwI) / bwPk
+                    NEXT bwI
+                NEXT bwPhone
+            NEXT bwLv
+        NEXT bwVar
     END SUB
+
+    ' A two-pole noise resonator for phoneme srPh: centre srFc Hz, bandwidth srBw Hz at the synthesis
+    ' rate, gain set so white noise keeps its power.
+    SUB SPK_SetReso(srPh AS INTEGER, srFc AS SINGLE, srBw AS SINGLE)
+        DIM srR AS DOUBLE, srW AS DOUBLE, srA1 AS DOUBLE, srA2 AS DOUBLE, srP AS DOUBLE
+        IF srFc > 0.42 * SAMPLE_RATE THEN srFc = 0.42 * SAMPLE_RATE
+        srR = EXP(-3.141592653589793# * srBw / SAMPLE_RATE)
+        srW = 6.283185307179586# * srFc / SAMPLE_RATE
+        srA1 = 2# * srR * COS(srW) : srA2 = srR * srR
+        srP = (1# + srA2) / ((1# - srA2) * ((1# + srA2) * (1# + srA2) - srA1 * srA1))
+        spkRsA1(srPh) = srA1 : spkRsA2(srPh) = srA2 : spkRsG(srPh) = 1# / SQR(srP)
+    END SUB
+
+    ' One IN prosody knob: its speech.ini key, default (also its value until the ini is read), range, nudge step.
+    SUB SPK_PkDefine(pkI AS INTEGER, pkKey AS STRING, pkDef AS SINGLE, pkLo AS SINGLE, pkHi AS SINGLE, pkInc AS SINGLE)
+        spkPkKey(pkI) = pkKey : spkPkDef(pkI) = pkDef : spkPk(pkI) = pkDef
+        spkPkMin(pkI) = pkLo : spkPkMax(pkI) = pkHi : spkPkInc(pkI) = pkInc
+    END SUB
+
+    ' Set knob psI, clamped to its range, and re-plan the queued line's pitch.
+    SUB SPK_PkSet(psI AS INTEGER, psV AS SINGLE)
+        IF psV < spkPkMin(psI) THEN psV = spkPkMin(psI)
+        IF psV > spkPkMax(psI) THEN psV = spkPkMax(psI)
+        spkPk(psI) = CSng(INT(psV / spkPkInc(psI) + 0.5) * spkPkInc(psI))
+        SPK_PlanPitch
+    END SUB
+
+    ' The table pitch step nearest a pitch (formants then shift by at most half a step).
+    FUNCTION SPK_NearLv%(nlF AS SINGLE)
+        DIM nlI AS INTEGER, nlBest AS INTEGER, nlR AS SINGLE, nlBestR AS SINGLE
+        nlBestR = 1E9
+        FOR nlI = 0 TO SPK_NLV - 1
+            nlR = nlF / spkLvF0(nlI) : IF nlR < 1 THEN nlR = 1 / nlR
+            IF nlR < nlBestR THEN nlBestR = nlR : nlBest = nlI
+        NEXT nlI
+        SPK_NearLv% = nlBest
+    END FUNCTION
+
+    ' The original pitch step for a stress level: 110 / 155 / 130 Hz.
+    FUNCTION SPK_StressLv%(slSt AS INTEGER)
+        SELECT CASE slSt
+        CASE 1    : SPK_StressLv% = 9
+        CASE 2    : SPK_StressLv% = 6
+        CASE ELSE : SPK_StressLv% = 3
+        END SELECT
+    END FUNCTION
+
+    ' Vowels and sonorants (L M N NG R W Y): the sounds GL joins without a level notch.
+    FUNCTION SPK_IsSon%(isPh AS INTEGER)
+        SPK_IsSon% = (isPh >= SPK_AA AND isPh <= SPK_YW)
+    END FUNCTION
+
+    ' The voiced table a vowel glides from or toward next to a consonant (-1 = none).
+    FUNCTION SPK_Locus%(loPh AS INTEGER)
+        SELECT CASE loPh
+        CASE SPK_P, SPK_B : SPK_Locus% = SPK_B
+        CASE SPK_T, SPK_D : SPK_Locus% = SPK_D
+        CASE SPK_K, SPK_G : SPK_Locus% = SPK_G
+        CASE SPK_F, SPK_V : SPK_Locus% = SPK_V
+        CASE SPK_TH, SPK_DH : SPK_Locus% = SPK_DH
+        CASE SPK_S, SPK_Z : SPK_Locus% = SPK_Z
+        CASE SPK_SH, SPK_ZH, SPK_CH, SPK_JH : SPK_Locus% = SPK_ZH
+        CASE SPK_AA TO SPK_YW : SPK_Locus% = loPh
+        CASE ELSE : SPK_Locus% = -1
+        END SELECT
+    END FUNCTION
+
+    ' Level of a phoneme's voiced buzz (vowels and sonorants; B/D/G at their release).
+    FUNCTION SPK_Gain!(gnPh AS INTEGER)
+        SELECT CASE gnPh
+        CASE SPK_M, SPK_N, SPK_NG : IF spkFx(SPK_FX_NL) THEN SPK_Gain! = 0.40 ELSE SPK_Gain! = 0.50
+        CASE SPK_L, SPK_R, SPK_W, SPK_YW : IF spkFx(SPK_FX_NL) THEN SPK_Gain! = 0.44 ELSE SPK_Gain! = 0.50
+        CASE SPK_B, SPK_D, SPK_G : SPK_Gain! = 0.35
+        CASE ELSE : SPK_Gain! = 0.50
+        END SELECT
+    END FUNCTION
 
     ' ============================================================
     ' Load next phoneme's wavetable from pre-built library (fast array copy).
-    ' Saves outgoing wave to spkWavePrev for coarticulation blend.
+    ' Saves outgoing wave to spkWavePrev for coarticulation blend, and plans
+    ' this phoneme's edges and glides for SPK_AdvanceOne.
     ' ============================================================
     SUB SPK_BuildWave(phoneID AS INTEGER, stress AS INTEGER)
-        DIM bwJ AS INTEGER, bwSIdx AS INTEGER
+        DIM bwJ AS INTEGER, bwLv AS INTEGER, bwVar AS INTEGER, bwSrc AS INTEGER, bwNx AS INTEGER, bwLo AS INTEGER
+        DIM bwDur AS LONG, bwGl AS LONG, bwF0 AS SINGLE, bwGainWas AS SINGLE
 
+        bwVar = 0 : IF spkFx(SPK_FX_HB) THEN bwVar = 1
+        IF spkFx(SPK_FX_IN) AND spkPhoneIdx < spkPhoneCount THEN
+            bwF0 = spkPF0(spkPhoneIdx) : bwLv = SPK_NearLv%(bwF0)
+        ELSE
+            bwLv = SPK_StressLv%(stress) : bwF0 = spkLvF0(bwLv)
+        END IF
+        bwGainWas = spkGainB : spkStepPrev = spkWaveStep
+        IF spkPhoneIdx + 1 < spkPhoneCount THEN bwNx = spkPhones(spkPhoneIdx + 1) ELSE bwNx = SPK_SIL
+        bwDur = SPK_PhoneDur&(phoneID, stress)
+        bwGl = spkGLIDE : IF bwGl > bwDur \ 2 THEN bwGl = bwDur \ 2
+
+        spkFadeIn = -1 : spkFadeOut = -1 : spkGlIn = 0 : spkGlOut = 0
+        spkGainB = SPK_Gain!(phoneID)
+        IF spkFx(SPK_FX_IN) AND phoneID <= SPK_UW AND stress = 0 THEN spkGainB = spkGainB * 10 ^ (-spkPk(SPK_PK_LOUD) / 20)
+        spkGainA = spkGainB
+        bwSrc = 0
+        IF spkFx(SPK_FX_GL) AND SPK_IsSon%(phoneID) THEN
+            ' glide in from what the previous sound ended on, or from a consonant's locus table
+            IF SPK_IsSon%(spkPrevPhoneID) THEN
+                IF spkDiEnd(spkPrevPhoneID) >= 0 THEN
+                    FOR bwJ = 0 TO SPK_WAVE_LEN - 1 : spkWavePrev(bwJ) = spkWaveB(bwJ) : NEXT bwJ
+                ELSE
+                    FOR bwJ = 0 TO SPK_WAVE_LEN - 1 : spkWavePrev(bwJ) = spkWave(bwJ) : NEXT bwJ
+                END IF
+                bwSrc = -1
+            ELSE
+                bwLo = SPK_Locus%(spkPrevPhoneID)
+                IF bwLo >= 0 THEN
+                    FOR bwJ = 0 TO SPK_WAVE_LEN - 1 : spkWavePrev(bwJ) = spkWaveLib(bwVar, bwLo, bwLv, bwJ) : NEXT bwJ
+                    bwSrc = -1
+                END IF
+            END IF
+            IF bwSrc THEN
+                spkGlIn = bwGl
+                IF spkFx(SPK_FX_NL) AND (spkPrevPhoneID = SPK_L OR spkPrevPhoneID = SPK_R OR spkPrevPhoneID = SPK_W OR spkPrevPhoneID = SPK_YW) THEN
+                    spkGlIn = CLNG(spkPk(SPK_PK_LIQ) * spkGLIDE) : IF spkGlIn > bwDur \ 2 THEN spkGlIn = bwDur \ 2
+                END IF
+            END IF
+            IF SPK_IsSon%(spkPrevPhoneID) OR spkPrevPhoneID = SPK_B OR spkPrevPhoneID = SPK_D OR spkPrevPhoneID = SPK_G THEN
+                spkFadeIn = 0 : spkGainA = bwGainWas   ' the level the previous sound ended on
+            END IF
+            IF SPK_IsSon%(bwNx) THEN
+                spkFadeOut = 0
+            ELSE
+                bwLo = SPK_Locus%(bwNx)
+                IF bwLo >= 0 THEN
+                    FOR bwJ = 0 TO SPK_WAVE_LEN - 1 : spkWaveNext(bwJ) = spkWaveLib(bwVar, bwLo, bwLv, bwJ) : NEXT bwJ
+                    spkGlOut = bwGl
+                END IF
+            END IF
+        ELSE
+            FOR bwJ = 0 TO SPK_WAVE_LEN - 1
+                spkWavePrev(bwJ) = spkWave(bwJ)
+            NEXT bwJ
+            IF spkFx(SPK_FX_GL) AND (phoneID = SPK_B OR phoneID = SPK_D OR phoneID = SPK_G) AND SPK_IsSon%(bwNx) THEN spkFadeOut = 0
+        END IF
+
+        IF spkFx(SPK_FX_IN) THEN
+            spkWaveStep = SPK_WAVE_LEN * bwF0 / audTune
+        ELSE
+            SELECT CASE stress
+            CASE 1    : spkWaveStep = SPK_WAVE_LEN * 155.0 / audTune
+            CASE 2    : spkWaveStep = SPK_WAVE_LEN * 130.0 / audTune
+            CASE ELSE : spkWaveStep = SPK_WAVE_LEN * 110.0 / audTune
+            END SELECT
+        END IF
+
+        spkStepCur = spkWaveStep
         FOR bwJ = 0 TO SPK_WAVE_LEN - 1
-            spkWavePrev(bwJ) = spkWave(bwJ)
+            spkWave(bwJ) = spkWaveLib(bwVar, phoneID, bwLv, bwJ)
         NEXT bwJ
-
-        SELECT CASE stress
-        CASE 1    : bwSIdx = 1 : spkWaveStep = SPK_WAVE_LEN * 155.0 / audTune
-        CASE 2    : bwSIdx = 2 : spkWaveStep = SPK_WAVE_LEN * 130.0 / audTune
-        CASE ELSE : bwSIdx = 0 : spkWaveStep = SPK_WAVE_LEN * 110.0 / audTune
-        END SELECT
-
-        FOR bwJ = 0 TO SPK_WAVE_LEN - 1
-            spkWave(bwJ) = spkWaveLib(phoneID, bwSIdx, bwJ)
-        NEXT bwJ
+        IF spkDiEnd(phoneID) >= 0 THEN
+            FOR bwJ = 0 TO SPK_WAVE_LEN - 1
+                spkWaveB(bwJ) = spkWaveLib(bwVar, spkDiEnd(phoneID), bwLv, bwJ)
+            NEXT bwJ
+        END IF
+        spkCurLv = bwLv : spkCurVar = bwVar
 
         SELECT CASE phoneID
         CASE SPK_S, SPK_Z              : spkHpCoeff = AUD_Decay#(0.607#)
@@ -340,6 +585,15 @@ SUB SPK_Init()
         CASE ELSE                      : spkHpCoeff = AUD_Decay#(0.900#)
         END SELECT
         spkHpX1 = 0.0 : spkHpY1 = 0.0
+        spkRA1 = spkRsA1(phoneID) : spkRA2 = spkRsA2(phoneID) : spkRG = spkRsG(phoneID) : spkRY1 = 0 : spkRY2 = 0
+        SELECT CASE phoneID
+        CASE SPK_P, SPK_T, SPK_K : spkRelAt = CLNG(bwDur * 0.55)
+        CASE SPK_B, SPK_D, SPK_G : spkRelAt = CLNG(bwDur * 0.60)
+        CASE SPK_CH, SPK_JH : spkRelAt = CLNG(bwDur * 0.40)
+        CASE ELSE : spkRelAt = 0
+        END SELECT
+        spkNasal = spkFx(SPK_FX_NL) AND (phoneID = SPK_M OR phoneID = SPK_N OR phoneID = SPK_NG)
+        spkLpInit = -1
     END SUB
 
     ' ============================================================
@@ -553,7 +807,7 @@ SUB SPK_Init()
     ' Samples stTxt would take at narration preset stLevel, without disturbing the
     ' utterance currently queued/playing (its queue and speed are saved and restored).
     FUNCTION SPK_TextSamples&(stTxt AS STRING, stLevel AS INTEGER)
-        DIM stsPh(0 TO SPK_PHONE_MAX - 1) AS INTEGER, stsSt(0 TO SPK_PHONE_MAX - 1) AS INTEGER
+        DIM stsPh(0 TO SPK_PHONE_MAX - 1) AS INTEGER, stsSt(0 TO SPK_PHONE_MAX - 1) AS INTEGER, stsLv(0 TO SPK_PHONE_MAX - 1) AS SINGLE, stsBk(0 TO SPK_PHONE_MAX - 1) AS INTEGER
         DIM stsWS(0 TO SPK_MAX_WORDS - 1) AS INTEGER, stsWE(0 TO SPK_MAX_WORDS - 1) AS INTEGER
         DIM stsWT(0 TO SPK_MAX_WORDS - 1) AS STRING, stsWO(0 TO SPK_MAX_WORDS - 1) AS INTEGER
         DIM stsN AS INTEGER, stsIdx AS INTEGER, stsPos AS LONG, stsWN AS INTEGER, stsI AS INTEGER
@@ -564,7 +818,7 @@ SUB SPK_Init()
         stsClkIdx = spkClkIdx : stsClkPos = spkClkPos : stsClkTotal = spkClkTotal : stsBase = spkSayBase
         stsPhase = spkWavePhase : stsPrev = spkPrevPhoneID
         stsSil = spkScaleSil : stsVow = spkScaleVow : stsCons = spkScaleCons
-        FOR stsI = 0 TO stsN - 1 : stsPh(stsI) = spkPhones(stsI) : stsSt(stsI) = spkStress(stsI) : NEXT stsI
+        FOR stsI = 0 TO stsN - 1 : stsPh(stsI) = spkPhones(stsI) : stsSt(stsI) = spkStress(stsI) : stsLv(stsI) = spkPF0(stsI) : stsBk(stsI) = spkBrk(stsI) : NEXT stsI
         FOR stsI = 0 TO stsWN - 1
             stsWS(stsI) = spkWordStart(stsI) : stsWE(stsI) = spkWordEnd(stsI)
             stsWT(stsI) = spkWordText$(stsI) : stsWO(stsI) = spkWordOcc(stsI)
@@ -578,7 +832,7 @@ SUB SPK_Init()
         spkClkIdx = stsClkIdx : spkClkPos = stsClkPos : spkClkTotal = stsClkTotal : spkSayBase = stsBase
         spkWavePhase = stsPhase : spkPrevPhoneID = stsPrev
         spkScaleSil = stsSil : spkScaleVow = stsVow : spkScaleCons = stsCons
-        FOR stsI = 0 TO stsN - 1 : spkPhones(stsI) = stsPh(stsI) : spkStress(stsI) = stsSt(stsI) : NEXT stsI
+        FOR stsI = 0 TO stsN - 1 : spkPhones(stsI) = stsPh(stsI) : spkStress(stsI) = stsSt(stsI) : spkPF0(stsI) = stsLv(stsI) : spkBrk(stsI) = stsBk(stsI) : NEXT stsI
         FOR stsI = 0 TO stsWN - 1
             spkWordStart(stsI) = stsWS(stsI) : spkWordEnd(stsI) = stsWE(stsI)
             spkWordText$(stsI) = stsWT(stsI) : spkWordOcc(stsI) = stsWO(stsI)
@@ -608,6 +862,103 @@ SUB SPK_Init()
         SPK_CurWordOcc% = 0
     END FUNCTION
 
+    FUNCTION SPK_IsLetter%(ilC AS STRING)
+        SPK_IsLetter% = (LEN(ilC) = 1 AND ((ilC >= "A" AND ilC <= "Z") OR (ilC >= "a" AND ilC <= "z")))
+    END FUNCTION
+
+    SUB SPK_Push(puPh AS INTEGER, puSt AS INTEGER)
+        IF spkPhoneCount < SPK_PHONE_MAX THEN
+            spkPhones(spkPhoneCount) = puPh : spkStress(spkPhoneCount) = puSt : spkPhoneCount = spkPhoneCount + 1
+        END IF
+    END SUB
+
+    ' The plural / possessive -S, by the stem's last phoneme: IH0 Z after a sibilant,
+    ' S after another voiceless consonant, Z otherwise.
+    SUB SPK_AppendSuffix(sfLast AS INTEGER)
+        SELECT CASE sfLast
+        CASE SPK_S, SPK_Z, SPK_SH, SPK_ZH, SPK_CH, SPK_JH
+            SPK_Push SPK_IH, 0 : SPK_Push SPK_Z, 0
+        CASE SPK_P, SPK_T, SPK_K, SPK_F, SPK_TH, SPK_HH
+            SPK_Push SPK_S, 0
+        CASE ELSE
+            SPK_Push SPK_Z, 0
+        END SELECT
+    END SUB
+
+    ' IN: a pitch for every queued phoneme, in steps of the step_semitones knob from SPK_IN_REF.
+    ' Pitch is set per word and flat inside it (unless stress_pitch_spread is above 0), so it only
+    ' ever changes at a word boundary, as an instant step. A sentence starts SPK_IN_START up and
+    ' declines declination_per_word a word, down to SPK_IN_FLOOR. The first accents_per_phrase words
+    ' of each clause with a primary stress are raised accent_semitones. A clause's last word falls
+    ' final_fall_semitones before . ! or the end of the text, and lifts rise_semitones before , ; :
+    ' (1.5 times that before ?). Stress itself is carried by duration and, with IN, loudness.
+    SUB SPK_PlanPitch()
+        DIM ppA AS INTEGER, ppB AS INTEGER, ppI AS INTEGER, ppJ AS INTEGER, ppTyp AS INTEGER
+        DIM ppW0 AS INTEGER, ppW1 AS INTEGER, ppLast0 AS INTEGER, ppNAcc AS INTEGER, ppPrim AS INTEGER
+        DIM ppBase AS SINGLE, ppOff AS SINGLE, ppQ AS SINGLE, ppV AS SINGLE
+        ppQ = spkPk(SPK_PK_STEP) : IF ppQ < 0.01 THEN ppQ = 0.01
+        ppA = 0 : ppBase = SPK_IN_START
+        DO WHILE ppA < spkPhoneCount
+            ppB = ppA
+            DO WHILE ppB < spkPhoneCount
+                IF spkBrk(ppB) > 0 THEN EXIT DO
+                ppB = ppB + 1
+            LOOP
+            IF ppB < spkPhoneCount THEN ppTyp = spkBrk(ppB) ELSE ppTyp = 2
+            ' the clause's last word starts at ppLast0
+            ppLast0 = -1 : ppI = ppA
+            DO WHILE ppI < ppB
+                IF spkPhones(ppI) <> SPK_SIL THEN
+                    ppLast0 = ppI
+                    DO WHILE ppI < ppB
+                        IF spkPhones(ppI) = SPK_SIL THEN EXIT DO
+                        ppI = ppI + 1
+                    LOOP
+                ELSE
+                    ppI = ppI + 1
+                END IF
+            LOOP
+            ppNAcc = 0 : ppI = ppA
+            DO WHILE ppI < ppB
+                IF spkPhones(ppI) = SPK_SIL THEN
+                    spkPF0(ppI) = SPK_IN_REF * 2 ^ (ppBase / 12) : ppI = ppI + 1
+                ELSE
+                    ppW0 = ppI : ppW1 = ppI : ppPrim = 0
+                    DO WHILE ppW1 < ppB
+                        IF spkPhones(ppW1) = SPK_SIL THEN EXIT DO
+                        IF spkPhones(ppW1) <= SPK_UW AND spkStress(ppW1) = 1 THEN ppPrim = -1
+                        ppW1 = ppW1 + 1
+                    LOOP
+                    ppOff = ppBase
+                    IF ppPrim AND ppNAcc < spkPk(SPK_PK_NACC) THEN ppOff = ppOff + spkPk(SPK_PK_ACC) : ppNAcc = ppNAcc + 1
+                    IF ppW0 = ppLast0 THEN
+                        SELECT CASE ppTyp
+                        CASE 1 : ppOff = ppBase + spkPk(SPK_PK_RISE)
+                        CASE 3 : ppOff = ppBase + 1.5 * spkPk(SPK_PK_RISE)
+                        CASE ELSE : ppOff = ppBase - spkPk(SPK_PK_FALL)
+                        END SELECT
+                    END IF
+                    FOR ppJ = ppW0 TO ppW1 - 1
+                        ppV = ppOff
+                        IF spkPhones(ppJ) <= SPK_UW THEN
+                            IF spkStress(ppJ) = 1 THEN ppV = ppV + spkPk(SPK_PK_SPREAD) * 5.94
+                            IF spkStress(ppJ) = 2 THEN ppV = ppV + spkPk(SPK_PK_SPREAD) * 2.88
+                        END IF
+                        ppV = INT(ppV / ppQ + 0.5) * ppQ
+                        IF ppV < SPK_IN_LO THEN ppV = SPK_IN_LO
+                        IF ppV > SPK_IN_HI THEN ppV = SPK_IN_HI
+                        spkPF0(ppJ) = SPK_IN_REF * 2 ^ (ppV / 12)
+                    NEXT ppJ
+                    ppBase = ppBase - spkPk(SPK_PK_DECL) : IF ppBase < SPK_IN_FLOOR THEN ppBase = SPK_IN_FLOOR
+                    ppI = ppW1
+                END IF
+            LOOP
+            IF ppTyp >= 2 THEN ppBase = SPK_IN_START
+            IF ppB < spkPhoneCount THEN spkPF0(ppB) = SPK_IN_REF * 2 ^ (ppBase / 12)
+            ppA = ppB + 1
+        LOOP
+    END SUB
+
     ' ============================================================
     ' Queue text for speech.  Call at any time; SPK_Fill drains it.
     ' Do NOT call with a string literal — all spoken strings must
@@ -625,22 +976,27 @@ SUB SPK_Init()
         SPK_SetSpeed 1.0  ' every utterance starts at natural speed; the crawl applies the narration preset after this
         spkPhoneCount = 0 : spkPhoneIdx = 0 : spkSamplePos = 0 : spkClkIdx = 0 : spkClkPos = 0 : spkClkTotal = 0 : spkSayBase = spkSynthTotal
         spkWavePhase = 0.0 : spkPrevPhoneID = SPK_SIL
+        FOR spkPI2 = 0 TO SPK_PHONE_MAX - 1 : spkBrk(spkPI2) = 0 : NEXT spkPI2
         spkWordCount = 0
         DIM spkTs AS LONG : spkTs = CLNG(TIMER * 1000) MOD 3600000  ' ms since last hour
 
         ' Pre-pass: replace punctuation with pause tokens before alpha stripping.
-        ' Also eat apostrophes: 'S (possessive) -> nothing; bare ' (contraction) -> nothing.
+        ' Also eat apostrophes: a word-final 'S (possessive) -> POSSZ, a suffix on the stem; bare ' (contraction) -> nothing.
         ' Without this, "EMPIRE'S" splits into "EMPIRE" + "S" and S gets spelled.
         spkPpOut = "" : spkPpI = 1
         DO WHILE spkPpI <= LEN(text)
             IF MID$(text, spkPpI, 3) = "..." THEN
                 spkPpOut = spkPpOut + " STOPPAUSE " : spkPpI = spkPpI + 3
-            ELSEIF MID$(text, spkPpI, 1) = "." OR MID$(text, spkPpI, 1) = "!" OR MID$(text, spkPpI, 1) = "?" THEN
+            ELSEIF MID$(text, spkPpI, 1) = "." OR MID$(text, spkPpI, 1) = "!" THEN
                 spkPpOut = spkPpOut + " STOPPAUSE " : spkPpI = spkPpI + 1
+        ELSEIF MID$(text, spkPpI, 1) = "?" THEN
+                spkPpOut = spkPpOut + " QSTPAUSE " : spkPpI = spkPpI + 1  ' a question rises (IN)
             ELSEIF MID$(text, spkPpI, 1) = "," OR MID$(text, spkPpI, 1) = ";" OR MID$(text, spkPpI, 1) = ":" THEN
                 spkPpOut = spkPpOut + " CMAPAUSE " : spkPpI = spkPpI + 1
             ELSEIF MID$(text, spkPpI, 2) = "'s" OR MID$(text, spkPpI, 2) = "'S" THEN
-                spkPpI = spkPpI + 2  ' strip possessive 'S entirely
+                ' a possessive 'S at the end of a word is spoken as a suffix on the stem (POSSZ below); the stem is what is looked up
+                IF spkPpI > 1 AND SPK_IsLetter%(MID$(text, spkPpI - 1, 1)) AND SPK_IsLetter%(MID$(text, spkPpI + 2, 1)) = 0 THEN spkPpOut = spkPpOut + " POSSZ "
+                spkPpI = spkPpI + 2
             ELSEIF MID$(text, spkPpI, 1) = "'" THEN
                 spkPpI = spkPpI + 1  ' strip bare apostrophe (contractions: don't->dont)
             ELSEIF MID$(text, spkPpI, 1) = "-" AND spkPpI > 1 AND MID$(text, spkPpI - 1, 1) = " " AND spkPpI < LEN(text) AND MID$(text, spkPpI + 1, 1) = " " THEN
@@ -678,6 +1034,7 @@ SUB SPK_Init()
 
             ' Punctuation pause tokens — inject silence instead of doing dict lookup
             IF wrd = "CMAPAUSE" THEN
+                IF spkPhoneCount < SPK_PHONE_MAX THEN spkBrk(spkPhoneCount) = 1
                 FOR spkPI2 = 1 TO 2  ' ~100ms extra pause at comma/semicolon/colon
                     IF spkPhoneCount < SPK_PHONE_MAX THEN
                         spkPhones(spkPhoneCount) = SPK_SIL : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
@@ -685,7 +1042,10 @@ SUB SPK_Init()
                 NEXT spkPI2
                 GOTO nextWord
             END IF
-            IF wrd = "STOPPAUSE" THEN
+            IF wrd = "STOPPAUSE" OR wrd = "QSTPAUSE" THEN
+                IF spkPhoneCount < SPK_PHONE_MAX THEN
+                    IF wrd = "QSTPAUSE" THEN spkBrk(spkPhoneCount) = 3 ELSE spkBrk(spkPhoneCount) = 2
+                END IF
                 FOR spkPI3 = 1 TO 6  ' ~300ms extra pause at sentence end
                     IF spkPhoneCount < SPK_PHONE_MAX THEN
                         spkPhones(spkPhoneCount) = SPK_SIL : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
@@ -694,11 +1054,24 @@ SUB SPK_Init()
                 GOTO nextWord
             END IF
             IF wrd = "PARSPAUSE" THEN
+                IF spkPhoneCount < SPK_PHONE_MAX THEN spkBrk(spkPhoneCount) = 2
                 FOR spkPI4 = 1 TO 6  ' ~300ms extra pause at paragraph break
                     IF spkPhoneCount < SPK_PHONE_MAX THEN
                         spkPhones(spkPhoneCount) = SPK_SIL : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
                     END IF
                 NEXT spkPI4
+                GOTO nextWord
+            END IF
+            IF wrd = "POSSZ" THEN
+                ' the possessive suffix joins the word just queued, before its trailing silence
+                IF spkWordCount > 0 AND spkPhoneCount > 1 THEN
+                    IF spkPhones(spkPhoneCount - 1) = SPK_SIL AND spkWordEnd(spkWordCount - 1) = spkPhoneCount - 1 THEN
+                        spkPhoneCount = spkPhoneCount - 1
+                        SPK_AppendSuffix spkPhones(spkPhoneCount - 1)
+                        SPK_Push SPK_SIL, 0
+                        spkWordEnd(spkWordCount - 1) = spkPhoneCount - 1
+                    END IF
+                END IF
                 GOTO nextWord
             END IF
 
@@ -728,14 +1101,7 @@ SUB SPK_Init()
                             END IF
                         NEXT pi
                         spkLastPh = spkDictPh(spkStemIdx, spkDictPhoneLen(spkStemIdx) - 1)
-                        IF spkLastPh = SPK_S OR spkLastPh = SPK_Z OR spkLastPh = SPK_SH OR spkLastPh = SPK_ZH OR spkLastPh = SPK_CH OR spkLastPh = SPK_JH THEN
-                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_IH : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
-                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_Z  : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
-                        ELSEIF spkLastPh = SPK_F OR spkLastPh = SPK_TH OR spkLastPh = SPK_P OR spkLastPh = SPK_T OR spkLastPh = SPK_K THEN
-                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_S  : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
-                        ELSE
-                            IF spkPhoneCount < SPK_PHONE_MAX THEN spkPhones(spkPhoneCount) = SPK_Z  : spkStress(spkPhoneCount) = 0 : spkPhoneCount = spkPhoneCount + 1
-                        END IF
+                        SPK_AppendSuffix spkLastPh
                     END IF
                 END IF
                 ' IES plural fallback: strip IES, append Y, try stem (GRANARIES->GRANARY).
@@ -781,6 +1147,7 @@ SUB SPK_Init()
 
             nextWord:
         LOOP
+        SPK_PlanPitch
     END SUB
 
     ' ============================================================
@@ -799,13 +1166,14 @@ SUB SPK_Init()
     END SUB
 
     ' One synthesizer sample (SPK_Advance runs spkTimeScale of these per output sample).
-    SUB SPK_AdvanceOne()
+    SUB SPK_AdvanceOne() STATIC  ' STATIC: its locals are not set up again on every call (once per synth sample)
         DIM phoneID AS INTEGER, stress AS INTEGER, dur AS LONG
         DIM env AS SINGLE, s AS SINGLE, t AS SINGLE
         DIM wIdx AS INTEGER, wNext AS INTEGER, wFrac AS SINGLE
         DIM newBuzz AS SINGLE, prevBuzz AS SINGLE, blendT AS SINGLE, buzz AS SINGLE
         DIM nx AS SINGLE, hy AS SINGLE
         DIM diphT AS SINGLE, diphA AS SINGLE, diphB AS SINGLE
+        DIM e2 AS SINGLE, g AS SINGLE, gt AS SINGLE, nb AS SINGLE, pb AS SINGLE, ry AS SINGLE, rel AS LONG, stp AS SINGLE
 
         IF spkPhoneIdx >= spkPhoneCount THEN
             spkSampleOut = 0.0
@@ -818,14 +1186,24 @@ SUB SPK_Init()
 
         IF spkSamplePos = 0 THEN SPK_BuildWave phoneID, stress
 
-        ' Amplitude envelope: 10ms fade in/out (overridden to 1.0 during voiced crossfade)
-        IF spkSamplePos < SPK_FADE THEN
-            env = spkSamplePos / SPK_FADE
-        ELSEIF spkSamplePos > dur - SPK_FADE THEN
-            env = (dur - spkSamplePos) / SPK_FADE
-            IF env < 0 THEN env = 0
+        IF spkFx(SPK_FX_GL) = 0 THEN
+            ' Amplitude envelope: 10ms fade in/out (overridden to 1.0 during voiced crossfade)
+            IF spkSamplePos < SPK_FADE THEN
+                env = spkSamplePos / SPK_FADE
+            ELSEIF spkSamplePos > dur - SPK_FADE THEN
+                env = (dur - spkSamplePos) / SPK_FADE
+                IF env < 0 THEN env = 0
+            ELSE
+                env = 1.0
+            END IF
         ELSE
+            ' GL: no fade at an edge joined to a voiced neighbour
             env = 1.0
+            IF spkFadeIn AND spkSamplePos < SPK_FADE THEN env = spkSamplePos / SPK_FADE
+            IF spkFadeOut AND spkSamplePos > dur - SPK_FADE THEN
+                e2 = (dur - spkSamplePos) / SPK_FADE : IF e2 < 0 THEN e2 = 0
+                IF e2 < env THEN env = e2
+            END IF
         END IF
 
         ' Wavetable read with linear interpolation
@@ -835,19 +1213,36 @@ SUB SPK_Init()
         IF spkDiEnd(phoneID) >= 0 THEN
             ' Diphthong: glide from onset wavetable to target vowel wavetable
             diphT = spkSamplePos / dur : IF diphT > 1.0 THEN diphT = 1.0
-            diphA = spkWaveLib(phoneID, stress, wIdx) + wFrac * (spkWaveLib(phoneID, stress, wNext) - spkWaveLib(phoneID, stress, wIdx))
-            diphB = spkWaveLib(spkDiEnd(phoneID), stress, wIdx) + wFrac * (spkWaveLib(spkDiEnd(phoneID), stress, wNext) - spkWaveLib(spkDiEnd(phoneID), stress, wIdx))
+            diphA = spkWave(wIdx) + wFrac * (spkWave(wNext) - spkWave(wIdx))
+            diphB = spkWaveB(wIdx) + wFrac * (spkWaveB(wNext) - spkWaveB(wIdx))
             newBuzz = diphA + diphT * (diphB - diphA)
         ELSE
             newBuzz = spkWave(wIdx) + wFrac * (spkWave(wNext) - spkWave(wIdx))
         END IF
 
+        stp = spkWaveStep
+        g = spkGainB
+        IF spkFx(SPK_FX_GL) AND phoneID <= SPK_YW THEN
+            ' GL: glide toward the next obstruent's locus at the end, in from the previous sound at the start
+            buzz = newBuzz
+            IF spkGlOut > 0 AND spkSamplePos > dur - spkGlOut THEN
+                nb = spkWaveNext(wIdx) + wFrac * (spkWaveNext(wNext) - spkWaveNext(wIdx))
+                gt = (spkSamplePos - (dur - spkGlOut)) / spkGlOut
+                buzz = buzz + gt * (nb - buzz)
+            END IF
+            IF spkSamplePos < spkGlIn THEN
+                pb = spkWavePrev(wIdx) + wFrac * (spkWavePrev(wNext) - spkWavePrev(wIdx))
+                gt = spkSamplePos / spkGlIn
+                buzz = pb + gt * (buzz - pb)
+                g = spkGainA + gt * (spkGainB - spkGainA)
+                IF spkPk(SPK_PK_GPITCH) >= 0.5 THEN stp = spkStepPrev + gt * (spkStepCur - spkStepPrev)
+            END IF
         ' Coarticulation: crossfade from previous phoneme's wavetable during fade-in.
         ' Only voiced->voiced transitions; unvoiced onset keeps its own fade-in envelope.
         ' env is NOT overridden: the outgoing phoneme fades to ~0 at its end, so env=1.0
         ' here would cause a discontinuity (click) when the new phoneme jumps to full
         ' amplitude. The normal fade-in ramps from 0; the wavetable blend handles timbre.
-        IF spkSamplePos < SPK_FADE AND spkF1(spkPrevPhoneID) > 0 AND spkF1(phoneID) > 0 THEN
+        ELSEIF spkSamplePos < SPK_FADE AND spkF1(spkPrevPhoneID) > 0 AND spkF1(phoneID) > 0 THEN
             prevBuzz = spkWavePrev(wIdx) + wFrac * (spkWavePrev(wNext) - spkWavePrev(wIdx))
             blendT = spkSamplePos / SPK_FADE
             buzz = prevBuzz + blendT * (newBuzz - prevBuzz)
@@ -855,50 +1250,111 @@ SUB SPK_Init()
             buzz = newBuzz
         END IF
 
-        spkWavePhase = spkWavePhase + spkWaveStep
+        spkWavePhase = spkWavePhase + stp
         IF spkWavePhase >= SPK_WAVE_LEN THEN spkWavePhase = spkWavePhase - SPK_WAVE_LEN
 
         SELECT CASE phoneID
         CASE SPK_AA TO SPK_UW, SPK_L TO SPK_YW
-            s = buzz * 0.50
+            IF spkNasal THEN
+                ' NL: nasal murmur, the buzz low-passed at ~600 Hz
+                IF spkLpInit THEN spkLpY = buzz : spkLpInit = 0 ELSE spkLpY = spkLpY + spkNasC * (buzz - spkLpY)
+                s = spkLpY * g
+            ELSE
+                s = buzz * g
+            END IF
         CASE SPK_DH, SPK_V, SPK_Z, SPK_ZH
             ' Voiced fricatives: formant buzz + HP-filtered noise component
             nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
-            hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
-            spkHpX1 = nx : spkHpY1 = hy
-            s = buzz * 0.18 + hy * 0.10
-        CASE SPK_B, SPK_D, SPK_G
-            t = spkSamplePos / dur
-            IF t < 0.60 THEN
-                s = buzz * 0.05
+            IF spkFx(SPK_FX_FR) AND (phoneID = SPK_Z OR phoneID = SPK_ZH) THEN
+                ry = spkRG * nx + spkRA1 * spkRY1 - spkRA2 * spkRY2 : spkRY2 = spkRY1 : spkRY1 = ry
+                s = buzz * 0.18 + ry * 0.11
             ELSE
+                hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
+                spkHpX1 = nx : spkHpY1 = hy
+                s = buzz * 0.18 + hy * 0.10
+            END IF
+        CASE SPK_B, SPK_D, SPK_G
+            IF spkFx(SPK_FX_BU) = 0 THEN
+                t = spkSamplePos / dur
+                IF t < 0.60 THEN
+                    s = buzz * 0.05
+                ELSE
+                    s = buzz * 0.35
+                END IF
+            ELSEIF spkSamplePos < spkRelAt THEN
+                s = buzz * 0.05   ' voice bar during the closure
+            ELSE
+                ' BU: a short place-shaped release burst, voicing straight after it (short VOT)
                 s = buzz * 0.35
+                rel = spkSamplePos - spkRelAt
+                IF rel < spkBURSTV THEN
+                    nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
+                    ry = spkRG * nx + spkRA1 * spkRY1 - spkRA2 * spkRY2 : spkRY2 = spkRY1 : spkRY1 = ry
+                    s = s + ry * 0.25 * (1.0 - rel / spkBURSTV)
+                END IF
             END IF
         CASE SPK_F, SPK_S, SPK_SH, SPK_TH, SPK_HH
             ' HP-filtered white noise; cutoff set per-phoneme in SPK_BuildWave
             nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
-            hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
-            spkHpX1 = nx : spkHpY1 = hy
-            s = hy * 0.20
+            IF spkFx(SPK_FX_FR) AND (phoneID = SPK_S OR phoneID = SPK_SH) THEN
+                ' FR: S peaks at ~5.5 kHz, SH at ~2.8 kHz
+                ry = spkRG * nx + spkRA1 * spkRY1 - spkRA2 * spkRY2 : spkRY2 = spkRY1 : spkRY1 = ry
+                IF phoneID = SPK_S THEN s = ry * 0.20 ELSE s = ry * 0.22
+            ELSE
+                hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
+                spkHpX1 = nx : spkHpY1 = hy
+                s = hy * 0.20
+            END IF
         CASE SPK_P, SPK_T, SPK_K
             ' Closure (0-55%) → silence; release (55-100%) → aspirated HP-filtered noise.
             ' Burst HP coeff set per place of articulation in SPK_BuildWave:
             '   P=bilabial(low cutoff), T=alveolar(high/hissy), K=velar(mid).
             ' Filter starts from cold state (reset in SPK_BuildWave) so the onset
             ' has a natural transient click at the moment of release.
-            t = spkSamplePos / dur
-            IF t < 0.55 THEN
+            IF spkFx(SPK_FX_BU) = 0 THEN
+                t = spkSamplePos / dur
+                IF t < 0.55 THEN
+                    s = 0.0
+                ELSE
+                    nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
+                    hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
+                    spkHpX1 = nx : spkHpY1 = hy
+                    s = hy * 0.30
+                END IF
+            ELSEIF spkSamplePos < spkRelAt THEN
+                s = 0.0
+            ELSE
+                ' BU: ~6 ms burst through the place resonator, then fading aspiration
+                nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
+                rel = spkSamplePos - spkRelAt
+                IF rel < spkBURST THEN
+                    ry = spkRG * nx + spkRA1 * spkRY1 - spkRA2 * spkRY2 : spkRY2 = spkRY1 : spkRY1 = ry
+                    s = ry * 0.40 * (1.0 - 0.5 * rel / spkBURST)
+                ELSE
+                    hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
+                    spkHpX1 = nx : spkHpY1 = hy
+                    gt = (rel - spkBURST) / (dur - spkRelAt - spkBURST + 1)
+                    s = hy * (0.20 - 0.08 * gt)
+                END IF
+            END IF
+        CASE SPK_CH, SPK_JH
+            IF spkFx(SPK_FX_FR) = 0 AND spkFx(SPK_FX_BU) = 0 THEN
+                t = spkSamplePos / dur
+                IF t < 0.40 THEN s = 0.0 _
+            ELSE s = (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.20
+            ELSEIF spkSamplePos < spkRelAt THEN
                 s = 0.0
             ELSE
                 nx = RNG!(RNG_AUDIO) * 2.0 - 1.0
-                hy = (1.0 + spkHpCoeff) * 0.5 * (nx - spkHpX1) + spkHpCoeff * spkHpY1
-                spkHpX1 = nx : spkHpY1 = hy
-                s = hy * 0.30
+                IF spkFx(SPK_FX_FR) THEN
+                    ry = spkRG * nx + spkRA1 * spkRY1 - spkRA2 * spkRY2 : spkRY2 = spkRY1 : spkRY1 = ry
+                    s = ry * 0.20
+                    IF phoneID = SPK_JH THEN s = s + buzz * 0.12
+                ELSE
+                    s = nx * 0.20
+                END IF
+                IF spkFx(SPK_FX_BU) AND spkSamplePos - spkRelAt < spkBURST THEN s = s * 1.8
             END IF
-        CASE SPK_CH, SPK_JH
-            t = spkSamplePos / dur
-            IF t < 0.40 THEN s = 0.0 _
-        ELSE s = (RNG!(RNG_AUDIO) * 2.0 - 1.0) * 0.20
         CASE ELSE
             s = 0.0
         END SELECT

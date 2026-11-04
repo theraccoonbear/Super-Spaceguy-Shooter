@@ -58,6 +58,7 @@ Sub CLI_Parse()
     cliBackdropDev = (InStr(cliLine, "--backdrop-dev") > 0)
     cliExplosionDev = (InStr(cliLine, "--explosion-dev") > 0)
     cliEnemyDev = (InStr(cliLine, "--enemy-dev") > 0)
+    cliSpeechDev = (InStr(cliLine, "--speech-dev") > 0)
     cliVal = CLI_Value$(cliLine, "--explode ")
     If cliVal <> "" Or InStr(cliLine, "--explode") > 0 Then
         If XP_ParseExplode%(cliVal) = 0 Then GAME_Usage(XP_ExplodeError$)
