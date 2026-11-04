@@ -16,6 +16,7 @@
 '$INCLUDE:'state/launchlogic.bas'
 '$INCLUDE:'state/remaplogic.bas'
 '$INCLUDE:'audio/speech.bas'
+'$INCLUDE:'audio/speechcfg.bas'
 '$INCLUDE:'2d/effects.bas'
 '$INCLUDE:'audio/snd.bas'
 '$INCLUDE:'audio/music.bas'

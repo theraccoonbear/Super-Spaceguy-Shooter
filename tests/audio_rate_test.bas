@@ -387,5 +387,5 @@ GoldenTable:
     Data "musSwitch", 101500, 3518089085
     Data "speechNatural", 571752, 1302666785
     Data "speechFast", 170178, 771496315
-    Data "speechClear", 571752, 60531365
-    Data "speechClearFast", 170178, 2431367020
+    Data "speechClear", 571752, 3123539111
+    Data "speechClearFast", 170178, 2594939230
