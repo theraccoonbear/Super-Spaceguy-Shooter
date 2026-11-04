@@ -19,6 +19,8 @@ Sub ENEMY_Update
     Dim enAttDY As Single, enAttDZ As Single
     Dim enDX As Single, enDY As Single, enDZ As Single, enMag As Single
     Dim enLead As Single
+    Dim enType As Integer, enSpeed As Single, enLeadF As Single, enShot As Integer
+    Dim enSX As Single, enSY As Single, enSZ As Single
     Dim enTrlR As Integer, enTrlG As Integer, enTrlB As Integer
     Dim enHit As Integer
     Dim enHomingLerp As Single, enHomingRange As Single
@@ -82,35 +84,43 @@ Sub ENEMY_Update
                 FX_SpawnBurst enemies(enI).px + 0.35, enemies(enI).py, enemies(enI).pz, 1, 0.005, 20, 6, _RGB(enTrlR, enTrlG, enTrlB)
             End If
 
-            ' fire: lead-compensated aim (EFIRE_LEAD fraction of perfect intercept)
+            ' fire: lead-compensated aim (EFIRE_LEAD fraction of perfect intercept), shaped per
+            ' enemy type by enemyatk.bas (volley size and spread, speed, cooldown, lead, homing)
             enemyFireTimer(enI) = enemyFireTimer(enI) - 0.025
             If enemyFireTimer(enI) <= 0 And enemies(enI).px > player.px And enemies(enI).px < player.px + EFIRE_RANGE Then
+                enType = EAT_Type%(enemies(enI).meshIdx)
+                enSpeed = EBULLET_SPEED * EAT_Get!(enType, EAT_P_SPEED)
                 enDX = player.px - enemies(enI).px
                 enDY = player.py - enemies(enI).py
                 enDZ = player.pz - enemies(enI).pz
                 enMag = SQR(enDX * enDX + enDY * enDY + enDZ * enDZ)
                 If enMag > 0.1 Then
-                    If EFIRE_LEAD * dlvFEnemyLead > 1 Then enLead = enMag / EBULLET_SPEED Else enLead = (enMag / EBULLET_SPEED) * EFIRE_LEAD * dlvFEnemyLead
+                    enLeadF = EFIRE_LEAD * dlvFEnemyLead * EAT_Get!(enType, EAT_P_LEAD)
+                    If enLeadF > 1 Then enLead = enMag / enSpeed Else enLead = (enMag / enSpeed) * enLeadF
                     enDY = (player.py + playerVY * enLead) - enemies(enI).py
                     enDZ = (player.pz + playerVZ * enLead) - enemies(enI).pz
                     enMag = SQR(enDX * enDX + enDY * enDY + enDZ * enDZ)
                     enDX = enDX / enMag : enDY = enDY / enMag : enDZ = enDZ / enMag
-                    For enEJ = 1 To MAX_EBULLETS
-                        If ebullets(enEJ).active = 0 Then
-                            ebullets(enEJ).active  = -1
-                            ebullets(enEJ).meshIdx = enemies(enI).meshIdx
-                            ebullets(enEJ).px = enemies(enI).px
-                            ebullets(enEJ).py = enemies(enI).py
-                            ebullets(enEJ).pz = enemies(enI).pz
-                            ebullets(enEJ).vx = enDX * EBULLET_SPEED
-                            ebullets(enEJ).vy = enDY * EBULLET_SPEED
-                            ebullets(enEJ).vz = enDZ * EBULLET_SPEED
-                            ebullets(enEJ).scl = 1.0
-                            Exit For
-                        End If
-                    Next enEJ
+                    For enShot = 0 To Int(EAT_Get!(enType, EAT_P_SHOTS)) - 1
+                        enSX = enDX : enSY = enDY : enSZ = enDZ
+                        EAT_Spread enSX, enSY, enSZ, EAT_ShotAngle!(enType, enShot)
+                        For enEJ = 1 To MAX_EBULLETS
+                            If ebullets(enEJ).active = 0 Then
+                                ebullets(enEJ).active  = -1
+                                ebullets(enEJ).meshIdx = enemies(enI).meshIdx
+                                ebullets(enEJ).px = enemies(enI).px
+                                ebullets(enEJ).py = enemies(enI).py
+                                ebullets(enEJ).pz = enemies(enI).pz
+                                ebullets(enEJ).vx = enSX * enSpeed
+                                ebullets(enEJ).vy = enSY * enSpeed
+                                ebullets(enEJ).vz = enSZ * enSpeed
+                                ebullets(enEJ).scl = 1.0
+                                Exit For
+                            End If
+                        Next enEJ
+                    Next enShot
                 End If
-                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum) * dlvFEnemyFire
+                enemyFireTimer(enI) = (EFIRE_COOL_MIN + RNG!(RNG_GAME) * EFIRE_COOL_VAR) * (1.0 - diffScale * 0.4) * WVT_FireScale!(levelNum) * dlvFEnemyFire * EAT_Get!(enType, EAT_P_COOL)
             End If
 
             If enemies(enI).px < -5 Then enemies(enI).active = 0 : TELEM_EnemyEscaped
@@ -166,6 +176,7 @@ Sub EBULLET_Update
     Dim ebHit As Integer
     Dim ebDY As Single, ebDZ As Single
     Dim ebSeekTY As Single, ebSeekTZ As Single, ebSeekF As Single
+    Dim ebHX As Single, ebHY As Single, ebHZ As Single
 
     For ebI = 1 To MAX_EBULLETS
         If ebullets(ebI).active Then
@@ -175,6 +186,12 @@ Sub EBULLET_Update
                 ebSeekF = IMP_FramesLeft!(ebullets(ebI).px, ebullets(ebI).vx, player.px)
                 IMP_LeadPoint player.py, player.pz, playerVY + devPullY, playerVZ + devPullZ, ebSeekF, ebSeekTY, ebSeekTZ
                 IMP_SeekStep ebullets(ebI).py, ebullets(ebI).pz, ebullets(ebI).vy, ebullets(ebI).vz, ebSeekTY, ebSeekTZ, bossSeekStr, ebSeekF
+            End If
+            ' vwedge bullets turn toward the ship, a few degrees a frame at most, and fly
+            ' straight once inside home_stop of it so a late dodge works (enemyatk.bas)
+            If ebullets(ebI).meshIdx = MESH_ENEMY_VWEDGE And ebullets(ebI).px > player.px + EAT_Get!(EAT_VWEDGE, EAT_P_STOP) Then
+                ebHX = player.px - ebullets(ebI).px : ebHY = player.py - ebullets(ebI).py : ebHZ = player.pz - ebullets(ebI).pz
+                EAT_HomeStep ebullets(ebI).vx, ebullets(ebI).vy, ebullets(ebI).vz, ebHX, ebHY, ebHZ, EAT_Get!(EAT_VWEDGE, EAT_P_HOMING)
             End If
             ebullets(ebI).px = ebullets(ebI).px + ebullets(ebI).vx
             ebullets(ebI).py = ebullets(ebI).py + ebullets(ebI).vy
