@@ -19,7 +19,7 @@ Sub WAVE_Spawn
     Dim wvOK       As Integer
     Dim wvCount    As Integer, wvMember As Integer
     Dim wvType     As Integer
-    Dim wvPoolSize As Integer
+    Dim wvRoll       As Single
     Dim wvCX As Single, wvCY As Single, wvCZ As Single, wvVX As Single
     Dim wvDX(0 To 4) As Single, wvDY(0 To 4) As Single, wvDZ(0 To 4) As Single
     Dim wvI As Integer
@@ -90,21 +90,21 @@ Sub WAVE_Spawn
     If spawnTimer > WVT_GapTicks!(waveStageN, diffScale, levelNum) And wvOK Then
         spawnTimer = 0
 
-        ' formation type pool grows each level: harder types unlock as stages progress
-        Select Case levelNum
-        Case 1   : wvPoolSize = 4  ' solo, arrow, hline, vcol
-        Case 2   : wvPoolSize = 5  ' + pincer
-        Case Else: wvPoolSize = 6  ' + vwedge
-        End Select
+        If waveStageN = 0 Then ROS_Enter seqRoster, seqPrevRoster
 
-        ' run 1-2 of the same formation type, then switch
+        ' each wave is one formation type of the level's roster, never the previous wave's
+        ' while another is left; the first wave of a level that introduces a type is that type
         If waveCount <= 0 Then
-            Do
-                waveType = Int(RNG!(RNG_GAME) * wvPoolSize)
-            Loop While waveType = wavePrev
+            If waveStageN = 0 And ROS_FirstDebut% >= 0 Then
+                waveType = ROS_FirstDebut%
+            Else
+                wvRoll = RNG!(RNG_GAME)
+                waveType = ROS_Pick%(wavePrev, eatDebutW, wvRoll)
+            End If
             wavePrev  = waveType
             waveCount = 1
         End If
+
         wvType    = waveType
         waveCount = waveCount - 1
 
