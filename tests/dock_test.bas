@@ -72,6 +72,7 @@ Sub DT_ScriptAt (dtaCredits As Long, dtaFuel As Single, dtaShield As Integer, dt
     If dtaFuel < 0 Then fuelLevel = fuelMax Else fuelLevel = dtaFuel
     DOCK_Open
     ISC_Clear
+    iscActive = -1
     For dtsP = 0 To 32767 : held(dtsP) = 0 : Next dtsP
     dtsP = 1
     Do While dtsP <= Len(dtaLines)

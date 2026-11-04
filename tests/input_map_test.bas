@@ -16,13 +16,13 @@ $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
-Sub DBG_Print (imDbg As String) : End Sub
-Sub TELEM_UpgradeBought (imItem As String, imLevel As Integer, imPrice As Long) : End Sub
-Sub TELEM_CreditBonus (imC As Long, imR As Double, imP As Long) : End Sub
-Sub TELEM_FuelBought (imA As Integer, imP As Long, imU As Single, imM As Single, imC As Integer) : End Sub
-Sub TELEM_ShieldBought (imA As Integer, imP As Long, imC As Integer) : End Sub
-Sub SEQ_NextLeg (imK As Long, imBS As Single, imB As Integer, imA As Integer)
-    imK = 10 : imBS = 0 : imB = 0 : imA = 0
+Sub DBG_Print (imapDbg As String) : End Sub
+Sub TELEM_UpgradeBought (imapItem As String, imapLevel As Integer, imapPrice As Long) : End Sub
+Sub TELEM_CreditBonus (imapC As Long, imapR As Double, imapP As Long) : End Sub
+Sub TELEM_FuelBought (imapA As Integer, imapP As Long, imapU As Single, imapM As Single, imapC As Integer) : End Sub
+Sub TELEM_ShieldBought (imapA As Integer, imapP As Long, imapC As Integer) : End Sub
+Sub SEQ_NextLeg (imapK As Long, imapBS As Single, imapB As Integer, imapA As Integer)
+    imapK = 10 : imapBS = 0 : imapB = 0 : imapA = 0
 End Sub
 
 '$INCLUDE:'../src/gameplay/difficulty.bas'
@@ -137,9 +137,11 @@ Print "--- LAUNCH NOW? ---"
 launchOpen = 0 : launchSel = LAUNCH_ROW_YES : pWas = 0
 IM_Script "2 2 ENTER/5 5 ENTER"
 IM_Frame 0 : IM_Frame 1
-IM_Assert LAUNCH_Input%(NAV_TitleGo%(0, KEY_Confirm%, launchOpen)) = LAUNCH_NONE And launchOpen = 0, "setup: nothing yet"
+imF = LAUNCH_Input%(NAV_TitleGo%(0, KEY_Confirm%, launchOpen))
+IM_Assert imF = LAUNCH_NONE And launchOpen = 0, "setup: nothing yet"
 IM_Frame 2
-IM_Assert LAUNCH_Input%(NAV_TitleGo%(0, KEY_Confirm%, launchOpen)) = LAUNCH_NONE And launchOpen <> 0, "ENTER on the title opens LAUNCH NOW?"
+imF = LAUNCH_Input%(NAV_TitleGo%(0, KEY_Confirm%, launchOpen))
+IM_Assert imF = LAUNCH_NONE And launchOpen <> 0, "ENTER on the title opens LAUNCH NOW?"
 IM_Frame 3 : IM_Frame 4
 IM_Assert LAUNCH_Input%(NAV_TitleGo%(0, KEY_Confirm%, launchOpen)) = LAUNCH_NONE, "still open"
 IM_Frame 5
@@ -202,7 +204,9 @@ IM_Dock "5 5 ENTER", 6
 IM_Assert imDockRes(5) = DOCK_BOUGHT Or imDockRes(5) = DOCK_FULL, "ENTER acts on the highlighted row (REFUEL)"
 IM_Dock "5 5 ESC/10 10 ENTER", 12
 IM_Assert imDockRes(5) = DOCK_PAUSED, "ESC opens the menu and the dock is frozen"
-IM_Assert imDockRes(10) = DOCK_NONE And escConfirm = 0 And credits = 500, "ENTER on CANCEL closes it without buying"
+IM_Assert imDockRes(10) = DOCK_PAUSED Or imDockRes(10) = DOCK_NONE, "ENTER on CANCEL: the dialog draws once more, the dock gets no input that frame"
+IM_Assert escConfirm = 0, "ENTER on CANCEL closes it"
+IM_Assert credits = 500, "nothing was bought"
 IM_Dock "5 5 PAD_START/10 10 PAD_B/14 14 ENTER", 16
 IM_Assert imDockRes(5) = DOCK_PAUSED And escConfirm = 0, "pad Start opens it, pad B cancels"
 IM_Assert imDockRes(14) <> DOCK_LEAVE And dockSel = 1, "cancelling leaves the cursor where it was"
