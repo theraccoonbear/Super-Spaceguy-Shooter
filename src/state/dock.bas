@@ -3,7 +3,8 @@
 ' The sequence's DOCK task (assets/sequence.txt, after each planet arrival but the last)
 ' calls DOCK_Enter. The list and its input live in docklogic.bas; this file draws it over
 ' the dock background (assets/dock_bg.png, 320x240, embedded as DOCKBG in sss.bas) and
-' leaves for the next sequence step on LAUNCH or back.
+' leaves for the next sequence step on LAUNCH (its row, or L / pad Y). ESC and pad Start open the
+' in-run menu (the pause dialog) over the frozen dock.
 ' Local variable prefix: dkd*
 
 Const DOCK_PX1 = 104   ' list panel: the right two-thirds, so the art's planet and ship stay in view
@@ -84,8 +85,19 @@ End Function
 
 Sub DOCK_Update
     Dim dkdRes As Integer
-    dockNewsTick = dockNewsTick + 1
-    dkdRes = DOCK_Input%
+    dkdRes = DOCK_Frame%
+    Select Case dkdRes
+        Case DOCK_QUIT
+            SEQ_QuitRun
+            Exit Sub
+        Case DOCK_CONTROLS
+            CONTROLS_Prep gameState : gameState = GS_CONTROLS
+            Exit Sub
+        Case DOCK_REMAP
+            RMP_Open gameState
+            Exit Sub
+    End Select
+    If dkdRes <> DOCK_PAUSED Then dockNewsTick = dockNewsTick + 1
     Select Case dkdRes
         Case DOCK_MOVED : SND_UiMove
         Case DOCK_BOUGHT : SND_Pup
@@ -93,6 +105,7 @@ Sub DOCK_Update
         Case DOCK_STRANDED : SND_UiMove
     End Select
     DOCK_Draw
+    If dkdRes = DOCK_PAUSED Then PAUSE_Draw
     If dkdRes = DOCK_LEAVE Then
         DOCK_LogVisit "launch"
         _Dest backBuffer
@@ -234,7 +247,7 @@ Sub DOCK_Draw
     ElseIf Len(dockNews) > 0 Then
         UI_Text 11, DOCK_NewsWindow$(dockNewsTick), DOCK_PX1 + 8, dkdY + 32, 255
     End If
-    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("ESC", E3D_ACT_BACK) + " GO", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
+    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("L", E3D_ACT_NOVA) + " LAUNCH  " + UI_Tok$("ESC", E3D_ACT_PAUSE) + " MENU", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
     If dockAsk Then DOCK_DrawStrandAsk
 
     _Dest 0

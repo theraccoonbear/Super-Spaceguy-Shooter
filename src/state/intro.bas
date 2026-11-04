@@ -12,19 +12,19 @@ Sub GS_INTRO_Update ()
     FONT_PrintCenteredAlpha fontPalette(14), backBuffer, emperorName, scrH - 34, scrW, 255
     IF introTimer > 60 THEN
         gsiThrobBright = INT(160 + 95 * SIN(tt * 5))
-        UI_PromptsCentered "PRESS " + UI_Tok$("SPACE", E3D_ACT_FIRE), scrH - 14, 15, gsiThrobBright
+        UI_PromptsCentered UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " CONTINUE  " + UI_Tok$("ESC", E3D_ACT_BACK) + " BACK", scrH - 14, 15, gsiThrobBright
     END IF
     IF introTimer < 40 THEN
         LINE (0, 0)-(scrW - 1, scrH - 1), _RGBA(0, 0, 0, 255 - introTimer * 6), BF
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    IF held(E3D_KEY_ESCAPE) AND escWas = 0 THEN
+    IF KEY_Back% THEN
         SEQ_RewindToTitle
         gameState = GS_TITLE : introTimer = 0 : MUS_SetCue "title"
     END IF
     escWas = held(E3D_KEY_ESCAPE)
-    IF held(E3D_KEY_SPACE) AND spaceWas = 0 AND held(E3D_KEY_PAD_B) = 0 AND introTimer > 45 THEN
+    IF KEY_Proceed% AND introTimer > 45 THEN
         introTimer = 0 : SEQ_Advance
     END IF
     spaceWas = held(E3D_KEY_SPACE)
