@@ -1,0 +1,8 @@
+# The upgrade dock after chapter 2 with the run menu open (#426): ESC opens the ABORT MISSION dialog
+# on CANCEL over the frozen dock, then the cursor moves up one row to REMAP CONTROLS.
+#! group: ui
+#! seed: 1
+#! args: --god --no-telem --scene dock2 --credits 400 --fuel 30
+#! shots: 60,90
+30 30 ESC
+70 70 UP

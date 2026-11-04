@@ -40,8 +40,8 @@ Sub GS_GAMEOVER_Update ()
     END IF
     IF gameOverDelay <= 0 THEN
         gsgThrobBright = INT(170 + 85 * SIN(tt * 5))
-        UI_PromptsCentered "PRESS " + UI_Tok$("SPACE", E3D_ACT_FIRE) + " TO PLAY", gsgY + gsgStep * 3, 15, gsgThrobBright
-        IF held(E3D_KEY_SPACE) AND spaceWas = 0 THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
+        UI_PromptsCentered UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " CONTINUE", gsgY + gsgStep * 3, 15, gsgThrobBright
+        IF KEY_Proceed% OR KEY_Back% THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)
     _DEST 0
