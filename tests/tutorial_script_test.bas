@@ -23,6 +23,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 
 $EMBED:'assets/tutorial.txt':'TUTSCRIPT'
 $EMBED:'assets/gametext.txt':'GAMETEXT'

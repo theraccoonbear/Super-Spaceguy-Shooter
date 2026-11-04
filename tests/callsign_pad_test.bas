@@ -10,6 +10,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Sub DBG_Print (cpDbg As String) : End Sub
 

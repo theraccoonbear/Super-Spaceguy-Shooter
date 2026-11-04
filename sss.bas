@@ -9,6 +9,7 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 OPTION _EXPLICIT
+'$INCLUDE:'src/sys/failfast.bi'
 $Resize:stretch
 $IF WIN THEN
     $CONSOLE
@@ -119,7 +120,7 @@ $ELSE
     dbgTtyFail:
     RESUME dbgTtyDone
     dbgTtyDone:
-    ON ERROR GOTO 0
+    ON ERROR GOTO SSS_FailFast
 $END IF
 IF ioReadOnly THEN
     DBG_Print "IO: no writable settings folder (tried " + ioDirs(1) + " and " + _STARTDIR$ + "); settings won't be saved this session"

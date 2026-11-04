@@ -22,6 +22,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 
 $EMBED:'assets/backdrops.txt':'BACKDROPS'
 $EMBED:'assets/backdrops/tug.png':'BDIMGTUG'

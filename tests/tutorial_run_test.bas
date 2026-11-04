@@ -26,6 +26,7 @@ $CONSOLE:ONLY
 '$INCLUDE:'../src/engine3d.bi'
 '$INCLUDE:'../src/sys/dims.bas'
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
 Const VERSION$ = "0.0.0-test"

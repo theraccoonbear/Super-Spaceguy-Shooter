@@ -14,6 +14,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/gametext.txt':'GAMETEXT'

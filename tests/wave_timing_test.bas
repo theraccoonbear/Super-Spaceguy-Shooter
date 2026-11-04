@@ -12,6 +12,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/waves.ini':'CFGWAVES'
 $EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'

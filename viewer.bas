@@ -9,6 +9,7 @@
 ' L: toggle light mode       ESC/Q: quit
 
 Option _Explicit
+'$INCLUDE:'src/sys/failfast.bi'
 $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/models_enemies_v2.e3d':'NEWMODELS'

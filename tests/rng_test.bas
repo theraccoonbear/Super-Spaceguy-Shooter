@@ -10,6 +10,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/sys/rng.bas'
 

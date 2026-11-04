@@ -4,7 +4,7 @@
 # full suite, in parallel -- the same script CI runs on Linux, macOS, and Windows
 tools/test                  # native (uses the qb64pe on your PATH)
 tools/dev test              # in the container
-QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical CPUs, at least 2)
+QB64_TEST_JOBS=4 tools/test # pick the worker count (default: half your logical CPUs, at least 2; tools/dev test uses 3, SSS_DEV_JOBS)
 
 # one test on its own (native; in the container wrap it, e.g.
 #   tools/dev shell bash -c "tools/buildqb tests/spore_test.bas && builds/spore_test")
@@ -12,9 +12,12 @@ tools/buildqb tests/spore_test.bas && builds/spore_test
 tools/http_queue_test   # builds http_queue_test.bas and the QB64-PE mock server (tools/http_mock_server.bas), starts the mock on a local port, runs the test against it
 bash tests/tools_dev_test.sh  # checks the container commands `tools/dev run` and `record` build (display, GPU, controllers; options, DB_URL refusal) and its tab completion
 bash tests/build_stale_test.sh  # checks `tools/buildqb --check` (is builds/sss current with its inputs?) against a throwaway repo
+bash tests/failfast_test.sh  # QB64_BIN_DIR=<qb64pe dir>: a runtime error exits 1 at once instead of waiting on QB64-PE's "Continue? y/n" prompt, and every program includes src/sys/failfast.bi
 ```
 
 The runner builds and runs each test in `tests/` on one of several workers, then prints every test's output in order and a summary with build and run times. On Linux and macOS each worker compiles with its own copy of QB64-PE. Two compiles on one install can silently swap their output binaries, so never run two native builds at once on the same QB64-PE (#239). Each test prints `=== <name> ===` first, and the runner fails any binary that doesn't print its own banner. To add a test, put its name on a new line in `tests/list.txt`. That file, `tests/dev_flags.txt` (dev-only flags a release build must reject) and `tools/game_flags.txt` (game options for `tools/dev` tab completion) are one entry per line and marked `merge=union` in `.gitattributes`, so two PRs that each add a line merge without a conflict. `qb64test.sh` fails, naming the file and line, if any of the three has a repeated entry.
+
+**Runtime errors fail fast (#427).** QB64-PE has no switch to stop its unhandled-error prompt: with no display it prints `Continue? y/n` and re-reads stdin, which loops forever when stdin is at EOF (it once ran for hours inside a container). So every program (the game, each test, each tool the suite builds) has `'$INCLUDE:'src/sys/failfast.bi'` right after `Option _Explicit` and `$CONSOLE`, `../src/sys/failfast.bi` from `tests/` and `tools/`. It installs an `ON ERROR` handler that prints `Runtime error N: message (line L)` to stderr and exits 1. A local `ON ERROR GOTO label` probe must end with `ON ERROR GOTO SSS_FailFast`, not `ON ERROR GOTO 0`. `tests/failfast_test.sh` fails if a program lacks the include or a probe resets to 0, and compiles a deliberate error to check it exits 1 within seconds. The runner also runs each test with stdin closed under a wall-clock limit (`QB64_TEST_RUN_TIMEOUT`, default 600 s, where `timeout` exists) and fails a test whose output has a `Runtime error` line, because QB64-PE exits 0 after its critical errors (division by zero, out of memory).
 
 **A new controller:** record it once, commit the file, and it's tested. `tools/padrecord.bas` opens a small window that asks you to hold each control in turn (stick and d-pad directions, A, B, X, Y, Start, Back, and nothing at all) and press ENTER, then writes the pad's raw buttons and axes to `tests/input/pads/<name>.txt`. Build it and run it from the repo root with the pad plugged in: `tools/buildqb tools/padrecord.bas && builds/padrecord <name>`. `tests/pad_map_test` loads every file there and checks each control reaches the right game action, so a control the mapping drops fails CI by pad and control name (e.g. `xbox360_xpad: DPAD_UP produced nothing`).
 
