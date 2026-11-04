@@ -5,20 +5,19 @@
 ' them all off, or all on when any is off. U says the test line (two boss callouts from gametext.txt)
 ' at the chosen narration preset, and J cycles that preset (SLOW, NORMAL, FAST). A toggle applies
 ' from the next phoneme on.
-' The IN knobs (assets/config/speech.ini) nudge down / up, holding repeats: F1/F2 step, F3/F4
-' declination, F5/F6 accent, F7/F8 accents per phrase, F9/F10 final fall, , . rise, ; ' stress pitch
-' spread, / ] liquid glide, PgDn/PgUp stress loudness; F12 toggles glide pitch; \ re-reads the ini
-' from disk. A knob re-plans the pitch of the line being spoken. Copy tuned values into speech.ini.
+' The IN knobs (assets/config/speech.ini): ; and ' move the cursor through them (the selected line is
+' highlighted and marked <), , and . nudge it down / up (holding repeats), / re-reads the ini from disk. A knob re-plans the pitch of the line being spoken. Copy tuned values into speech.ini.
 ' The readout is one column at the left edge: name, keys, value.
 
 Const SPKD_FILE = "assets/config/speech.ini"
 Const SPKD_HOLD = 18      ' frames a nudge key is held before it repeats
 Const SPKD_REPEAT = 3     ' frames between repeats
 
-Dim Shared spdWas(0 To 8) As Integer
+Dim Shared spdWas(0 To 11) As Integer
+Dim Shared spdSel As Integer   ' the knob the cursor is on (SPK_PK_*)
+Const SPKD_NAMES = "STDCACANFFRSSSGPLGLD"   ' readout names in SPK_PK_* order
 Dim Shared spdPreset As Integer
 Dim Shared spdHeld(0 To SPK_PK_N - 1, 0 To 1) As Integer
-Dim Shared spdWasF12 As Integer, spdWasRl As Integer
 Dim Shared spdMsg As String
 
 Function SPKD_Edge% (sdeI As Integer, sdeUp As Long)
@@ -61,11 +60,11 @@ Sub SPKD_Reload ()
     If SPK_ProsodyLoad%(_ReadFile$(sdrP)) Then spdMsg = "reloaded" Else spdMsg = spkCfgErr
 End Sub
 
-Sub SPKD_Line (sdlRow As Integer, sdlTxt As String)
+Sub SPKD_Line (sdlRow As Integer, sdlTxt As String, sdlSel As Integer)
     Dim sdlY As Integer
     sdlY = 4 + sdlRow * 10
     Line (0, sdlY - 1)-(Len(sdlTxt) * 8 + 3, sdlY + 8), _RGBA(0, 0, 0, 200), BF
-    Color _RGB(255, 230, 120)
+    If sdlSel Then Color _RGB(120, 230, 255) Else Color _RGB(255, 230, 120)
     _PrintString (2, sdlY), sdlTxt
 End Sub
 
@@ -77,7 +76,7 @@ Function SPKD_Num$ (sdnV As Single)
 End Function
 
 Sub SPKD_Frame
-    Dim sdfI As Integer, sdfOn As Integer, sdfAll As String, sdfK As Integer
+    Dim sdfI As Integer, sdfOn As Integer, sdfAll As String, sdfK As Integer, sdfV As String
     If cliSpeechDev = 0 Then Exit Sub
     If spdPreset < 1 Or spdPreset > 3 Then spdPreset = settingNarrSpeed
     If spdPreset < 1 Or spdPreset > 3 Then spdPreset = 2
@@ -102,19 +101,12 @@ Sub SPKD_Frame
         SPK_SetPreset spdPreset
     End If
 
-    ' knobs: F1..F10 are 15104 + 256 * (n - 1)
-    For sdfK = 0 To 4
-        SPKD_NudgeKey sdfK, 0, 15104 + 512 * sdfK
-        SPKD_NudgeKey sdfK, 1, 15360 + 512 * sdfK
-    Next sdfK
-    SPKD_NudgeKey SPK_PK_RISE, 0, 44 : SPKD_NudgeKey SPK_PK_RISE, 1, 46
-    SPKD_NudgeKey SPK_PK_SPREAD, 0, 59 : SPKD_NudgeKey SPK_PK_SPREAD, 1, 39
-    SPKD_NudgeKey SPK_PK_LIQ, 0, 47 : SPKD_NudgeKey SPK_PK_LIQ, 1, 93
-    SPKD_NudgeKey SPK_PK_LOUD, 0, 20736 : SPKD_NudgeKey SPK_PK_LOUD, 1, 18688
-    If KEY_Down%(34304) And spdWasF12 = 0 Then SPK_PkSet SPK_PK_GPITCH, 1 - spkPk(SPK_PK_GPITCH)
-    spdWasF12 = KEY_Down%(34304)
-    If KEY_Down%(92) And spdWasRl = 0 Then SPKD_Reload
-    spdWasRl = KEY_Down%(92)
+    ' knobs: ; ' move the cursor, , . nudge the selected knob (holding repeats), / re-reads the ini
+    If SPKD_Edge%(9, 59) Then spdSel = (spdSel + SPK_PK_N - 1) Mod SPK_PK_N
+    If SPKD_Edge%(10, 39) Then spdSel = (spdSel + 1) Mod SPK_PK_N
+    SPKD_NudgeKey spdSel, 0, 44
+    SPKD_NudgeKey spdSel, 1, 46
+    If SPKD_Edge%(11, 47) Then SPKD_Reload
 
     If sdfOn = SPK_FX_N Then
         sdfAll = "on"
@@ -124,24 +116,20 @@ Sub SPKD_Frame
         sdfAll = "mix"
     End If
     _Dest 0
-    SPKD_Line 0, "GL G " + SPKD_OnOff$(spkFx(SPK_FX_GL))
-    SPKD_Line 1, "BU B " + SPKD_OnOff$(spkFx(SPK_FX_BU))
-    SPKD_Line 2, "FR H " + SPKD_OnOff$(spkFx(SPK_FX_FR))
-    SPKD_Line 3, "NL M " + SPKD_OnOff$(spkFx(SPK_FX_NL))
-    SPKD_Line 4, "HB O " + SPKD_OnOff$(spkFx(SPK_FX_HB))
-    SPKD_Line 5, "IN I " + SPKD_OnOff$(spkFx(SPK_FX_IN))
-    SPKD_Line 6, "AL [ " + sdfAll
-    SPKD_Line 7, "PR J " + Mid$("SLONRMFST", spdPreset * 3 - 2, 3)
-    SPKD_Line 8, "SA U " + SPKD_OnOff$(SPK_IsPlaying%)
-    SPKD_Line 9, "ST F1/F2 " + SPKD_Num$(spkPk(SPK_PK_STEP))
-    SPKD_Line 10, "DC F3/F4 " + SPKD_Num$(spkPk(SPK_PK_DECL))
-    SPKD_Line 11, "AC F5/F6 " + SPKD_Num$(spkPk(SPK_PK_ACC))
-    SPKD_Line 12, "AN F7/F8 " + SPKD_Num$(spkPk(SPK_PK_NACC))
-    SPKD_Line 13, "FF F9/F10 " + SPKD_Num$(spkPk(SPK_PK_FALL))
-    SPKD_Line 14, "RS ,/. " + SPKD_Num$(spkPk(SPK_PK_RISE))
-    SPKD_Line 15, "SS ;/' " + SPKD_Num$(spkPk(SPK_PK_SPREAD))
-    SPKD_Line 16, "LG //] " + SPKD_Num$(spkPk(SPK_PK_LIQ))
-    SPKD_Line 17, "LD PD/PU " + SPKD_Num$(spkPk(SPK_PK_LOUD))
-    SPKD_Line 18, "GP F12 " + SPKD_OnOff$(spkPk(SPK_PK_GPITCH) >= 0.5)
-    If Len(spdMsg) > 0 Then SPKD_Line 19, "RL \ " + spdMsg Else SPKD_Line 19, "RL \ -"
+    SPKD_Line 0, "GL G " + SPKD_OnOff$(spkFx(SPK_FX_GL)), 0
+    SPKD_Line 1, "BU B " + SPKD_OnOff$(spkFx(SPK_FX_BU)), 0
+    SPKD_Line 2, "FR H " + SPKD_OnOff$(spkFx(SPK_FX_FR)), 0
+    SPKD_Line 3, "NL M " + SPKD_OnOff$(spkFx(SPK_FX_NL)), 0
+    SPKD_Line 4, "HB O " + SPKD_OnOff$(spkFx(SPK_FX_HB)), 0
+    SPKD_Line 5, "IN I " + SPKD_OnOff$(spkFx(SPK_FX_IN)), 0
+    SPKD_Line 6, "AL [ " + sdfAll, 0
+    SPKD_Line 7, "PR J " + Mid$("SLONRMFST", spdPreset * 3 - 2, 3), 0
+    SPKD_Line 8, "SA U " + SPKD_OnOff$(SPK_IsPlaying%), 0
+    SPKD_Line 9, "KN ;' " + Mid$(SPKD_NAMES, spdSel * 2 + 1, 2), 0
+    For sdfK = 0 To SPK_PK_N - 1
+        If sdfK = SPK_PK_GPITCH Then sdfV = SPKD_OnOff$(spkPk(sdfK) >= 0.5) Else sdfV = SPKD_Num$(spkPk(sdfK))
+        If sdfK = spdSel Then sdfV = sdfV + " <"
+        SPKD_Line 10 + sdfK, Mid$(SPKD_NAMES, sdfK * 2 + 1, 2) + " ,. " + sdfV, (sdfK = spdSel)
+    Next sdfK
+    If Len(spdMsg) > 0 Then SPKD_Line 20, "RL / " + spdMsg, 0 Else SPKD_Line 20, "RL / -", 0
 End Sub
