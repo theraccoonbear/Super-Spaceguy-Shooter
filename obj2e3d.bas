@@ -6,6 +6,7 @@
 ' Output: <slot_name>.e3d in the same directory as the binary.
 
 Option _Explicit
+'$INCLUDE:'src/sys/failfast.bi'
 ' Defer GL window until _ScreenShow — lets the tool run without a display
 $SCREENHIDE
 

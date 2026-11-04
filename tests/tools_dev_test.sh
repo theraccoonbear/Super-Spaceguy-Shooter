@@ -241,6 +241,118 @@ fi
 completes "" ./tools/dev record --frames ""
 
 
+# Limits (#427): a stub podman records its arguments, so nothing is built or run.
+stubdir="$(mktemp -d)"
+trap 'rm -rf "$fake" "$stubdir"' EXIT
+cat > "$stubdir/podman" << 'STUB'
+#!/usr/bin/env bash
+echo "$*" >> "$STUB_LOG"
+if [ "${1:-}" = run ] && [ -n "${STUB_SLEEP:-}" ]; then exec sleep "$STUB_SLEEP"; fi
+exit 0
+STUB
+chmod +x "$stubdir/podman"
+export STUB_LOG="$stubdir/log"
+# the stub (SSS_ENGINE=podman finds it first); env -u keeps the caller's SSS_DEV_* out
+stubdev() { PATH="$stubdir:$PATH" SSS_ENGINE=podman SSS_DEV_LOCKDIR="$stubdir/locks" "$REPO/tools/dev" "$@" 2>&1; }
+has() {   # has <label> <text> <pattern>
+    if [[ "$2" == *$3* ]]; then echo "ok:   $1"; else echo "FAIL: $1 (wanted '$3')"; fails=$((fails + 1)); fi
+}
+lacks() {
+    if [[ "$2" != *$3* ]]; then echo "ok:   $1"; else echo "FAIL: $1 (found '$3')"; fails=$((fails + 1)); fi
+}
+
+: > "$STUB_LOG"
+(unset SSS_DEV_MEMORY SSS_DEV_CPUS SSS_DEV_PIDS SSS_DEV_JOBS SSS_DEV_SLOTS SSS_DEV_TIMEOUT; stubdev test > /dev/null)
+log="$(cat "$STUB_LOG")"
+has "default limits: memory" "$log" " --memory "
+has "default limits: swap equals memory" "$log" " --memory-swap "
+has "default limits: cpus" "$log" " --cpus "
+has "default limits: pids" "$log" " --pids-limit "
+has "default limits: no container log" "$log" "--log-driver none"
+jobs_default="$(sed -n 's/.*QB64_TEST_JOBS=\([0-9]*\).*/\1/p' "$STUB_LOG" | head -n 1)"
+if [ "$jobs_default" = 2 ] || [ "$jobs_default" = 3 ]; then
+    echo "ok:   tools/dev test caps the test workers (QB64_TEST_JOBS=$jobs_default)"
+else
+    echo "FAIL: QB64_TEST_JOBS default '$jobs_default', wanted 2 or 3"
+    fails=$((fails + 1))
+fi
+mem="$(sed -n 's/.* --memory \([^ ]*\) .*/\1/p' "$STUB_LOG" | head -n 1)"
+swap="$(sed -n 's/.* --memory-swap \([^ ]*\) .*/\1/p' "$STUB_LOG" | head -n 1)"
+if [ -n "$mem" ] && [ "$mem" = "$swap" ]; then
+    echo "ok:   memory and memory+swap match ($mem), so no swapping"
+else
+    echo "FAIL: memory '$mem' vs memory-swap '$swap'"
+    fails=$((fails + 1))
+fi
+
+: > "$STUB_LOG"
+SSS_DEV_MEMORY=3g SSS_DEV_CPUS=1.5 SSS_DEV_PIDS=77 SSS_DEV_JOBS=5 stubdev build > /dev/null
+log="$(cat "$STUB_LOG")"
+has "override: memory" "$log" " --memory 3g "
+has "override: cpus" "$log" " --cpus 1.5 "
+has "override: pids" "$log" " --pids-limit 77 "
+has "override: jobs" "$log" "QB64_TEST_JOBS=5"
+: > "$STUB_LOG"
+SSS_DEV_MEMORY=0 SSS_DEV_CPUS=none SSS_DEV_PIDS=0 SSS_DEV_JOBS=0 stubdev build > /dev/null
+log="$(cat "$STUB_LOG")"
+lacks "0 turns the memory limit off" "$log" "--memory"
+lacks "none turns the cpu limit off" "$log" "--cpus"
+lacks "0 turns the pid limit off" "$log" "--pids-limit"
+lacks "0 turns the job cap off" "$log" "QB64_TEST_JOBS"
+
+# timeout: a run that outlasts SSS_DEV_TIMEOUT is stopped and its container removed
+: > "$STUB_LOG"
+rc=0
+start=$SECONDS
+out="$(STUB_SLEEP=60 SSS_DEV_TIMEOUT=2 stubdev build)" || rc=$?
+if [ "$rc" = 124 ] && [ $((SECONDS - start)) -lt 30 ]; then
+    echo "ok:   a run past SSS_DEV_TIMEOUT is stopped (exit $rc after $((SECONDS - start))s)"
+else
+    echo "FAIL: timeout: exit $rc after $((SECONDS - start))s"
+    fails=$((fails + 1))
+fi
+has "timed-out container is removed" "$(cat "$STUB_LOG")" "rm -f sss-dev-"
+has "timeout is reported" "$out" "stopped after 2s"
+
+# build slots: SSS_DEV_SLOTS runs at once, the rest queue
+if command -v flock > /dev/null 2>&1; then
+    mkdir -p "$stubdir/locks"
+    exec 8>> "$stubdir/locks/slot.1"
+    flock -n 8
+    : > "$STUB_LOG"
+    rc=0
+    out="$(SSS_DEV_SLOTS=1 SSS_DEV_SLOT_WAIT=3 stubdev build)" || rc=$?
+    has "slot taken: waits for a build slot" "$out" "waiting for a build slot"
+    if [ "$rc" = 1 ] && [ ! -s "$STUB_LOG" ]; then
+        echo "ok:   slot taken: gives up without running anything"
+    else
+        echo "FAIL: slot taken: exit $rc, log '$(cat "$STUB_LOG")'"
+        fails=$((fails + 1))
+    fi
+    for c in test render bench; do
+        rc=0
+        out="$(SSS_DEV_SLOTS=1 SSS_DEV_SLOT_WAIT=1 stubdev $c)" || rc=$?
+        has "slot taken: $c queues" "$out" "waiting for a build slot"
+    done
+    rc=0
+    out="$(SSS_DEV_SLOTS=2 SSS_DEV_SLOT_WAIT=3 stubdev build)" || rc=$?
+    lacks "second slot free: no waiting" "$out" "waiting for a build slot"
+    [ "$rc" = 0 ] && echo "ok:   second slot free: runs" || { echo "FAIL: second slot free: exit $rc"; fails=$((fails + 1)); }
+    rc=0
+    out="$(SSS_DEV_SLOTS=1 SSS_DEV_SLOT_WAIT=1 stubdev shell true)" || rc=$?
+    lacks "shell does not take a slot" "$out" "waiting for a build slot"
+    flock -u 8
+    exec 8>&-
+    out="$(SSS_DEV_SLOTS=1 SSS_DEV_SLOT_WAIT=3 stubdev build)"
+    lacks "slot released: runs without waiting" "$out" "waiting for a build slot"
+    rc=0
+    grep -q -- "--name sss-dev-" "$STUB_LOG" || rc=1
+    [ "$rc" = 0 ] && echo "ok:   containers are named for cleanup" || { echo "FAIL: no --name on the run"; fails=$((fails + 1)); }
+else
+    echo "skip: no flock on this machine"
+fi
+
+
 if [ "$fails" -ne 0 ]; then
     echo "tools_dev_test: $fails check(s) failed"
     exit 1

@@ -13,6 +13,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'

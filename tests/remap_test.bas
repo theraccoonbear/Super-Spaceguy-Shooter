@@ -14,6 +14,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Sub DBG_Print (rtDbg As String) : End Sub
 

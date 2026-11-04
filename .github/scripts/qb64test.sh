@@ -6,6 +6,7 @@
 #
 #   QB64_TEST_JOBS=N   parallel workers (default: half the logical CPUs, at least 2 --
 #                      compiles are CPU-bound and hyperthreads mostly just contend)
+#   QB64_TEST_RUN_TIMEOUT=S  wall-clock limit per test run, seconds (default 600; needs `timeout`, absent on macOS)
 #   QB64_TEST_SHARD=I/N  run only shard I of N (1-based): every Nth test and tool,
 #                      http_queue_test in shard 1. CI splits the slow Windows suite (#341).
 #
@@ -106,6 +107,9 @@ if [ -n "${QB64_TEST_SHARD:-}" ]; then
   echo "==> Shard $QB64_TEST_SHARD: ${#TESTS[@]} tests, ${#TOOLS[@]} tools$([ "$RUN_HTTP" = 1 ] && echo ', http_queue_test')"
 fi
 
+RUN_LIMIT=""
+if command -v timeout &> /dev/null; then RUN_LIMIT="${QB64_TEST_RUN_TIMEOUT:-600}"; fi
+
 CPUS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
 JOBS="${QB64_TEST_JOBS:-$((CPUS / 2))}"
 [ "$JOBS" -lt 2 ] && JOBS=2
@@ -201,6 +205,12 @@ build_test() {
   fi
 }
 
+# Runs a test binary with stdin closed and a wall-clock limit, so one that hangs (or waits on
+# a prompt) fails the suite instead of running forever.
+run_bin() {
+  if [ -n "$RUN_LIMIT" ]; then timeout "$RUN_LIMIT" "$@" < /dev/null; else "$@" < /dev/null; fi
+}
+
 # Build and run one test on the first free worker slot (xargs never runs more than
 # JOBS of these at once). Writes $WORK/<name>.log, .result ("PASS"/"FAIL <why>"),
 # .time ("<build>s build, <run>s run").
@@ -232,8 +242,11 @@ test_job() {
     echo "$((t1 - t0))s build (compile only)" > "$WORK/$name.time"
     return 0
   fi
-  if "$bin" >> "$log" 2>&1; then
-    if grep -q "=== ${name} ===" "$log"; then
+  if run_bin "$bin" >> "$log" 2>&1; then
+    if grep -q "^Runtime error" "$log"; then
+      # QB64-PE exits 0 after its non-handleable critical errors (division by zero, out of memory)
+      echo "FAIL runtime error (see log)" > "$WORK/$name.result"
+    elif grep -q "=== ${name} ===" "$log"; then
       echo "PASS" > "$WORK/$name.result"
     else
       echo "FAIL ran a different test's binary (parallel build mix-up?)" > "$WORK/$name.result"
@@ -246,8 +259,8 @@ test_job() {
 }
 
 TOOL_NAMES="${TOOLS[*]}"
-export REPODIR QB64_DIR IS_WIN WORK JOBS TOOL_NAMES
-export -f build_test test_job
+export REPODIR QB64_DIR IS_WIN WORK JOBS TOOL_NAMES RUN_LIMIT
+export -f build_test run_bin test_job
 
 echo "==> Building and running ${#TESTS[@]} tests and compiling ${#TOOLS[@]} tools, $JOBS at a time..."
 touch "$WORK/suite_start"
@@ -328,7 +341,7 @@ run_http_test() {
   rm -f "$errfile"
   echo "    Mock listening on http://127.0.0.1:${mock_port}"
 
-  if "$bin" "http://127.0.0.1:$mock_port"; then
+  if run_bin "$bin" "http://127.0.0.1:$mock_port"; then
     echo "PASS" > "$WORK/$name.result"
   else
     echo "FAIL exit $?" > "$WORK/$name.result"

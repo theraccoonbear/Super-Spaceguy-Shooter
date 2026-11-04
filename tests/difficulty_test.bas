@@ -11,6 +11,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'

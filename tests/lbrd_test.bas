@@ -11,6 +11,7 @@
 ' Run:   builds/lbrd_test    (exit 0 = pass, exit 1 = any failure)
 
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 Sub DBG_Print (dpMsg As String) : End Sub
