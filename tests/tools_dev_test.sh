@@ -301,6 +301,37 @@ lacks "none turns the cpu limit off" "$log" "--cpus"
 lacks "0 turns the pid limit off" "$log" "--pids-limit"
 lacks "0 turns the job cap off" "$log" "QB64_TEST_JOBS"
 
+# Game sessions (`run`, viewer window) get no memory, CPU or pid limit by default: a CFS quota
+# freezes the game loop and audio. SSS_DEV_RUN_LIMITS=1 opts back in; other commands keep them.
+gamedev() { SSS_DEV_DRYRUN=1 SSS_ENGINE=podman SSS_IMAGE="$IMAGE" DISPLAY=:0 "$REPO/tools/dev" "$@" 2>&1; }
+for sub in "run --version" "viewer"; do
+    out="$(unset SSS_DEV_MEMORY SSS_DEV_CPUS SSS_DEV_PIDS SSS_DEV_RUN_LIMITS; gamedev $sub)"
+    lacks "$sub: no --memory by default" "$out" " --memory"
+    lacks "$sub: no --cpus by default" "$out" " --cpus"
+    lacks "$sub: no --pids-limit by default" "$out" " --pids-limit"
+    has "$sub: still has no container log" "$out" "--log-driver none"
+    out="$(unset SSS_DEV_MEMORY SSS_DEV_CPUS SSS_DEV_PIDS; SSS_DEV_RUN_LIMITS=1 gamedev $sub)"
+    has "$sub: SSS_DEV_RUN_LIMITS=1 applies memory" "$out" " --memory 4g "
+    has "$sub: SSS_DEV_RUN_LIMITS=1 applies cpus" "$out" " --cpus 3 "
+    has "$sub: SSS_DEV_RUN_LIMITS=1 applies pids" "$out" " --pids-limit 512 "
+done
+out="$(unset SSS_DEV_MEMORY SSS_DEV_CPUS SSS_DEV_PIDS SSS_DEV_RUN_LIMITS; gamedev viewer --sheets)"
+has "viewer --sheets keeps the limits" "$out" " --cpus 3 "
+for sub in build test shell; do
+    out="$(unset SSS_DEV_MEMORY SSS_DEV_CPUS SSS_DEV_PIDS SSS_DEV_RUN_LIMITS; gamedev $sub)"
+    has "$sub keeps the memory limit" "$out" " --memory 4g "
+    has "$sub keeps the cpu limit" "$out" " --cpus 3 "
+    has "$sub keeps the pid limit" "$out" " --pids-limit 512 "
+done
+
+# The repo mount uses the shared SELinux label (:z): a private :Z label from one container denies
+# access to every other container and worktree on the same files.
+: > "$STUB_LOG"
+stubdev build > /dev/null
+log="$(cat "$STUB_LOG")"
+has "repo mount is shared-labeled (:z)" "$log" "-v $REPO:$REPO:z "
+lacks "repo mount is not private-labeled (:Z)" "$log" "-v $REPO:$REPO:Z"
+
 # timeout: a run that outlasts SSS_DEV_TIMEOUT is stopped and its container removed
 : > "$STUB_LOG"
 rc=0

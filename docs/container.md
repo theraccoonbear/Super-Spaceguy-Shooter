@@ -26,7 +26,7 @@ tools/dev test                      # full suite before the PR leaves draft (che
 
 `run` takes any [CLI option](cli.md). Handy ones: `--scene boss3` / `boss5` / `boss6` jumps to a boss fight (`bossN` is the boss on level N; levels 3, 5 and 6 have one), `--scene playing4` starts a level, `--scene dock2 --credits 2000` opens the upgrade dock after stage 2 (docks follow stages 1-5) with 2000 credits to spend, `--god` stops you dying, `--nerf` gives short stages and weak bosses, `--debug` shows the debug HUD.
 
-The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The mounts use `:Z`, so this works under SELinux (Fedora, Bazzite). Git worktrees work too, because the main checkout's git directory is mounted alongside. Finished agent worktrees under `.claude/worktrees/` are cleaned up with `tools/prune-worktrees` (dry run by default; `--apply` removes those whose PR is merged or closed, that are clean and not in use, and deletes their local branches).
+The repo is bind-mounted at its host path, not copied, so `builds/` and every generated file land in your checkout. They are owned by you, not root: Podman runs with `--userns=keep-id`, rootful Docker with `--user $(id -u):$(id -g)`, and rootless Docker needs neither. The repo mount uses `:z` (a shared SELinux label, not the private `:Z`), so this works under SELinux (Fedora, Bazzite) and concurrent runs and worktrees do not lock each other out. Git worktrees work too, because the main checkout's git directory is mounted alongside. Finished agent worktrees under `.claude/worktrees/` are cleaned up with `tools/prune-worktrees` (dry run by default; `--apply` removes those whose PR is merged or closed, that are clean and not in use, and deletes their local branches).
 
 **Tab completion.** `tools/dev completion` prints a bash completion function. To turn it on, add this line to `~/.bashrc` (use your checkout's path for `<checkout>`):
 
@@ -42,13 +42,14 @@ Then Tab completes the command (`tools/dev bu` gives `build`, `tools/dev re` off
 
 ## Limits, queueing and runaway protection
 
-Every container `tools/dev` starts is bounded, and the heavy commands queue, so a runaway program or several agents building at once cannot take the machine down (#427).
+Every container `tools/dev` starts is bounded, except the game window (`run` and the viewer window, see below), and the heavy commands queue, so a runaway program or several agents building at once cannot take the machine down (#427).
 
 | Variable | Default | What it does |
 |---|---|---|
 | `SSS_DEV_MEMORY` | `4g` | RAM limit; the memory+swap limit is set to the same value, so a container never swaps |
 | `SSS_DEV_CPUS` | `3` | CPUs the container may use (`--cpus`) |
 | `SSS_DEV_PIDS` | `512` | process limit (`--pids-limit`) |
+| `SSS_DEV_RUN_LIMITS` | (unset) | `1` also applies the memory, CPU and pid limits to `run` and the viewer window, which have none by default |
 | `SSS_DEV_JOBS` | `3` | parallel test workers for `tools/dev test` (passed as `QB64_TEST_JOBS`); CI uses every vCPU |
 | `SSS_DEV_TIMEOUT` | `3600` | wall-clock seconds for `build`, `test`, `render` and `bench`; the run is stopped and its container removed (exit 124). `run` has none; `headless`, `shell`, `record` and `bake` have none with a terminal (see the next row without one) |
 | `SSS_DEV_NOTTY_TIMEOUT` | `600` | wall-clock seconds for every other container run (not `run` or the viewer window) when stdin or stdout is not a terminal; 0 turns it off. Also passed to podman as `--timeout`, so the engine stops the container even if the client is killed or a pipe closes |
@@ -56,6 +57,8 @@ Every container `tools/dev` starts is bounded, and the heavy commands queue, so 
 | `SSS_DEV_SLOTS` | `2` | how many `build`, `test`, `render` and `bench` runs go at once; the rest wait |
 | `SSS_DEV_SLOT_WAIT` | wait | give up (exit 1) after this many seconds without a free slot |
 | `SSS_DEV_LOCKDIR` | `<git dir>/sss-dev-slots` | where the slot lock files live; all worktrees of one clone share the main `.git`, so their runs queue together |
+
+`run` and the viewer window get no memory, CPU or pid limit unless `SSS_DEV_RUN_LIMITS=1`. A CPU quota (`--cpus`) freezes the whole container, game loop and audio feeder included, for the rest of each 100 ms period once the quota is used up, which showed as intermittent slowdowns and clipped audio. They are also exempt from the timeouts and the slots. `viewer --sheets` is headless and keeps the limits.
 
 Setting a limit to `0` or `none` turns it off. The container log is off (`--log-driver none`); output still reaches your terminal. A queued run prints `>>> waiting for a build slot` and `>>> got build slot N after Ns` when it starts. The slot is an `flock`, so it is released when the script ends, however it ends. Without `flock` (macOS) there is no queueing.
 

@@ -24,7 +24,7 @@
 
 ## Running programs safely
 A compiled QB64-PE program that hits an unhandled runtime error prints `Continue? y/n:` and re-reads stdin. At EOF that loops forever, and a container's output goes to the host journal (#427). The same loop happened from a scratch tool run in a container with stdin from `/dev/null`, output piped to `head` and a host-side `timeout` around `tools/dev`: `head` closing the pipe and `timeout` killing the wrapper both leave the container running.
-- Run every compiled program and test through `tools/dev` (`test`, `shell`, `headless`, ...). Without a terminal it gives stdin `/dev/null`, a wall-clock limit (`SSS_DEV_NOTTY_TIMEOUT`, 600 s; `SSS_DEV_TIMEOUT`, 3600 s for build, test, render, bench) enforced by the client and by podman inside the container, memory, CPU and pid limits, and no container log.
+- Run every compiled program and test through `tools/dev` (`test`, `shell`, `headless`, ...). Without a terminal it gives stdin `/dev/null`, a wall-clock limit (`SSS_DEV_NOTTY_TIMEOUT`, 600 s; `SSS_DEV_TIMEOUT`, 3600 s for build, test, render, bench) enforced by the client and by podman inside the container, memory, CPU and pid limits (not for `run` and the viewer window, where a CPU quota would stall the game and audio; `SSS_DEV_RUN_LIMITS=1` opts in), and no container log.
 - Never start a program in the background, or without a time limit. Raise the limit with the env var rather than removing it.
 - Never run a program that might read stdin without stdin from `/dev/null` or a terminal.
 - Treat `Continue?`, `y/n`, `Runtime error` or the same line repeating as a failure: stop the process and its container at once (`podman ps`, `podman rm -f <name>`), then fix the cause.
