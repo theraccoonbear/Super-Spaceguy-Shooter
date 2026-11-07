@@ -50,7 +50,9 @@ Every container `tools/dev` starts is bounded, and the heavy commands queue, so 
 | `SSS_DEV_CPUS` | `3` | CPUs the container may use (`--cpus`) |
 | `SSS_DEV_PIDS` | `512` | process limit (`--pids-limit`) |
 | `SSS_DEV_JOBS` | `3` | parallel test workers for `tools/dev test` (passed as `QB64_TEST_JOBS`); CI uses every vCPU |
-| `SSS_DEV_TIMEOUT` | `3600` | wall-clock seconds for `build`, `test`, `render` and `bench`; the run is stopped and its container removed (exit 124). `run`, `headless`, `shell`, `record` and `bake` have none |
+| `SSS_DEV_TIMEOUT` | `3600` | wall-clock seconds for `build`, `test`, `render` and `bench`; the run is stopped and its container removed (exit 124). `run` has none; `headless`, `shell`, `record` and `bake` have none with a terminal (see the next row without one) |
+| `SSS_DEV_NOTTY_TIMEOUT` | `600` | wall-clock seconds for every other container run (not `run` or the viewer window) when stdin or stdout is not a terminal; 0 turns it off. Also passed to podman as `--timeout`, so the engine stops the container even if the client is killed or a pipe closes |
+| `SSS_DEV_STDIN` | (unset) | without a terminal stdin is /dev/null; `keep` passes the caller's stdin through |
 | `SSS_DEV_SLOTS` | `2` | how many `build`, `test`, `render` and `bench` runs go at once; the rest wait |
 | `SSS_DEV_SLOT_WAIT` | wait | give up (exit 1) after this many seconds without a free slot |
 | `SSS_DEV_LOCKDIR` | `<git dir>/sss-dev-slots` | where the slot lock files live; all worktrees of one clone share the main `.git`, so their runs queue together |

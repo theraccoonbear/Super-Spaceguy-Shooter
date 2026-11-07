@@ -64,6 +64,11 @@
 #                              concurrent runs queue (default 2; 0 = no waiting)
 #   SSS_DEV_SLOT_WAIT=SECS     give up waiting for a slot after SECS (default: wait)
 #   SSS_DEV_LOCKDIR=DIR        where the slot lock files live (default <git dir>/sss-dev-slots)
+#   SSS_DEV_NOTTY_TIMEOUT=SECS wall-clock limit for every other container run (shell, headless,
+#                              bake, record, viewer --sheets) when stdin or stdout is not a terminal
+#                              (default 600; 0 = none). `run` and the viewer window are exempt.
+#   SSS_DEV_STDIN=keep         without a terminal, keep the caller's stdin (default: /dev/null, so a
+#                              program that reads stdin sees EOF instead of waiting)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -71,7 +76,7 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n "2,70p" "$0" | sed 's/^# \{0,1\}//'
+    sed -n "2,75p" "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
@@ -83,8 +88,11 @@ LIM_PIDS="${SSS_DEV_PIDS:-512}"
 LIM_JOBS="${SSS_DEV_JOBS:-3}"
 LIM_SLOTS="${SSS_DEV_SLOTS:-2}"
 LIM_TIMEOUT="${SSS_DEV_TIMEOUT:-3600}"
+LIM_NOTTY_TIMEOUT="${SSS_DEV_NOTTY_TIMEOUT:-600}"
 # The timeout the next run_in applies (seconds; empty = none). The heavy commands set it.
 RUN_TIMEOUT=""
+# Set by commands that may run unattended for long on purpose (the game window).
+NOTTY_EXEMPT=0
 
 limit_on() { [ -n "$1" ] && [ "$1" != 0 ] && [ "$1" != none ]; }
 
@@ -183,7 +191,20 @@ run_in() {
     limit_on "$LIM_PIDS" && args+=(--pids-limit "$LIM_PIDS")
     args+=(--log-driver none --name "$cname")
     limit_on "$LIM_JOBS" && args+=(-e "QB64_TEST_JOBS=$LIM_JOBS")
-    [ -t 0 ] && [ -t 1 ] && args+=(-t)
+    # Without a terminal (an agent, CI, a pipe): stdin is /dev/null, and a command with no
+    # limit of its own gets the no-terminal one. The engine enforces it inside the container
+    # too (podman --timeout), so it still holds if the client is killed or a pipe closes.
+    local notty=1 nullin=0 rt="$RUN_TIMEOUT"
+    if [ -t 0 ] && [ -t 1 ]; then
+        notty=0
+        args+=(-t)
+    else
+        [ "${SSS_DEV_STDIN:-}" = keep ] || nullin=1
+        if ! limit_on "$rt" && [ "$NOTTY_EXEMPT" != 1 ]; then rt="$LIM_NOTTY_TIMEOUT"; fi
+    fi
+    if limit_on "$rt" && [ "$ENGINE" = podman ]; then
+        args+=(--timeout "$rt")
+    fi
 
     # Make files the container writes belong to the host user.
     if [ "$ENGINE" = podman ]; then
@@ -210,10 +231,10 @@ run_in() {
     fi
 
     local wrap=()
-    if limit_on "$RUN_TIMEOUT"; then
+    if limit_on "$rt"; then
         wrap=(timeout -k 20)
-        [ -t 0 ] && wrap+=(--foreground)
-        wrap+=("$RUN_TIMEOUT")
+        [ "$notty" = 0 ] && wrap+=(--foreground)
+        wrap+=("$rt")
     fi
     if [ "$DRYRUN" = 1 ]; then
         printf '%q ' ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
@@ -221,11 +242,15 @@ run_in() {
         return
     fi
     local rc=0
-    ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@" || rc=$?
+    if [ "$nullin" = 1 ]; then
+        ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@" < /dev/null || rc=$?
+    else
+        ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@" || rc=$?
+    fi
     if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then
         # timeout stopped the client; make sure the container goes too
         "$ENGINE" rm -f "$cname" > /dev/null 2>&1 || true
-        [ "$rc" = 124 ] && echo "Error: stopped after ${RUN_TIMEOUT}s (SSS_DEV_TIMEOUT)" >&2
+        [ "$rc" = 124 ] && echo "Error: stopped after ${rt}s (SSS_DEV_TIMEOUT, SSS_DEV_NOTTY_TIMEOUT)" >&2
     fi
     return "$rc"
 }
@@ -297,6 +322,7 @@ cmd_shell() {
 }
 cmd_run() {
     pick_engine; ensure_image
+    NOTTY_EXEMPT=1
     rebuild_if_stale
     gui_args
     # Settings live in the per-user dir (#284). The container's own home is thrown away with
@@ -318,6 +344,7 @@ cmd_viewer() {
         run_in bash -c './tools/buildqb viewer.bas && exec xvfb-run -a builds/viewer "$@"' viewer "$@"
         return
     fi
+    NOTTY_EXEMPT=1
     gui_args
     run_in bash -c './tools/buildqb viewer.bas && exec builds/viewer "$@"' viewer "$@"
 }

@@ -247,6 +247,7 @@ trap 'rm -rf "$fake" "$stubdir"' EXIT
 cat > "$stubdir/podman" << 'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$STUB_LOG"
+if [ "${1:-}" = run ] && [ -n "${STUB_STDIN:-}" ]; then cat > "$STUB_STDIN"; fi
 if [ "${1:-}" = run ] && [ -n "${STUB_SLEEP:-}" ]; then exec sleep "$STUB_SLEEP"; fi
 exit 0
 STUB
@@ -313,6 +314,30 @@ else
 fi
 has "timed-out container is removed" "$(cat "$STUB_LOG")" "rm -f sss-dev-"
 has "timeout is reported" "$out" "stopped after 2s"
+
+# No terminal (#427): stdin is /dev/null, and every non-GUI command has a time limit, enforced
+# by the client (timeout) and by the engine (podman --timeout), so a loop on EOF stays short.
+: > "$STUB_LOG"
+echo hello | STUB_STDIN="$stubdir/stdin" stubdev shell true > /dev/null
+[ ! -s "$stubdir/stdin" ] && echo "ok:   no terminal: stdin is /dev/null" || { echo "FAIL: stub read '$(cat "$stubdir/stdin")' from stdin"; fails=$((fails + 1)); }
+echo hello | SSS_DEV_STDIN=keep STUB_STDIN="$stubdir/stdin" stubdev shell true > /dev/null
+has "SSS_DEV_STDIN=keep passes stdin" "$(cat "$stubdir/stdin")" "hello"
+out="$(SSS_DEV_NOTTY_TIMEOUT=77 SSS_DEV_DRYRUN=1 SSS_ENGINE=podman SSS_IMAGE="$IMAGE" "$REPO/tools/dev" shell true 2>&1)"
+has "no terminal: shell is limited" "$out" "timeout -k 20 77 podman run"
+has "no terminal: engine-side limit" "$out" "--timeout 77"
+out="$(SSS_DEV_NOTTY_TIMEOUT=0 SSS_DEV_DRYRUN=1 SSS_ENGINE=podman SSS_IMAGE="$IMAGE" "$REPO/tools/dev" shell true 2>&1)"
+lacks "NOTTY_TIMEOUT=0 turns the limit off" "$out" "--timeout"
+out="$(SSS_DEV_NOTTY_TIMEOUT=77 SSS_DEV_DRYRUN=1 SSS_ENGINE=podman SSS_IMAGE="$IMAGE" DISPLAY=:0 "$REPO/tools/dev" run --version 2>&1)"
+lacks "the game window has no no-terminal limit" "$out" "--timeout"
+rc=0
+start=$SECONDS
+out="$(STUB_SLEEP=60 SSS_DEV_NOTTY_TIMEOUT=2 stubdev shell sleep 100)" || rc=$?
+if [ "$rc" = 124 ] && [ $((SECONDS - start)) -lt 30 ]; then
+    echo "ok:   no terminal: shell past the limit is stopped (exit $rc after $((SECONDS - start))s)"
+else
+    echo "FAIL: no-terminal timeout: exit $rc after $((SECONDS - start))s"
+    fails=$((fails + 1))
+fi
 
 # build slots: SSS_DEV_SLOTS runs at once, the rest queue
 if command -v flock > /dev/null 2>&1; then

@@ -22,6 +22,15 @@
 - Without `Option _Explicit`, an undefined function or array compiles silently: `RNG!(RNG_FX)` with `rng.bas` missing becomes an implicit array read with `RNG_FX` an implicit 0, and a missing `Dim Shared` or `Const` becomes a 0-valued local. The game, every test and every CI-compiled tool start with `Option _Explicit` (it covers `$INCLUDE`d files too) — keep it in any new program, and include every module a file depends on (e.g. `src/sys/rng.bas` before `src/engine3d.bi`)
 - `Not` is bitwise, not logical: `Not 1 = -2` (truthy), so `If Not flag` misbehaves when `flag` is `1` instead of `-1`. Use `If flag = 0` to guard a disabled feature, or define boolean consts as `0`/`-1`
 
+## Running programs safely
+A compiled QB64-PE program that hits an unhandled runtime error prints `Continue? y/n:` and re-reads stdin. At EOF that loops forever, and a container's output goes to the host journal (#427). The same loop happened from a scratch tool run in a container with stdin from `/dev/null`, output piped to `head` and a host-side `timeout` around `tools/dev`: `head` closing the pipe and `timeout` killing the wrapper both leave the container running.
+- Run every compiled program and test through `tools/dev` (`test`, `shell`, `headless`, ...). Without a terminal it gives stdin `/dev/null`, a wall-clock limit (`SSS_DEV_NOTTY_TIMEOUT`, 600 s; `SSS_DEV_TIMEOUT`, 3600 s for build, test, render, bench) enforced by the client and by podman inside the container, memory, CPU and pid limits, and no container log.
+- Never start a program in the background, or without a time limit. Raise the limit with the env var rather than removing it.
+- Never run a program that might read stdin without stdin from `/dev/null` or a terminal.
+- Treat `Continue?`, `y/n`, `Runtime error` or the same line repeating as a failure: stop the process and its container at once (`podman ps`, `podman rm -f <name>`), then fix the cause.
+- Keep output bounded (`| head -50`, `| tail -50`, or a log file) and never let container output stream unbounded. Do not rely on `head` or a host-side `timeout` to stop a container: they stop the client, not the container.
+- Every program, scratch tools included, starts with `'$INCLUDE:'src/sys/failfast.bi'` so a runtime error exits 1 (see [`docs/testing.md`](docs/testing.md)).
+
 ## Worktrees
 - Agents reuse or remove the worktrees they create under `.claude/worktrees/`; do not leave finished ones behind.
 - After each merge, run `tools/prune-worktrees` (dry run) and then `tools/prune-worktrees --apply`. It removes worktrees whose PR is merged or closed and that are clean and unused, and deletes their local branches.
