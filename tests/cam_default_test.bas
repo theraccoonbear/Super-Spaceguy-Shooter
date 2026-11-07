@@ -10,6 +10,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 
 '$INCLUDE:'../src/sys/rng.bas'

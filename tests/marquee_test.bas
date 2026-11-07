@@ -12,6 +12,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/2d/marquee.bas'
 

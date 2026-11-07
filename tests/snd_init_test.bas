@@ -10,6 +10,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
@@ -115,7 +116,7 @@ sndTErrHandler:
     sndTRtErr = -1
     RESUME NEXT
 sndTAfterInit:
-ON ERROR GOTO 0
+ON ERROR GOTO SSS_FailFast
 
 ST_Assert sndTRtErr = 0, "SND_Init completed without runtime error"
 
@@ -137,7 +138,7 @@ GOTO sndTAfterBounds
 sndTBoundsErr:
     sndTFirst = 0 : sndTLast = 0 : sndTRtErr = -1 : RESUME NEXT
 sndTAfterBounds:
-ON ERROR GOTO 0
+ON ERROR GOTO SSS_FailFast
 ST_Assert sndTRtErr = 0, "sndWhoosh index 0 and SND_WHOOSH_LEN-1 are valid"
 
 ' ── UI one-shots (#268, #266): the dock's cursor tick, its "can't" buzz, the power-up chime and the callsign sounds
