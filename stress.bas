@@ -7,6 +7,7 @@
 '$INCLUDE:'src/engine3d.bi'
 
 Option _Explicit
+'$INCLUDE:'src/sys/failfast.bi'
 Const SCR_W    = 320
 Const SCR_H    = 240
 Const BALL_MAX = 300  ' 300 × ~16 visible faces pushes well past 4000

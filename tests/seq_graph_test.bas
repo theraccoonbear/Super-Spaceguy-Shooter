@@ -12,6 +12,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
 '  22.  PLAY boss attack=: bossAttackList$ per boss (cumulative attack pool)

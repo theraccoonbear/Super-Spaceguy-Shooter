@@ -8,6 +8,7 @@
 '        cues set one after another the way the game sets them (silence = no cue yet)
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/music.mus':'MUSICDATA'
 
 Const SND_UI_MOVE   = 1

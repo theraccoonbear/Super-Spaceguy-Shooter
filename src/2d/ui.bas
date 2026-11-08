@@ -25,6 +25,14 @@
 '   UI_PadBadge btn, x, y, a  /  w = UI_PadBadgeW%(btn)   one pad button (raw number) in a 16px row
 
 Const UI_SEE_ALPHA = 100   ' see-through panel fill opacity (0-255): low so the art shows
+' Shared layout (#180). The font's capitals fill rows 2-11 of its 16px cell, so a menu row's
+' selection box spans the text row's y-1 to y+15 (UI_MenuRow) and is centred on the capitals.
+Const UI_PAGE_X1 = 16        ' full-page panel (settings, controls, about, crawls): left and top
+Const UI_PAGE_Y1 = 8         '   margins; the right and bottom edges are scrW - 17 and scrH - 19
+Const UI_DLG_HALF_S = 80     ' half width of a small centred dialog (command console, launch, notices)
+Const UI_DLG_HALF_L = 104    ' half width of a wide centred dialog (pause, game over)
+Const UI_ROW_PAD = 1         ' pixels a menu row's box extends above the text row (and below its 16px cell)
+
 
 Dim Shared uiShadowSheet As Long   ' all-black font sheet for the text shadow, built on first use
 
@@ -74,6 +82,20 @@ Sub UI_MenuHighlight (umhX1 As Integer, umhY1 As Integer, umhX2 As Integer, umhY
     Line (umhX2, umhY1)-(umhX2 - 4, umhY1), umhCC : Line (umhX2, umhY1)-(umhX2, umhY1 + 4), umhCC
     Line (umhX1, umhY2)-(umhX1 + 4, umhY2), umhCC : Line (umhX1, umhY2)-(umhX1, umhY2 - 4), umhCC
     Line (umhX2, umhY2)-(umhX2 - 4, umhY2), umhCC : Line (umhX2, umhY2)-(umhX2, umhY2 - 4), umhCC
+End Sub
+
+' The selection box for a menu row whose text is printed at y, between x1 and x2.
+Sub UI_MenuRow (umrX1 As Integer, umrX2 As Integer, umrY As Integer)
+    UI_MenuHighlight umrX1, umrY - UI_ROW_PAD, umrX2, umrY + FONT_CHAR_H - 1 + UI_ROW_PAD - 1
+End Sub
+
+' A full-page panel (settings, controls, about, crawls) and a centred dialog: one border and heading style.
+Sub UI_DrawPage (udpTitle As String)
+    UI_DrawPanel UI_PAGE_X1, UI_PAGE_Y1, scrW - 17, scrH - 19, udpTitle
+End Sub
+
+Sub UI_DrawDialog (uddHalf As Integer, uddY1 As Integer, uddY2 As Integer, uddTitle As String)
+    UI_DrawPanel scrW \ 2 - uddHalf, uddY1, scrW \ 2 + uddHalf, uddY2, uddTitle
 End Sub
 
 

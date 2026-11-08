@@ -45,12 +45,12 @@ Sub GS_PLAYING_Update ()
             gspKW = gspKW + 2 * FONT_CHAR_W
             gspPx = (scrW - gspKW - 15 * FONT_CHAR_W) \ 2
             _DEST backBuffer
-            UI_DrawPanel scrW\2 - 104, scrH\2 - 40, scrW\2 + 104, scrH\2 + 80, "ABORT MISSION"
+            UI_DrawDialog UI_DLG_HALF_L, scrH\2 - 40, scrH\2 + 80, "ABORT MISSION"
             FOR gspKi = 0 TO 4
                 gspRy = scrH\2 - 14 + gspKi * 18
                 gspPal = gspPals(gspKi)
                 IF gspKi = pauseSel THEN
-                    UI_MenuHighlight scrW\2 - 101, gspRy - 2, scrW\2 + 101, gspRy + 14
+                    UI_MenuRow scrW\2 - 101, scrW\2 + 101, gspRy
                     gspPal = 15
                 END IF
                 UI_PromptsAt gspK(gspKi), gspDev, gspPx, gspRy, gspPal, 255, 0

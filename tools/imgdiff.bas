@@ -13,6 +13,7 @@
 ' Build: ./tools/buildqb tools/imgdiff.bas    (tests/render/run.sh builds it for you)
 
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Const IMD_MAX_MASK = 16
 

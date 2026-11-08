@@ -314,6 +314,7 @@ DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP
 DIM SHARED telemBatchRows    AS LONG    ' rows in telemBatch, flushed at TELEM_MAX_ROWS
 DIM SHARED telemT0           AS LONG    ' gameFrame at session start: ev_time and secs count frames from here, so scripted runs agree
 DIM SHARED telemFlags        AS STRING  ' dev flags in use, comma-separated (empty in a release build)
+DIM SHARED telemRule          AS STRING  'the rule that decided telemOn when a flag was involved (#418), else empty
 DIM SHARED telemExitReason   AS STRING  ' "death", "quit", "win" or "stranded" -- set before TELEM_SessionEnd
 DIM SHARED telemLegFuel      AS SINGLE  ' fuel burned this leg (stage_clear telemetry, #277)
 DIM SHARED telemLegFrames    AS LONG    ' frames flown this leg
