@@ -117,7 +117,7 @@ Sub OPTS_Draw ()
     Next oSy
 
     ' main content panel
-    UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "SETTINGS"
+    UI_DrawPage "SETTINGS"
 
     Dim oLabels(0 To 7) As String
     oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "DIFFICULTY" : oLabels(6) = "CALLSIGN" : oLabels(7) = "CONTROLS"
@@ -127,7 +127,7 @@ Sub OPTS_Draw ()
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
-            UI_MenuHighlight 30, oY - 3, scrW - 31, oY + 17
+            UI_MenuRow 30, scrW - 31, oY
             FONT_PrintAlpha fontPalette(14), backBuffer, oLabels(oI), 38, oY, 255
         Else
             FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oI), 38, oY, 255
