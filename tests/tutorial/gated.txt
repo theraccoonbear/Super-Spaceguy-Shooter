@@ -5,7 +5,7 @@
 # into a normal New Game: stage 1's crawl, skipped, then stage 1 itself.
 #
 #! seed 1
-#! args --gate-tutorial --scene title
+#! args --gate-tutorial --scene title --telem
 #! frames 1500
 #
 @GS_TITLE#1 +0 P

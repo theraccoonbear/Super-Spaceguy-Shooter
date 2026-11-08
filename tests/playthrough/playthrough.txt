@@ -1,6 +1,6 @@
 # Full-playthrough input script for tests/playthrough/run.sh (#100), played with
 #! seed 1
-#! args --god --nerf
+#! args --god --nerf --telem
 #! frames 13100
 # from a launch folder with no sss_settings.ini. The outro and credits return to the title at
 # about frame 12700; run.sh checks the milestones against

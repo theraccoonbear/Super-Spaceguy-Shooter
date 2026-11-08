@@ -122,6 +122,7 @@ $ELSE
     dbgTtyDone:
     ON ERROR GOTO SSS_FailFast
 $END IF
+IF debugMode AND telemRule <> "" THEN DBG_Print "TELEM: " + telemRule
 IF ioReadOnly THEN
     DBG_Print "IO: no writable settings folder (tried " + ioDirs(1) + " and " + _STARTDIR$ + "); settings won't be saved this session"
 ELSE
