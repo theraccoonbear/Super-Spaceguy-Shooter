@@ -19,12 +19,12 @@ Sub GS_GAMEOVER_Update ()
     Dim gsgY As Integer, gsgStep As Integer, gsgTitle As String
     IF runStranded THEN gsgTitle = "STRANDED" ELSE gsgTitle = "GAME OVER"
     IF crBonusCredits > 0 THEN
-        UI_DrawDialog UI_DLG_HALF_L, scrH \ 2 - 62, scrH \ 2 + 62, gsgTitle
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTRIM$(STR$(gsgBonus)), scrH \ 2 - 38, scrW, 255
-        gsgY = scrH \ 2 - 20 : gsgStep = 18
+        gsgY = UI_DrawDialog%(UI_DLG_HALF_L, 5, 18, 0, gsgTitle)
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTRIM$(STR$(gsgBonus)), gsgY, scrW, 255
+        gsgY = gsgY + 18 : gsgStep = 18
     ELSE
-        UI_DrawDialog UI_DLG_HALF_L, scrH \ 2 - 54, scrH \ 2 + 54, gsgTitle
-        gsgY = scrH \ 2 - 28 : gsgStep = 20
+        gsgY = UI_DrawDialog%(UI_DLG_HALF_L, 4, 20, 0, gsgTitle)
+        gsgStep = 20
     END IF
     FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score - crBonusPts + gsgBonus)), gsgY, scrW, 255
     IF score >= highScore THEN

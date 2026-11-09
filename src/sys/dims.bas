@@ -232,6 +232,10 @@ DIM SHARED optLfRpt    AS INTEGER
 DIM SHARED optRtRpt    AS INTEGER
 DIM SHARED optEscWas   AS INTEGER
 DIM SHARED optAboutWas AS INTEGER
+DIM SHARED optReturn   AS INTEGER   ' 0 = Settings opened from the title; else the in-run state (GS_PLAYING, GS_PLANET, GS_CINEMATIC) whose pause dialog opened it
+DIM SHARED optSavedImg AS LONG      ' the frame under the pause dialog, put back when Settings closes
+DIM SHARED musHold     AS INTEGER   ' -1 while Settings is open mid-run: MUS_Fill makes only UI blips, music and narration stand still
+DIM SHARED musHoldVol  AS SINGLE    ' gain of the UI blips under musHold: the volume of the Settings row being adjusted
 
 DIM SHARED thrusterScale AS SINGLE
 
@@ -348,6 +352,7 @@ DIM SHARED titleEscConfirm AS INTEGER
 DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 6 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
 DIM SHARED escKWas         AS INTEGER  ' ABORT MISSION dialog: K (remap controls) debounce
+DIM SHARED escSWas         AS INTEGER  ' ABORT MISSION dialog: S (settings) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER
 DIM SHARED escNWas         AS INTEGER

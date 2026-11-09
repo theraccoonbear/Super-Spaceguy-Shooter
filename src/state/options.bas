@@ -13,13 +13,14 @@ Sub OPTS_Update ()
     ' navigate: edge-detect on up/down
     Dim oSel0 As Integer, oNav As Integer
     oSel0 = optSel
-    oNav = MENU_Nav%(optSel, 8, oUp And optUpWas = 0, oDn And optDnWas = 0, 0)
+    oNav = MENU_Nav%(optSel, OPTS_RowCount%, oUp And optUpWas = 0, oDn And optDnWas = 0, 0)
     If optSel <> oSel0 Then optLfRpt = 0 : optRtRpt = 0
+    Dim oRow As Integer : oRow = OPTS_RowId%(optSel)
 
     ' adjust: immediate press + hold repeat every 6 frames
     If oLf Then
         If Not optLfWas Or optLfRpt > 6 Then
-            Select Case optSel
+            Select Case oRow
                 Case 0 : volMusic         = volMusic  - 0.1 : If volMusic  < 0 Then volMusic  = 0
                 Case 1 : volSfx           = volSfx    - 0.1 : If volSfx    < 0 Then volSfx    = 0
                 Case 2 : volSpeech        = volSpeech - 0.1 : If volSpeech < 0 Then volSpeech = 0
@@ -31,10 +32,10 @@ Sub OPTS_Update ()
                 Case 5 : If Not optLfWas Then settingDifficulty = DLV_Step$(settingDifficulty, -1) : uiSfx = SND_UI_MOVE
                 Case 6 : ' callsign -- no left/right action
             End Select
-            If optSel = 1 Then SND_Pup
-            If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
-            If optSel = 2 And Not optLfWas Then SPK_Say GTEXT_Get$("speech_poop")
-            If optSel = 3 And Not optLfWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
+            If oRow = 1 Then SND_Pup
+            If oRow <> 1 And oRow <= 4 Then uiSfx = SND_UI_MOVE
+            If oRow = 2 And Not optLfWas And optReturn = 0 Then SPK_Say GTEXT_Get$("speech_poop")
+            If oRow = 3 And Not optLfWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optLfRpt > 6 Then optLfRpt = 1 Else optLfRpt = 0
         End If
         optLfRpt = optLfRpt + 1
@@ -44,7 +45,7 @@ Sub OPTS_Update ()
 
     If oRt Then
         If Not optRtWas Or optRtRpt > 6 Then
-            Select Case optSel
+            Select Case oRow
                 Case 0 : volMusic         = volMusic  + 0.1 : If volMusic  > 1 Then volMusic  = 1
                 Case 1 : volSfx           = volSfx    + 0.1 : If volSfx    > 1 Then volSfx    = 1
                 Case 2 : volSpeech        = volSpeech + 0.1 : If volSpeech > 1 Then volSpeech = 1
@@ -58,10 +59,10 @@ Sub OPTS_Update ()
                 Case 5 : If Not optRtWas Then settingDifficulty = DLV_Step$(settingDifficulty, 1) : uiSfx = SND_UI_MOVE
                 Case 6 : ' callsign -- no left/right action
             End Select
-            If optSel = 1 Then SND_Pup
-            If optSel <> 1 And optSel <= 4 Then uiSfx = SND_UI_MOVE
-            If optSel = 2 And Not optRtWas Then SPK_Say GTEXT_Get$("speech_poop")
-            If optSel = 3 And Not optRtWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
+            If oRow = 1 Then SND_Pup
+            If oRow <> 1 And oRow <= 4 Then uiSfx = SND_UI_MOVE
+            If oRow = 2 And Not optRtWas And optReturn = 0 Then SPK_Say GTEXT_Get$("speech_poop")
+            If oRow = 3 And Not optRtWas And settingNarration Then SPK_Say sSpkTitle : SPK_SetPreset settingNarrSpeed
             If optRtRpt > 6 Then optRtRpt = 1 Else optRtRpt = 0
         End If
         optRtRpt = optRtRpt + 1
@@ -69,14 +70,27 @@ Sub OPTS_Update ()
         optRtRpt = 0
     End If
 
+    If oRow <= OPT_ROW_SPEECH Then
+        If oRow = OPT_ROW_MUSIC Then musHoldVol = volMusic
+        If oRow = OPT_ROW_SFX Then musHoldVol = volSfx
+        If oRow = OPT_ROW_SPEECH Then musHoldVol = volSpeech
+    Else
+        musHoldVol = volSfx
+    End If
+
     If oEsc And Not optEscWas Then
         SETTINGS_Save
-        TITLE_ReturnTo GS_TITLE : uiSfx = SND_UI_BACK
+        If optReturn <> 0 Then
+            If optSavedImg < -1 Then _PutImage (0, 0), optSavedImg, backBuffer : _FreeImage optSavedImg : optSavedImg = 0
+            OPTS_Leave : uiSfx = SND_UI_BACK
+            Exit Sub
+        End If
+        OPTS_Leave : uiSfx = SND_UI_BACK
     End If
 
     ' a press, not a hold: the A that picked SETTINGS on the console is still down here
     Dim oEnter As Integer : oEnter = (KEY_Confirm% Or KEY_Pressed%(E3D_KEY_SPACE)) And KEY_Pressed%(E3D_KEY_PAD_B) = 0
-    If oEnter And optSel = 6 Then
+    If oEnter And oRow = OPT_ROW_CALLSIGN Then
         SETTINGS_Save
         unSavedName    = telemPlayerName
         unFromSettings = -1
@@ -84,13 +98,13 @@ Sub OPTS_Update ()
         GS_USERNAME_Init : uiSfx = SND_UI_OK
         gameState      = GS_USERNAME
     End If
-    If oEnter And optSel = 7 Then
+    If oEnter And oRow = OPT_ROW_CONTROLS Then
         SETTINGS_Save
         RMP_Open GS_OPTIONS : uiSfx = SND_UI_OK
     End If
 
     Dim oAbout As Integer : oAbout = KEY_Down%(65) Or KEY_Down%(97)
-    If oAbout And Not optAboutWas Then
+    If oAbout And Not optAboutWas And optReturn = 0 Then
         ABOUT_Prep GS_OPTIONS : gameState = GS_ABOUT : uiSfx = SND_UI_OK
     End If
     optAboutWas = oAbout
@@ -101,7 +115,7 @@ Sub OPTS_Update ()
 End Sub
 
 Sub OPTS_Draw ()
-    Dim oI As Integer, oY As Integer, oFill As Integer
+    Dim oI As Integer, oY As Integer, oFill As Integer, oId As Integer, oY0 As Integer, oHintY As Integer
     Dim oVols(0 To 4) As Single
     Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
 
@@ -117,28 +131,36 @@ Sub OPTS_Draw ()
     Next oSy
 
     ' main content panel
-    UI_DrawPage "SETTINGS"
+    If optReturn <> 0 Then
+        oY0 = UI_DrawDialog%(UI_DLG_HALF_W, OPTS_RowCount%, 21, 24, "SETTINGS")
+        oHintY = oY0 + (OPTS_RowCount% - 1) * 21 + FONT_CHAR_H + 8
+    Else
+        UI_DrawPage "SETTINGS"
+        oY0 = 34
+        oHintY = scrH - 14
+    End If
 
     Dim oLabels(0 To 7) As String
     oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "DIFFICULTY" : oLabels(6) = "CALLSIGN" : oLabels(7) = "CONTROLS"
 
-    For oI = 0 To 7
-        oY = 34 + oI * 21
+    For oI = 0 To OPTS_RowCount% - 1
+        oId = OPTS_RowId%(oI)
+        oY = oY0 + oI * 21
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
             UI_MenuRow 30, scrW - 31, oY
-            FONT_PrintAlpha fontPalette(14), backBuffer, oLabels(oI), 38, oY, 255
+            FONT_PrintAlpha fontPalette(14), backBuffer, oLabels(oId), 38, oY, 255
         Else
-            FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oI), 38, oY, 255
+            FONT_PrintAlpha fontPalette(9), backBuffer, oLabels(oId), 38, oY, 255
         End If
 
-        If oI < 5 Then
+        If oId < 5 Then
             ' bar trough — centered in 16px label glyph (oY+4 to oY+12)
             LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(4, 8, 28), BF
             LINE (OPT_BAR_X, oY + 4)-(OPT_BAR_X + OPT_BAR_W, oY + 12), _RGB(0, 55, 110), B
             ' bar fill
-            oFill = Int(OPT_BAR_W * oVols(oI) + 0.5)
+            oFill = Int(OPT_BAR_W * oVols(oId) + 0.5)
             If oFill > 0 Then
                 LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 11), _RGB(0, 130, 210), BF
                 LINE (OPT_BAR_X + 1, oY + 5)-(OPT_BAR_X + oFill, oY + 7),  _RGBA(100, 200, 255, 80), BF
@@ -151,7 +173,7 @@ Sub OPTS_Draw ()
 
             ' percentage / state label
             Dim oPct As String
-            If oI = 3 Then
+            If oId = 3 Then
                 If settingNarration = 0 Then
                     oPct = "OFF"
                 Else
@@ -161,19 +183,19 @@ Sub OPTS_Draw ()
                         Case Else : oPct = "NORMAL"
                     End Select
                 End If
-            ElseIf oI = 4 Then
+            ElseIf oId = 4 Then
                 If settingFullscreen Then oPct = "ON" Else oPct = "OFF"
             Else
-                oPct = LTrim$(Str$(Int(oVols(oI) * 100 + 0.5))) + "%"
+                oPct = LTrim$(Str$(Int(oVols(oId) * 100 + 0.5))) + "%"
             End If
             FONT_PrintAlpha fontPalette(9), backBuffer, oPct, OPT_BAR_X + OPT_BAR_W + 8, oY, 255
-        ElseIf oI = 5 Then
+        ElseIf oId = 5 Then
             If oI = optSel Then
                 FONT_PrintAlpha fontPalette(15), backBuffer, "< " + DLV_Name$(DLV_Valid$(settingDifficulty)) + " >", OPT_BAR_X, oY, 255
             Else
                 FONT_PrintAlpha fontPalette(9),  backBuffer, DLV_Name$(DLV_Valid$(settingDifficulty)), OPT_BAR_X, oY, 200
             End If
-        ElseIf oI = 7 Then
+        ElseIf oId = 7 Then
             If oI = optSel Then
                 UI_Prompts "REMAP " + UI_Tok$("[ENTER]", E3D_ACT_CONFIRM), OPT_BAR_X, oY, 15, 255
             Else
@@ -196,13 +218,17 @@ Sub OPTS_Draw ()
         End If
     Next oI
 
-    If highScore > 0 Then
+    If highScore > 0 And optReturn = 0 Then
         FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "HI SCORE:  " + LTRIM$(STR$(highScore)), 202, scrW, 255
     End If
     If INP_LastDevice% = INP_DEV_PAD Then
-        UI_PromptsCentered "< > adjust  up/dn select  " + UI_Tok$("", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
+        UI_PromptsCentered "< > adjust  up/dn select  " + UI_Tok$("", E3D_ACT_BACK) + " back", oHintY, 8, 255
     Else
-        FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
+        If optReturn <> 0 Then
+            FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  ESC back", oHintY, scrW, 255
+        Else
+            FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", oHintY, scrW, 255
+        End If
     End If
 
     _DEST 0

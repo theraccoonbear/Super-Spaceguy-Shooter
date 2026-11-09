@@ -9,6 +9,7 @@
 
 Option _Explicit
 $Console:Only
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/sys/cliflags.bas'
 

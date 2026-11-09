@@ -153,27 +153,31 @@ MT_Assert mtR = PAUSE_NONE And escConfirm = 0, "pad A on a fresh pause (opened w
 mtR = MT_Pause%("2 2 ESC UP", 2)
 MT_Assert pauseSel = PAUSE_ROW_CANCEL, "the press that opens it doesn't also move the cursor"
 mtR = MT_Pause%("2 2 ESC/4 4 UP", 4)
-MT_Assert pauseSel = PAUSE_ROW_REMAP, "UP: CANCEL -> REMAP CONTROLS"
-mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP", 8)
-MT_Assert pauseSel = PAUSE_ROW_RETREAT, "UP x3 reaches CONFIRM RETREAT"
-mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 ENTER", 12)
+MT_Assert pauseSel = PAUSE_ROW_SETTINGS, "UP: CANCEL -> SETTINGS"
+mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP", 6)
+MT_Assert pauseSel = PAUSE_ROW_REMAP, "UP x2 reaches REMAP CONTROLS"
+mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 UP", 10)
+MT_Assert pauseSel = PAUSE_ROW_RETREAT, "UP x4 reaches CONFIRM RETREAT"
+mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 UP/12 12 ENTER", 14)
 MT_Assert mtR = PAUSE_QUIT And escConfirm = 0, "ENTER on CONFIRM RETREAT retreats"
 mtR = MT_Pause%("2 2 ESC/4 4 DOWN", 4)
 MT_Assert pauseSel = PAUSE_ROW_RETREAT, "DOWN from CANCEL wraps to CONFIRM RETREAT"
 mtR = MT_Pause%("2 2 ESC/4 4 DOWN/6 6 DOWN/8 8 ENTER", 10)
 MT_Assert mtR = PAUSE_CONTROLS And escConfirm <> 0, "DOWN x2, ENTER: CONTROLS, dialog stays up"
 mtR = MT_Pause%("2 2 ESC/4 4 PAD_DPAD_UP/6 6 PAD_A", 8)
-MT_Assert mtR = PAUSE_REMAP And escConfirm <> 0, "d-pad up, pad A: REMAP CONTROLS"
-mtR = MT_Pause%("2 2 ESC/4 4 PAD_UP/6 6 PAD_UP/8 8 PAD_A", 10)
-MT_Assert mtR = PAUSE_CONTROLS, "stick up x2, pad A: CONTROLS"
+MT_Assert mtR = PAUSE_SETTINGS And escConfirm <> 0, "d-pad up, pad A: SETTINGS"
+mtR = MT_Pause%("2 2 ESC/4 4 PAD_DPAD_UP/6 6 PAD_DPAD_UP/8 8 PAD_A", 10)
+MT_Assert mtR = PAUSE_REMAP, "d-pad up x2, pad A: REMAP CONTROLS"
+mtR = MT_Pause%("2 2 ESC/4 4 PAD_UP/6 6 PAD_UP/8 8 PAD_UP/10 10 PAD_A", 12)
+MT_Assert mtR = PAUSE_CONTROLS, "stick up x3, pad A: CONTROLS"
 mtR = MT_Pause%("2 2 ESC/4 4 PAD_DPAD_DOWN/6 6 PAD_A", 8)
 MT_Assert mtR = PAUSE_QUIT, "d-pad down wraps to CONFIRM RETREAT, pad A retreats"
 mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 DOWN/10 10 DOWN/12 12 PAD_A", 14)
 MT_Assert mtR = PAUSE_NONE And escConfirm = 0, "up x2, down x2 is back on CANCEL: resumes"
 mtR = MT_Pause%("2 30 UP/2 2 ESC", 30)
 MT_Assert pauseSel = PAUSE_ROW_CANCEL, "an arrow already held when it opens doesn't move the cursor"
-mtR = MT_Pause%("2 2 ESC/4 4 W/6 6 S/8 8 W", 8)
-MT_Assert pauseSel = PAUSE_ROW_CANCEL, "W / S don't move the cursor"
+mtR = MT_Pause%("2 2 ESC/4 4 W/6 6 W/8 8 W", 8)
+MT_Assert pauseSel = PAUSE_ROW_CANCEL, "W does not move the cursor"
 mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 ESC/8 8 ESC", 8)
 MT_Assert escConfirm <> 0 And pauseSel = PAUSE_ROW_CANCEL, "closed and reopened: back on CANCEL"
 
@@ -181,7 +185,7 @@ Print ""
 Print "--- pause dialog hotkeys ---"
 mtR = MT_Pause%("2 2 ESC/4 4 Y", 6)
 MT_Assert mtR = PAUSE_QUIT And escConfirm = 0, "Y retreats (cursor on CANCEL)"
-mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 N", 12)
+mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 UP/12 12 N", 14)
 MT_Assert mtR = PAUSE_NONE And escConfirm = 0, "N resumes (cursor on CONFIRM RETREAT)"
 mtR = MT_Pause%("2 2 ESC/4 4 PAD_B", 6)
 MT_Assert mtR = PAUSE_NONE And escConfirm = 0, "pad B resumes"
@@ -191,6 +195,8 @@ mtR = MT_Pause%("2 2 ESC/4 4 PAD_X", 6)
 MT_Assert mtR = PAUSE_CONTROLS, "pad X opens Controls"
 mtR = MT_Pause%("2 2 ESC/4 4 K", 6)
 MT_Assert mtR = PAUSE_REMAP And escConfirm <> 0, "K opens Remap"
+mtR = MT_Pause%("2 2 ESC/4 4 S", 6)
+MT_Assert mtR = PAUSE_SETTINGS And escConfirm <> 0, "S opens Settings, dialog stays up"
 mtR = MT_Pause%("2 2 ESC/4 4 PAD_Y", 6)
 MT_Assert mtR = PAUSE_REMAP, "pad Y opens Remap"
 mtR = MT_Pause%("2 2 ESC/4 4 ESC", 6)
@@ -249,8 +255,8 @@ mtR = MENU_Nav%(mtSel, 4, 0, 0, 0)
 MT_Assert uiSfx = 0, "MENU_Nav% with no input: silent"
 mtR = MT_Pause%("2 2 ESC", 4)
 MT_Assert mtSfx = "", "pause: opening it is silent"
-mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 ENTER", 12)
-MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_OK), "pause: a tick per move, confirm on retreat"
+mtR = MT_Pause%("2 2 ESC/4 4 UP/6 6 UP/8 8 UP/10 10 UP/12 12 ENTER", 14)
+MT_Assert mtSfx = MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_MOVE) + MT_I$(SND_UI_OK), "pause: a tick per move, confirm on retreat"
 mtR = MT_Pause%("2 2 ESC/4 4 ENTER", 6)
 MT_Assert mtSfx = MT_I$(SND_UI_BACK), "pause: ENTER on CANCEL is back"
 mtR = MT_Pause%("2 2 ESC/4 4 ESC", 6)

@@ -1,0 +1,11 @@
+# Settings opened from the ABORT MISSION (pause) dialog over level 1: the dialog with the cursor moved up
+# to SETTINGS, then Settings itself (the in-run rows only) with SFX selected and raised one step.
+#! group: gameplay
+#! seed: 1
+#! args: --god --no-telem --scene playing1
+#! shots: 215,270
+200 200 ESC
+205 205 UP
+220 220 ENTER
+240 240 DOWN
+250 250 RIGHT
