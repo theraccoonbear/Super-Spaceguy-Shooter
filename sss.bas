@@ -9,6 +9,7 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 OPTION _EXPLICIT
+'$INCLUDE:'src/sys/failfast.bi'
 $Resize:stretch
 $IF WIN THEN
     $CONSOLE
@@ -119,8 +120,9 @@ $ELSE
     dbgTtyFail:
     RESUME dbgTtyDone
     dbgTtyDone:
-    ON ERROR GOTO 0
+    ON ERROR GOTO SSS_FailFast
 $END IF
+IF debugMode AND telemRule <> "" THEN DBG_Print "TELEM: " + telemRule
 IF ioReadOnly THEN
     DBG_Print "IO: no writable settings folder (tried " + ioDirs(1) + " and " + _STARTDIR$ + "); settings won't be saved this session"
 ELSE
@@ -334,7 +336,7 @@ DO
     IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
     spkAudioLock = (iscActive = 0)  ' scripted runs keep the frame clock so they stay deterministic (#329)
     IF spkAudioLock THEN spkBuffered = CLNG(_SNDRAWLEN * SAMPLE_RATE)
-    SPK_Tick
+    IF musHold = 0 THEN SPK_Tick
 
     DBG_Overlay
 

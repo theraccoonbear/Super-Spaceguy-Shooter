@@ -18,7 +18,7 @@
 ' (SUP_Stranded%) opens the stranded dialog instead (dockAsk, DOCK_ASK): its one answer is
 ' YES, so only ENTER / pad A does anything there, and it ends the run (DOCK_STRANDED).
 ' Results: DOCK_NONE, DOCK_MOVED, DOCK_BOUGHT, DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL, DOCK_LEAVE,
-'          DOCK_ASK, DOCK_STRANDED, and from DOCK_Frame% DOCK_PAUSED, DOCK_QUIT, DOCK_CONTROLS, DOCK_REMAP
+'          DOCK_ASK, DOCK_STRANDED, and from DOCK_Frame% DOCK_PAUSED, DOCK_QUIT, DOCK_CONTROLS, DOCK_REMAP, DOCK_SETTINGS
 ' Local variable prefix: dk*
 
 Const DOCK_REFUEL  = 1
@@ -39,6 +39,7 @@ Const DOCK_PAUSED  = 9    ' the in-run menu is up: the dock is frozen
 Const DOCK_QUIT    = 10   ' the menu's CONFIRM RETREAT
 Const DOCK_CONTROLS = 11  ' the menu's CONTROLS
 Const DOCK_REMAP   = 12   ' the menu's REMAP CONTROLS
+Const DOCK_SETTINGS = 13  ' the menu's SETTINGS
 Const DOCK_TANKWARN_FRAMES = 90   ' a jump longer than the tank: NEXT JUMP NEEDS and UPGRADE TANK take turns this long
 
 Dim Shared dockSel As Integer, dockTop As Integer, dockLWas As Integer
@@ -234,7 +235,7 @@ End Function
 
 ' One dock frame: the in-run menu (the pause dialog, pauselogic.bas) first. While it is up, and on
 ' the frame it closes, the dock gets no input, so the press that cancels it can't also buy.
-' Returns DOCK_PAUSED while it is up, DOCK_QUIT / DOCK_CONTROLS / DOCK_REMAP for its picks,
+' Returns DOCK_PAUSED while it is up, DOCK_QUIT / DOCK_CONTROLS / DOCK_REMAP / DOCK_SETTINGS for its picks,
 ' else what DOCK_Input% says.
 Function DOCK_Frame%
     Dim dfWasOpen As Integer
@@ -243,6 +244,7 @@ Function DOCK_Frame%
         Case PAUSE_QUIT : DOCK_Frame% = DOCK_QUIT : Exit Function
         Case PAUSE_CONTROLS : DOCK_Frame% = DOCK_CONTROLS : Exit Function
         Case PAUSE_REMAP : DOCK_Frame% = DOCK_REMAP : Exit Function
+        Case PAUSE_SETTINGS : DOCK_Frame% = DOCK_SETTINGS : Exit Function
     End Select
     If pauseShown Then DOCK_Frame% = DOCK_PAUSED : Exit Function
     If dfWasOpen Then DOCK_Frame% = DOCK_NONE : Exit Function

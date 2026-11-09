@@ -93,6 +93,10 @@ Sub DOCK_Update
         Case DOCK_CONTROLS
             CONTROLS_Prep gameState : gameState = GS_CONTROLS
             Exit Sub
+        Case DOCK_SETTINGS
+            optSavedImg = _COPYIMAGE(backBuffer)
+            OPTS_OpenFromPause gameState
+            Exit Sub
         Case DOCK_REMAP
             RMP_Open gameState
             Exit Sub
@@ -154,7 +158,7 @@ Sub DOCK_DrawStrandAsk
     UI_TextCentered 8, "NEED " + LTrim$(Str$(-Int(-dsaNeed))) + " FU, CAN GET " + LTrim$(Str$(dsaCan)), DSA_Y1 + 26, 255
     UI_TextCentered 15, "ABANDON RUN AND", DSA_Y1 + 48, 255
     UI_TextCentered 15, "EKE OUT A LIVING HERE?", DSA_Y1 + 64, 255
-    UI_MenuHighlight scrW \ 2 - 36, DSA_Y1 + 85, scrW \ 2 + 35, DSA_Y1 + 101
+    UI_MenuRow scrW \ 2 - 36, scrW \ 2 + 35, DSA_Y1 + 86
     UI_TextCentered 15, "[ YES ]", DSA_Y1 + 86, 255
 End Sub
 
@@ -190,7 +194,7 @@ Sub DOCK_Draw
         If dkdI > DOCK_LAUNCH Then Exit For
         dkdY = DOCK_ROW_Y + dkdRow * DOCK_ROW_H
         If dkdI = dockSel Then
-            UI_MenuHighlight DOCK_PX1 + 4, dkdY - 1, DOCK_PX2 - 4, dkdY + 15
+            UI_MenuRow DOCK_PX1 + 4, DOCK_PX2 - 4, dkdY
         End If
         If dkdI = DOCK_LAUNCH Then
             If dkdI = dockSel Then dkdPal = 15 Else dkdPal = 10

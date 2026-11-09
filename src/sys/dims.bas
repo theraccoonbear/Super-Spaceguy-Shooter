@@ -232,6 +232,10 @@ DIM SHARED optLfRpt    AS INTEGER
 DIM SHARED optRtRpt    AS INTEGER
 DIM SHARED optEscWas   AS INTEGER
 DIM SHARED optAboutWas AS INTEGER
+DIM SHARED optReturn   AS INTEGER   ' 0 = Settings opened from the title; else the in-run state (GS_PLAYING, GS_PLANET, GS_CINEMATIC, the dock, a crawl) whose pause dialog opened it
+DIM SHARED optSavedImg AS LONG      ' the frame under the pause dialog, put back when Settings closes
+DIM SHARED musHold     AS INTEGER   ' -1 while Settings is open mid-run: MUS_Fill makes only UI blips, music and narration stand still
+DIM SHARED musHoldVol  AS SINGLE    ' gain of the UI blips under musHold: the volume of the Settings row being adjusted
 
 DIM SHARED thrusterScale AS SINGLE
 
@@ -310,6 +314,7 @@ DIM SHARED telemBatch        AS STRING  ' accumulates JSON objects for bulk HTTP
 DIM SHARED telemBatchRows    AS LONG    ' rows in telemBatch, flushed at TELEM_MAX_ROWS
 DIM SHARED telemT0           AS LONG    ' gameFrame at session start: ev_time and secs count frames from here, so scripted runs agree
 DIM SHARED telemFlags        AS STRING  ' dev flags in use, comma-separated (empty in a release build)
+DIM SHARED telemRule          AS STRING  'the rule that decided telemOn when a flag was involved (#418), else empty
 DIM SHARED telemExitReason   AS STRING  ' "death", "quit", "win" or "stranded" -- set before TELEM_SessionEnd
 DIM SHARED telemLegFuel      AS SINGLE  ' fuel burned this leg (stage_clear telemetry, #277)
 DIM SHARED telemLegFrames    AS LONG    ' frames flown this leg
@@ -347,6 +352,7 @@ DIM SHARED titleEscConfirm AS INTEGER
 DIM SHARED titleConSel     AS INTEGER  ' COMMAND CONSOLE row the cursor is on (0 ABOUT .. 6 CANCEL)
 DIM SHARED escCWas         AS INTEGER  ' ABORT MISSION dialog: C (controls) debounce
 DIM SHARED escKWas         AS INTEGER  ' ABORT MISSION dialog: K (remap controls) debounce
+DIM SHARED escSWas         AS INTEGER  ' ABORT MISSION dialog: S (settings) debounce
 DIM SHARED escConfirm      AS INTEGER
 DIM SHARED escYWas         AS INTEGER
 DIM SHARED escNWas         AS INTEGER

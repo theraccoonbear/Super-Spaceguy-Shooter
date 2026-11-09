@@ -40,7 +40,7 @@ FOR ioI = 1 TO 2
     END IF
     ioOk(ioI) = (ioFail = 0)
 NEXT ioI
-ON ERROR GOTO 0
+ON ERROR GOTO SSS_FailFast
 IF ioOk(1) THEN
     settingsDir = ioDirs(1)
 ELSEIF ioOk(2) THEN

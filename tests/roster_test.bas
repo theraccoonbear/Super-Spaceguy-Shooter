@@ -14,6 +14,7 @@
 
 $CONSOLE:ONLY
 Option _Explicit
+'$INCLUDE:'../src/sys/failfast.bi'
 
 $EMBED:'assets/sequence.txt':'SEQTXT'
 $EMBED:'assets/config/enemies.ini':'CFGENEMIES'

@@ -11,6 +11,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
@@ -210,12 +211,14 @@ IM_Assert credits = 500, "nothing was bought"
 IM_Dock "5 5 PAD_START/10 10 PAD_B/14 14 ENTER", 16
 IM_Assert imDockRes(5) = DOCK_PAUSED And escConfirm = 0, "pad Start opens it, pad B cancels"
 IM_Assert imDockRes(14) <> DOCK_LEAVE And dockSel = 1, "cancelling leaves the cursor where it was"
-IM_Dock "5 5 ESC/10 10 UP/12 12 UP/14 14 UP/16 16 ENTER", 18
-IM_Assert imDockRes(16) = DOCK_QUIT, "CONFIRM RETREAT quits the run"
+IM_Dock "5 5 ESC/10 10 UP/12 12 UP/14 14 UP/16 16 UP/18 18 ENTER", 20
+IM_Assert imDockRes(18) = DOCK_QUIT, "CONFIRM RETREAT quits the run"
 IM_Dock "5 5 ESC/10 10 C", 12
 IM_Assert imDockRes(10) = DOCK_CONTROLS, "C opens Controls from the menu"
 IM_Dock "5 5 ESC/10 10 K", 12
 IM_Assert imDockRes(10) = DOCK_REMAP, "K opens Remap from the menu"
+IM_Dock "5 5 ESC/10 10 S", 12
+IM_Assert imDockRes(10) = DOCK_SETTINGS, "S opens Settings from the menu"
 IM_Dock "5 5 L", 6
 IM_Assert imDockRes(5) = DOCK_LEAVE, "L launches"
 IM_Dock "5 5 PAD_Y", 6

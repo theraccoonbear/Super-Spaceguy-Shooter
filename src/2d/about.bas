@@ -146,7 +146,7 @@ Sub ABOUT_Update()
         Line (0, abSy)-(scrW - 1, abSy), _RGBA(0, 0, 18, 28)
     Next abSy
 
-    UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "ABOUT"
+    UI_DrawPage "ABOUT"
 
     ' draw scrolling lines clipped to panel content area (y 22 .. scrH-20)
     For abI = 0 To aboutLineCount - 1

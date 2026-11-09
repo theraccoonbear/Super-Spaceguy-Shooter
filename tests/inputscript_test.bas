@@ -18,6 +18,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 ' input.bas logs devices through debug.bas, which this test does not include
 Sub DBG_Print (isDbgMsg As String) : End Sub

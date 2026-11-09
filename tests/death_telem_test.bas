@@ -7,13 +7,14 @@
 ' the run's difficulty level (#102).
 '
 ' Session ends are counted through the real code's DBG_Print/HTTP_Post calls,
-' so telemOn stays 0 and no sss_telemetry.csv is written.
+' so ioReadOnly stays set and no sss_telemetry.csv is written. A session with telemOn = 0 posts no score (#418).
 '
 ' Build: ./tools/buildqb tests/death_telem_test.bas
 ' Run:   builds/death_telem_test   (exit 0 = all pass)
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
@@ -72,6 +73,7 @@ End Sub
 Sub DT_NewGame (dtShips As Integer)
     gameState = GS_PLAYING : lives = 100 : shipLives = dtShips
     deathTimer = 0 : gameOver = 0 : score = 500
+    telemOn = -1 : ioReadOnly = -1
     dtEnds = 0 : dtScorePosts = 0 : dtPostBody = ""
     CR_ResetRun : credits = 0
     TELEM_SessionStart
@@ -112,6 +114,15 @@ TC_Assert dt3First = 1,      "3.01  first call ends the session"
 TC_Assert dtEnds = 1,        "3.02  second call is a no-op"
 TC_Assert dtScorePosts = 1,  "3.03  score posted once"
 TC_Assert telemSession = "", "3.04  session cleared"
+Print ""
+
+Print "--- 3b. telemetry off (a dev flag, --no-telem or a declined prompt): no score post (#418) ---"
+DT_NewGame 1
+telemOn = 0
+telemExitReason = "death"
+TELEM_SessionEnd
+TC_Assert dtScorePosts = 0, "3b.01  no score post while telemOn = 0"
+telemOn = -1
 Print ""
 
 Print "--- 4. a new session can end again ---"

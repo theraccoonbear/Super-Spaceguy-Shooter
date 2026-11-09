@@ -10,6 +10,7 @@
 
 Option _Explicit
 $Console
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/3d/input.bas'
 

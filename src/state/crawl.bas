@@ -33,6 +33,10 @@ Sub GS_CRAWL_Update ()
             CASE PAUSE_CONTROLS
                 CONTROLS_Prep gameState : gameState = GS_CONTROLS
                 EXIT SUB
+            CASE PAUSE_SETTINGS
+                optSavedImg = _COPYIMAGE(backBuffer)
+                OPTS_OpenFromPause gameState
+                EXIT SUB
             CASE PAUSE_REMAP
                 RMP_Open gameState
                 EXIT SUB

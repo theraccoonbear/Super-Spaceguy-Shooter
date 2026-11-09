@@ -65,7 +65,7 @@ Sub CONTROLS_Update ()
         Line (0, ctlSy)-(scrW - 1, ctlSy), _RGBA(0, 0, 18, 28)
     Next ctlSy
 
-    UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "CONTROLS"
+    UI_DrawPage "CONTROLS"
 
     If ctlPage = 0 Then
         FONT_PrintCenteredAlpha fontPalette(11), backBuffer, "KEYBOARD  1/4", 30, scrW, 255

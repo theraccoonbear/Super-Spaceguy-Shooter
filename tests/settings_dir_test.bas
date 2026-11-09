@@ -16,6 +16,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/sys/rng.bas'
 '$INCLUDE:'../src/engine3d.bi'
