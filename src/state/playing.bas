@@ -28,7 +28,7 @@ Sub GS_PLAYING_Update ()
         END SELECT
         IF pauseShown THEN
             ' prompt column, sized to the widest prompt for the device last used
-            Dim gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer, gspDev As Integer, gspPal As Integer
+            Dim gspY0 As Integer, gspPx As Integer, gspKW As Integer, gspKi As Integer, gspRy As Integer, gspDev As Integer, gspPal As Integer
             Dim gspK(0 TO 4) As String, gspL(0 TO 4) As String, gspPals(0 TO 4) As Integer
             gspK(0) = UI_Tok$("Y", 0)
             gspK(1) = UI_Tok$("C", E3D_ACT_ROLL)
@@ -45,9 +45,9 @@ Sub GS_PLAYING_Update ()
             gspKW = gspKW + 2 * FONT_CHAR_W
             gspPx = (scrW - gspKW - 15 * FONT_CHAR_W) \ 2
             _DEST backBuffer
-            UI_DrawDialog UI_DLG_HALF_L, scrH\2 - 40, scrH\2 + 80, "ABORT MISSION"
+            gspY0 = UI_DrawDialog%(UI_DLG_HALF_L, 5, 18, 0, "ABORT MISSION")
             FOR gspKi = 0 TO 4
-                gspRy = scrH\2 - 14 + gspKi * 18
+                gspRy = gspY0 + gspKi * 18
                 gspPal = gspPals(gspKi)
                 IF gspKi = pauseSel THEN
                     UI_MenuRow scrW\2 - 101, scrW\2 + 101, gspRy

@@ -31,6 +31,9 @@ Const UI_PAGE_X1 = 16        ' full-page panel (settings, controls, about, crawl
 Const UI_PAGE_Y1 = 8         '   margins; the right and bottom edges are scrW - 17 and scrH - 19
 Const UI_DLG_HALF_S = 80     ' half width of a small centred dialog (command console, launch, notices)
 Const UI_DLG_HALF_L = 104    ' half width of a wide centred dialog (pause, game over)
+Const UI_DLG_HALF_W = 144    ' half width of a full-width dialog (in-run settings)
+Const UI_DLG_HEAD = 26       ' dialog top edge to its first row (title bar plus padding)
+Const UI_DLG_FOOT = 6        ' padding under the last row
 Const UI_ROW_PAD = 1         ' pixels a menu row's box extends above the text row (and below its 16px cell)
 
 
@@ -94,9 +97,15 @@ Sub UI_DrawPage (udpTitle As String)
     UI_DrawPanel UI_PAGE_X1, UI_PAGE_Y1, scrW - 17, scrH - 19, udpTitle
 End Sub
 
-Sub UI_DrawDialog (uddHalf As Integer, uddY1 As Integer, uddY2 As Integer, uddTitle As String)
-    UI_DrawPanel scrW \ 2 - uddHalf, uddY1, scrW \ 2 + uddHalf, uddY2, uddTitle
-End Sub
+' A centred dialog sized to its content: uddRows rows uddPitch apart (16px tall each) plus uddExtra
+' pixels of footer below the last row. Returns the y of the first row; row i is at that y + i * pitch.
+Function UI_DrawDialog% (uddHalf As Integer, uddRows As Integer, uddPitch As Integer, uddExtra As Integer, uddTitle As String)
+    Dim uddH As Integer, uddTop As Integer
+    uddH = UI_DLG_HEAD + (uddRows - 1) * uddPitch + FONT_CHAR_H + uddExtra + UI_DLG_FOOT
+    uddTop = (scrH - uddH) \ 2
+    UI_DrawPanel scrW \ 2 - uddHalf, uddTop, scrW \ 2 + uddHalf, uddTop + uddH, uddTitle
+    UI_DrawDialog% = uddTop + UI_DLG_HEAD
+End Function
 
 
 Sub UI_DrawPanel(uiX1 As Integer, uiY1 As Integer, uiX2 As Integer, uiY2 As Integer, uiTitle As String)

@@ -115,7 +115,7 @@ Sub OPTS_Update ()
 End Sub
 
 Sub OPTS_Draw ()
-    Dim oI As Integer, oY As Integer, oFill As Integer, oId As Integer
+    Dim oI As Integer, oY As Integer, oFill As Integer, oId As Integer, oY0 As Integer, oHintY As Integer
     Dim oVols(0 To 4) As Single
     Const OPT_BAR_X = 128 : Const OPT_BAR_W = 110
 
@@ -131,14 +131,21 @@ Sub OPTS_Draw ()
     Next oSy
 
     ' main content panel
-    UI_DrawPage "SETTINGS"
+    If optReturn <> 0 Then
+        oY0 = UI_DrawDialog%(UI_DLG_HALF_W, OPTS_RowCount%, 21, 24, "SETTINGS")
+        oHintY = oY0 + (OPTS_RowCount% - 1) * 21 + FONT_CHAR_H + 8
+    Else
+        UI_DrawPage "SETTINGS"
+        oY0 = 34
+        oHintY = scrH - 14
+    End If
 
     Dim oLabels(0 To 7) As String
     oLabels(0) = "MUSIC" : oLabels(1) = "SFX" : oLabels(2) = "SPEECH" : oLabels(3) = "NARRATION" : oLabels(4) = "FULLSCREEN" : oLabels(5) = "DIFFICULTY" : oLabels(6) = "CALLSIGN" : oLabels(7) = "CONTROLS"
 
     For oI = 0 To OPTS_RowCount% - 1
         oId = OPTS_RowId%(oI)
-        oY = 34 + oI * 21
+        oY = oY0 + oI * 21
 
         ' row highlight for selected — corner-bracket style
         If oI = optSel Then
@@ -211,16 +218,16 @@ Sub OPTS_Draw ()
         End If
     Next oI
 
-    If highScore > 0 Then
+    If highScore > 0 And optReturn = 0 Then
         FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "HI SCORE:  " + LTRIM$(STR$(highScore)), 202, scrW, 255
     End If
     If INP_LastDevice% = INP_DEV_PAD Then
-        UI_PromptsCentered "< > adjust  up/dn select  " + UI_Tok$("", E3D_ACT_BACK) + " back", scrH - 14, 8, 255
+        UI_PromptsCentered "< > adjust  up/dn select  " + UI_Tok$("", E3D_ACT_BACK) + " back", oHintY, 8, 255
     Else
         If optReturn <> 0 Then
-            FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  ESC back", scrH - 14, scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  ESC back", oHintY, scrW, 255
         Else
-            FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", scrH - 14, scrW, 255
+            FONT_PrintCenteredAlpha fontPalette(8), backBuffer, "< > adjust  up/dn select  A about  ESC", oHintY, scrW, 255
         End If
     End If
 
