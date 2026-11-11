@@ -56,9 +56,10 @@ Sub BOSS_Update
     If boss.warnTimer > 0 Then
         boss.warnTimer = boss.warnTimer - 1
         If boss.warnTimer = 0 And gameState = GS_PLAYING Then
-            If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score)) + "  aabb=" + LTrim$(Str$(boxLib(MESH_BOSS).hx)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hy)) + "x" + LTrim$(Str$(boxLib(MESH_BOSS).hz)) + "  verts=" + LTrim$(Str$(meshLib(MESH_BOSS).vCount))
+            bossMeshIdx = BHP_ModelMesh%(bossModel)
+            If debugMode Then DBG_Print "[boss] spawned  score=" + LTrim$(Str$(score)) + "  model=" + bossModel + "  aabb=" + LTrim$(Str$(boxLib(bossMeshIdx).hx)) + "x" + LTrim$(Str$(boxLib(bossMeshIdx).hy)) + "x" + LTrim$(Str$(boxLib(bossMeshIdx).hz)) + "  verts=" + LTrim$(Str$(meshLib(bossMeshIdx).vCount))
             boss.active  = -1
-            boss.meshIdx = MESH_BOSS
+            boss.meshIdx = bossMeshIdx
             boss.px = player.px + BOSS_SPAWN_DIST
             boss.py = player.py
             boss.pz = player.pz
@@ -216,7 +217,7 @@ Sub BOSS_Update
 
     ' player vs boss body collision
     E3D_AABBOverlap player.px, player.py, player.pz, boxLib(MESH_PLAYER), _
-    boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), bssHit
+    boss.px, boss.py, boss.pz, boxLib(boss.meshIdx), bssHit
     If bssHit And invTimer = 0 Then
         telemDeathCause = "boss_col"
         PLAYER_TakeHit DLV_Dmg%(DMG_COLLISION), SHAKE_COLLISION, FLASH_COLLISION
@@ -225,7 +226,7 @@ Sub BOSS_Update
     ' player bullets vs boss
     For bssJ = 1 To MAX_BULLETS
         If bullets(bssJ).active Then
-            E3D_AABBOverlap boss.px, boss.py, boss.pz, boxLib(MESH_BOSS), _
+            E3D_AABBOverlap boss.px, boss.py, boss.pz, boxLib(boss.meshIdx), _
             bullets(bssJ).px, bullets(bssJ).py, bullets(bssJ).pz, boxLib(MESH_BULLET), bssHit
             If bssHit Then
                 bullets(bssJ).active = 0

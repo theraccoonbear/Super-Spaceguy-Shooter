@@ -172,6 +172,8 @@ ST_Assert SEQ_GetKV$("txt=stage1 mus=crawl", "mus") = "crawl",  "2.02  mus= extr
 ST_Assert SEQ_GetKV$("type=combat mus=game trigger=10", "trigger") = "10", "2.03  trigger= extracted"
 ST_Assert SEQ_GetKV$("type=combat mus=game", "boss") = "",       "2.04  missing key -> empty"
 ST_Assert SEQ_GetKV$("img=emperor mus=emperor", "img") = "emperor", "2.05  img= extracted"
+ST_Assert SEQ_GetKV$("type=boss attack=laser model=hydra hp=90", "model") = "hydra", "2.06  model= extracted"
+ST_Assert SEQ_GetKV$("type=boss attack=laser hp=90", "model") = "", "2.07  no model= -> empty (the boss falls back to bastion)"
 
 ' ────────────────────────────────────────────────────────────────────────────
 ' 3. SEQ_JumpToScene: valid paths
