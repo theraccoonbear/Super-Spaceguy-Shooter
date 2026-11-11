@@ -208,6 +208,10 @@ IM_Assert imDockRes(5) = DOCK_PAUSED, "ESC opens the menu and the dock is frozen
 IM_Assert imDockRes(10) = DOCK_PAUSED Or imDockRes(10) = DOCK_NONE, "ENTER on CANCEL: the dialog draws once more, the dock gets no input that frame"
 IM_Assert escConfirm = 0, "ENTER on CANCEL closes it"
 IM_Assert credits = 500, "nothing was bought"
+IM_Dock "5 5 ESC", 7
+IM_Assert imDockRes(7) = DOCK_PAUSED And spkHold <> 0, "the menu holds the speech while it is up (#426)"
+IM_Dock "5 5 ESC/10 10 ESC", 12
+IM_Assert escConfirm = 0 And spkHold = 0, "closing the menu releases the speech hold"
 IM_Dock "5 5 PAD_START/10 10 PAD_B/14 14 ENTER", 16
 IM_Assert imDockRes(5) = DOCK_PAUSED And escConfirm = 0, "pad Start opens it, pad B cancels"
 IM_Assert imDockRes(14) <> DOCK_LEAVE And dockSel = 1, "cancelling leaves the cursor where it was"

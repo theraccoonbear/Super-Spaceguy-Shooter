@@ -250,6 +250,7 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
+    IF gameState <> GS_CONTROLS AND gameState <> GS_REMAP THEN spkHold = 0  ' the pause menu sets it again this frame; Controls and Remap opened from it keep it
     BENCH_FrameBegin
     IF _EXIT THEN GAME_Quit
     IF cliFrames > 0 AND gameFrame >= cliFrames THEN BENCH_Report : DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
@@ -336,7 +337,7 @@ DO
     IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
     spkAudioLock = (iscActive = 0)  ' scripted runs keep the frame clock so they stay deterministic (#329)
     IF spkAudioLock THEN spkBuffered = CLNG(_SNDRAWLEN * SAMPLE_RATE)
-    IF musHold = 0 THEN SPK_Tick
+    IF musHold = 0 AND spkHold = 0 THEN SPK_Tick
 
     DBG_Overlay
 

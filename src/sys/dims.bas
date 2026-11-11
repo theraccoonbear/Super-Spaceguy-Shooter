@@ -236,6 +236,7 @@ DIM SHARED optReturn   AS INTEGER   ' 0 = Settings opened from the title; else t
 DIM SHARED optSavedImg AS LONG      ' the frame under the pause dialog, put back when Settings closes
 DIM SHARED musHold     AS INTEGER   ' -1 while Settings is open mid-run: MUS_Fill makes only UI blips, music and narration stand still
 DIM SHARED musHoldVol  AS SINGLE    ' gain of the UI blips under musHold: the volume of the Settings row being adjusted
+DIM SHARED spkHold     AS INTEGER   ' -1 while the pause menu is up: SPK_Advance mixes no speech and SPK_Tick stands still, so narration resumes at the sample it stopped on (music keeps playing)
 
 DIM SHARED thrusterScale AS SINGLE
 

@@ -94,6 +94,21 @@ psR = PS_Pause%(0, 8)
 PS_Assert psR = PAUSE_SETTINGS, "pad: d-pad up, A picks SETTINGS"
 
 Print ""
+Print "--- the speech hold (#426) ---"
+' PAUSE_Input% is what the crawl, the dock and play all run each frame: the hold follows the dialog
+PS_Script "2 2 ESC/6 6 ESC"
+escConfirm = 0 : escWas = 0 : pauseSel = PAUSE_ROW_CANCEL : spkHold = 0
+PS_Frame 1 : psR = PAUSE_Input%
+PS_Assert spkHold = 0 And pauseShown = 0, "closed: speech not held"
+PS_Frame 2 : psR = PAUSE_Input%
+PS_Assert spkHold <> 0 And pauseShown <> 0, "ESC opens the dialog: speech held"
+PS_Frame 4 : psR = PAUSE_Input%
+PS_Assert spkHold <> 0, "still held while the dialog stays up"
+PS_Frame 6 : psR = PAUSE_Input%
+PS_Assert escConfirm = 0 And spkHold = 0, "ESC closes it: speech released"
+PS_Assert musHold = 0, "the pause dialog does not touch musHold (music keeps playing)"
+
+Print ""
 Print "--- rows shown ---"
 optReturn = 0
 PS_Assert OPTS_RowCount% = OPT_ROWS_ALL, "from the title all rows show"

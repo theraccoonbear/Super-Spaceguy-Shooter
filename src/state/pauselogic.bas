@@ -29,7 +29,7 @@ Function PAUSE_Input%
     Dim pzWasOpen As Integer, pzYes As Integer, pzNo As Integer, pzCtl As Integer, pzMap As Integer
     Dim pzYk As Integer, pzNk As Integer, pzCk As Integer, pzKk As Integer, pzSk As Integer, pzSet As Integer, pzPick As Integer
     PAUSE_Input% = PAUSE_NONE
-    pauseShown = 0
+    pauseShown = 0 : spkHold = 0
     pzWasOpen = escConfirm
     pzYk = KEY_Down%(89) Or KEY_Down%(121)
     pzNk = KEY_Down%(78) Or KEY_Down%(110)
@@ -47,7 +47,7 @@ Function PAUSE_Input%
     End If
     escWas = held(E3D_KEY_ESCAPE)
     If escConfirm = 0 Then Exit Function
-    pauseShown = -1
+    pauseShown = -1 : spkHold = -1
     ' pad: back cancels, roll opens Controls, nova opens Remap (the pause button toggles, as ESC does)
     pzPick = -1
     If pzWasOpen Then pzPick = MENU_Input%(pauseSel, PAUSE_ROWS)
