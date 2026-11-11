@@ -79,6 +79,7 @@ Function BT_Fight% (btfMax As Integer, btfDmg As Integer, btfShieldF As Long, bt
 End Function
 
 Dim btOk As Integer, btSrc As String, btP As Long, btQ As Long, btLine As String, btN As Integer
+Dim btModel(1 To 8) As String
 Dim btHp(1 To 8) As Integer, btSecs(1 To 8) As Integer, btH As Integer, btPh As Integer, btShots As Integer
 
 Print "=== boss_hp_test ==="
@@ -122,6 +123,27 @@ BT_Assert btSecs(1) = 22 And btSecs(2) = 25 And btSecs(3) = 32, "each fight's ex
 BT_Assert BHP_MaxHP%(btHp(2), 0) = 90 And BHP_MaxHP%(0, 0) = 30, "a fight's hp= is used; none falls back to the default"
 BT_Assert BHP_MaxHP%(btHp(1), -1) = 3 And BHP_MaxHP%(btHp(2), -1) = 9 And BHP_MaxHP%(btHp(3), -1) = 13, "--nerf: 3, 9, 13"
 BT_Assert BHP_MaxHP%(10, -1) = 3, "--nerf never below 3, one per phase"
+Print ""
+Print "--- each boss's model: model= in sequence.txt ---"
+btN = 0
+btP = 1
+Do
+    btQ = InStr(btP, btSrc, Chr$(10))
+    If btQ = 0 Then Exit Do
+    btLine = Mid$(btSrc, btP, btQ - btP)
+    btP = btQ + 1
+    If InStr(btLine, "PLAY type=boss") > 0 And Left$(LTrim$(btLine), 1) <> ";" And btN < 8 Then
+        btN = btN + 1
+        btModel(btN) = ""
+        If InStr(btLine, " model=") > 0 Then btModel(btN) = Mid$(btLine, InStr(btLine, " model=") + 7) + " "
+        btModel(btN) = Left$(btModel(btN), InStr(btModel(btN) + " ", " ") - 1)
+    End If
+Loop
+BT_Assert btModel(1) = "bastion" And btModel(2) = "hydra" And btModel(3) = "orbiter", "model= of the three fights: bastion, hydra, orbiter"
+BT_Assert BHP_ModelMesh%(btModel(1)) = MESH_BOSS And BHP_ModelMesh%(btModel(2)) = MESH_BOSS2 And BHP_ModelMesh%(btModel(3)) = MESH_BOSS3, "each model picks its own mesh slot"
+BT_Assert BHP_ModelMesh%("") = MESH_BOSS And BHP_ModelMesh%("nonesuch") = MESH_BOSS, "no model= (or an unknown one) falls back to bastion"
+BT_Assert BHP_ModelMesh%("HYDRA") = MESH_BOSS2, "model names are case-insensitive"
+BT_Assert MESH_BOSS <> MESH_BOSS2 And MESH_BOSS2 <> MESH_BOSS3 And MESH_BOSS3 <= MESH_COUNT, "three distinct boss slots inside the mesh arrays"
 
 Print ""
 Print "--- phases ---"

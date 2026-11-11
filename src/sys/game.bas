@@ -91,31 +91,28 @@ Sub GAME_InitMeshes
     Dim gmiMdl As String
     Dim gmiI   As Integer
     Dim gmiNew As String
-    Dim gmiBox As E3D_AABB
     gmiMdl = _EMBEDDED$("MODELS")
-    E3D_LoadMesh gmiMdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
-    E3D_LoadMesh gmiMdl, "ENEMY",        meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
     E3D_LoadMesh gmiMdl, "ASTEROID",     meshLib(MESH_ASTEROID),     boxLib(MESH_ASTEROID)
     E3D_LoadMesh gmiMdl, "BULLET",       meshLib(MESH_BULLET),       boxLib(MESH_BULLET)
     E3D_LoadMesh gmiMdl, "PUP_SHIELD",   meshLib(MESH_PUP_SHIELD),   boxLib(MESH_PUP_SHIELD)
-    E3D_LoadMesh gmiMdl, "ENEMY_ARROW",  meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
-    E3D_LoadMesh gmiMdl, "ENEMY_HLINE",  meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
-    E3D_LoadMesh gmiMdl, "ENEMY_VCOL",   meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
-    E3D_LoadMesh gmiMdl, "ENEMY_PINCER", meshLib(MESH_ENEMY_PINCER), boxLib(MESH_ENEMY_PINCER)
-    E3D_LoadMesh gmiMdl, "ENEMY_VWEDGE", meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_VWEDGE)
     E3D_LoadMesh gmiMdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
     E3D_LoadMesh gmiMdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
-    E3D_LoadMesh gmiMdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
     E3D_LoadMesh gmiMdl, "PUP_FUEL",     meshLib(MESH_PUP_FUEL),     boxLib(MESH_PUP_FUEL)
     E3D_LoadMesh gmiMdl, "PUP_POINTS",   meshLib(MESH_PUP_POINTS),   boxLib(MESH_PUP_POINTS)
-    ' v2 enemy meshes (#395) replace the visuals; the old meshes' AABBs stay as the hitboxes, so play is unchanged
+    ' enemy meshes (#395): each slot's hitbox is the loaded mesh's own bounds
     gmiNew = _EMBEDDED$("NEWMODELS")
-    E3D_LoadMesh gmiNew, "E2_SOLO",    meshLib(MESH_ENEMY),        gmiBox
-    E3D_LoadMesh gmiNew, "E2_ARROW",   meshLib(MESH_ENEMY_ARROW),  gmiBox
-    E3D_LoadMesh gmiNew, "E2_HLINE",   meshLib(MESH_ENEMY_HLINE),  gmiBox
-    E3D_LoadMesh gmiNew, "E2_VCOL",    meshLib(MESH_ENEMY_VCOL),   gmiBox
-    E3D_LoadMesh gmiNew, "E2_PINCER",  meshLib(MESH_ENEMY_PINCER), gmiBox
-    E3D_LoadMesh gmiNew, "E2_VWEDGE",  meshLib(MESH_ENEMY_VWEDGE), gmiBox
+    E3D_LoadMesh gmiNew, "E2_SOLO",    meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
+    E3D_LoadMesh gmiNew, "E2_ARROW",   meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
+    E3D_LoadMesh gmiNew, "E2_HLINE",   meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
+    E3D_LoadMesh gmiNew, "E2_VCOL",    meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
+    E3D_LoadMesh gmiNew, "E2_PINCER",  meshLib(MESH_ENEMY_PINCER), boxLib(MESH_ENEMY_PINCER)
+    E3D_LoadMesh gmiNew, "E2_VWEDGE",  meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_VWEDGE)
+    ' player and boss meshes (#415): hitbox is each mesh's own bounds; each boss (model= in sequence.txt) takes its own extents as AABB
+    gmiNew = _EMBEDDED$("SHIPMODELS")
+    E3D_LoadMesh gmiNew, "S2_PLAYER",       meshLib(MESH_PLAYER), boxLib(MESH_PLAYER)
+    E3D_LoadMesh gmiNew, "S2_BOSS_BASTION", meshLib(MESH_BOSS),   boxLib(MESH_BOSS)
+    E3D_LoadMesh gmiNew, "S2_BOSS_HYDRA",   meshLib(MESH_BOSS2),  boxLib(MESH_BOSS2)
+    E3D_LoadMesh gmiNew, "S2_BOSS_ORBITER", meshLib(MESH_BOSS3),  boxLib(MESH_BOSS3)
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
     Next gmiI

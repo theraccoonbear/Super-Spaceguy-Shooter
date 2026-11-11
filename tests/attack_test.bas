@@ -42,7 +42,7 @@ End Function
 ' units out, trailing lmOff units sideways the way the boss does in a fight, at a player
 ' strafing at full speed (0.12) in Z; when lmRev > 0 the player
 ' reverses after lmRev frames. True if it hits: the player+EBULLET AABB half-sums from
-' models.e3d (Y .2879+.08, Z .7616+.08), as EBULLET_Update's E3D_AABBOverlap tests.
+' models_ships_v2.e3d S2_PLAYER (Y .285+.08, Z .76+.08), as EBULLET_Update's E3D_AABBOverlap tests.
 Function AT_LeadHit%(lmSpd As Single, lmSeek As Single, lmRev As Integer, lmOff As Single)
     Dim lmX As Single, lmY As Single, lmZ As Single, lmVX As Single, lmVY As Single, lmVZ As Single
     Dim lmPY As Single, lmPZ As Single, lmPVZ As Single, lmTY As Single, lmTZ As Single
@@ -58,7 +58,7 @@ Function AT_LeadHit%(lmSpd As Single, lmSeek As Single, lmRev As Integer, lmOff 
         IMP_SeekStep lmY, lmZ, lmVY, lmVZ, lmTY, lmTZ, lmSeek, IMP_FramesLeft!(lmX, lmVX, 0)
         lmX = lmX + lmVX : lmY = lmY + lmVY : lmZ = lmZ + lmVZ
     Loop
-    AT_LeadHit% = (Abs(lmY - lmPY) <= 0.2879 + 0.08 And Abs(lmZ - lmPZ) <= 0.7616 + 0.08)
+    AT_LeadHit% = (Abs(lmY - lmPY) <= 0.285 + 0.08 And Abs(lmZ - lmPZ) <= 0.76 + 0.08)
 End Function
 
 ' Runs rcN frames of the cut with the player at (rcX, rcY, rcZ); returns total damage.

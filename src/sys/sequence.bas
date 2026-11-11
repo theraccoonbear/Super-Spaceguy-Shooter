@@ -755,6 +755,7 @@ Sub SEQ_Advance()
                     SEQ_SplitCSV SEQ_GetKV$(seqSval$(seqIdx), "speech"), bossSpeechList$(), bossSpeechCnt
                     bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))   ' bullet homing strength
                     bossCfgHp   = Val(SEQ_GetKV$(seqSval$(seqIdx), "hp"))     ' 0 = bosses.ini boss_hp_default
+                    bossModel   = SEQ_GetKV$(seqSval$(seqIdx), "model")      ' bastion (none), hydra or orbiter
                     SEQ_SplitCSV UCase$(SEQ_GetKV$(seqSval$(seqIdx), "attack")), bossAttackList$(), bossAttackCnt
                 Case "asteroid"
                     levelNum       = levelNum + 1
