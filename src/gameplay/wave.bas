@@ -185,7 +185,6 @@ Sub WAVE_Spawn
         For wvI = 1 To MAX_ASTEROIDS
             If asteroids(wvI).active = 0 Then
                 asteroids(wvI).active  = -1
-                asteroids(wvI).meshIdx = MESH_ASTEROID
                 asteroids(wvI).px  = player.px + 45 + RNG!(RNG_GAME) * 20
                 asteroids(wvI).py  = player.py + (RNG!(RNG_GAME) * 140) - 70
                 asteroids(wvI).pz  = player.pz + (RNG!(RNG_GAME) * 180) - 90
@@ -194,6 +193,7 @@ Sub WAVE_Spawn
                 asteroids(wvI).vz         = 0
                 asteroids(wvI).drx        = (RNG!(RNG_GAME) - 0.5) * 2
                 asteroids(wvI).dry        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvI).meshIdx = astShapeMesh(AST_ShapeFor%(asteroids(wvI).dry))
                 asteroids(wvI).drz        = (RNG!(RNG_GAME) - 0.5) * 2
                 asteroids(wvI).scl        = 0.7 + RNG!(RNG_GAME) * 0.9
                 asteroids(wvI).life       = 0  ' combat: expire by px < -5 only
@@ -341,7 +341,6 @@ Sub WAVE_SpawnAsteroidField
         For wvafI = 1 To MAX_ASTEROIDS
             If asteroids(wvafI).active = 0 Then
                 asteroids(wvafI).active     = -1
-                asteroids(wvafI).meshIdx    = MESH_ASTEROID
                 asteroids(wvafI).px         = wvafCX + wvafXO(wvafJ)
                 If wvafErratic Then asteroids(wvafI).px = asteroids(wvafI).px + 50
                 asteroids(wvafI).py         = wvafCY + wvafYO(wvafJ)
@@ -355,6 +354,7 @@ Sub WAVE_SpawnAsteroidField
                 asteroids(wvafI).vz         = wvafVZ
                 asteroids(wvafI).drx        = (RNG!(RNG_GAME) - 0.5) * 2
                 asteroids(wvafI).dry        = (RNG!(RNG_GAME) - 0.5) * 2
+                asteroids(wvafI).meshIdx    = astShapeMesh(AST_ShapeFor%(asteroids(wvafI).dry))
                 asteroids(wvafI).drz        = (RNG!(RNG_GAME) - 0.5) * 2
                 asteroids(wvafI).scl        = wvafScl
                 asteroids(wvafI).life = 0  ' expire by position (px < player.px-20), not timer

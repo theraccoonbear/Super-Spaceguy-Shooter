@@ -138,7 +138,7 @@ Sub TUT_PlaceAsteroid
     For tgI = 1 To MAX_ASTEROIDS
         If asteroids(tgI).active = 0 Then
             asteroids(tgI).active = -1
-            asteroids(tgI).meshIdx = MESH_ASTEROID
+            asteroids(tgI).meshIdx = astShapeMesh(0)
             asteroids(tgI).px = player.px + 40
             asteroids(tgI).py = player.py + (RNG!(RNG_GAME) * 2 - 1) * 1.5
             asteroids(tgI).pz = player.pz + (RNG!(RNG_GAME) * 2 - 1) * 1.5

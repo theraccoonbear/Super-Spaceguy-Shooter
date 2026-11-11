@@ -113,6 +113,14 @@ Sub GAME_InitMeshes
     E3D_LoadMesh gmiNew, "S2_BOSS_BASTION", meshLib(MESH_BOSS),   boxLib(MESH_BOSS)
     E3D_LoadMesh gmiNew, "S2_BOSS_HYDRA",   meshLib(MESH_BOSS2),  boxLib(MESH_BOSS2)
     E3D_LoadMesh gmiNew, "S2_BOSS_ORBITER", meshLib(MESH_BOSS3),  boxLib(MESH_BOSS3)
+    ' asteroid shapes (#436): spawned by AST_ShapeFor%; the hit box stays the old ASTEROID box until the hit test is reworked (#433)
+    gmiNew = _EMBEDDED$("ASTMODELS")
+    E3D_LoadMesh gmiNew, "A2_CHUNK",  meshLib(MESH_AST_CHUNK),  boxLib(MESH_AST_CHUNK)
+    E3D_LoadMesh gmiNew, "A2_SHARD",  meshLib(MESH_AST_SHARD),  boxLib(MESH_AST_SHARD)
+    E3D_LoadMesh gmiNew, "A2_CRATER", meshLib(MESH_AST_CRATER), boxLib(MESH_AST_CRATER)
+    E3D_LoadMesh gmiNew, "A2_SPLIT",  meshLib(MESH_AST_SPLIT),  boxLib(MESH_AST_SPLIT)
+    astShapeMesh(0) = MESH_AST_CHUNK : astShapeMesh(1) = MESH_AST_SHARD
+    astShapeMesh(2) = MESH_AST_CRATER : astShapeMesh(3) = MESH_AST_SPLIT
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
     Next gmiI

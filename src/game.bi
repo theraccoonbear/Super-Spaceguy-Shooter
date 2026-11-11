@@ -36,6 +36,7 @@
 '$INCLUDE:'2d/hud.bas'
 '$INCLUDE:'gameplay/enemyatk.bas'
 '$INCLUDE:'gameplay/roster.bas'
+'$INCLUDE:'gameplay/asteroidshape.bas'
 '$INCLUDE:'gameplay/wave.bas'
 '$INCLUDE:'gameplay/stage.bas'
 '$INCLUDE:'sys/debug.bas'
