@@ -7,6 +7,7 @@
 ' twice with gmSign = 1 and -1.
 $Console:Only
 Option _Explicit
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Const GM_VMAX = 2400
 Const GM_FMAX = 1400
