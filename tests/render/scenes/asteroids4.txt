@@ -1,0 +1,30 @@
+# Level 4 asteroid field: asteroids inside the 80-unit mesh range, their silhouettes and tints (#436).
+#! group: gameplay
+#! seed: 1
+#! args: --god --no-telem --scene playing4
+#! shots: 700,900
+0 1800 FIRE
+20 110 LEFT
+130 170 UP
+190 280 RIGHT
+230 270 DOWN
+320 410 LEFT
+430 470 UP
+490 580 RIGHT
+530 570 DOWN
+620 710 LEFT
+730 770 UP
+790 880 RIGHT
+830 870 DOWN
+920 1010 LEFT
+1030 1070 UP
+1090 1180 RIGHT
+1130 1170 DOWN
+1220 1310 LEFT
+1330 1370 UP
+1390 1480 RIGHT
+1430 1470 DOWN
+1520 1610 LEFT
+1630 1670 UP
+1690 1780 RIGHT
+1730 1770 DOWN
