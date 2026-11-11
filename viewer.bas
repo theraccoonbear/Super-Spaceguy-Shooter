@@ -1,6 +1,6 @@
 ' viewer.bas — interactive model viewer for models.e3d, models_enemies_v2.e3d (E2_* meshes) and models_ships_v2.e3d (S2_* player and boss meshes)
 ' Usage: viewer [file.obj]   (OBJ loaded as extra mesh; auto-reads .mtl)
-'        viewer --sheets <outdir>   (headless: write the old/new enemy, player and boss review PNGs to <outdir>, then exit;
+'        viewer --sheets <outdir>   (headless: write the enemy, player and boss review PNGs to <outdir>, then exit;
 '                                    needs a display for the software renderer, e.g. Xvfb; a relative
 '                                    <outdir> is resolved against the launch directory and created if missing)
 ' Left/Right: rotate model   Up/Down: tilt camera
@@ -20,35 +20,27 @@ $EMBED:'assets/models_ships_v2.e3d':'SHIPMODELS'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
-CONST MESH_COUNT = 25
+CONST MESH_COUNT = 17
 CONST MESH_MAX   = 32
 
 DIM SHARED meshNames(1 TO MESH_MAX) AS STRING
-meshNames(1)  = "PLAYER"
-meshNames(2)  = "S2_PLAYER"
-meshNames(3)  = "ENEMY"
-meshNames(4)  = "E2_SOLO"
-meshNames(5)  = "ASTEROID"
-meshNames(6)  = "BULLET"
-meshNames(7)  = "PUP_SHIELD"
-meshNames(8)  = "ENEMY_ARROW"
-meshNames(9)  = "E2_ARROW"
-meshNames(10) = "ENEMY_HLINE"
-meshNames(11) = "E2_HLINE"
-meshNames(12) = "ENEMY_VCOL"
-meshNames(13) = "E2_VCOL"
-meshNames(14) = "ENEMY_PINCER"
-meshNames(15) = "E2_PINCER"
-meshNames(16) = "ENEMY_VWEDGE"
-meshNames(17) = "E2_VWEDGE"
-meshNames(18) = "THRUSTER"
-meshNames(19) = "EBULLET"
-meshNames(20) = "BOSS"
-meshNames(21) = "S2_BOSS_BASTION"
-meshNames(22) = "S2_BOSS_HYDRA"
-meshNames(23) = "S2_BOSS_ORBITER"
-meshNames(24) = "PUP_FUEL"
-meshNames(25) = "PUP_POINTS"
+meshNames(1)  = "S2_PLAYER"
+meshNames(2)  = "E2_SOLO"
+meshNames(3)  = "ASTEROID"
+meshNames(4)  = "BULLET"
+meshNames(5)  = "PUP_SHIELD"
+meshNames(6)  = "E2_ARROW"
+meshNames(7)  = "E2_HLINE"
+meshNames(8)  = "E2_VCOL"
+meshNames(9)  = "E2_PINCER"
+meshNames(10) = "E2_VWEDGE"
+meshNames(11) = "THRUSTER"
+meshNames(12) = "EBULLET"
+meshNames(13) = "S2_BOSS_BASTION"
+meshNames(14) = "S2_BOSS_HYDRA"
+meshNames(15) = "S2_BOSS_ORBITER"
+meshNames(16) = "PUP_FUEL"
+meshNames(17) = "PUP_POINTS"
 
 DIM SHARED meshLib(1 TO MESH_MAX) AS E3D_Mesh
 DIM SHARED boxLib(1 TO MESH_MAX)  AS E3D_AABB
@@ -93,8 +85,8 @@ FOR mi = 1 TO MESH_COUNT
 NEXT mi
 
 IF LEN(sheetDir) > 0 THEN
-    ' Renders each old enemy and its E2_ replacement with the game's camera, light and distance dimming.
-    ' Writes <outdir>/<old|new>_<type>_<near|far>_<chase|q3|side|front>.png at 320x240.
+    ' Renders each E2_ enemy with the game's camera, light and distance dimming.
+    ' Writes <outdir>/new_<type>_<near|far>_<chase|q3|side|front>.png at 320x240.
     ' chase = the in-game camera; the others orbit the enemy at the chase distance (enemies fly nose-first toward -X).
     CONST SH_FOV = 72
     CONST SH_CAM_X = 6.72      ' CAM_CHASE_X in src/sys/dims.bas
@@ -104,13 +96,13 @@ IF LEN(sheetDir) > 0 THEN
     CONST SH_DIM_FAR = 55
     CONST SH_DIM_NEAR = 28
     CONST SH_DIM_AMB = 0.22
-    DIM shKey(1 TO 6) AS STRING, shOld(1 TO 6) AS INTEGER
-    shKey(1) = "solo"   : shOld(1) = 3
-    shKey(2) = "arrow"  : shOld(2) = 8
-    shKey(3) = "hline"  : shOld(3) = 10
-    shKey(4) = "vcol"   : shOld(4) = 12
-    shKey(5) = "pincer" : shOld(5) = 14
-    shKey(6) = "vwedge" : shOld(6) = 16
+    DIM shKey(1 TO 6) AS STRING, shMesh(1 TO 6) AS INTEGER
+    shKey(1) = "solo"   : shMesh(1) = 2
+    shKey(2) = "arrow"  : shMesh(2) = 6
+    shKey(3) = "hline"  : shMesh(3) = 7
+    shKey(4) = "vcol"   : shMesh(4) = 8
+    shKey(5) = "pincer" : shMesh(5) = 9
+    shKey(6) = "vwedge" : shMesh(6) = 10
     ' a relative path is taken against the launch directory, since QB64-PE starts in the executable's directory
     IF LEFT$(sheetDir, 1) <> "/" AND MID$(sheetDir, 2, 1) <> ":" THEN sheetDir = _STARTDIR$ + "/" + sheetDir
     DO WHILE LEN(sheetDir) > 1 AND (RIGHT$(sheetDir, 1) = "/" OR RIGHT$(sheetDir, 1) = "\")
@@ -127,9 +119,9 @@ IF LEN(sheetDir) > 0 THEN
     DIM shD AS SINGLE, shDimF AS SINGLE, shR AS SINGLE, shEl AS SINGLE
     DIM shTag AS STRING, shDistName AS STRING, shViewName AS STRING
     shLightBase.x = -0.4 : shLightBase.y = 0.7 : shLightBase.z = -0.5
-    FOR shSet = 1 TO 2
+    FOR shSet = 1 TO 1
         FOR shTy = 1 TO 6
-            IF shSet = 1 THEN shIdx = shOld(shTy) : shTag = "old" ELSE shIdx = shOld(shTy) + 1 : shTag = "new"
+            shIdx = shMesh(shTy) : shTag = "new"
             PRINT shTag + " " + shKey(shTy) + " " + meshNames(shIdx) + " verts=" + LTRIM$(STR$(meshLib(shIdx).vCount)) + " faces=" + LTRIM$(STR$(meshLib(shIdx).fCount))
             FOR shDist = 1 TO 2
                 IF shDist = 1 THEN shD = 3 : shDistName = "near" ELSE shD = 25 : shDistName = "far"
@@ -175,12 +167,10 @@ IF LEN(sheetDir) > 0 THEN
             NEXT shDist
         NEXT shTy
     NEXT shSet
-    SHEET_Ship 1, "old", "player", 0
-    SHEET_Ship 2, "new", "player", 0
-    SHEET_Ship 20, "old", "boss", -1
-    SHEET_Ship 21, "new", "boss_bastion", -1
-    SHEET_Ship 22, "new", "boss_hydra", -1
-    SHEET_Ship 23, "new", "boss_orbiter", -1
+    SHEET_Ship 1, "new", "player", 0
+    SHEET_Ship 13, "new", "boss_bastion", -1
+    SHEET_Ship 14, "new", "boss_hydra", -1
+    SHEET_Ship 15, "new", "boss_orbiter", -1
     PRINT "wrote sheets to " + sheetDir
     SYSTEM 0
 END IF
@@ -498,7 +488,7 @@ Sub DBG_Print (dbgMsg As String)
 End Sub
 
 ' Review sheets for the player (rear views) and a boss (front views), 320x240 like the game.
-' <outdir>/<old|new>_<key>_<view>.png; "chase" is the in-game camera (boss 20 ahead of the player).
+' <outdir>/new_<key>_<view>.png; "chase" is the in-game camera (boss 20 ahead of the player).
 SUB SHEET_Ship (shIdx AS INTEGER, shTag AS STRING, shKey AS STRING, shBoss AS INTEGER)
     DIM shCam AS E3D_Camera, shViewM AS E3D_Matrix4, shProj AS E3D_Matrix4, shVP AS E3D_Matrix4
     DIM shPos AS E3D_Coord, shRot AS E3D_Coord, shObj AS E3D_Matrix4, shLit AS E3D_Coord
