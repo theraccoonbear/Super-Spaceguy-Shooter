@@ -103,6 +103,11 @@ jobs:
       - name: Check the build staleness check
         run: bash tests/build_stale_test.sh
 
+      # A runtime error must exit 1 at once, not wait on QB64-PE's "Continue? y/n" prompt (#427).
+      - name: Check runtime errors fail fast
+        if: runner.os == 'Linux'
+        run: QB64_BIN_DIR=qb64pe-bin bash tests/failfast_test.sh
+
       # One worker per vCPU: CI runners' vCPUs aren't desktop hyperthreads, so the
       # script's half-the-CPUs default would leave them idle.
       - name: Build and run all tests

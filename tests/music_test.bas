@@ -7,6 +7,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/music.mus':'MUSICDATA'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
@@ -82,7 +83,7 @@ mtInitErr:
 mtErr = -1
 Resume Next
 mtAfterInit:
-On Error GoTo 0
+ON ERROR GOTO SSS_FailFast
 MT_Assert mtErr = 0, "SND_Init (and MUS_Load) completed without runtime error"
 
 Print "--- parser ---"

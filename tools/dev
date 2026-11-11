@@ -52,6 +52,26 @@
 #   SSS_IMAGE=<name>           image tag (default: localhost/sss-dev:latest)
 #   SSS_DEV_DRYRUN=1           print the engine command line instead of running
 #                              it, without probing the engine or (re)building
+#
+# Limits (every container run except the game window; 0 or "none" turns one off; see docs/container.md):
+#   SSS_DEV_TIMEOUT=SECS       wall-clock limit for build, test, render and bench (default 3600);
+#                              run, headless, shell, record and bake have none
+#   SSS_DEV_MEMORY=SIZE        container RAM limit, also the memory+swap limit (default 4g)
+#   SSS_DEV_CPUS=N             CPUs the container may use (default 3)
+#   SSS_DEV_PIDS=N             process limit (default 512)
+#   SSS_DEV_RUN_LIMITS=1       also apply the memory, CPU and pid limits to `run` and the viewer
+#                              window (default: they have none, so the game never stalls on a
+#                              CPU quota)
+#   SSS_DEV_JOBS=N             parallel test workers for `test` (default 3; CI uses every CPU)
+#   SSS_DEV_SLOTS=N            build, test, render and bench wait for one of N slots, so
+#                              concurrent runs queue (default 2; 0 = no waiting)
+#   SSS_DEV_SLOT_WAIT=SECS     give up waiting for a slot after SECS (default: wait)
+#   SSS_DEV_LOCKDIR=DIR        where the slot lock files live (default <git dir>/sss-dev-slots)
+#   SSS_DEV_NOTTY_TIMEOUT=SECS wall-clock limit for every other container run (shell, headless,
+#                              bake, record, viewer --sheets) when stdin or stdout is not a terminal
+#                              (default 600; 0 = none). `run` and the viewer window are exempt.
+#   SSS_DEV_STDIN=keep         without a terminal, keep the caller's stdin (default: /dev/null, so a
+#                              program that reads stdin sees EOF instead of waiting)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -59,10 +79,67 @@ IMAGE="${SSS_IMAGE:-localhost/sss-dev:latest}"
 CONTAINER_DIR="$REPO/tools/container"
 
 usage() {
-    sed -n "2,54p" "$0" | sed 's/^# \{0,1\}//'
+    sed -n "2,75p" "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRYRUN="${SSS_DEV_DRYRUN:-}"
+
+# Limits on every container (#427). A value of 0 or "none" turns one off.
+LIM_MEMORY="${SSS_DEV_MEMORY:-4g}"
+LIM_CPUS="${SSS_DEV_CPUS:-3}"
+LIM_PIDS="${SSS_DEV_PIDS:-512}"
+LIM_JOBS="${SSS_DEV_JOBS:-3}"
+LIM_SLOTS="${SSS_DEV_SLOTS:-2}"
+LIM_TIMEOUT="${SSS_DEV_TIMEOUT:-3600}"
+LIM_NOTTY_TIMEOUT="${SSS_DEV_NOTTY_TIMEOUT:-600}"
+# The timeout the next run_in applies (seconds; empty = none). The heavy commands set it.
+RUN_TIMEOUT=""
+# Set by commands that may run unattended for long on purpose (the game window).
+NOTTY_EXEMPT=0
+# Set by gui_args: the container is an interactive game session. It gets no CPU, memory or pid
+# limit unless SSS_DEV_RUN_LIMITS=1: a CFS quota freezes the whole container (game loop and
+# audio feeder included) for the rest of a 100 ms period once it is used up.
+GAME_SESSION=0
+
+limit_on() { [ -n "$1" ] && [ "$1" != 0 ] && [ "$1" != none ]; }
+
+# Waits for one of LIM_SLOTS slots (flock on slot.1 ... slot.N under the lock dir), so
+# concurrent heavy runs queue instead of piling up. The lock is held by this script and
+# its children until it exits. Without flock (macOS) there is no queueing.
+acquire_slot() {
+    [ "$DRYRUN" = 1 ] && return
+    limit_on "$LIM_SLOTS" || return 0
+    if ! command -v flock > /dev/null 2>&1; then
+        echo "Warning: no flock; not queueing for a build slot" >&2
+        return 0
+    fi
+    local dir="${SSS_DEV_LOCKDIR:-}" i waited=0 start=$SECONDS
+    if [ -z "$dir" ]; then
+        dir="$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir 2> /dev/null || true)"
+        [ -d "$dir" ] || dir="${XDG_RUNTIME_DIR:-/tmp}"
+        dir="$dir/sss-dev-slots"
+    fi
+    mkdir -p "$dir"
+    while :; do
+        for ((i = 1; i <= LIM_SLOTS; i++)); do
+            exec 9>> "$dir/slot.$i"
+            if flock -n 9; then
+                [ "$waited" = 0 ] || echo ">>> got build slot $i after $((SECONDS - start))s" >&2
+                return 0
+            fi
+            exec 9>&-
+        done
+        if [ "$waited" = 0 ]; then
+            echo ">>> waiting for a build slot (all $LIM_SLOTS in use; SSS_DEV_SLOTS changes the count)..." >&2
+            waited=1
+        fi
+        if limit_on "${SSS_DEV_SLOT_WAIT:-}" && [ $((SECONDS - start)) -ge "$SSS_DEV_SLOT_WAIT" ]; then
+            echo "Error: no build slot free after ${SSS_DEV_SLOT_WAIT}s" >&2
+            exit 1
+        fi
+        sleep 2
+    done
+}
 
 pick_engine() {
     if [ "$DRYRUN" = 1 ]; then
@@ -113,8 +190,30 @@ RUN_EXTRA=()
 
 # Runs "$@" inside the container with the repo as the working directory.
 run_in() {
-    local args=(run --rm -i --init)
-    [ -t 0 ] && [ -t 1 ] && args+=(-t)
+    local args=(run --rm -i --init) cname="sss-dev-$$-$RANDOM"
+    # Bounded: memory (and swap, so it cannot thrash), CPUs, processes, and no container log
+    # (a looping program once filled the journal through it).
+    if [ "$GAME_SESSION" != 1 ] || [ "${SSS_DEV_RUN_LIMITS:-}" = 1 ]; then
+        limit_on "$LIM_MEMORY" && args+=(--memory "$LIM_MEMORY" --memory-swap "$LIM_MEMORY")
+        limit_on "$LIM_CPUS" && args+=(--cpus "$LIM_CPUS")
+        limit_on "$LIM_PIDS" && args+=(--pids-limit "$LIM_PIDS")
+    fi
+    args+=(--log-driver none --name "$cname")
+    limit_on "$LIM_JOBS" && args+=(-e "QB64_TEST_JOBS=$LIM_JOBS")
+    # Without a terminal (an agent, CI, a pipe): stdin is /dev/null, and a command with no
+    # limit of its own gets the no-terminal one. The engine enforces it inside the container
+    # too (podman --timeout), so it still holds if the client is killed or a pipe closes.
+    local notty=1 nullin=0 rt="$RUN_TIMEOUT"
+    if [ -t 0 ] && [ -t 1 ]; then
+        notty=0
+        args+=(-t)
+    else
+        [ "${SSS_DEV_STDIN:-}" = keep ] || nullin=1
+        if ! limit_on "$rt" && [ "$NOTTY_EXEMPT" != 1 ]; then rt="$LIM_NOTTY_TIMEOUT"; fi
+    fi
+    if limit_on "$rt" && [ "$ENGINE" = podman ]; then
+        args+=(--timeout "$rt")
+    fi
 
     # Make files the container writes belong to the host user.
     if [ "$ENGINE" = podman ]; then
@@ -126,8 +225,9 @@ run_in() {
     fi
 
     # Same path inside and out, so worktree .git pointers and absolute paths
-    # in build output stay valid. :Z relabels for SELinux (no-op elsewhere).
-    args+=(-v "$REPO:$REPO:Z" -w "$REPO")
+    # in build output stay valid. :z relabels for SELinux with a shared label (no-op elsewhere), so
+    # concurrent runs and worktrees do not lock each other out as a private :Z label would.
+    args+=(-v "$REPO:$REPO:z" -w "$REPO")
 
     # A git worktree's .git is a file pointing at the main checkout's git dir;
     # mount that too so make-version.sh and buildqb's git checks work.
@@ -140,12 +240,29 @@ run_in() {
         esac
     fi
 
+    local wrap=()
+    if limit_on "$rt"; then
+        wrap=(timeout -k 20)
+        [ "$notty" = 0 ] && wrap+=(--foreground)
+        wrap+=("$rt")
+    fi
     if [ "$DRYRUN" = 1 ]; then
-        printf '%q ' "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
+        printf '%q ' ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
         echo
         return
     fi
-    "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@"
+    local rc=0
+    if [ "$nullin" = 1 ]; then
+        ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@" < /dev/null || rc=$?
+    else
+        ${wrap[@]+"${wrap[@]}"} "$ENGINE" "${args[@]}" "${RUN_EXTRA[@]}" "$IMAGE" "$@" || rc=$?
+    fi
+    if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then
+        # timeout stopped the client; make sure the container goes too
+        "$ENGINE" rm -f "$cname" > /dev/null 2>&1 || true
+        [ "$rc" = 124 ] && echo "Error: stopped after ${rt}s (SSS_DEV_TIMEOUT, SSS_DEV_NOTTY_TIMEOUT)" >&2
+    fi
+    return "$rc"
 }
 
 # Pass the host display, audio, GPU and controllers through for `run`. The sockets are
@@ -156,6 +273,7 @@ gui_args() {
         echo "Error: DISPLAY is not set; run needs an X11 or XWayland session" >&2
         exit 1
     fi
+    GAME_SESSION=1
     RUN_EXTRA+=(--security-opt label=disable --ipc=host
                 -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix)
     if [ -n "${XAUTHORITY:-}" ] && [ -f "$XAUTHORITY" ]; then
@@ -183,7 +301,8 @@ cmd_image() {
     build_image
 }
 cmd_build() {
-    pick_engine; ensure_image
+    pick_engine; acquire_slot; ensure_image
+    RUN_TIMEOUT="$LIM_TIMEOUT"
     if [ "${1:-}" = --release ]; then
         run_in tools/container/in/build.sh --release
     else
@@ -191,11 +310,13 @@ cmd_build() {
     fi
 }
 cmd_test() {
-    pick_engine; ensure_image
-    run_in bash .github/scripts/qb64test.sh
+    pick_engine; acquire_slot; ensure_image
+    RUN_TIMEOUT="$LIM_TIMEOUT"
+    run_in bash -c 'bash tests/failfast_test.sh && bash .github/scripts/qb64test.sh'
 }
 cmd_render() {
-    pick_engine; ensure_image
+    pick_engine; acquire_slot; ensure_image
+    RUN_TIMEOUT="$LIM_TIMEOUT"
     run_in bash tests/render/run.sh "$@"
 }
 cmd_bake() {
@@ -212,6 +333,7 @@ cmd_shell() {
 }
 cmd_run() {
     pick_engine; ensure_image
+    NOTTY_EXEMPT=1
     rebuild_if_stale
     gui_args
     # Settings live in the per-user dir (#284). The container's own home is thrown away with
@@ -233,11 +355,13 @@ cmd_viewer() {
         run_in bash -c './tools/buildqb viewer.bas && exec xvfb-run -a builds/viewer "$@"' viewer "$@"
         return
     fi
+    NOTTY_EXEMPT=1
     gui_args
     run_in bash -c './tools/buildqb viewer.bas && exec builds/viewer "$@"' viewer "$@"
 }
 cmd_bench() {
-    pick_engine; ensure_image
+    pick_engine; acquire_slot; ensure_image
+    RUN_TIMEOUT="$LIM_TIMEOUT"
     rebuild_if_stale
     run_in tools/container/in/bench.sh "$@"
 }

@@ -15,6 +15,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/gameplay/impact.bas'
 '$INCLUDE:'../src/gameplay/attacks.bas'

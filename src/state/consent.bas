@@ -39,7 +39,7 @@ Sub GS_CONSENT_Update()
     For cnI = 0 To 2
         cnAY(cnI) = scrH \ 2 + 22 + cnI * 16
         If cnI = consentSel Then
-            UI_MenuHighlight cnPX1 + 6, cnAY(cnI) - 1, cnPX2 - 6, cnAY(cnI) + 14
+            UI_MenuRow cnPX1 + 6, cnPX2 - 6, cnAY(cnI)
             cnPal(cnI) = 15 : cnA(cnI) = 255
         End If
         UI_PromptsAt cnKeyTxt(cnI), INP_LastDevice%, cnDX - 2 * FONT_CHAR_W - UI_PromptsW%(cnKeyTxt(cnI), INP_LastDevice%), cnAY(cnI), 15, cnA(cnI), 0

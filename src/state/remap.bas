@@ -51,7 +51,7 @@ Sub RMP_DrawPage
     For rmdSy = 0 To scrH - 1 Step 2
         Line (0, rmdSy)-(scrW - 1, rmdSy), _RGBA(0, 0, 18, 28)
     Next rmdSy
-    UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "CONTROLS"
+    UI_DrawPage "CONTROLS"
 
     FONT_PrintAlpha fontPalette(8), backBuffer, "ACTION", 30, 30, 255
     If rmpCol = 0 Then rmdKPal = 11 Else rmdKPal = 8
@@ -64,7 +64,7 @@ Sub RMP_DrawPage
         If rmdRow >= RMP_ROWS Then Exit For
         rmdY = RMD_ROW_Y + rmdI * RMD_ROW_H
         If rmdRow = rmpSel Then
-            UI_MenuHighlight 26, rmdY - 1, scrW - 27, rmdY + 15
+            UI_MenuRow 26, scrW - 27, rmdY
             rmdLPal = 14
         Else
             rmdLPal = 9

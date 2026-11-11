@@ -11,6 +11,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/bosses.ini':'CFGBOSSES'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'

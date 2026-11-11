@@ -3,6 +3,7 @@
 ' Build: tools/buildqb musicplayer.bas   (offline WAV renders instead: tools/musrender.bas)
 '
 ' Controls: up/down to select, space/enter to play, ESC to quit
+'$INCLUDE:'src/sys/failfast.bi'
 $EMBED:'assets/music.mus':'MUSICDATA'
 
 Const SND_UI_MOVE   = 1

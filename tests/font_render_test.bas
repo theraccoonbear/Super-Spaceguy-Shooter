@@ -12,6 +12,7 @@
 ' Run:   ./tests/font_render_test    (exit 0 = pass, exit 1 = any failure)
 
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Sub DBG_Print (dpMsg As String) : End Sub
 '$INCLUDE:'../src/sys/rng.bas'

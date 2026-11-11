@@ -20,6 +20,7 @@
 
 $CONSOLE:ONLY
 Option _Explicit
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Const MAXC = 32
 Dim Shared cH(1 To MAXC) As Long

@@ -1,7 +1,7 @@
 ' telemetry.bas — gameplay event logger
 '
 ' Buffers one CSV row per game event (telemCsvBuf) and writes sss_telemetry.csv in telemCsvDir once, at session end (#284).
-' telemOn (DIM SHARED in sss.bas) gates all writes; disabled by --no-telem flag.
+' telemOn (DIM SHARED in sss.bas) gates all writes; disabled by --no-telem, or by a dev/cheat flag (CLI_ImpliesNoTelem%).
 '
 ' Format: time,session,event,data
 ' time    = seconds since midnight (INT(Timer))
@@ -361,7 +361,9 @@ Sub TELEM_SessionEnd()
     DBG_Print "TELEM: SessionEnd rows=" + LTrim$(Str$(Len(telemBatch))) + " bytes"
     TELEM_FlushBatch
     TELEM_FlushCsv
-    If Len(DB_URL) = 0 Or Len(DB_KEY) = 0 Then
+    If telemOn = 0 Then
+        DBG_Print "LBRD: score POST skipped -- telemetry off"
+    ElseIf Len(DB_URL) = 0 Or Len(DB_KEY) = 0 Then
         DBG_Print "LBRD: score POST skipped -- DB_URL/DB_KEY not set in .env"
     ElseIf telemConsent = 0 Then
         DBG_Print "LBRD: score POST skipped -- no consent"

@@ -8,6 +8,7 @@
 '        cues set one after another the way the game sets them (silence = no cue yet)
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/music.mus':'MUSICDATA'
 
 Const SND_UI_MOVE   = 1
@@ -20,6 +21,7 @@ Const SND_UI_SPIN   = 7
 Const SND_UI_SPIN_N = 39
 
 Dim Shared volMusic As Single, volSfx As Single, volSpeech As Single, spkSampleOut As Single
+Dim Shared musHold As Integer, musHoldVol As Single
 Sub SPK_Advance () : End Sub
 
 '$INCLUDE:'../src/sys/rng.bas'

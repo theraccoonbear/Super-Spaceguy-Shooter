@@ -31,6 +31,7 @@
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/sequence.txt':'SEQTXT'
 
 '$INCLUDE:'../src/sys/rng.bas'

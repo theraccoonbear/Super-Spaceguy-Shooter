@@ -221,6 +221,7 @@ tools/buildqb tests/seq_trace_test.bas         && builds/seq_trace_test
 tools/buildqb tests/seq_dispatch_test.bas      && builds/seq_dispatch_test
 tools/buildqb tests/scene_jump_planet_test.bas && builds/scene_jump_planet_test
 tools/buildqb tests/telem_creds_test.bas       && builds/telem_creds_test
+tools/buildqb tests/cli_telem_test.bas         && builds/cli_telem_test
 tools/buildqb tests/snd_init_test.bas          && builds/snd_init_test
 tools/buildqb tests/dbg_output_test.bas        && builds/dbg_output_test
 tools/http_queue_test                          # builds and starts the QB64-PE mock HTTP server (tools/http_mock_server.bas) itself
