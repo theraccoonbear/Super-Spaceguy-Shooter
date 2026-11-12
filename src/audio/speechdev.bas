@@ -5,9 +5,11 @@
 ' them all off, or all on when any is off. U says the test line (two boss callouts from gametext.txt)
 ' at the chosen narration preset, and J cycles that preset (SLOW, NORMAL, FAST). A toggle applies
 ' from the next phoneme on.
-' The IN knobs (assets/config/speech.ini): ; and ' move the cursor through them (the selected line is
-' highlighted and marked <), , and . nudge it down / up (holding repeats), / re-reads the ini from disk. A knob re-plans the pitch of the line being spoken. Copy tuned values into speech.ini.
-' The readout is one column at the left edge: name, keys, value.
+' The IN knobs (assets/config/speech.ini): ; and ' select one, , and . nudge it down / up (holding
+' repeats), / re-reads the ini from disk. A knob re-plans the pitch of the line being spoken. Copy tuned
+' values into speech.ini, or use tools/dev speechtune, which scrubs and replays a line and saves the ini.
+' The readout is two short rows in the top-left corner: the selected knob's full name and value, then
+' the speed preset and features on (or, for a few seconds after /, the reload result).
 
 Const SPKD_FILE = "assets/config/speech.ini"
 Const SPKD_HOLD = 18      ' frames a nudge key is held before it repeats
@@ -15,10 +17,10 @@ Const SPKD_REPEAT = 3     ' frames between repeats
 
 Dim Shared spdWas(0 To 11) As Integer
 Dim Shared spdSel As Integer   ' the knob the cursor is on (SPK_PK_*)
-Const SPKD_NAMES = "STDCACANFFRSSSGPLGLD"   ' readout names in SPK_PK_* order
+Const SPKD_ROW_H = 8      ' pixel height of a readout row (the 8x8 font)
 Dim Shared spdPreset As Integer
 Dim Shared spdHeld(0 To SPK_PK_N - 1, 0 To 1) As Integer
-Dim Shared spdMsg As String
+Dim Shared spdMsg As String, spdMsgT As Integer   ' the reload result, shown for spdMsgT frames
 
 Function SPKD_Edge% (sdeI As Integer, sdeUp As Long)
     Dim sdeNow As Integer
@@ -56,27 +58,24 @@ End Function
 Sub SPKD_Reload ()
     Dim sdrP As String
     sdrP = SPKD_Path$
+    spdMsgT = 240
     If sdrP = "" Then spdMsg = "speech.ini not found (run from repo)" : Exit Sub
-    If SPK_ProsodyLoad%(_ReadFile$(sdrP)) Then spdMsg = "reloaded" Else spdMsg = spkCfgErr
+    If SPK_ProsodyLoad%(_ReadFile$(sdrP)) Then spdMsg = "speech.ini reloaded" Else spdMsg = spkCfgErr
 End Sub
 
-Sub SPKD_Line (sdlRow As Integer, sdlTxt As String, sdlSel As Integer)
-    Dim sdlY As Integer
-    sdlY = 4 + sdlRow * 10
-    Line (0, sdlY - 1)-(Len(sdlTxt) * 8 + 3, sdlY + 8), _RGBA(0, 0, 0, 200), BF
-    If sdlSel Then Color _RGB(120, 230, 255) Else Color _RGB(255, 230, 120)
-    _PrintString (2, sdlY), sdlTxt
+' The readout: two 8-pixel rows at the top-left corner on an opaque backing, which is the band the
+' crawl fades out (CRAWL_TOP_FADE): text up there is already faded away, so the readout never
+' covers crawl text that can still be read, wherever the crawl is.
+Sub SPKD_Print (sdpRow As Integer, sdpTxt As String)
+    Dim sdpY As Integer
+    sdpY = sdpRow * SPKD_ROW_H
+    Line (0, sdpY)-(Len(sdpTxt) * 8 + 3, sdpY + SPKD_ROW_H - 1), _RGB(0, 0, 0), BF
+    Color _RGB(255, 230, 120)
+    _PrintString (2, sdpY), sdpTxt
 End Sub
-
-Function SPKD_Num$ (sdnV As Single)
-    Dim sdnS As String
-    sdnS = LTrim$(Str$(Int(sdnV * 100 + 0.5) / 100))
-    If Left$(sdnS, 1) = "." Then sdnS = "0" + sdnS
-    SPKD_Num$ = sdnS
-End Function
 
 Sub SPKD_Frame
-    Dim sdfI As Integer, sdfOn As Integer, sdfAll As String, sdfK As Integer, sdfV As String
+    Dim sdfI As Integer, sdfOn As Integer, sdfV As String, sdfOld As Long
     If cliSpeechDev = 0 Then Exit Sub
     If spdPreset < 1 Or spdPreset > 3 Then spdPreset = settingNarrSpeed
     If spdPreset < 1 Or spdPreset > 3 Then spdPreset = 2
@@ -108,28 +107,30 @@ Sub SPKD_Frame
     SPKD_NudgeKey spdSel, 1, 46
     If SPKD_Edge%(11, 47) Then SPKD_Reload
 
-    If sdfOn = SPK_FX_N Then
-        sdfAll = "on"
-    ElseIf sdfOn = 0 Then
-        sdfAll = "off"
+    If spdSel = SPK_PK_GPITCH Then sdfV = SPKD_OnOff$(spkPk(spdSel) >= 0.5) Else sdfV = SPK_Num$(spkPk(spdSel))
+    If spdMsgT > 0 Then
+        spdMsgT = spdMsgT - 1
     Else
-        sdfAll = "mix"
+        spdMsg = ""
     End If
+    sdfOld = _Font
     _Dest 0
-    SPKD_Line 0, "GL G " + SPKD_OnOff$(spkFx(SPK_FX_GL)), 0
-    SPKD_Line 1, "BU B " + SPKD_OnOff$(spkFx(SPK_FX_BU)), 0
-    SPKD_Line 2, "FR H " + SPKD_OnOff$(spkFx(SPK_FX_FR)), 0
-    SPKD_Line 3, "NL M " + SPKD_OnOff$(spkFx(SPK_FX_NL)), 0
-    SPKD_Line 4, "HB O " + SPKD_OnOff$(spkFx(SPK_FX_HB)), 0
-    SPKD_Line 5, "IN I " + SPKD_OnOff$(spkFx(SPK_FX_IN)), 0
-    SPKD_Line 6, "AL [ " + sdfAll, 0
-    SPKD_Line 7, "PR J " + Mid$("SLONRMFST", spdPreset * 3 - 2, 3), 0
-    SPKD_Line 8, "SA U " + SPKD_OnOff$(SPK_IsPlaying%), 0
-    SPKD_Line 9, "KN ;' " + Mid$(SPKD_NAMES, spdSel * 2 + 1, 2), 0
-    For sdfK = 0 To SPK_PK_N - 1
-        If sdfK = SPK_PK_GPITCH Then sdfV = SPKD_OnOff$(spkPk(sdfK) >= 0.5) Else sdfV = SPKD_Num$(spkPk(sdfK))
-        If sdfK = spdSel Then sdfV = sdfV + " <"
-        SPKD_Line 10 + sdfK, Mid$(SPKD_NAMES, sdfK * 2 + 1, 2) + " ,. " + sdfV, (sdfK = spdSel)
-    Next sdfK
-    If Len(spdMsg) > 0 Then SPKD_Line 20, "RL / " + spdMsg, 0 Else SPKD_Line 20, "RL / -", 0
+    _Font 8
+    SPKD_Print 0, SPK_PkName$(spdSel) + ": " + sdfV
+    If Len(spdMsg) > 0 Then
+        SPKD_Print 1, spdMsg
+    Else
+        SPKD_Print 1, "Speed " + SPKD_PresetName$(spdPreset) + "  features " + LTrim$(Str$(sdfOn)) + " of " + LTrim$(Str$(SPK_FX_N)) + " on"
+    End If
+    _Font sdfOld
 End Sub
+
+Function SPKD_PresetName$ (sdqP As Integer)
+    If sdqP = 1 Then
+        SPKD_PresetName$ = "Slow"
+    ElseIf sdqP = 3 Then
+        SPKD_PresetName$ = "Fast"
+    Else
+        SPKD_PresetName$ = "Normal"
+    End If
+End Function
