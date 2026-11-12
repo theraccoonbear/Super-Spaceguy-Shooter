@@ -20,6 +20,9 @@
 #   viewer [args]  build viewer.bas and open the model viewer on your display
 #                  (PgUp/PgDn cycle meshes, old enemy then its E2_ replacement);
 #                  args go to the viewer, e.g. --sheets <outdir> writes the review PNGs
+#   speechtune [args]  build tools/speechtune.bas and open the voice-tuning tool on your display and audio
+#                  (settings list, scrubbing player, saves assets/config/speech.ini); `speechtune --screenshot <png> [--line N]` draws one
+#                  frame headless into a repo-relative PNG and exits
 #   bench [--repeat N] [--script F] [args]  frame-time bench: plays F (default tests/bench/bench.txt) headless,
 #                  unthrottled, N times (default 5); prints avg, p95 and worst
 #                  per phase (simulation, backdrop, scene build, raster, particles,
@@ -358,6 +361,16 @@ cmd_viewer() {
     NOTTY_EXEMPT=1
     gui_args
     run_in bash -c './tools/buildqb viewer.bas && exec builds/viewer "$@"' viewer "$@"
+}
+cmd_speechtune() {
+    pick_engine; ensure_image
+    if [ "${1:-}" = --screenshot ]; then
+        run_in bash -c './tools/buildqb tools/speechtune.bas && exec xvfb-run -a builds/speechtune "$@"' speechtune "$@"
+        return
+    fi
+    NOTTY_EXEMPT=1
+    gui_args
+    run_in bash -c './tools/buildqb tools/speechtune.bas && exec builds/speechtune "$@"' speechtune "$@"
 }
 cmd_bench() {
     pick_engine; acquire_slot; ensure_image
