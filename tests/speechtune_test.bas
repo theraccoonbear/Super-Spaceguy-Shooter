@@ -273,6 +273,46 @@ ST_Assert Left$(stOut, Len(stBad)) = stBad And InStr(stOut, "; note" + Chr$(13))
 ST_Assert SPK_ProsodyLoad%("feature_glides=2") = 0, "a feature value other than 0 or 1 is refused"
 ST_Assert InStr(spkCfgErr, "feature_glides") > 0, "and the error names the key"
 
+' rows with no effect
+For stI = 0 To SPK_FX_N - 1 : spkFx(stI) = -1 : Next stI
+SPK_PkSet SPK_PK_NACC, 1
+stOk = -1
+For stI = 0 To SPK_PK_N - 1
+    If Len(SPK_PkInactive$(stI)) > 0 Then stOk = 0 : Print "  inactive: " + spkPkKey(stI)
+Next stI
+ST_Assert stOk, "with every switch on and one accent per phrase no knob is inactive"
+spkFx(SPK_FX_IN) = 0
+stOk = -1
+For stI = 0 To SPK_PK_N - 1
+    If stI <> SPK_PK_GPITCH And stI <> SPK_PK_LIQ Then
+        If SPK_PkInactive$(stI) <> "no effect: needs Intonation on" Then stOk = 0 : Print "  active: " + spkPkKey(stI)
+    End If
+Next stI
+ST_Assert stOk, "with Intonation off the eight intonation knobs are inactive, with the reason"
+ST_Assert SPK_PkInactive$(SPK_PK_GPITCH) = "" And SPK_PkInactive$(SPK_PK_LIQ) = "", "Intonation off leaves Glide pitch and Liquid glide length in play"
+spkFx(SPK_FX_IN) = -1
+spkFx(SPK_FX_GL) = 0
+ST_Assert SPK_PkInactive$(SPK_PK_GPITCH) = "no effect: needs Glides on", "Glide pitch is inactive with Glides off"
+ST_Assert SPK_PkInactive$(SPK_PK_LIQ) = "no effect: needs Glides on", "Liquid glide length is inactive with Glides off"
+ST_Assert SPK_PkInactive$(SPK_PK_FALL) = "", "Glides off leaves the intonation knobs in play"
+spkFx(SPK_FX_NL) = 0
+ST_Assert SPK_PkInactive$(SPK_PK_LIQ) = "no effect: needs Glides and Nasals and liquids on", "Liquid glide length names both missing switches"
+spkFx(SPK_FX_GL) = -1
+ST_Assert SPK_PkInactive$(SPK_PK_LIQ) = "no effect: needs Nasals and liquids on", "Liquid glide length is inactive with Nasals and liquids off"
+ST_Assert SPK_PkInactive$(SPK_PK_GPITCH) = "", "Glide pitch is in play with Glides on, whatever Nasals and liquids are"
+spkFx(SPK_FX_NL) = -1
+ST_Assert SPK_PkInactive$(SPK_PK_LIQ) = "", "Liquid glide length is in play with Glides and Nasals and liquids on"
+SPK_PkSet SPK_PK_NACC, 0
+ST_Assert SPK_PkInactive$(SPK_PK_ACC) = "no effect: Accents per phrase is 0", "Accent size is inactive with no accents per phrase"
+ST_Assert SPK_PkInactive$(SPK_PK_NACC) = "" And SPK_PkInactive$(SPK_PK_FALL) = "", "Accents per phrase 0 leaves the other intonation knobs in play"
+spkFx(SPK_FX_IN) = 0
+ST_Assert SPK_PkInactive$(SPK_PK_ACC) = "no effect: needs Intonation on", "Intonation off is the reason given first for Accent size"
+SPK_PkSet SPK_PK_SPREAD, 0
+spkFx(SPK_FX_IN) = -1
+SPK_PkSet SPK_PK_NACC, 1
+ST_Assert SPK_PkInactive$(SPK_PK_GPITCH) = "", "stress spread 0 does not dim Glide pitch"
+spkFx(SPK_FX_GL) = -1
+
 Print ""
 Print "Passed:"; stPassed; " Failed:"; stFailed
 If stFailed > 0 Then System 1

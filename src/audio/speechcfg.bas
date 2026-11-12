@@ -7,6 +7,7 @@
 '                                 value in place (comments and layout stay; a missing key is appended)
 '   SPK_PkName$(k), SPK_PkDesc$(k), SPK_FxName$(f), SPK_FxDesc$(f)   full names and one-line help
 '   SPK_Num$(v)                   a value as short text (at most two decimals)
+'   SPK_PkInactive$(k)            "" or the reason knob k has no effect under the current switches and knobs
 ' Needs config.bas (CFG_Parse$, CFG_Get$) and speech.bas.
 
 Dim Shared spkCfgErr As String
@@ -86,6 +87,28 @@ Function SPK_Num$ (spmV As Single)
     If Left$(spmS, 1) = "." Then spmS = "0" + spmS
     If Left$(spmS, 2) = "-." Then spmS = "-0" + Mid$(spmS, 2)
     SPK_Num$ = spmS
+End Function
+
+' "" when knob spk is in play with the current switches and knobs, else a short reason it has no effect
+Function SPK_PkInactive$ (spaK As Integer)
+    SPK_PkInactive$ = ""
+    If spaK = SPK_PK_GPITCH Then
+        If spkFx(SPK_FX_GL) = 0 Then SPK_PkInactive$ = "no effect: needs Glides on"
+    ElseIf spaK = SPK_PK_LIQ Then
+        If spkFx(SPK_FX_GL) = 0 And spkFx(SPK_FX_NL) = 0 Then
+            SPK_PkInactive$ = "no effect: needs Glides and Nasals and liquids on"
+        ElseIf spkFx(SPK_FX_GL) = 0 Then
+            SPK_PkInactive$ = "no effect: needs Glides on"
+        ElseIf spkFx(SPK_FX_NL) = 0 Then
+            SPK_PkInactive$ = "no effect: needs Nasals and liquids on"
+        End If
+    Else
+        If spkFx(SPK_FX_IN) = 0 Then
+            SPK_PkInactive$ = "no effect: needs Intonation on"
+        ElseIf spaK = SPK_PK_ACC And spkPk(SPK_PK_NACC) < 0.5 Then
+            SPK_PkInactive$ = "no effect: Accents per phrase is 0"
+        End If
+    End If
 End Function
 
 Function SPK_ProsodyLoad% (splSrc As String)

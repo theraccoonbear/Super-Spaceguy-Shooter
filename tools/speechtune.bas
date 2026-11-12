@@ -6,6 +6,10 @@
 ' effect of a change on the same syllable is heard at once. S writes the settings to
 ' assets/config/speech.ini, R reads them back.
 '
+' Keys: Up/Down (or Tab) pick a setting, Left/Right change it (off/on, Slow/Normal/Fast), , . scrub 1 s
+' (< > 0.25 s), PgUp/PgDn change line, Space play/pause, Enter restart, [ ] L loop, T type a line, S, R, Q.
+' A setting row that has no effect under the current switches is drawn dim (SPK_PkInactive$).
+'
 ' Build: tools/buildqb tools/speechtune.bas   (in the container: tools/dev speechtune builds and opens it)
 ' Run:   builds/speechtune                    (from the repo root: it finds assets/config/speech.ini there)
 Option _Explicit
@@ -215,11 +219,16 @@ Sub TK_Step (tsD As Integer)
     tnPlaying = tsWas
 End Sub
 
-' Nudge the selected row by tnD (-1 / +1) and re-render.
+' Change the selected row by tnD (-1 / +1) and re-render. On/off rows (the features and Glide pitch)
+' take Left = off, Right = on; the preset steps Slow / Normal / Fast.
 Sub TK_Nudge (tnD As Integer)
     Dim tnF As Integer
     If tkSel < SPK_PK_N Then
-        SPK_PkSet tkSel, spkPk(tkSel) + tnD * spkPkInc(tkSel)
+        If tkSel = SPK_PK_GPITCH Then
+            SPK_PkSet tkSel, -(tnD > 0)
+        Else
+            SPK_PkSet tkSel, spkPk(tkSel) + tnD * spkPkInc(tkSel)
+        End If
     ElseIf tkSel < TK_ROW_PRESET Then
         tnF = tkSel - SPK_PK_N
         spkFx(tnF) = (tnD > 0)
@@ -231,54 +240,37 @@ Sub TK_Nudge (tnD As Integer)
     TK_Rerender
 End Sub
 
-' Space or Enter on a feature or preset row: flip it (the preset cycles).
-Sub TK_Toggle
-    Dim ttF As Integer
-    If tkSel < TK_ROW_PRESET Then
-        ttF = tkSel - SPK_PK_N
-        spkFx(ttF) = (spkFx(ttF) = 0)
-    Else
-        tkPreset = tkPreset Mod 3 + 1
-    End If
-    TK_Rerender
-End Sub
+' "" when row trR is in play with the current settings, else why it has no effect
+Function TK_RowInactive$ (triR As Integer)
+    If triR < SPK_PK_N Then TK_RowInactive$ = SPK_PkInactive$(triR) Else TK_RowInactive$ = ""
+End Function
 
 Sub TK_Keys
-    Dim tkkOnRow As Integer
-    tkkOnRow = (tkSel >= SPK_PK_N)
     If TK_Press%(27, 0, 0) Or TK_Press%(113, 1, 0) Then tkQuit = -1
     If TK_Press%(9, 2, 0) Then
         If TK_Shift% Then tkSel = (tkSel + TK_ROWS - 1) Mod TK_ROWS Else tkSel = (tkSel + 1) Mod TK_ROWS
     End If
-    If TK_Press%(39, 3, -1) Then tkSel = (tkSel + 1) Mod TK_ROWS
-    If TK_Press%(59, 4, -1) Then tkSel = (tkSel + TK_ROWS - 1) Mod TK_ROWS
-    If TK_Press%(32, 5, 0) Then
-        If tkkOnRow Then
-            TK_Toggle
-        Else
-            If tnPos >= tnLen Then tnPos = 0
-            tnPlaying = (tnPlaying = 0)
-        End If
+    If TK_Press%(20480, 3, -1) Then tkSel = (tkSel + 1) Mod TK_ROWS
+    If TK_Press%(18432, 4, -1) Then tkSel = (tkSel + TK_ROWS - 1) Mod TK_ROWS
+    If TK_Press%(19200, 5, -1) Then TK_Nudge -1
+    If TK_Press%(19712, 6, -1) Then TK_Nudge 1
+    If TK_Press%(32, 7, 0) Then
+        If tnPos >= tnLen Then tnPos = 0
+        tnPlaying = (tnPlaying = 0)
     End If
-    If TK_Press%(13, 6, 0) Then
-        If tkkOnRow Then
-            TK_Toggle
-        Else
-            tnPos = 0 : tnPlaying = -1
-        End If
-    End If
-    If TK_Press%(19200, 7, -1) Then If TK_Shift% Then TUNE_Scrub -0.25 Else TUNE_Scrub -1
-    If TK_Press%(19712, 8, -1) Then If TK_Shift% Then TUNE_Scrub 0.25 Else TUNE_Scrub 1
-    If TK_Press%(91, 9, 0) Then TUNE_SetLoopStart : TK_Say "Loop starts at " + TK_Time$(tnPos)
-    If TK_Press%(93, 10, 0) Then TUNE_SetLoopEnd : TK_Say "Loop ends at " + TK_Time$(tnPos)
-    If TK_Press%(108, 11, 0) Then tnLooping = (tnLooping = 0)
-    If TK_Press%(18432, 12, 0) Then TK_Step -1
-    If TK_Press%(20480, 13, 0) Then TK_Step 1
-    If TK_Press%(44, 14, -1) Then TK_Nudge -1
-    If TK_Press%(46, 15, -1) Then TK_Nudge 1
-    If TK_Press%(115, 16, 0) Then TK_Save
-    If TK_Press%(114, 17, 0) Then TK_Reload
-    If TK_Press%(116, 18, 0) Then
+    If TK_Press%(13, 8, 0) Then tnPos = 0 : tnPlaying = -1
+    If TK_Press%(44, 9, -1) Then TUNE_Scrub -1
+    If TK_Press%(46, 10, -1) Then TUNE_Scrub 1
+    If TK_Press%(60, 11, -1) Then TUNE_Scrub -0.25
+    If TK_Press%(62, 12, -1) Then TUNE_Scrub 0.25
+    If TK_Press%(91, 13, 0) Then TUNE_SetLoopStart : TK_Say "Loop starts at " + TK_Time$(tnPos)
+    If TK_Press%(93, 14, 0) Then TUNE_SetLoopEnd : TK_Say "Loop ends at " + TK_Time$(tnPos)
+    If TK_Press%(108, 15, 0) Then tnLooping = (tnLooping = 0)
+    If TK_Press%(18688, 16, 0) Then TK_Step -1
+    If TK_Press%(20736, 17, 0) Then TK_Step 1
+    If TK_Press%(115, 18, 0) Then TK_Save
+    If TK_Press%(114, 19, 0) Then TK_Reload
+    If TK_Press%(116, 20, 0) Then
         tkEntering = -1 : tkEntry = tkCustom
         _KeyClear
     End If
@@ -423,7 +415,7 @@ End Sub
 
 Sub TK_Draw
     Dim tdI As Integer, tdY As Integer, tdHead As String, tdHeard As Long, tdW As Integer, tdX As Long
-    Dim tdRowCol As Long, tdBig As String, tdImg As Long
+    Dim tdRowCol As Long, tdBig As String, tdImg As Long, tdWhy As String
     Line (0, 0)-(TK_W - 1, TK_H - 1), tkCol(0), BF
     ' header and line
     If tkLine >= 0 Then
@@ -488,30 +480,39 @@ Sub TK_Draw
     TK_Text 504, 246, "What it does", tkCol(3)
     For tdI = 0 To TK_ROWS - 1
         tdY = 264 + tdI * 18
+        tdWhy = TK_RowInactive$(tdI)
         If tdI = tkSel Then
             Line (16, tdY - 1)-(TK_W - 17, tdY + 16), tkCol(6), BF
             tdRowCol = tkCol(0)
+        ElseIf Len(tdWhy) > 0 Then
+            tdRowCol = tkCol(9)
         Else
             tdRowCol = tkCol(2)
         End If
         TK_Text 24, tdY, TK_Name$(tdI), tdRowCol
-        If tdI <> tkSel Then
-            If tdI >= SPK_PK_N And tdI < TK_ROW_PRESET Then
-                If spkFx(tdI - SPK_PK_N) Then TK_Text 304, tdY, TK_Value$(tdI), tkCol(7) Else TK_Text 304, tdY, TK_Value$(tdI), tkCol(8)
+        If tdI <> tkSel And Len(tdWhy) = 0 Then
+            If tdI = SPK_PK_GPITCH Or (tdI >= SPK_PK_N And tdI < TK_ROW_PRESET) Then
+                If TK_Value$(tdI) = "on" Then TK_Text 304, tdY, TK_Value$(tdI), tkCol(7) Else TK_Text 304, tdY, TK_Value$(tdI), tkCol(8)
             Else
                 TK_Text 304, tdY, TK_Value$(tdI), tkCol(4)
             End If
         Else
             TK_Text 304, tdY, TK_Value$(tdI), tdRowCol
         End If
-        If tdI = tkSel Then TK_Text 392, tdY, TK_Range$(tdI), tkCol(0) Else TK_Text 392, tdY, TK_Range$(tdI), tkCol(3)
-        TK_Text 504, tdY, TK_Desc$(tdI), tdRowCol
+        If tdI = tkSel Then
+            TK_Text 392, tdY, TK_Range$(tdI), tkCol(0)
+        ElseIf Len(tdWhy) > 0 Then
+            TK_Text 392, tdY, TK_Range$(tdI), tkCol(9)
+        Else
+            TK_Text 392, tdY, TK_Range$(tdI), tkCol(3)
+        End If
+        If tdI = tkSel And Len(tdWhy) > 0 Then TK_Text 504, tdY, tdWhy, tdRowCol Else TK_Text 504, tdY, TK_Desc$(tdI), tdRowCol
     Next tdI
     ' message and help
     If Timer < tkMsgUntil Then TK_Text 24, 576, tkMsg, tkCol(4) Else TK_Text 24, 576, "", tkCol(3)
-    TK_Text 24, 598, "Space play/pause   Enter restart   Left/Right scrub 1 s (Shift: 0.25 s)   [ ] loop start/end   L loop on/off", tkCol(3)
-    TK_Text 24, 614, "Up/Down line   T type a line   Tab or ; ' pick a setting   , . nudge (hold repeats)   Esc quit", tkCol(3)
-    TK_Text 24, 630, "Space/Enter flip a selected on/off or preset row   S save speech.ini   R reload speech.ini", tkCol(3)
+    TK_Text 24, 598, "Space play/pause   Enter restart   , . scrub 1 s (Shift: 0.25 s)   [ ] loop start/end   L loop on/off", tkCol(3)
+    TK_Text 24, 614, "Up/Down pick a setting (or Tab)   Left/Right change it (off/on, Slow/Normal/Fast)   PgUp/PgDn line   T type a line", tkCol(3)
+    TK_Text 24, 630, "Dim rows have no effect with the current switches   S save speech.ini   R reload speech.ini   Esc quit", tkCol(3)
 End Sub
 
 ' After typing, keys still held (Enter, Esc) must be let go before they act as commands.

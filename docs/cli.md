@@ -46,18 +46,20 @@ sss [options]
 
 | Key | Action |
 | --- | --- |
-| Space | play / pause (on a selected on/off or preset row: flip that row) |
-| Enter | restart from 0 (on a selected on/off or preset row: flip that row) |
-| Left / Right | scrub back / forward 1.0 s (hold repeats); with Shift 0.25 s |
+| Space | play / pause (on every row) |
+| Enter | restart from 0 (on every row) |
+| `,` / `.` | scrub back / forward 1.0 s (hold repeats); with Shift (`<` / `>`) 0.25 s |
 | `[` / `]` | set the loop start / end at the playhead |
 | `L` | loop the region on / off |
-| Up / Down | previous / next line |
+| PgUp / PgDn | previous / next line |
 | `T` | type your own line (Enter speaks it, Esc cancels) |
-| Tab or `'` / `;` | select the next / previous setting row (Shift+Tab goes back) |
-| `,` / `.` | nudge the selected setting down / up (hold repeats); on an on/off row off / on; on the preset Slow / Normal / Fast |
+| Up / Down or Tab | select the previous / next setting row (hold repeats; Shift+Tab goes back) |
+| Left / Right | change the selected setting down / up (hold repeats); on an on/off row (the six switches and Glide pitch) off / on; on the preset Slow / Normal / Fast |
 | `S` | save the settings and clarity switches to `assets/config/speech.ini`, keeping its comments (rewrites each value in place; check with `git diff assets/config/speech.ini`) |
 | `R` | reload the settings from `assets/config/speech.ini` |
 | Esc or `Q` | quit |
+
+A row drawn dim has no effect under the current switches (for example the intonation knobs with Intonation off, or Glide pitch with Glides off); it stays selectable and keeps its value, and when selected it shows the reason in its description column.
 
 `speech.ini` carries the ten knobs and six `feature_*` switches (all on is the shipped voice); the game reads both at startup. The Slow / Normal / Fast speed preset is a player setting, so it is not saved. `tools/dev speechtune --screenshot <png> [--line N]` draws one frame headless (Xvfb, no audio) into a repo-relative PNG and exits.
 
