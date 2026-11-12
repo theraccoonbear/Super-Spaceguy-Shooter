@@ -11,6 +11,7 @@ tools/dev shell   # interactive shell in the container; `tools/dev shell <cmd>` 
 tools/dev run     # play the game in the container on your display; args pass through to sss
 tools/dev headless  # run the game on an off-screen display (Xvfb), e.g. for scripted playtests (see [Scripted playtests](cli.md))
 tools/dev viewer    # build and open viewer.bas (the model viewer) on your display; `viewer --sheets <outdir>` renders the enemy, player and boss review PNGs headless (a repo-relative <outdir>, e.g. `builds/sheets`: the container sees only the repo)
+tools/dev speechtune  # build and open tools/speechtune.bas (the voice-tuning tool) on your display and audio; `speechtune --screenshot <png> [--line N]` draws one frame headless into a repo-relative PNG ([Voice tuning](cli.md))
 tools/dev bench   # frame-time bench: per-phase simulation and render times of a fixed busy run ([Frame-time bench](testing.md#frame-time-bench))
 tools/dev record  # record the scripted playthrough, with sound, to builds/playthrough.mp4 ([Recording a video](#recording-a-video))
 tools/dev completion  # print the bash tab-completion function (see Tab completion below)
