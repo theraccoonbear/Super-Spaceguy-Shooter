@@ -53,6 +53,7 @@ $EMBED:'assets/config/powerups.ini':'CFGPOWERUPS'
 $EMBED:'assets/config/waves.ini':'CFGWAVES'
 $EMBED:'assets/config/bosses.ini':'CFGBOSSES'
 $EMBED:'assets/config/enemies.ini':'CFGENEMIES'
+$EMBED:'assets/config/speech.ini':'CFGSPEECH'
 $EMBED:'assets/config/difficulty.ini':'CFGDIFFICULTY'
 $EMBED:'assets/speech_dict.txt':'SPEECHDICT'
 $EMBED:'assets/music.mus':'MUSICDATA'
@@ -199,6 +200,7 @@ IF iscActive AND cliRealtime = 0 THEN AUD_SetRate AUTHOR_RATE ELSE AUD_SetRate _
 SND_Init
 MUS_SetCue "crawl"   ' music from launch: consent, callsign and the lead-in cards run into the intro crawl on one cue
 SPK_Init
+IF SPK_ProsodyLoad%(_EMBEDDED$("CFGSPEECH")) = 0 THEN GAME_Usage spkCfgErr
 E3D_CtrlInit
 SETTINGS_Load
 TELEM_Init
@@ -340,6 +342,7 @@ DO
     IF spkAudioLock THEN spkBuffered = CLNG(_SNDRAWLEN * SAMPLE_RATE)
     IF musHold = 0 AND spkHold = 0 THEN SPK_Tick
 
+    SPKD_Frame
     DBG_Overlay
 
     If httpEasyH <> 0 Or httpQCount > 0 Then

@@ -6,6 +6,8 @@ seq_trace_test
 seq_graph_test
 scene_jump_planet_test
 spk_timing_test
+spk_suffix_test
+spk_prosody_test
 narr_drain_test
 snd_init_test
 music_test
@@ -49,3 +51,4 @@ narr_sync_test
 audio_rate_test
 enemy_attack_test
 roster_test
+speechtune_test

@@ -25,6 +25,7 @@ sss [options]
   --backdrop-dev         Matte-painting helper on the title, emperor and dock screens: shows the painting coordinates under the mouse, and R reloads `assets/backdrops.txt` from disk, with parse problems shown on screen in small text (see [Backdrops](backdrops.md))
   --explosion-dev        Explosion helper in play: **Z** picks a definition, **X** detonates it ahead of the ship (at the boss when one is out), **C** reloads `assets/explosions.txt` from disk, **V** runs the stress test; a readout shows the name, live particles and drops (see [Explosions](explosions.md))
   --enemy-dev            Enemy-attack tuning in play: **T** picks an enemy type (solo, arrow, hline, vcol, pincer, vwedge) or `mix`, whose one value is `debut_weight` (how many times as often a level's newly introduced type is picked, 1 to 10, step 0.25), **F** picks a value (shots, spread, speed, cool, lead, homing, home_stop), **-** and **=** lower and raise it, **L** reloads `assets/config/enemies.ini` from disk; a readout shows type, value and number (a load problem shows on the line above). Edits last until restart: copy them into the ini
+  --speech-dev           Voice A/B helper on every screen: **I G B H M O** switch the clarity features (intonation, glides, stop bursts, fricatives, nasals and liquids, bright tables) on and off live (from the next phoneme), **[** turns them all off (or all on when any is off), **U** says a fixed test line (the two boss callouts `speech_boss_phase2` and `speech_boss_phase3`) at the chosen narration preset, **J** cycles that preset (Slow, Normal, Fast). The intonation knobs of `assets/config/speech.ini` are select-and-nudge: **; '** select one, **, .** nudge it down / up (holding repeats; a nudge re-plans the line being spoken), **/** re-reads the ini from disk. The readout is two short rows in the top-left corner, on an opaque backing in the band the crawl fades out (so it never covers readable crawl text): the selected knob's full name and value, then the speed preset and how many features are on (for a few seconds after **/**, the reload result instead). Copy tuned values back into the ini, or tune with `tools/dev speechtune` (below), which saves them (see [the speech synthesizer](../src/sys/README-speech.md#clarity-features-236))
   --explode name@frame,...  Detonate these explosions ahead of the ship on those frames of play (for render scenes, e.g. `boss@20`)
   --bench <file>         Time each frame's phases over a `--frames` run and write the table to this file (see [Frame-time bench](testing.md#frame-time-bench); `tools/dev bench` drives it)
   --seed N               Fixed random seed, so a scripted run repeats exactly
@@ -38,6 +39,29 @@ sss [options]
 ```
 
 **Crawls:** `--scene crawl:<key>` jumps to any named crawl. That covers every `CRAWL` task in `assets/sequence.txt` (including `crawl:credits`, the unvoiced credits roll after the outro: it never speaks, whatever the narration setting) plus crawls the code starts directly (today, `death_final` on game over). `sss --help` prints the full list. A sequence crawl carries on from its place in the sequence; `crawl:death_final` plays and then goes to the title. `crawlN` still works for the sequence crawls. `sss --crawls` opens a browser of the same list: ↑/↓ select, ENTER plays and returns to the list, ←/→ picks the narration setting for the session (your saved setting isn't changed), ESC quits.
+
+**Voice A/B:** `tools/dev run --crawls --speech-dev` opens the crawl browser with the speech helper on: play a crawl with ENTER and switch features with the keys above while it speaks, or press U on any screen for the test line. For careful tuning use the Voice tuning tool below.
+
+**Voice tuning:** `tools/dev speechtune` builds and opens `tools/speechtune.bas` on your display and audio (the same X11 and PulseAudio/PipeWire pass-through as `tools/dev run`; run it from the repo root so it finds `assets/config/speech.ini`). It renders a line the game speaks (every paragraph of `assets/gametext.txt`, split as the crawl splits them) or one you type, with the game's own synthesizer, into a buffer, and plays it from a playhead. Changing a setting re-renders the line and keeps the playhead time, so the same syllable plays again with the new value. The screen shows the line, a timeline (playhead, word ticks, loop region, elapsed and total time), the word under the playhead in large text, and one row per setting with its full name, value, range and a one-line description.
+
+| Key | Action |
+| --- | --- |
+| Space | play / pause (on every row) |
+| Enter | restart from 0 (on every row) |
+| `,` / `.` | scrub back / forward 1.0 s (hold repeats); with Shift (`<` / `>`) 0.25 s |
+| `[` / `]` | set the loop start / end at the playhead |
+| `L` | loop the region on / off |
+| PgUp / PgDn | previous / next line |
+| `T` | type your own line (Enter speaks it, Esc cancels) |
+| Up / Down or Tab | select the previous / next setting row (hold repeats; Shift+Tab goes back) |
+| Left / Right | change the selected setting down / up (hold repeats); on an on/off row (the six switches and Glide pitch) off / on; on the preset Slow / Normal / Fast |
+| `S` | save the settings and clarity switches to `assets/config/speech.ini`, keeping its comments (rewrites each value in place; check with `git diff assets/config/speech.ini`) |
+| `R` | reload the settings from `assets/config/speech.ini` |
+| Esc or `Q` | quit |
+
+A row drawn dim has no effect under the current switches (for example the intonation knobs with Intonation off, or Glide pitch with Glides off); it stays selectable and keeps its value, and when selected it shows the reason in its description column.
+
+`speech.ini` carries the ten knobs and six `feature_*` switches (all on is the shipped voice); the game reads both at startup. The Slow / Normal / Fast speed preset is a player setting, so it is not saved. `tools/dev speechtune --screenshot <png> [--line N]` draws one frame headless (Xvfb, no audio) into a repo-relative PNG and exits.
 
 **Tutorial:** `--scene tutorial` starts the tutorial: the pilot orientation, one guided flight in which nothing is recorded and nothing can fail you (see [the tutorial run](../src/sys/README-sequence.md)). It is also in the title screen's command console (**T**), and the first New Game on a fresh install starts it. `--scene` and `--input-script` runs never start it on their own (so scripted playtests, and `tests/playthrough/expected.txt`, are not affected); `--gate-tutorial` keeps the gate on for them, which `tests/tutorial/run.sh gated` uses. `tests/tutorial/run.sh` plays it from a script.
 

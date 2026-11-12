@@ -32,7 +32,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 │   └── .env                ← gitignored; DB_URL + DB_KEY for the telemetry backend (absent = no network)
 ├── server/                 ← telemetry/leaderboard backend: Cloudflare Worker + D1 (TypeScript, Vitest)
 ├── tests/                  ← self-contained .bas test programs (exit 0 = pass)
-└── tools/                  ← buildqb, bake_speech_dict, http_mock_server (QB64-PE mock for the HTTP test), obj2e3d, viewer, etc.
+└── tools/                  ← buildqb, bake_speech_dict, http_mock_server (QB64-PE mock for the HTTP test), obj2e3d, viewer, speechtune (voice tuning), etc.
 ```
 
 `sss.bas` is the only file QB64-PE compiles directly. It `$INCLUDE`s `src/sys/version.bas`, `src/sys/rng.bas`, `src/engine3d.bi`, `src/sys/dims.bas` and `src/game.bi` in that order (the two manifests pull in every other module), and then, inline after the startup code, the seven main-loop states `src/state/title.bas`, `intro.bas`, `gameover.bas`, `crawl.bas`, `playing.bas`, `asteroids.bas` and `combat.bas`. New modules go in `src/game.bi`, not as another `$INCLUDE` in `sss.bas`.
@@ -58,7 +58,7 @@ A cinematic rail-shooter written entirely in QB64-PE (QBasic). No game framework
 | *(shared state)* | `src/sys/dims.bas` | All `DIM SHARED` global state — the game's shared memory layout (QB64-PE has no module-private state). Every module reads/writes these. |
 | `E3D_` | `src/3d/*.bas` | Software 3D engine (mesh, matrix, poly, camera, scene batching, collision, starfield); see `src/engine3d.md` |
 | `AUD_` | `src/sys/audiorate.bas` | The synthesis rate. Audio is synthesized at the sound device's rate (`SAMPLE_RATE`, set once from `_SNDRATE` by `AUD_SetRate` before `SND_Init`), with every tuned value reinterpreted against `AUTHOR_RATE` = 48000 Hz (see below) |
-| `SPK_` | `src/audio/speech.bas` | Phoneme formant TTS synthesizer; see `src/sys/README-speech.md` |
+| `SPK_` | `src/audio/speech.bas` | Phoneme formant TTS synthesizer; see `src/sys/README-speech.md`. `speechcfg.bas` reads and writes `assets/config/speech.ini` (knobs and clarity switches, with their full names); `speechrender.bas` renders a line to a sample buffer with a movable playhead for `tools/speechtune.bas` (`tools/dev speechtune`) |
 | `SND_` | `src/audio/snd.bas` | Sound effect triggers and real-time software mixer |
 | `MUSIC_` | `src/audio/music.bas` | Pattern-based music engine (pseudo-MIDI, no files) |
 | `BEH_` | `src/gameplay/behavior.bas` | Enemy AI update functions |
@@ -235,6 +235,9 @@ bash tools/bake_speech_dict
 # Preview a 3D mesh without booting the game
 tools/dev viewer            # opens the viewer on your display; PgUp/PgDn cycle meshes (the S2_ player and bosses, E2_ enemies and the remaining props in `models.e3d`, in the game's slot order)
 tools/dev viewer --sheets builds/sheets   # headless: write the old/new enemy, player and boss review PNGs, then exit
+
+# Tune the robot voice: pick a game line, play, scrub, loop, nudge a setting and hear it on the same word, save assets/config/speech.ini
+tools/dev speechtune        # opens the tool on your display and audio (keys are listed on its screen and in docs/cli.md)
 ```
 
 ---

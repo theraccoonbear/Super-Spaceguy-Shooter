@@ -121,6 +121,30 @@ else
     fails=$((fails + 1))
 fi
 
+# `tools/dev speechtune` builds only when builds/speechtune is missing or older than its sources.
+mkdir -p "$fake/src/audio"
+: > "$fake/tools/speechtune.bas"
+: > "$fake/src/audio/speech.bas"
+out="$(dev "$fake" speechtune --build-only)"
+has "speechtune builds when the binary is missing" ">>> Building tools/speechtune.bas (changed: builds/speechtune)"
+has "speechtune build runs buildqb" "$IMAGE ./tools/buildqb tools/speechtune.bas"
+echo "binary" > "$fake/builds/speechtune"
+chmod +x "$fake/builds/speechtune"
+touch -d '2001-01-01' "$fake/tools/speechtune.bas" "$fake/src/audio/speech.bas"
+out="$(dev "$fake" speechtune --build-only)"
+has "speechtune skips an up-to-date build" ">>> speechtune up to date"
+if [[ "$out" == *buildqb* ]]; then
+    echo "FAIL: speechtune rebuilt an up-to-date binary: $out"
+    fails=$((fails + 1))
+fi
+touch "$fake/src/audio/speech.bas"
+out="$(dev "$fake" speechtune --build-only)"
+has "speechtune rebuilds when a source is newer" "(changed: src/audio/speech.bas)"
+touch -d '2001-01-02' "$fake/builds/speechtune"
+touch -d '2001-01-01' "$fake/src/audio/speech.bas"
+out="$(dev "$fake" speechtune --rebuild --build-only)"
+has "speechtune --rebuild forces a build" "(changed: --rebuild)"
+
 # `tools/dev completion` (#333): source it and drive _sss_dev the way bash does.
 # The fake repo's builds/sss is a stub that prints a --help scene list; no game runs.
 # shellcheck disable=SC1090

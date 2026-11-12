@@ -10,6 +10,7 @@
 '   assets/config/waves.ini       combat waves: timing, size, spawn distance, enemy fire, the clear-out (cfgWaves)
 '   assets/config/bosses.ini      boss hit points, phases and the phase-change shield (cfgBosses)
 '   assets/config/enemies.ini     how each enemy type attacks: volley, speed, cooldown, lead, homing (enemyatk.bas)
+'   assets/config/speech.ini       the voice's phrase intonation knobs (speechcfg.bas)
 '   assets/config/difficulty.ini  difficulty levels and their multipliers (cfgDifficulty, in difficulty.bas)
 ' sss.bas parses each embedded file once at startup:
 '   store$ = CFG_Parse$(text$)     parsed lookup: key + Chr$(1) + value + Chr$(2) + ...

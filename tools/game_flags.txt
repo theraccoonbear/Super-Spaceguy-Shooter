@@ -19,6 +19,7 @@
 --gate-tutorial
 --backdrop-dev
 --explosion-dev
+--speech-dev
 --explode
 --seed
 --credits

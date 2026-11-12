@@ -90,6 +90,7 @@ TOOLS=(
   tools/padrecord
   musicplayer
   tools/musrender
+  tools/speechtune
 )
 
 RUN_HTTP=1

@@ -20,6 +20,10 @@
 #   viewer [args]  build viewer.bas and open the model viewer on your display
 #                  (PgUp/PgDn cycle meshes, old enemy then its E2_ replacement);
 #                  args go to the viewer, e.g. --sheets <outdir> writes the review PNGs
+#   speechtune [--rebuild] [--build-only] [args]  build tools/speechtune.bas only when it or its sources changed
+#                  (--rebuild forces it, --build-only stops after the build), then open the voice-tuning tool on your display and audio
+#                  (settings list, scrubbing player, saves assets/config/speech.ini); `speechtune --screenshot <png> [--line N]` draws one
+#                  frame headless into a repo-relative PNG and exits
 #   bench [--repeat N] [--script F] [args]  frame-time bench: plays F (default tests/bench/bench.txt) headless,
 #                  unthrottled, N times (default 5); prints avg, p95 and worst
 #                  per phase (simulation, backdrop, scene build, raster, particles,
@@ -358,6 +362,45 @@ cmd_viewer() {
     NOTTY_EXEMPT=1
     gui_args
     run_in bash -c './tools/buildqb viewer.bas && exec builds/viewer "$@"' viewer "$@"
+}
+# The first input newer than builds/speechtune (or "builds/speechtune" if it is missing): the
+# tool's source, everything under src/, and the assets it embeds.
+speechtune_stale() {
+    local bin="$REPO/builds/speechtune" newer
+    if [ ! -x "$bin" ]; then
+        echo builds/speechtune
+        return
+    fi
+    newer="$(cd "$REPO" && find tools/speechtune.bas src assets/speech_dict.txt assets/gametext.txt \
+        assets/gamevalues.ini -type f \( -name '*.bas' -o -name '*.bi' -o -name '*.txt' -o -name '*.ini' \) \
+        -newer "$bin" -print -quit)"
+    echo "$newer"
+}
+cmd_speechtune() {
+    local force=0 build_only=0 why
+    while [ "${1:-}" = --rebuild ] || [ "${1:-}" = --build-only ]; do
+        if [ "$1" = --rebuild ]; then force=1; else build_only=1; fi
+        shift
+    done
+    pick_engine; ensure_image
+    why="$(speechtune_stale)"
+    if [ "$force" = 1 ]; then
+        why="--rebuild"
+    fi
+    if [ -n "$why" ]; then
+        echo ">>> Building tools/speechtune.bas (changed: $why)..."
+        run_in ./tools/buildqb tools/speechtune.bas || exit 1
+    else
+        echo ">>> speechtune up to date"
+    fi
+    [ "$build_only" = 1 ] && return
+    if [ "${1:-}" = --screenshot ]; then
+        run_in xvfb-run -a builds/speechtune "$@"
+        return
+    fi
+    NOTTY_EXEMPT=1
+    gui_args
+    run_in builds/speechtune "$@"
 }
 cmd_bench() {
     pick_engine; acquire_slot; ensure_image

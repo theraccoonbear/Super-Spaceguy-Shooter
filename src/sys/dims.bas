@@ -370,6 +370,7 @@ DIM SHARED cliGateTutorial AS INTEGER  ' --gate-tutorial (dev): the first-play t
 DIM SHARED cliBackdropDev  AS INTEGER  ' --backdrop-dev (dev): painting coordinates under the mouse, R reloads assets/backdrops.txt
 DIM SHARED cliExplosionDev AS INTEGER  ' --explosion-dev (dev): Z cycles, X detonates, C reloads assets/explosions.txt, V stress test, in play
 DIM SHARED cliEnemyDev AS INTEGER  '--enemy-dev (dev): T picks an enemy type, F a value, - and = nudge it, L reloads assets/config/enemies.ini, in play
+DIM SHARED cliSpeechDev    AS INTEGER  ' --speech-dev (dev): live A/B toggles for the voice (#236), I G B H M O [ toggle, U says the test line, J cycles the preset
 DIM SHARED cliExplode      AS STRING   ' --explode name@frame,...: spawn these explosions ahead of the ship on those frames
 DIM SHARED cliCrawls       AS INTEGER  ' --crawls: open the crawl browser instead of the game
 DIM SHARED cliFrames       AS LONG     ' --frames N: quit after N frames (0 = never)
