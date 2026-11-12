@@ -5,19 +5,20 @@
 ' dock.bas draws it and calls DOCK_Input% once per frame; tests call DOCK_Input% (scripted
 ' input) or DOCK_Step% (plain flags) directly.
 '   DOCK_Open                      entering the dock: cursor on the first row, per-visit refills
-'   r = DOCK_Step%(up, dn, lf, rt, buy, back)
+'   r = DOCK_Step%(up, dn, lf, rt, buy, launch)
 '   w = DOCK_TankWarn%(over, tick) -1 on the frames the fuel line shows DOCK_TankWarnText$(tank)
 '                                  instead of NEXT JUMP NEEDS (only when the jump is longer
 '                                  than the tank: SUP_OverTank%)
-'   r = DOCK_Input%                reads up/down/left/right (arrows, W/S/A/D, stick, d-pad),
-'                                  ENTER / pad A to buy, ESC / pad B / pad Start to leave
+'   r = DOCK_Input%                reads up/down/left/right (arrows, W/S/A/D, stick, d-pad), ENTER / pad A to buy
+'                                  (or take the LAUNCH row), L / pad Y to launch. ESC and pad Start open the
+'                                  in-run menu instead (DOCK_Frame%), pad B does nothing here
 ' A supply row's amount (dockAmt) starts at what the credits fill, and goes back there after
 ' every purchase; LEFT / RIGHT change it by SUP_Step% within 1..what's missing.
-' Leaving (LAUNCH or back) when even every credit spent on fuel won't reach the next planet
+' Leaving (the LAUNCH row or its key) when even every credit spent on fuel won't reach the next planet
 ' (SUP_Stranded%) opens the stranded dialog instead (dockAsk, DOCK_ASK): its one answer is
 ' YES, so only ENTER / pad A does anything there, and it ends the run (DOCK_STRANDED).
 ' Results: DOCK_NONE, DOCK_MOVED, DOCK_BOUGHT, DOCK_NOFUNDS, DOCK_MAXED, DOCK_FULL, DOCK_LEAVE,
-'          DOCK_ASK, DOCK_STRANDED
+'          DOCK_ASK, DOCK_STRANDED, and from DOCK_Frame% DOCK_PAUSED, DOCK_QUIT, DOCK_CONTROLS, DOCK_REMAP, DOCK_SETTINGS
 ' Local variable prefix: dk*
 
 Const DOCK_REFUEL  = 1
@@ -34,9 +35,14 @@ Const DOCK_FULL    = 5
 Const DOCK_LEAVE   = 6
 Const DOCK_ASK     = 7
 Const DOCK_STRANDED = 8
+Const DOCK_PAUSED  = 9    ' the in-run menu is up: the dock is frozen
+Const DOCK_QUIT    = 10   ' the menu's CONFIRM RETREAT
+Const DOCK_CONTROLS = 11  ' the menu's CONTROLS
+Const DOCK_REMAP   = 12   ' the menu's REMAP CONTROLS
+Const DOCK_SETTINGS = 13  ' the menu's SETTINGS
 Const DOCK_TANKWARN_FRAMES = 90   ' a jump longer than the tank: NEXT JUMP NEEDS and UPGRADE TANK take turns this long
 
-Dim Shared dockSel As Integer, dockTop As Integer
+Dim Shared dockSel As Integer, dockTop As Integer, dockLWas As Integer
 Dim Shared dockMsg As String, dockMsgTimer As Integer, dockMsgBad As Integer
 Dim Shared dockAmt(1 To 2) As Integer   ' amount on the REFUEL / SHIELDS rows (SUP_FUEL / SUP_SHIELD)
 Dim Shared dockAsk As Integer          ' -1 = the stranded dialog is up
@@ -47,7 +53,7 @@ Dim Shared dockBoughtN(1 To DOCK_LAUNCH) As Integer, dockDeniedN(1 To DOCK_LAUNC
 
 Sub DOCK_Open
     dockSel = 1 : dockTop = 1
-    dockMsg = "" : dockMsgTimer = 0 : dockMsgBad = 0 : dockAsk = 0
+    dockMsg = "" : dockMsgTimer = 0 : dockMsgBad = 0 : dockAsk = 0 : dockLWas = -1
     DOCK_ResetTally
     UPG_DockVisit
     DOCK_ResetAmts
@@ -128,7 +134,7 @@ Sub DOCK_Say (dksMsg As String, dksBad As Integer)
     dockMsg = dksMsg : dockMsgTimer = 120 : dockMsgBad = dksBad
 End Sub
 
-Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As Integer, dkBuy As Integer, dkBack As Integer)
+Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As Integer, dkBuy As Integer, dkGo As Integer)
     Dim dkRes As Integer, dkBuyRes As Integer, dkKind As Integer, dkMiss As Integer, dkAmt As Integer
     Dim dkCr As Long
     dkCr = credits
@@ -139,7 +145,7 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
         If dkBuy Then DOCK_Step% = DOCK_STRANDED Else DOCK_Step% = DOCK_NONE
         Exit Function
     End If
-    If dkBack Then DOCK_Step% = DOCK_TryLeave% : Exit Function
+    If dkGo Then DOCK_Step% = DOCK_TryLeave% : Exit Function
     dkKind = DOCK_SupplyOf%(dockSel)
     If dkUp Then
         dockSel = dockSel - 1 : If dockSel < 1 Then dockSel = DOCK_LAUNCH
@@ -199,7 +205,7 @@ Function DOCK_Step% (dkUp As Integer, dkDn As Integer, dkLf As Integer, dkRt As 
     DOCK_Step% = dkRes
 End Function
 
-' LAUNCH or back: leave, unless the next jump is out of reach (then ask).
+' LAUNCH (its row or its key): leave, unless the next jump is out of reach (then ask).
 Function DOCK_TryLeave%
     If SUP_Stranded% Then dockAsk = -1 : DOCK_TryLeave% = DOCK_ASK Else DOCK_TryLeave% = DOCK_LEAVE
 End Function
@@ -215,14 +221,34 @@ Function DOCK_BoughtName$ (dknId As Integer)
 End Function
 
 Function DOCK_Input%
-    Dim dkiUp As Integer, dkiDn As Integer, dkiLf As Integer, dkiRt As Integer, dkiBuy As Integer, dkiBack As Integer
+    Dim dkiUp As Integer, dkiDn As Integer, dkiLf As Integer, dkiRt As Integer, dkiBuy As Integer, dkiGo As Integer, dkiL As Integer
     dkiUp = KEY_Pressed%(E3D_KEY_UP) Or KEY_Pressed%(E3D_KEY_W)
     dkiDn = KEY_Pressed%(E3D_KEY_DOWN) Or KEY_Pressed%(E3D_KEY_S)
     dkiLf = KEY_Pressed%(E3D_KEY_LEFT) Or KEY_Pressed%(E3D_KEY_A)
     dkiRt = KEY_Pressed%(E3D_KEY_RIGHT) Or KEY_Pressed%(E3D_KEY_D)
     dkiBuy = KEY_Confirm%
-    dkiBack = KEY_Back%
-    DOCK_Input% = DOCK_Step%(dkiUp, dkiDn, dkiLf, dkiRt, dkiBuy, dkiBack)
+    dkiL = KEY_Down%(76) Or KEY_Down%(108)
+    dkiGo = (dkiL And dockLWas = 0) Or KEY_Pressed%(E3D_KEY_PAD_Y)
+    dockLWas = dkiL
+    DOCK_Input% = DOCK_Step%(dkiUp, dkiDn, dkiLf, dkiRt, dkiBuy, dkiGo)
+End Function
+
+' One dock frame: the in-run menu (the pause dialog, pauselogic.bas) first. While it is up, and on
+' the frame it closes, the dock gets no input, so the press that cancels it can't also buy.
+' Returns DOCK_PAUSED while it is up, DOCK_QUIT / DOCK_CONTROLS / DOCK_REMAP / DOCK_SETTINGS for its picks,
+' else what DOCK_Input% says.
+Function DOCK_Frame%
+    Dim dfWasOpen As Integer
+    dfWasOpen = escConfirm
+    Select Case PAUSE_Input%
+        Case PAUSE_QUIT : DOCK_Frame% = DOCK_QUIT : Exit Function
+        Case PAUSE_CONTROLS : DOCK_Frame% = DOCK_CONTROLS : Exit Function
+        Case PAUSE_REMAP : DOCK_Frame% = DOCK_REMAP : Exit Function
+        Case PAUSE_SETTINGS : DOCK_Frame% = DOCK_SETTINGS : Exit Function
+    End Select
+    If pauseShown Then DOCK_Frame% = DOCK_PAUSED : Exit Function
+    If dfWasOpen Then DOCK_Frame% = DOCK_NONE : Exit Function
+    DOCK_Frame% = DOCK_Input%
 End Function
 
 Function DOCK_TankWarn% (dtwOver As Integer, dtwTick As Long)

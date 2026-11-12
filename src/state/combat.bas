@@ -170,7 +170,7 @@ Sub COMBAT_SceneDraw()
         eLitDir.y = lightDir.y * cbtDDimF
         eLitDir.z = lightDir.z * cbtDDimF
         cbtDBossScnBefore = E3D_scnCount
-        E3D_SceneAddMeshLit meshLib(MESH_BOSS), objMat, cam.POS, tt, eLitDir
+        E3D_SceneAddMeshLit meshLib(boss.meshIdx), objMat, cam.POS, tt, eLitDir
         If debugMode And cbtDBossDbgLogged = 0 Then
             DBG_Print "[boss-rend] faces_rendered=" + LTrim$(Str$(E3D_scnCount - cbtDBossScnBefore)) + "  dist=" + LTrim$(Str$(boss.px - cam.POS.x))
             cbtDBossDbgLogged = -1
@@ -205,13 +205,14 @@ Sub COMBAT_OverlayDraw()
     Dim cbtOBdbMinX As Single, cbtOBdbMaxX As Single
     Dim cbtOBdbMinY As Single, cbtOBdbMaxY As Single
     Dim cbtOBdbHx As Single, cbtOBdbHy As Single, cbtOBdbHz As Single
-    Dim cbtShX As Single, cbtShY As Single, cbtShX2 As Single, cbtShY2 As Single
+    Dim cbtShX As Single, cbtShY As Single, cbtShX2 As Single, cbtShY2 As Single, cbtShW As Single
     Dim cbtShOk As Integer, cbtShOk2 As Integer, cbtShR As Single, cbtShA As Integer
 
     ' phase-change shield (bosshp.bas): a pulsing bubble round the boss while shots bounce off
     If boss.active And bossShieldT > 0 Then
         COMBAT_Project boss.px, boss.py, boss.pz, cbtShX, cbtShY, cbtShOk
-        COMBAT_Project boss.px, boss.py + 4.5, boss.pz, cbtShX2, cbtShY2, cbtShOk2
+        cbtShW = boxLib(boss.meshIdx).hy : If boxLib(boss.meshIdx).hz > cbtShW Then cbtShW = boxLib(boss.meshIdx).hz
+        COMBAT_Project boss.px, boss.py + cbtShW * 0.95 + 0.5, boss.pz, cbtShX2, cbtShY2, cbtShOk2
         If cbtShOk And cbtShOk2 Then
             cbtShR = Abs(cbtShY - cbtShY2)
             If cbtShR > 200 Then cbtShR = 200
@@ -224,9 +225,9 @@ Sub COMBAT_OverlayDraw()
 
     ' [DEBUG] yellow AABB box overlay around boss
     If debugMode And boss.active Then
-        cbtOBdbHx = boxLib(MESH_BOSS).hx
-        cbtOBdbHy = boxLib(MESH_BOSS).hy
-        cbtOBdbHz = boxLib(MESH_BOSS).hz
+        cbtOBdbHx = boxLib(boss.meshIdx).hx
+        cbtOBdbHy = boxLib(boss.meshIdx).hy
+        cbtOBdbHz = boxLib(boss.meshIdx).hz
         cbtOBdbAllFwd = -1
         For cbtOBdbI = 1 To 8
             If (cbtOBdbI And 1) Then cbtOBdbVx = boss.px + cbtOBdbHx Else cbtOBdbVx = boss.px - cbtOBdbHx

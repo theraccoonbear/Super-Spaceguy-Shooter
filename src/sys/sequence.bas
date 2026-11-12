@@ -418,6 +418,16 @@ Sub SEQ_RewindToTitle()
     Next seqrI
 End Sub
 
+' seqIdx is past the first TITLE waypoint: the title has launched the run, so the in-run menu applies
+' (the intro crawl and emperor card come before it).
+Function SEQ_PastTitle%
+    Dim seqpI As Integer
+    SEQ_PastTitle% = 0
+    For seqpI = 0 To seqCount - 1
+        If seqKind(seqpI) = SEQ_TITLE Then SEQ_PastTitle% = (seqIdx > seqpI) : Exit Function
+    Next seqpI
+End Function
+
 ' Jump to a named scene. Spec format: crawlN, playingN, bossN, title, emperor.
 '   crawl0   -> CRAWL task in label "crawl0"  (intro crawl)
 '   crawlN   -> CRAWL task in label "levelN"  (N >= 1)
@@ -745,6 +755,7 @@ Sub SEQ_Advance()
                     SEQ_SplitCSV SEQ_GetKV$(seqSval$(seqIdx), "speech"), bossSpeechList$(), bossSpeechCnt
                     bossSeekStr = Val(SEQ_GetKV$(seqSval$(seqIdx), "seek"))   ' bullet homing strength
                     bossCfgHp   = Val(SEQ_GetKV$(seqSval$(seqIdx), "hp"))     ' 0 = bosses.ini boss_hp_default
+                    bossModel   = SEQ_GetKV$(seqSval$(seqIdx), "model")      ' bastion (none), hydra or orbiter
                     SEQ_SplitCSV UCase$(SEQ_GetKV$(seqSval$(seqIdx), "attack")), bossAttackList$(), bossAttackCnt
                 Case "asteroid"
                     levelNum       = levelNum + 1

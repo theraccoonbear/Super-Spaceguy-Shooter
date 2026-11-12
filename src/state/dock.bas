@@ -3,7 +3,8 @@
 ' The sequence's DOCK task (assets/sequence.txt, after each planet arrival but the last)
 ' calls DOCK_Enter. The list and its input live in docklogic.bas; this file draws it over
 ' the dock background (assets/dock_bg.png, 320x240, embedded as DOCKBG in sss.bas) and
-' leaves for the next sequence step on LAUNCH or back.
+' leaves for the next sequence step on LAUNCH (its row, or L / pad Y). ESC and pad Start open the
+' in-run menu (the pause dialog) over the frozen dock.
 ' Local variable prefix: dkd*
 
 Const DOCK_PX1 = 104   ' list panel: the right two-thirds, so the art's planet and ship stay in view
@@ -84,8 +85,23 @@ End Function
 
 Sub DOCK_Update
     Dim dkdRes As Integer
-    dockNewsTick = dockNewsTick + 1
-    dkdRes = DOCK_Input%
+    dkdRes = DOCK_Frame%
+    Select Case dkdRes
+        Case DOCK_QUIT
+            SEQ_QuitRun
+            Exit Sub
+        Case DOCK_CONTROLS
+            CONTROLS_Prep gameState : gameState = GS_CONTROLS
+            Exit Sub
+        Case DOCK_SETTINGS
+            optSavedImg = _COPYIMAGE(backBuffer)
+            OPTS_OpenFromPause gameState
+            Exit Sub
+        Case DOCK_REMAP
+            RMP_Open gameState
+            Exit Sub
+    End Select
+    If dkdRes <> DOCK_PAUSED Then dockNewsTick = dockNewsTick + 1
     Select Case dkdRes
         Case DOCK_MOVED : SND_UiMove
         Case DOCK_BOUGHT : SND_Pup
@@ -93,6 +109,7 @@ Sub DOCK_Update
         Case DOCK_STRANDED : SND_UiMove
     End Select
     DOCK_Draw
+    If dkdRes = DOCK_PAUSED Then PAUSE_Draw
     If dkdRes = DOCK_LEAVE Then
         DOCK_LogVisit "launch"
         _Dest backBuffer
@@ -141,7 +158,7 @@ Sub DOCK_DrawStrandAsk
     UI_TextCentered 8, "NEED " + LTrim$(Str$(-Int(-dsaNeed))) + " FU, CAN GET " + LTrim$(Str$(dsaCan)), DSA_Y1 + 26, 255
     UI_TextCentered 15, "ABANDON RUN AND", DSA_Y1 + 48, 255
     UI_TextCentered 15, "EKE OUT A LIVING HERE?", DSA_Y1 + 64, 255
-    UI_MenuHighlight scrW \ 2 - 36, DSA_Y1 + 85, scrW \ 2 + 35, DSA_Y1 + 101
+    UI_MenuRow scrW \ 2 - 36, scrW \ 2 + 35, DSA_Y1 + 86
     UI_TextCentered 15, "[ YES ]", DSA_Y1 + 86, 255
 End Sub
 
@@ -177,7 +194,7 @@ Sub DOCK_Draw
         If dkdI > DOCK_LAUNCH Then Exit For
         dkdY = DOCK_ROW_Y + dkdRow * DOCK_ROW_H
         If dkdI = dockSel Then
-            UI_MenuHighlight DOCK_PX1 + 4, dkdY - 1, DOCK_PX2 - 4, dkdY + 15
+            UI_MenuRow DOCK_PX1 + 4, DOCK_PX2 - 4, dkdY
         End If
         If dkdI = DOCK_LAUNCH Then
             If dkdI = dockSel Then dkdPal = 15 Else dkdPal = 10
@@ -234,7 +251,7 @@ Sub DOCK_Draw
     ElseIf Len(dockNews) > 0 Then
         UI_Text 11, DOCK_NewsWindow$(dockNewsTick), DOCK_PX1 + 8, dkdY + 32, 255
     End If
-    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("ESC", E3D_ACT_BACK) + " GO", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
+    UI_PromptsAt UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " BUY  " + UI_Tok$("L", E3D_ACT_NOVA) + " GO  " + UI_Tok$("ESC", E3D_ACT_PAUSE) + " MENU", INP_LastDevice%, DOCK_PX1 + 8, DOCK_PY2 - 18, 8, 255, -1
     If dockAsk Then DOCK_DrawStrandAsk
 
     _Dest 0

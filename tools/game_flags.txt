@@ -8,6 +8,7 @@
 --difficulty
 --debug
 --no-telem
+--telem
 --input-script
 --script-override
 --leaderboard-file

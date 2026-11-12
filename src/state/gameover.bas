@@ -19,12 +19,12 @@ Sub GS_GAMEOVER_Update ()
     Dim gsgY As Integer, gsgStep As Integer, gsgTitle As String
     IF runStranded THEN gsgTitle = "STRANDED" ELSE gsgTitle = "GAME OVER"
     IF crBonusCredits > 0 THEN
-        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 62, scrW \ 2 + 88, scrH \ 2 + 62, gsgTitle
-        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTRIM$(STR$(gsgBonus)), scrH \ 2 - 38, scrW, 255
-        gsgY = scrH \ 2 - 20 : gsgStep = 18
+        gsgY = UI_DrawDialog%(UI_DLG_HALF_L, 5, 18, 0, gsgTitle)
+        FONT_PrintCenteredAlpha fontPalette(14), backBuffer, "CREDITS BONUS +" + LTRIM$(STR$(gsgBonus)), gsgY, scrW, 255
+        gsgY = gsgY + 18 : gsgStep = 18
     ELSE
-        UI_DrawPanel scrW \ 2 - 88, scrH \ 2 - 54, scrW \ 2 + 88, scrH \ 2 + 54, gsgTitle
-        gsgY = scrH \ 2 - 28 : gsgStep = 20
+        gsgY = UI_DrawDialog%(UI_DLG_HALF_L, 4, 20, 0, gsgTitle)
+        gsgStep = 20
     END IF
     FONT_PrintCenteredAlpha fontPalette(9),  backBuffer, "SCORE:  " + LTRIM$(STR$(score - crBonusPts + gsgBonus)), gsgY, scrW, 255
     IF score >= highScore THEN
@@ -40,8 +40,8 @@ Sub GS_GAMEOVER_Update ()
     END IF
     IF gameOverDelay <= 0 THEN
         gsgThrobBright = INT(170 + 85 * SIN(tt * 5))
-        UI_PromptsCentered "PRESS " + UI_Tok$("SPACE", E3D_ACT_FIRE) + " TO PLAY", gsgY + gsgStep * 3, 15, gsgThrobBright
-        IF held(E3D_KEY_SPACE) AND spaceWas = 0 THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
+        UI_PromptsCentered UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " CONTINUE", gsgY + gsgStep * 3, 15, gsgThrobBright
+        IF KEY_Proceed% OR KEY_Back% THEN gameState = GS_TITLE : SEQ_RewindToTitle : MUS_SetCue "title"
     END IF
     spaceWas = held(E3D_KEY_SPACE)
     _DEST 0

@@ -8,6 +8,7 @@
 ' Run:   builds/textedit_test    (exit 0 = pass, exit 1 = any failure)
 
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 
 '$INCLUDE:'../src/2d/textedit.bas'
 

@@ -1158,9 +1158,13 @@ SUB SPK_Init()
     ' ============================================================
     SUB SPK_Advance()
         DIM spaI AS INTEGER
-        FOR spaI = 1 TO spkTimeScale
-            SPK_AdvanceOne
-        NEXT spaI
+        IF spkHold THEN
+            spkSampleOut = 0.0   ' held: no synthesis, spkSynthTotal stays put so the heard position is pinned
+        ELSE
+            FOR spaI = 1 TO spkTimeScale
+                SPK_AdvanceOne
+            NEXT spaI
+        END IF
         spkOutTotal = spkOutTotal + 1
         spkSynthAt(spkOutTotal AND (SPK_RING - 1)) = spkSynthTotal
     END SUB

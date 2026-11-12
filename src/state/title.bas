@@ -12,21 +12,20 @@ Sub GS_TITLE_Update ()
     BACKDROP_Draw "title", 0, 0, scrW - 1, scrH - 1
     LINE (0, 196)-(scrW - 1, scrH - 1), _RGBA(0, 0, 8, 175), BF
     gstThrobBright = INT(170 + 85 * SIN(tt * 5))
-    UI_PromptsCentered "PRESS " + UI_Tok$("P", E3D_ACT_PAUSE) + " TO PLAY", 200, 15, gstThrobBright
+    UI_PromptsCentered "PRESS " + UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " TO PLAY", 200, 15, gstThrobBright
     IF DLV_Chosen$ <> DLV_Default$ AND titleEscConfirm = 0 AND crTallyTimer <= 0 THEN
         Dim gstDiff As String
         gstDiff = "DIFFICULTY: " + DLV_Name$(DLV_Chosen$)
         UI_Panel scrW \ 2 - LEN(gstDiff) * FONT_CHAR_W \ 2 - 6, 172, scrW \ 2 + LEN(gstDiff) * FONT_CHAR_W \ 2 + 5, 193
         UI_TextCentered 14, gstDiff, 175, 255
     END IF
-    UI_Prompts UI_Tok$("ESC", E3D_ACT_CAMERA) + "  OPTIONS", 2, scrH - FONT_CHAR_H, 8, 255
+    UI_Prompts UI_Tok$("ESC", E3D_ACT_BACK) + "  MENU", 2, scrH - FONT_CHAR_H, 8, 255
     FONT_PrintAlpha fontPalette(8), backBuffer, "v" + VERSION$, scrW - LEN("v" + VERSION$) * FONT_CHAR_W - 2, scrH - FONT_CHAR_H, 255
     IF titleEscConfirm THEN
         Dim gstKX As Integer, gstSelY As Integer, gstBY As Integer
-        gstBY = scrH\2 - 9   ' the console grew a row: it moves up half of it, clear of PRESS P TO PLAY
-        UI_DrawPanel scrW\2 - 76, gstBY - 72, scrW\2 + 76, gstBY + 84, "COMMAND CONSOLE"
+        gstBY = UI_DrawDialog%(UI_DLG_HALF_S, 7, 18, 0, "COMMAND CONSOLE") + 46   ' gstBY: the ABOUT row is at gstBY - 46
         gstSelY = gstBY - 46 + titleConSel * 18
-        UI_MenuHighlight scrW\2 - 66, gstSelY - 3, scrW\2 + 66, gstSelY + 11
+        UI_MenuRow scrW\2 - 66, scrW\2 + 66, gstSelY
         ' labels, then (keyboard) each hotkey letter overwritten in bright; the pad has only its cancel button
         gstKX = scrW\2 - 44
         FONT_PrintAlpha fontPalette(9),  backBuffer, "ABOUT",       gstKX, gstBY - 46, 255
@@ -51,20 +50,24 @@ Sub GS_TITLE_Update ()
     END IF
     IF titleEscConfirm = 0 THEN HUD_RunTally
     IF launchOpen THEN
-        Dim gstLY As Integer, gstLP As String
-        UI_DrawPanel scrW\2 - 80, scrH\2 - 48, scrW\2 + 80, scrH\2 + 40, "LAUNCH NOW?"
-        gstLY = scrH\2 - 20 + launchSel * 18
-        UI_MenuHighlight scrW\2 - 66, gstLY - 3, scrW\2 + 66, gstLY + 11
-        UI_TextCentered 9, "YES", scrH\2 - 20, 255
-        UI_TextCentered 9, "NO",  scrH\2 - 2,  255
+        Dim gstLY As Integer, gstLP As String, gstLB As Integer
+        gstLB = UI_DrawDialog%(UI_DLG_HALF_S, 2, 18, 22, "LAUNCH NOW?")
+        gstLY = gstLB + launchSel * 18
+        UI_MenuRow scrW\2 - 66, scrW\2 + 66, gstLY
+        UI_TextCentered 9, "YES", gstLB, 255
+        UI_TextCentered 9, "NO",  gstLB + 18, 255
         gstLP = UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " GO  " + UI_Tok$("ESC", E3D_ACT_BACK) + " BACK"
-        UI_PromptsAt gstLP, INP_LastDevice%, (scrW - UI_PromptsW%(gstLP, INP_LastDevice%)) \ 2, scrH\2 + 20, 8, 255, 0
+        UI_PromptsAt gstLP, INP_LastDevice%, (scrW - UI_PromptsW%(gstLP, INP_LastDevice%)) \ 2, gstLB + 40, 8, 255, 0
     END IF
     _DEST 0
     _PUTIMAGE , backBuffer, 0
-    ' gamepad Start also sets ESCAPE; on the title it means "play", not "open console" (Back opens it)
-    IF launchOpen = 0 AND ((held(E3D_KEY_ESCAPE) AND escWas = 0 AND held(E3D_KEY_PAD_START) = 0) OR KEY_Pressed%(E3D_KEY_PAD_SELECT)) THEN
+    ' Back (ESC, pad B, pad Select) opens the command console and closes it again. Gamepad Start also sets
+    ' ESCAPE; on the title it means "play", not "open console".
+    Dim gstOpened As Integer
+    gstOpened = 0
+    IF NAV_TitleToggle%(held(E3D_KEY_ESCAPE) AND escWas = 0, held(E3D_KEY_PAD_START), KEY_Pressed%(E3D_KEY_PAD_SELECT), KEY_Pressed%(E3D_KEY_PAD_B), titleEscConfirm, launchOpen) THEN
         titleEscConfirm = 1 - titleEscConfirm : titleConSel = 0
+        gstOpened = titleEscConfirm
         IF titleEscConfirm = 0 THEN uiSfx = SND_UI_BACK
     END IF
     escWas = held(E3D_KEY_ESCAPE)
@@ -77,7 +80,7 @@ Sub GS_TITLE_Update ()
         IF KEY_Down%(76) OR KEY_Down%(108) THEN gstPick = 3
         IF KEY_Down%(84) OR KEY_Down%(116) THEN gstPick = 4
         IF KEY_Down%(81) OR KEY_Down%(113) THEN gstPick = 5
-        IF KEY_Down%(78) OR KEY_Down%(110) OR KEY_Pressed%(E3D_KEY_PAD_B) THEN gstPick = 6
+        IF KEY_Down%(78) OR KEY_Down%(110) OR (KEY_Pressed%(E3D_KEY_PAD_B) AND gstOpened = 0) THEN gstPick = 6
         IF gstPick >= 0 AND gstPick <= 5 THEN uiSfx = SND_UI_OK
         IF gstPick = 6 THEN uiSfx = SND_UI_BACK
         SELECT CASE gstPick
@@ -104,10 +107,11 @@ Sub GS_TITLE_Update ()
         EXIT SUB
     END IF
     MUS_Fill 0
-    ' Deliberately NOT space here -- space is held/mashed constantly elsewhere
-    ' (firing, skipping crawls/cinematics) and made it too easy to accidentally
-    ' start a new game from the title screen. P is not bound to anything else.
-    ' Gamepad Start for the same reason (A is the fire button).
-    ' The first start press opens LAUNCH NOW? (launchlogic.bas); nothing starts a run until it is confirmed.
-    IF LAUNCH_Input%(held(E3D_KEY_P) OR held(E3D_KEY_PAD_START)) = LAUNCH_YES THEN TUT_StartFromTitle
+    ' Proceed (ENTER, pad A) or the old P / pad Start opens LAUNCH NOW? (launchlogic.bas); nothing starts a run
+    ' until it is confirmed there. Deliberately NOT SPACE: it is mashed through game over and crawls, which
+    ' made it too easy to start a new game by accident. ENTER and A count as one press on the frame they go
+    ' down (KEY_Confirm%), so a key still down from the screen before never opens it.
+    Dim gstGo As Integer
+    gstGo = NAV_TitleGo%(held(E3D_KEY_P) OR held(E3D_KEY_PAD_START), KEY_Confirm%, launchOpen)
+    IF LAUNCH_Input%(gstGo) = LAUNCH_YES THEN TUT_StartFromTitle
 End Sub

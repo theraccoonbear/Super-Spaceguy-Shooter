@@ -1,6 +1,6 @@
 ' leaderboard.bas -- top-10 display screen (GS_LEADERBOARD)
 '
-' SPACE / ESC  return to title screen
+' ENTER / SPACE / pad A, or ESC / pad B  return to title screen
 
 Sub GS_LEADERBOARD_Update ()
     Dim lbdPX1 As Integer : lbdPX1 = scrW \ 2 - 130
@@ -43,14 +43,14 @@ Sub GS_LEADERBOARD_Update ()
     End If
 
     Dim lbdThrobBright As Integer : lbdThrobBright = Int(170 + 85 * Sin(tt * 5))
-    UI_PromptsCentered "PRESS " + UI_Tok$("SPACE", E3D_ACT_FIRE) + " TO RETURN", lbdPY2 - 18, 15, lbdThrobBright
+    UI_PromptsCentered UI_Tok$("ENTER", E3D_ACT_CONFIRM) + " / " + UI_Tok$("ESC", E3D_ACT_BACK) + " RETURN", lbdPY2 - 18, 15, lbdThrobBright
 
     _DEST 0
     _PUTIMAGE , backBuffer, 0
 
     ' presses, not holds: the A that picked LEADERBOARD on the console is still down here.
-    ' SPACE's slot also carries pad A, ESC's pad Start.
-    If KEY_Pressed%(E3D_KEY_SPACE) Or KEY_Back% Then TITLE_ReturnTo GS_TITLE
+    ' ESC's slot also carries pad Start.
+    If KEY_Proceed% Or KEY_Back% Then TITLE_ReturnTo GS_TITLE
 
     MUS_Fill 0
 End Sub

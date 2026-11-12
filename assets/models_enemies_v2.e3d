@@ -1,4 +1,4 @@
-# Super Spaceguy Shooter -- v2 enemy models (#395), the visuals of the six enemy types; hitboxes still come from the old ENEMY* meshes in models.e3d
+# Super Spaceguy Shooter -- v2 enemy models (#395), the visuals of the six enemy types; each mesh's aabb is its hitbox
 # Same format and axes as models.e3d: X=forward, Y=up, Z=left. Generated; edit the design, not this file.
 
 o E2_SOLO

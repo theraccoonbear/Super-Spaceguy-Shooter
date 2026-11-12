@@ -91,31 +91,28 @@ Sub GAME_InitMeshes
     Dim gmiMdl As String
     Dim gmiI   As Integer
     Dim gmiNew As String
-    Dim gmiBox As E3D_AABB
     gmiMdl = _EMBEDDED$("MODELS")
-    E3D_LoadMesh gmiMdl, "PLAYER",       meshLib(MESH_PLAYER),       boxLib(MESH_PLAYER)
-    E3D_LoadMesh gmiMdl, "ENEMY",        meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
     E3D_LoadMesh gmiMdl, "ASTEROID",     meshLib(MESH_ASTEROID),     boxLib(MESH_ASTEROID)
     E3D_LoadMesh gmiMdl, "BULLET",       meshLib(MESH_BULLET),       boxLib(MESH_BULLET)
     E3D_LoadMesh gmiMdl, "PUP_SHIELD",   meshLib(MESH_PUP_SHIELD),   boxLib(MESH_PUP_SHIELD)
-    E3D_LoadMesh gmiMdl, "ENEMY_ARROW",  meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
-    E3D_LoadMesh gmiMdl, "ENEMY_HLINE",  meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
-    E3D_LoadMesh gmiMdl, "ENEMY_VCOL",   meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
-    E3D_LoadMesh gmiMdl, "ENEMY_PINCER", meshLib(MESH_ENEMY_PINCER), boxLib(MESH_ENEMY_PINCER)
-    E3D_LoadMesh gmiMdl, "ENEMY_VWEDGE", meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_VWEDGE)
     E3D_LoadMesh gmiMdl, "THRUSTER",     meshLib(MESH_THRUSTER),     boxLib(MESH_THRUSTER)
     E3D_LoadMesh gmiMdl, "EBULLET",      meshLib(MESH_EBULLET),      boxLib(MESH_EBULLET)
-    E3D_LoadMesh gmiMdl, "BOSS",         meshLib(MESH_BOSS),         boxLib(MESH_BOSS)
     E3D_LoadMesh gmiMdl, "PUP_FUEL",     meshLib(MESH_PUP_FUEL),     boxLib(MESH_PUP_FUEL)
     E3D_LoadMesh gmiMdl, "PUP_POINTS",   meshLib(MESH_PUP_POINTS),   boxLib(MESH_PUP_POINTS)
-    ' v2 enemy meshes (#395) replace the visuals; the old meshes' AABBs stay as the hitboxes, so play is unchanged
+    ' enemy meshes (#395): each slot's hitbox is the loaded mesh's own bounds
     gmiNew = _EMBEDDED$("NEWMODELS")
-    E3D_LoadMesh gmiNew, "E2_SOLO",    meshLib(MESH_ENEMY),        gmiBox
-    E3D_LoadMesh gmiNew, "E2_ARROW",   meshLib(MESH_ENEMY_ARROW),  gmiBox
-    E3D_LoadMesh gmiNew, "E2_HLINE",   meshLib(MESH_ENEMY_HLINE),  gmiBox
-    E3D_LoadMesh gmiNew, "E2_VCOL",    meshLib(MESH_ENEMY_VCOL),   gmiBox
-    E3D_LoadMesh gmiNew, "E2_PINCER",  meshLib(MESH_ENEMY_PINCER), gmiBox
-    E3D_LoadMesh gmiNew, "E2_VWEDGE",  meshLib(MESH_ENEMY_VWEDGE), gmiBox
+    E3D_LoadMesh gmiNew, "E2_SOLO",    meshLib(MESH_ENEMY),        boxLib(MESH_ENEMY)
+    E3D_LoadMesh gmiNew, "E2_ARROW",   meshLib(MESH_ENEMY_ARROW),  boxLib(MESH_ENEMY_ARROW)
+    E3D_LoadMesh gmiNew, "E2_HLINE",   meshLib(MESH_ENEMY_HLINE),  boxLib(MESH_ENEMY_HLINE)
+    E3D_LoadMesh gmiNew, "E2_VCOL",    meshLib(MESH_ENEMY_VCOL),   boxLib(MESH_ENEMY_VCOL)
+    E3D_LoadMesh gmiNew, "E2_PINCER",  meshLib(MESH_ENEMY_PINCER), boxLib(MESH_ENEMY_PINCER)
+    E3D_LoadMesh gmiNew, "E2_VWEDGE",  meshLib(MESH_ENEMY_VWEDGE), boxLib(MESH_ENEMY_VWEDGE)
+    ' player and boss meshes (#415): hitbox is each mesh's own bounds; each boss (model= in sequence.txt) takes its own extents as AABB
+    gmiNew = _EMBEDDED$("SHIPMODELS")
+    E3D_LoadMesh gmiNew, "S2_PLAYER",       meshLib(MESH_PLAYER), boxLib(MESH_PLAYER)
+    E3D_LoadMesh gmiNew, "S2_BOSS_BASTION", meshLib(MESH_BOSS),   boxLib(MESH_BOSS)
+    E3D_LoadMesh gmiNew, "S2_BOSS_HYDRA",   meshLib(MESH_BOSS2),  boxLib(MESH_BOSS2)
+    E3D_LoadMesh gmiNew, "S2_BOSS_ORBITER", meshLib(MESH_BOSS3),  boxLib(MESH_BOSS3)
     For gmiI = 1 To MESH_COUNT
         E3D_BakeMeshNormals meshLib(gmiI)
     Next gmiI
@@ -168,6 +165,8 @@ Sub GAME_Usage(guErr As String)
     CLI_Emit guFH, "  --difficulty <level>   Play every run at this level (" + DLV_List$ + "), whatever Settings says"
     CLI_Emit guFH, "  --debug                Enable debug overlay and stdout event logging"
     CLI_Emit guFH, "  --no-telem             Disable gameplay telemetry for this session"
+    CLI_Emit guFH, "                         Dev, cheat and test flags imply it: any --...-dev flag, --god, --nerf, --scene, --bench, --input-script, --explode, --seed, --frames, --credits, --ships, --shields, --fuel, --pup, --screenshot-at, --leaderboard-file"
+    CLI_Emit guFH, "  --telem                Keep telemetry on in a session where a dev or test flag would turn it off (consent still applies; --no-telem wins)"
     CLI_Emit guFH, "  --input-script <file>  Play from a script instead of the keyboard (see src/sys/inputscript.bas)"
     CLI_Emit guFH, "  --script-override      Let flags here differ from the input script's #! header (this line wins)"
     CLI_Emit guFH, "  --leaderboard-file <file>  Show this saved top_scores JSON on the leaderboard (no network)"

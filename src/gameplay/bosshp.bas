@@ -10,6 +10,8 @@
 '   h = BHP_Damage%(hp, maxHp, dmg, shield)  hit points left after a hit of dmg: none while
 '                                      shielded, and never past the next phase's start
 '   f = BHP_ShieldFrames&(samples)     shield frames for a phase callout of that many samples
+'   i = BHP_ModelMesh%(name)           the mesh slot for a fight's model= (bastion, hydra, orbiter; else bastion)
+'   i = BHP_ModelMesh%(name)           the mesh slot for a fight's model= (bastion, hydra, orbiter; else bastion)
 ' Local variable prefix: bhp*
 
 Dim Shared bhpDefault As Integer, bhpNerfMin As Integer
@@ -93,4 +95,13 @@ Function BHP_ShieldFrames& (bhpfSamples As Long)
     If bhpfSamples <= 0 Then bhpfF = 0
     If bhpfF < bhpShieldMin Then bhpfF = bhpShieldMin
     BHP_ShieldFrames& = bhpfF
+End Function
+
+' The mesh slot of a fight's model= key: bastion (also no key or an unknown one), hydra or orbiter
+Function BHP_ModelMesh% (bhpmoName As String)
+    Select Case LCase$(bhpmoName)
+        Case "hydra" : BHP_ModelMesh% = MESH_BOSS2
+        Case "orbiter" : BHP_ModelMesh% = MESH_BOSS3
+        Case Else : BHP_ModelMesh% = MESH_BOSS
+    End Select
 End Function

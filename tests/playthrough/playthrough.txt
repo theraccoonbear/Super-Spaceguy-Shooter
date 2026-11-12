@@ -1,6 +1,6 @@
 # Full-playthrough input script for tests/playthrough/run.sh (#100), played with
 #! seed 1
-#! args --god --nerf
+#! args --god --nerf --telem
 #! frames 13100
 # from a launch folder with no sss_settings.ini. The outro and credits return to the title at
 # about frame 12700; run.sh checks the milestones against
@@ -22,19 +22,18 @@
 # The intro crawl fast-forwards (FIRE) for 240 frames before the skip, so its first
 # paragraphs start speaking: tests/playthrough/determinism.sh compares those NARR lines.
 @GS_CRAWL#1 +60 240 FIRE
-@GS_CRAWL#1 +300 FIRE ESC
-# Every other crawl: SPACE + ESC skips it once it is 60 frames old.
-@GS_CRAWL#2 +60 FIRE ESC
-@GS_CRAWL#3 +60 FIRE ESC
-@GS_CRAWL#4 +60 FIRE ESC
-@GS_CRAWL#5 +60 FIRE ESC
-@GS_CRAWL#6 +60 FIRE ESC
-@GS_CRAWL#7 +60 FIRE ESC
-@GS_CRAWL#8 +60 FIRE ESC
+@GS_CRAWL#1 +300 FIRE ENTER
+# Every other crawl: ENTER (with FIRE held) skips it once it is 60 frames old.
+@GS_CRAWL#2 +60 FIRE ENTER
+@GS_CRAWL#3 +60 FIRE ENTER
+@GS_CRAWL#4 +60 FIRE ENTER
+@GS_CRAWL#5 +60 FIRE ENTER
+@GS_CRAWL#6 +60 FIRE ENTER
+@GS_CRAWL#7 +60 FIRE ENTER
+@GS_CRAWL#8 +60 FIRE ENTER
 # The credits crawl follows the outro with no state change, so it is skipped by age from the outro's entry.
-@GS_CRAWL#8 +130 FIRE ESC
-# Emperor card: a fresh ESC skips to the title. The crawl skip just held ESC, so it
-# waits a frame for the card to see ESC up first.
+@GS_CRAWL#8 +130 FIRE ENTER
+# Emperor card: ESC goes back to the title (the crawl skip held ENTER, not ESC).
 @GS_INTRO +1 ESC
 # Title: P opens LAUNCH NOW?, a second P five frames later launches. Only the first time;
 # the outro's return to the title ends the run.
@@ -48,5 +47,5 @@
 @GS_PLAYING +120 60 every 240 RIGHT
 @GS_PLAYING +180 60 every 240 DOWN
 # Planet arrivals and cinematics play out by themselves.
-# Upgrade docks (after stages 1-5): ESC leaves at once, buying nothing.
-@GS_DOCK +0 ESC
+# Upgrade docks (after stages 1-5): L launches, buying nothing. Two frames in, so the key is seen going down (the dock ignores an L already held when it opens).
+@GS_DOCK +2 L

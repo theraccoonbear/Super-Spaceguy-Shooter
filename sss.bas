@@ -9,6 +9,7 @@
 ' Enemies and asteroids spawn around the player's current Y/Z and fly toward the player in X.
 ' ============================================================
 OPTION _EXPLICIT
+'$INCLUDE:'src/sys/failfast.bi'
 $Resize:stretch
 $IF WIN THEN
     $CONSOLE
@@ -42,6 +43,7 @@ $EMBED:'assets/32px/tractor_beam.png':'DKARTTRACTORBEAM'
 $EMBED:'assets/32px/twin_cannons.png':'DKARTTWINCANNONS'
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/models_enemies_v2.e3d':'NEWMODELS'
+$EMBED:'assets/models_ships_v2.e3d':'SHIPMODELS'
 $EMBED:'assets/gametext.txt':'GAMETEXT'
 $EMBED:'assets/gamevalues.ini':'GAMEVALUES'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
@@ -120,8 +122,9 @@ $ELSE
     dbgTtyFail:
     RESUME dbgTtyDone
     dbgTtyDone:
-    ON ERROR GOTO 0
+    ON ERROR GOTO SSS_FailFast
 $END IF
+IF debugMode AND telemRule <> "" THEN DBG_Print "TELEM: " + telemRule
 IF ioReadOnly THEN
     DBG_Print "IO: no writable settings folder (tried " + ioDirs(1) + " and " + _STARTDIR$ + "); settings won't be saved this session"
 ELSE
@@ -250,6 +253,7 @@ END IF
 DIM fsKeyWas AS INTEGER
 DO
     dbgT0 = TIMER
+    IF gameState <> GS_CONTROLS AND gameState <> GS_REMAP THEN spkHold = 0  ' the pause menu sets it again this frame; Controls and Remap opened from it keep it
     BENCH_FrameBegin
     IF _EXIT THEN GAME_Quit
     IF cliFrames > 0 AND gameFrame >= cliFrames THEN BENCH_Report : DBG_MilestoneWrite LTRIM$(STR$(gameFrame)) + " EXIT" : TELEM_FlushCsv : SYSTEM
@@ -336,7 +340,7 @@ DO
     IF uiSfx THEN SND_UiPlay uiSfx : uiSfx = 0
     spkAudioLock = (iscActive = 0)  ' scripted runs keep the frame clock so they stay deterministic (#329)
     IF spkAudioLock THEN spkBuffered = CLNG(_SNDRAWLEN * SAMPLE_RATE)
-    SPK_Tick
+    IF musHold = 0 AND spkHold = 0 THEN SPK_Tick
 
     SPKD_Frame
     DBG_Overlay

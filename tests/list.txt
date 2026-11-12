@@ -12,6 +12,7 @@ narr_drain_test
 snd_init_test
 music_test
 telem_creds_test
+cli_telem_test
 death_telem_test
 run_end_test
 tutorial_run_test
@@ -32,8 +33,10 @@ lbrd_test
 font_render_test
 upgrade_test
 dock_test
+input_map_test
 remap_test
 menu_test
+pause_settings_test
 callsign_pad_test
 powerup_test
 wave_timing_test

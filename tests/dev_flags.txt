@@ -25,3 +25,4 @@
 --settings-dir
 --debug
 --enemy-dev
+--telem

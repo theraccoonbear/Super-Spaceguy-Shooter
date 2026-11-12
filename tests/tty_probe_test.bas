@@ -1,7 +1,7 @@
 ' tty_probe_test.bas -- regression test for issue #300
 '
 ' sss.bas probes /dev/tty at module level with ON ERROR. After a failed open
-' (no terminal) the handler must RESUME and then ON ERROR GOTO 0, or the next
+' (no terminal) the handler must RESUME and then ON ERROR GOTO SSS_FailFast, or the next
 ' ON ERROR probe turns its own error into a fatal "Bad file name". This runs
 ' the same probe pattern as sss.bas, then a second probe that must fail
 ' cleanly and be caught. The first probe's outcome depends on whether the
@@ -12,6 +12,7 @@
 
 $CONSOLE:ONLY
 OPTION _EXPLICIT
+'$INCLUDE:'../src/sys/failfast.bi'
 
 Dim ttyOK As Integer, ttyProbeFH As Integer, secondProbeFH As Integer
 Dim secondCaught As Integer, passed As Integer, failed As Integer
@@ -26,7 +27,7 @@ GoTo ttyDone
 ttyFail:
 Resume ttyDone
 ttyDone:
-ON ERROR GOTO 0
+ON ERROR GOTO SSS_FailFast
 
 secondProbeFH = FreeFile
 ON ERROR GOTO secondFail
@@ -36,7 +37,7 @@ secondFail:
 secondCaught = -1
 Resume secondDone
 secondDone:
-ON ERROR GOTO 0
+ON ERROR GOTO SSS_FailFast
 
 If secondCaught Then
     Print "PASS  a probe after the /dev/tty probe traps its own error"

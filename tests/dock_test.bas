@@ -6,13 +6,14 @@
 ' wrap-around, scrolling), buying, a purchase it can't afford, a held ENTER buying once,
 ' fuel and shields by the amount (LEFT / RIGHT, fill what you can afford, FULL, #277), the
 ' stranded dialog (only YES answers it; LAUNCH and back both raise it, #277),
-' LAUNCH, and leaving in one press with ESC, pad B or pad Start.
+' LAUNCH, and leaving in one press with L or pad Y (ESC, pad B and pad Start leave nothing here: ESC and Start open the in-run menu, which DOCK_Frame% runs).
 '
 ' Build: ./tools/buildqb tests/dock_test.bas
 ' Run:   builds/dock_test    (exit 0 = pass, exit 1 = any failure)
 
 Option _Explicit
 $CONSOLE:ONLY
+'$INCLUDE:'../src/sys/failfast.bi'
 $EMBED:'assets/config/economy.ini':'CFGECONOMY'
 $EMBED:'assets/config/upgrades.ini':'CFGUPGRADES'
 $EMBED:'assets/config/abilities.ini':'CFGABILITIES'
@@ -40,6 +41,8 @@ End Sub
 '$INCLUDE:'../src/gameplay/credits.bas'
 '$INCLUDE:'../src/gameplay/upgrades.bas'
 '$INCLUDE:'../src/gameplay/supplies.bas'
+'$INCLUDE:'../src/sys/menunav.bas'
+'$INCLUDE:'../src/state/pauselogic.bas'
 '$INCLUDE:'../src/state/docklogic.bas'
 '$INCLUDE:'../src/2d/prompttext.bas'
 
@@ -70,6 +73,7 @@ Sub DT_ScriptAt (dtaCredits As Long, dtaFuel As Single, dtaShield As Integer, dt
     If dtaFuel < 0 Then fuelLevel = fuelMax Else fuelLevel = dtaFuel
     DOCK_Open
     ISC_Clear
+    iscActive = -1
     For dtsP = 0 To 32767 : held(dtsP) = 0 : Next dtsP
     dtsP = 1
     Do While dtsP <= Len(dtaLines)
@@ -217,25 +221,25 @@ DT_Assert dtRes(4) = DOCK_ASK And dockAsk <> 0, "LAUNCH with 10 fuel, $0 and a 6
 DT_Assert dtRes(6) = DOCK_NONE And dtRes(14) = DOCK_NONE And dtRes(16) = DOCK_NONE, "ESC, pad B and pad Start do nothing there"
 DT_Assert dtRes(8) = DOCK_NONE And dtRes(10) = DOCK_NONE And dtRes(12) = DOCK_NONE And dtRes(18) = DOCK_NONE And dockSel = DOCK_LAUNCH, "nor do up, down, left or right"
 DT_Assert dtRes(20) = DOCK_STRANDED And dtLeft = -1, "ENTER on [ YES ] ends the run (the dock never just leaves)"
-DT_ScriptAt 0, 10, -1, "2 2 PAD_B/4 4 PAD_A"
+DT_ScriptAt 0, 10, -1, "2 2 PAD_Y/4 4 PAD_A"
 dtLeft = DT_Run%(6)
-DT_Assert dtRes(2) = DOCK_ASK And dtRes(4) = DOCK_STRANDED, "leaving with pad B asks too; pad A answers YES"
-DT_ScriptAt 148, 10, -1, "2 2 ESC"
+DT_Assert dtRes(2) = DOCK_ASK And dtRes(4) = DOCK_STRANDED, "leaving with pad Y asks too; pad A answers YES"
+DT_ScriptAt 148, 10, -1, "2 2 L"
 DT_Assert DT_Run%(4) = 2, "10 fuel + $148 (53 units at $2.80) reaches 63 of 62.2: leaves"
-DT_ScriptAt 147, 10, -1, "2 2 ESC"
+DT_ScriptAt 147, 10, -1, "2 2 L"
 dtLeft = DT_Run%(4)
 DT_Assert dtRes(2) = DOCK_ASK, "$147 buys only 52: 62 < 62.2, stranded"
-DT_ScriptAt 0, 70, -1, "2 2 ESC"
+DT_ScriptAt 0, 70, -1, "2 2 L"
 DT_Assert DT_Run%(4) = 2, "broke but 70 in the tank: leaves"
 godMode = -1
-DT_ScriptAt 0, 0, -1, "2 2 ESC"
+DT_ScriptAt 0, 0, -1, "2 2 L"
 DT_Assert DT_Run%(4) = 2, "god mode: never stranded"
 godMode = 0
 dtLegKills = 0 : dtLegBoss = 0
-DT_ScriptAt 0, 0, -1, "2 2 ESC"
+DT_ScriptAt 0, 0, -1, "2 2 L"
 DT_Assert DT_Run%(4) = 2, "no jump ahead (the last dock): never stranded"
 dtLegKills = 10 : dtLegBoss = 0
-DT_ScriptAt 0, 10, -1, "2 2 ESC"
+DT_ScriptAt 0, 10, -1, "2 2 L"
 dtLeft = DT_Run%(4)
 DOCK_Open
 DT_Assert dockAsk = 0, "the next dock opens without the dialog"
@@ -248,11 +252,11 @@ DT_Assert DOCK_TankWarn%(SUP_OverTank%, 0) = 0 And DOCK_TankWarn%(SUP_OverTank%,
 DT_Assert DOCK_TankWarn%(SUP_OverTank%, 90) <> 0 And DOCK_TankWarn%(SUP_OverTank%, 179) <> 0, "frames 90-179: it shows the tank warning"
 DT_Assert DOCK_TankWarn%(SUP_OverTank%, 180) = 0, "then back, taking turns"
 DT_Assert DOCK_TankWarnText$(fuelMax) = "TANK 100: UPGRADE TANK", "the warning: " + DOCK_TankWarnText$(fuelMax)
-DT_ScriptAt 0, -1, -1, "2 2 ESC"
+DT_ScriptAt 0, -1, -1, "2 2 L"
 DT_Assert DT_Run%(4) = 2, "a full 100 tank, broke: leaves (the rest of the leg is flown dry, not refused)"
-DT_ScriptAt 196, 30, -1, "2 2 ESC"
+DT_ScriptAt 196, 30, -1, "2 2 L"
 DT_Assert DT_Run%(4) = 2, "30 fuel + $196 fills the tank to 100 (all it can take): leaves"
-DT_ScriptAt 195, 30, -1, "2 2 ESC"
+DT_ScriptAt 195, 30, -1, "2 2 L"
 dtLeft = DT_Run%(4)
 DT_Assert dtRes(2) = DOCK_ASK, "$195 reaches only 99 of the tank's 100: stranded"
 dtLegBoss = 0
@@ -260,13 +264,15 @@ DT_Assert SUP_OverTank% = 0 And DOCK_TankWarn%(SUP_OverTank%, 90) = 0, "a jump t
 DOCK_Open
 
 Print ""
-Print "--- skip in one press ---"
-DT_Script 500, "5 5 ESC"
-DT_Assert DT_Run%(20) = 5 And credits = 500, "ESC leaves at once, nothing bought"
-DT_Script 500, "5 5 PAD_B"
-DT_Assert DT_Run%(20) = 5, "pad B leaves at once"
-DT_Script 500, "5 5 PAD_START"
-DT_Assert DT_Run%(20) = 5, "pad Start leaves at once"
+Print "--- launch in one press (L or pad Y), never by ESC, pad B or pad Start ---"
+DT_Script 500, "5 5 L"
+DT_Assert DT_Run%(20) = 5 And credits = 500, "L launches at once, nothing bought"
+DT_Script 500, "5 5 PAD_Y"
+DT_Assert DT_Run%(20) = 5, "pad Y launches at once"
+DT_Script 500, "5 5 ESC/10 10 PAD_B/15 15 PAD_START/20 20 PAD_X"
+DT_Assert DT_Run%(30) = -1 And credits = 500, "ESC, pad B, pad Start and pad X neither launch nor buy"
+DT_Script 500, "0 30 L"
+DT_Assert DT_Run%(30) = -1, "L held through the dock's opening frame does not launch (the release comes first)"
 DT_Script 500, "0 30 FIRE"
 DT_Assert DT_Run%(30) = -1 And credits = 500, "FIRE held from the stage (SPACE / pad fire) neither buys nor leaves"
 

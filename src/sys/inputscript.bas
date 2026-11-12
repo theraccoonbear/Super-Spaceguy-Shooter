@@ -19,7 +19,7 @@
 ' A triggered line holds only while its trigger is current: leaving the state or label
 ' lets go, so a hold never leaks into the next screen. +0 is the first frame the game
 ' runs in that state, the frame the milestone log gives it. For example:
-'   @GS_CRAWL +60 1 FIRE ESC            skip every crawl as soon as it lets you
+'   @GS_CRAWL +60 1 FIRE ENTER          skip every crawl as soon as it lets you
 '   @GS_PLAYING +0 * FIRE               fire through every flight
 '   @GS_PLAYING +0 60 every 240 LEFT    LEFT for the first 60 of every 240 frames
 '
@@ -311,7 +311,7 @@ End Function
 ' A launch flag in "#! args": 1 = takes no value, 2 = takes one, 0 = not allowed there.
 Function ISC_ArgKind%(iscAK As String)
     Select Case iscAK
-    Case "--god", "--nerf", "--crawls", "--debug", "--no-telem", "--gate-tutorial", "--backdrop-dev", "--explosion-dev", "--enemy-dev", "--speech-dev"
+    Case "--god", "--nerf", "--crawls", "--debug", "--no-telem", "--telem", "--gate-tutorial", "--backdrop-dev", "--explosion-dev", "--enemy-dev", "--speech-dev"
         ISC_ArgKind% = 1
     Case "--scene", "--difficulty", "--credits", "--ships", "--shields", "--fuel", "--pup", "--screenshot-at", "--leaderboard-file", "--seed", "--frames", "--explode"
         ISC_ArgKind% = 2
@@ -481,6 +481,17 @@ End Function
 ' ESC's slot is also set by pad Start
 Function KEY_Back%
     KEY_Back% = KEY_Pressed%(E3D_KEY_ESCAPE) Or KEY_Pressed%(E3D_KEY_PAD_B)
+End Function
+
+' Proceed on flow screens that read presses (not flight): ENTER, pad A, or the fire key. The
+' fire key is the SPACE slot, which pad B (fire too) also sets, so pad B does not count.
+Function KEY_Proceed%
+    KEY_Proceed% = KEY_Confirm% Or (KEY_Pressed%(E3D_KEY_SPACE) And held(E3D_KEY_PAD_B) = 0)
+End Function
+
+' Open the in-run menu (the pause dialog): ESC or pad Start, which share the ESC slot.
+Function KEY_Menu%
+    KEY_Menu% = KEY_Pressed%(E3D_KEY_ESCAPE)
 End Function
 
 Function KEY_Down%(iscDCode As Long)

@@ -73,7 +73,7 @@ Sub CRAWLBROWSE_Update ()
     ' ---- render ----
     _Dest backBuffer
     Line (0, 0)-(scrW - 1, scrH - 1), _RGB(0, 0, 5), BF
-    UI_DrawPanel 16, 8, scrW - 17, scrH - 19, "CRAWLS"
+    UI_DrawPage "CRAWLS"
     FONT_PrintAlpha fontPalette(8), backBuffer, "BLOCK       USED AT       PX/S", 26, 30, 255
     For cbI = 0 To seqCrawlCount - 1
         cbY = 48 + cbI * 18
