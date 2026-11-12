@@ -28,8 +28,8 @@ Settings > **CONTROLS** (ENTER / pad A on that row), or **K** / the nova button 
 
 | Key | Gamepad | Action |
 |---|---|---|
-| P | Start | Start a new game |
-| ESC | Back / Select | Open/close the command console |
+| ENTER or P | A or Start | Open LAUNCH NOW? (a second press, or ENTER / A on YES, starts the run). SPACE does not: it is mashed through game over |
+| ESC | B or Select | Open/close the command console (B inside it is Cancel) |
 | A / C / S / L / T / Q / N | B (Cancel only) | Console: About / Controls / Settings / Leaderboard / Tutorial / Quit / Cancel |
 | ↑ ↓ then ENTER | Stick up/down then A | Console: move the highlight and pick it |
 | ↑ ↓ ← → | Left stick | Navigate and adjust Settings; scroll About; page through Controls |
@@ -55,8 +55,8 @@ The tutorial leaves no record (no score, high score or telemetry) and cannot be 
 | Key | Gamepad | Action |
 |---|---|---|
 | Space (hold) | A or B (hold) | Fast-forward the narrative crawl |
-| Space + ESC | A or B + Start | Skip the crawl |
-| Space | A | Continue (intro card, game over) |
+| ENTER | B | Skip the crawl. Outside a run (the intro crawl, game over) ESC backs out too; in a run ESC / Start open the run menu over the frozen crawl |
+| ENTER or Space | A | Continue (intro card, game over, leaderboard). ESC / B goes back |
 | Any key | A / Start | Skip the logo cards |
 
 On the data notice, X is "don't ask again" (S on the keyboard).
@@ -70,7 +70,8 @@ On the data notice, X is "don't ask again" (S on the keyboard).
 | ↑ / ↓ (or W / S) | Stick or d-pad up/down | Pick a row (the list scrolls) |
 | ← / → (or A / D) | Stick or d-pad left/right | On REFUEL / SHIELDS: buy less / more (steps of 10% of the tank or shield) |
 | ENTER | A | Buy the amount shown, or the next level (on LAUNCH: leave) |
-| ESC | B or Start | Leave for the next stage at once |
+| L | Y | Launch for the next stage at once |
+| ESC | Start | The run menu (the same dialog as in flight: retreat, controls, remap, cancel). The dock is frozen while it is open |
 
 ## Debug
 

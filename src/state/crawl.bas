@@ -9,12 +9,43 @@ Sub GS_CRAWL_Update ()
     Dim crawlPriorOcc As Integer, crawlLineOcc As Integer, crawlHiLB As Integer, crawlHiRB As Integer
     Dim crawlFFHint As String
     Dim crawlFFHX As Integer
+    Dim crawlPz As Integer, crawlSkip As Integer, crawlWasOpen As Integer
 
     ' on first frame (crawlTimer=0 set by CRAWL_Prep), reset starfield to crawl camera
     IF crawlTimer = 0 THEN
         StarfieldReset -CAM_OFFSET_X, CAM_OFFSET_Y, 0
         MUS_SetCue "crawl"
         dbgMlogNarr = 0
+    END IF
+    ' In a run, ESC / pad Start open the in-run menu over the frozen crawl (pauselogic.bas)
+    crawlWasOpen = escConfirm
+    IF CRAWL_InRun% THEN
+        crawlPz = PAUSE_Input%
+        IF pauseShown OR crawlPz <> PAUSE_NONE THEN
+            IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
+            spkTimeScale = 1 : fxVCRActive = 0
+        END IF
+        SELECT CASE crawlPz
+            CASE PAUSE_QUIT
+                SPK_Say "" : crawlNextState = 0
+                SEQ_QuitRun
+                EXIT SUB
+            CASE PAUSE_CONTROLS
+                CONTROLS_Prep gameState : gameState = GS_CONTROLS
+                EXIT SUB
+            CASE PAUSE_SETTINGS
+                optSavedImg = _COPYIMAGE(backBuffer)
+                OPTS_OpenFromPause gameState
+                EXIT SUB
+            CASE PAUSE_REMAP
+                RMP_Open gameState
+                EXIT SUB
+        END SELECT
+        IF pauseShown THEN
+            PAUSE_Draw
+            MUS_Fill 0
+            EXIT SUB
+        END IF
     END IF
     tt = tt + 0.025
     crawlTimer = crawlTimer + 1
@@ -108,16 +139,16 @@ Sub GS_CRAWL_Update ()
         EXIT SUB
     END IF
     IF crawlTimer > 60 THEN
-        IF held(E3D_KEY_SPACE) THEN
-            IF held(E3D_KEY_ESCAPE) THEN
-                fxVCRActive = 0 : volMusic = crawlFFVolSave : crawlFFActive = 0 : SPK_Say ""
-                escWas = -1
-                CRAWL_Finish : EXIT SUB
-            END IF
-            fxVCRActive = -1
-        ELSE
-            fxVCRActive = 0
+        ' skip: ENTER, or pad B (pad A is the fast-forward button); outside a run also ESC / Start (back).
+        ' Not on the frame the in-run menu closes, so the press that cancels it can't also skip.
+        crawlSkip = NAV_CrawlSkip%(KEY_Pressed%(E3D_KEY_ENTER), KEY_Pressed%(E3D_KEY_PAD_B), KEY_Back%, CRAWL_InRun%, crawlWasOpen)
+        IF crawlSkip THEN
+            fxVCRActive = 0 : IF crawlFFActive THEN volMusic = crawlFFVolSave : crawlFFActive = 0
+            SPK_Say ""
+            escWas = -1
+            CRAWL_Finish : EXIT SUB
         END IF
+        IF held(E3D_KEY_SPACE) THEN fxVCRActive = -1 ELSE fxVCRActive = 0
     END IF
     spaceWas = held(E3D_KEY_SPACE)
     IF KEY_Down%(96) THEN
@@ -131,3 +162,10 @@ Sub GS_CRAWL_Update ()
     FX_VCRNoise scrW, scrH
     MUS_Fill 0
 End Sub
+
+' A crawl inside a run (after the title's launch, before the run ends): ESC / pad Start open the in-run
+' menu there. The intro crawl before the title, and the game-over and stranded crawls after a run, are
+' not (crawlNextState is set for those two): ESC there backs out.
+Function CRAWL_InRun%
+    CRAWL_InRun% = (crawlNextState = 0) And SEQ_PastTitle%
+End Function

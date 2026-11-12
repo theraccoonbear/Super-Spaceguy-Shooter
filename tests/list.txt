@@ -31,6 +31,7 @@ lbrd_test
 font_render_test
 upgrade_test
 dock_test
+input_map_test
 remap_test
 menu_test
 pause_settings_test

@@ -8,6 +8,8 @@
 '     every frame (during and after fast-forward) is speaking the same
 '     paragraph and word as an uninterrupted run at the same point in crawl time, and every
 '     paragraph is still spoken once, in order
+'   - a pause (#426: held fill, CRAWL_Step% and SPK_Tick skipped) synthesises nothing, then the crawl picks up
+'     at the same paragraph and word as an uninterrupted run
 '
 ' Build: ./tools/buildqb tests/crawl_step_test.bas
 ' Run:   ./tests/crawl_step_test    (exit 0 = pass, exit 1 = any failure)
@@ -143,6 +145,39 @@ Sub CST_CheckUnvoiced(cuKey As String)
     CST_Begin cuKey
     ST_Assert cstLvl = 0, cuKey + ": level handed to the crawl is 0 whatever the narration setting"
 End Sub
+
+' The pause menu opens mid-speech (#426): the fill runs held (SPK_Advance, 735 samples a frame) while CRAWL_Step% and
+' SPK_Tick are skipped. Nothing may be synthesised meanwhile, and after the resume the crawl says the same paragraph and
+' word as the uninterrupted reference at every tick, queueing each next paragraph at the same scroll point.
+Sub CST_CheckPause(cpKey As String, cpAt As Long, cpFrames As Long)
+    Dim cpN As Long, cpF As Long, cpS As Long, cpSynth0 As Long, cpBad As Long, cpLoud As Long, cpVel As Single, cpScroll As Single
+    CST_Begin cpKey
+    cpBad = 0 : cpN = 0
+    Do Until CST_Done% Or cpN > CST_MAX_TICKS
+        If cpN = cpAt Then
+            cpSynth0 = spkSynthTotal : cpVel = crawlVel : cpScroll = crawlScroll : cpLoud = 0
+            spkHold = -1
+            For cpF = 1 To cpFrames
+                For cpS = 1 To 735 : SPK_Advance : If spkSampleOut <> 0 Then cpLoud = cpLoud + 1
+                Next cpS
+            Next cpF
+            spkHold = 0
+            ST_Assert SPK_IsPlaying%, cpKey + ": pause at tick" + Str$(cpAt) + " opens mid-speech"
+            ST_Assert spkSynthTotal = cpSynth0, cpKey + ": paused" + Str$(cpFrames) + " frames, no speech synthesised"
+            ST_Assert cpLoud = 0, cpKey + ": paused, the fill mixes no speech"
+            ST_Assert crawlVel = cpVel And crawlScroll = cpScroll, cpKey + ": the pause leaves the scroll where it was"
+        End If
+        CST_Frame 0
+        If cstTick < cstRefN Then
+            If CST_InSync%(cstTick - 1) = 0 Then cpBad = cpBad + 1
+        End If
+        cpN = cpN + 1
+    Loop
+    ST_Assert CST_Done%, cpKey + ": crawl with a pause reaches its exit"
+    ST_Assert cpBad = 0, cpKey + ": after the pause, same paragraph and word as an uninterrupted run every tick (" + LTrim$(Str$(cpBad)) + " misses)"
+    ST_Assert CST_AllSaidInOrder%, cpKey + ": with a pause, every paragraph spoken once, in order"
+End Sub
+
 Print "=== crawl_step_test ==="
 Print ""
 
@@ -154,7 +189,7 @@ SEQ_ListCrawls
 ST_Assert seqCrawlCount >= 3, "at least 3 crawls, so the rotating fast-forward lengths cover every start x length pair"
 
 Dim cstC As Integer, cstK As String, cstA As Integer, cstB As Integer, cstF As Long
-Dim cstFFAt As Long, cstFFLen As Long, cstBad As Long, cstFirstBad As Long, cstName As String
+Dim cstFFAt As Long, cstFFLen As Long, cstBad As Long, cstFirstBad As Long, cstName As String, cstPaused As Integer
 For cstC = 0 To seqCrawlCount - 1
     cstK = seqCrawlKey$(cstC)
     Print "--- " + cstK + " ---"
@@ -171,6 +206,7 @@ For cstC = 0 To seqCrawlCount - 1
     ST_Assert CST_Done%, cstK + ": crawl reaches its exit"
     ST_Assert CST_AllSaidInOrder%, cstK + ": every paragraph spoken once, in order"
     ST_Assert SPK_IsPlaying% = 0, cstK + ": last paragraph finished before the crawl exits"
+    If cstPaused = 0 Then CST_CheckPause cstK, cstRefN \ 3, 200 : cstPaused = -1
 
     ' fast-forward early, mid and late in the crawl. The length (15/60/135 frames) rotates
     ' crawl to crawl, so every start x length pair is covered across any 3 consecutive
