@@ -126,20 +126,77 @@ Sub DBG_Print(dbgMsg As String)
     $END IF
 End Sub
 
+Const DBG_TRAJ_FRAMES = 200   ' frames of motion drawn for a rock that is not moving toward the despawn line
+
+' Wireframe of the AABB centred on (dbCx, dbCy, dbCz), projected through vpMat; an edge is drawn only when both ends are in front of the camera.
+Sub DBG_DrawBox(dbCx As Single, dbCy As Single, dbCz As Single, dbBox As E3D_AABB, dbClr As Long)
+    Dim dbTx As Single, dbTy As Single, dbTz As Single
+    Dim dbPx As Single, dbPy As Single, dbPw As Single
+    Dim dbSx(0 To 7) As Single, dbSy(0 To 7) As Single, dbSw(0 To 7) As Single
+    Dim dbCi As Integer, dbA As Integer, dbB As Integer, dbDiff As Integer
+    For dbCi = 0 To 7
+        If (dbCi And 4) Then dbTx = dbCx + dbBox.hx Else dbTx = dbCx - dbBox.hx
+        If (dbCi And 2) Then dbTy = dbCy + dbBox.hy Else dbTy = dbCy - dbBox.hy
+        If (dbCi And 1) Then dbTz = dbCz + dbBox.hz Else dbTz = dbCz - dbBox.hz
+        dbPx = dbTx * vpMat.m(0,0) + dbTy * vpMat.m(0,1) + dbTz * vpMat.m(0,2) + vpMat.m(0,3)
+        dbPy = dbTx * vpMat.m(1,0) + dbTy * vpMat.m(1,1) + dbTz * vpMat.m(1,2) + vpMat.m(1,3)
+        dbPw = dbTx * vpMat.m(3,0) + dbTy * vpMat.m(3,1) + dbTz * vpMat.m(3,2) + vpMat.m(3,3)
+        dbSw(dbCi) = dbPw
+        If dbPw > 0 Then
+            dbSx(dbCi) = (dbPx / dbPw + 1.0) * scrW * 0.5
+            dbSy(dbCi) = (1.0 - dbPy / dbPw) * scrH * 0.5
+        End If
+    Next dbCi
+    For dbA = 0 To 6
+        For dbB = dbA + 1 To 7
+            dbDiff = dbA Xor dbB
+            If dbDiff = 1 Or dbDiff = 2 Or dbDiff = 4 Then
+                If dbSw(dbA) > 0 Then
+                    If dbSw(dbB) > 0 Then
+                        Line (dbSx(dbA), dbSy(dbA))-(dbSx(dbB), dbSy(dbB)), dbClr
+                    End If
+                End If
+            End If
+        Next dbB
+    Next dbA
+End Sub
+
+' Straight line from an asteroid along its velocity to the despawn line (px = player.px - 20); a rock not moving toward it gets DBG_TRAJ_FRAMES of motion.
+Sub DBG_DrawTrajectory(dtI As Integer)
+    Dim dtEx As Single, dtEy As Single, dtEz As Single, dtN As Single
+    Dim dtSx0 As Single, dtSy0 As Single, dtSx1 As Single, dtSy1 As Single
+    Dim dtOk0 As Integer, dtOk1 As Integer
+    dtN = DBG_TRAJ_FRAMES
+    If asteroids(dtI).vx < 0 Then
+        dtN = (player.px - 20 - asteroids(dtI).px) / asteroids(dtI).vx
+        If dtN < 0 Then dtN = 0
+    End If
+    dtEx = asteroids(dtI).px + asteroids(dtI).vx * dtN
+    dtEy = asteroids(dtI).py + asteroids(dtI).vy * dtN
+    dtEz = asteroids(dtI).pz + asteroids(dtI).vz * dtN
+    COMBAT_Project asteroids(dtI).px, asteroids(dtI).py, asteroids(dtI).pz, dtSx0, dtSy0, dtOk0
+    COMBAT_Project dtEx, dtEy, dtEz, dtSx1, dtSy1, dtOk1
+    If dtOk0 Then
+        If dtOk1 Then Line (dtSx0, dtSy0)-(dtSx1, dtSy1), _RGB(200, 200, 200)
+    End If
+End Sub
+
 Sub DBG_Overlay()
     Dim dbgFrameMs As Single
     Dim dbgPolyClr As Long, dbgFpsClr As Long, dbgFps As Single
     Dim dbgBi  As Integer
-    Dim dbgBwx As Single, dbgBwy As Single, dbgBwz As Single
-    Dim dbgBhx As Single, dbgBhy As Single, dbgBhz As Single
-    Dim dbgBtx As Single, dbgBty As Single, dbgBtz As Single
-    Dim dbgBpx As Single, dbgBpy As Single, dbgBpw As Single
-    Dim dbgBsx(0 To 7) As Single, dbgBsy(0 To 7) As Single, dbgBsw(0 To 7) As Single
-    Dim dbgBci As Integer, dbgBa As Integer, dbgBb As Integer, dbgBdiff As Integer
-    Dim dbgBclr As Long
 
     If KEY_Down%(96) And Not dbgGraveWas Then dbgOverlay = 1 - dbgOverlay
     dbgGraveWas = KEY_Down%(96)
+    If KEY_Down%(17152) And Not dbgF9Was Then dbgTraj = 1 - dbgTraj
+    dbgF9Was = KEY_Down%(17152)
+
+    If gameState = GS_PLAYING And dbgTraj <> 0 Then
+        _Dest 0
+        For dbgBi = 1 To MAX_ASTEROIDS
+            If asteroids(dbgBi).active Then DBG_DrawTrajectory dbgBi
+        Next dbgBi
+    End If
 
     dbgFrameMs = (Timer - dbgT0) * 1000
 
@@ -177,41 +234,12 @@ Sub DBG_Overlay()
     _PrintString (2, 64), "VZ   " + Left$(Str$(playerVZ + 1000), 7)
 
     If gameState = GS_PLAYING Then
-        dbgBclr = _RGB(0, 255, 120)
         For dbgBi = 1 To MAX_ENEMIES
-            If enemies(dbgBi).active Then
-                dbgBwx = enemies(dbgBi).px
-                dbgBwy = enemies(dbgBi).py
-                dbgBwz = enemies(dbgBi).pz
-                dbgBhx = boxLib(enemies(dbgBi).meshIdx).hx
-                dbgBhy = boxLib(enemies(dbgBi).meshIdx).hy
-                dbgBhz = boxLib(enemies(dbgBi).meshIdx).hz
-                For dbgBci = 0 To 7
-                    If (dbgBci And 4) Then dbgBtx = dbgBwx + dbgBhx Else dbgBtx = dbgBwx - dbgBhx
-                    If (dbgBci And 2) Then dbgBty = dbgBwy + dbgBhy Else dbgBty = dbgBwy - dbgBhy
-                    If (dbgBci And 1) Then dbgBtz = dbgBwz + dbgBhz Else dbgBtz = dbgBwz - dbgBhz
-                    dbgBpx  = dbgBtx * vpMat.m(0,0) + dbgBty * vpMat.m(0,1) + dbgBtz * vpMat.m(0,2) + vpMat.m(0,3)
-                    dbgBpy  = dbgBtx * vpMat.m(1,0) + dbgBty * vpMat.m(1,1) + dbgBtz * vpMat.m(1,2) + vpMat.m(1,3)
-                    dbgBpw  = dbgBtx * vpMat.m(3,0) + dbgBty * vpMat.m(3,1) + dbgBtz * vpMat.m(3,2) + vpMat.m(3,3)
-                    dbgBsw(dbgBci) = dbgBpw
-                    If dbgBpw > 0 Then
-                        dbgBsx(dbgBci) = (dbgBpx / dbgBpw + 1.0) * scrW * 0.5
-                        dbgBsy(dbgBci) = (1.0 - dbgBpy / dbgBpw) * scrH * 0.5
-                    End If
-                Next dbgBci
-                For dbgBa = 0 To 6
-                    For dbgBb = dbgBa + 1 To 7
-                        dbgBdiff = dbgBa Xor dbgBb
-                        If dbgBdiff = 1 Or dbgBdiff = 2 Or dbgBdiff = 4 Then
-                            If dbgBsw(dbgBa) > 0 Then
-                                If dbgBsw(dbgBb) > 0 Then
-                                    Line (dbgBsx(dbgBa), dbgBsy(dbgBa))-(dbgBsx(dbgBb), dbgBsy(dbgBb)), dbgBclr
-                                End If
-                            End If
-                        End If
-                    Next dbgBb
-                Next dbgBa
-            End If
+            If enemies(dbgBi).active Then DBG_DrawBox enemies(dbgBi).px, enemies(dbgBi).py, enemies(dbgBi).pz, boxLib(enemies(dbgBi).meshIdx), _RGB(0, 255, 120)
         Next dbgBi
+        For dbgBi = 1 To MAX_ASTEROIDS
+            If asteroids(dbgBi).active Then DBG_DrawBox asteroids(dbgBi).px, asteroids(dbgBi).py, asteroids(dbgBi).pz, boxLib(MESH_ASTEROID), _RGB(255, 140, 0)
+        Next dbgBi
+        DBG_DrawBox player.px, player.py, player.pz, boxLib(MESH_PLAYER), _RGB(0, 220, 255)
     End If
 End Sub

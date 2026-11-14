@@ -408,6 +408,8 @@ DIM SHARED bossSeekStr       AS SINGLE   ' bullet homing strength per frame (0=s
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER
 DIM SHARED dbgGraveWas AS INTEGER
+DIM SHARED dbgTraj    AS INTEGER
+DIM SHARED dbgF9Was   AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
 DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
 DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
