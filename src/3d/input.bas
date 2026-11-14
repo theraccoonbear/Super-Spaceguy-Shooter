@@ -183,12 +183,12 @@ Function E3D_KeyFixed% (kfAct As Integer)
 End Function
 
 ' Keys that can't be bound: ESC, the arrows (menus and movement), R/P (camera reset, start game),
-' backtick (debug), F11 (fullscreen), and anything outside held()'s range.
+' backtick and F9 (debug), F11 (fullscreen), and anything outside held()'s range.
 Function E3D_KeyReserved% (krCode As Long)
     E3D_KeyReserved% = -1
     If krCode < 8 Or krCode > 32767 Then Exit Function
     Select Case krCode
-        Case E3D_KEY_ESCAPE, E3D_KEY_LEFT, E3D_KEY_RIGHT, E3D_KEY_UP, E3D_KEY_DOWN, 96, 34048
+        Case E3D_KEY_ESCAPE, E3D_KEY_LEFT, E3D_KEY_RIGHT, E3D_KEY_UP, E3D_KEY_DOWN, 96, 17152, 34048
             Exit Function
         Case 114, 112, 82, 80
             Exit Function

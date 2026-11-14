@@ -61,7 +61,12 @@ CONST MESH_PUP_FUEL     = 14
 CONST MESH_PUP_POINTS   = 15
 CONST MESH_BOSS2        = 16
 CONST MESH_BOSS3        = 17
-CONST MESH_COUNT        = 17
+CONST MESH_AST_CHUNK   = 18   ' asteroid shapes (#436), in AST_ShapeFor% order
+CONST MESH_AST_SHARD   = 19
+CONST MESH_AST_CRATER  = 20
+CONST MESH_AST_SPLIT   = 21
+CONST MESH_COUNT        = 21
+CONST AST_SHAPES        = 4    ' shapes; MESH_ASTEROID (the old one) stays loaded, unspawned, and its box is still the hit box (#433)
 
 ' --- boss / stage globals ---
 CONST NERF_FACTOR       = 0.1                        ' all nerf-mode quantities are this fraction of normal
@@ -404,6 +409,8 @@ DIM SHARED bossSeekStr       AS SINGLE   ' bullet homing strength per frame (0=s
 ' --- debug ---
 DIM SHARED dbgOverlay  AS INTEGER
 DIM SHARED dbgGraveWas AS INTEGER
+DIM SHARED dbgTraj    AS INTEGER
+DIM SHARED dbgF9Was   AS INTEGER
 DIM SHARED dbgT0       AS DOUBLE
 DIM SHARED dbgMlogPath AS STRING    ' SSS_MILESTONE_LOG file ("" = off), see DBG_MilestoneInit
 DIM SHARED dbgMlogState AS INTEGER, dbgMlogSeq AS INTEGER
@@ -412,6 +419,7 @@ DIM SHARED dbgMlogNarr AS INTEGER   ' crawl paragraphs already logged (crawlSaid
 ' --- engine / render ---
 DIM SHARED vpMat AS E3D_Matrix4
 DIM SHARED boxLib(1 TO MESH_COUNT) AS E3D_AABB
+DIM SHARED astShapeMesh(0 TO AST_SHAPES - 1) AS Integer   ' mesh slot of each asteroid shape
 DIM SHARED cam          AS E3D_Camera
 DIM SHARED projMat      AS E3D_Matrix4
 DIM SHARED viewMat      AS E3D_Matrix4

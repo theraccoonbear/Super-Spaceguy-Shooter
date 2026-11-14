@@ -1,6 +1,6 @@
-' viewer.bas — interactive model viewer for models.e3d, models_enemies_v2.e3d (E2_* meshes) and models_ships_v2.e3d (S2_* player and boss meshes)
+' viewer.bas — interactive model viewer for models.e3d, models_enemies_v2.e3d (E2_* meshes), models_ships_v2.e3d (S2_* player and boss meshes) and models_asteroids_v2.e3d (A2_* asteroid shapes)
 ' Usage: viewer [file.obj]   (OBJ loaded as extra mesh; auto-reads .mtl)
-'        viewer --sheets <outdir>   (headless: write the enemy, player and boss review PNGs to <outdir>, then exit;
+'        viewer --sheets <outdir>   (headless: write the enemy, player, boss and asteroid review PNGs to <outdir>, then exit;
 '                                    needs a display for the software renderer, e.g. Xvfb; a relative
 '                                    <outdir> is resolved against the launch directory and created if missing)
 ' Left/Right: rotate model   Up/Down: tilt camera
@@ -14,13 +14,14 @@ $Resize:stretch
 $EMBED:'assets/models.e3d':'MODELS'
 $EMBED:'assets/models_enemies_v2.e3d':'NEWMODELS'
 $EMBED:'assets/models_ships_v2.e3d':'SHIPMODELS'
+$EMBED:'assets/models_asteroids_v2.e3d':'ASTMODELS'
 
 '$INCLUDE:'src/sys/rng.bas'
 '$INCLUDE:'src/engine3d.bi'
 
 CONST SCR_W      = 640
 CONST SCR_H      = 480
-CONST MESH_COUNT = 17
+CONST MESH_COUNT = 21
 CONST MESH_MAX   = 32
 
 DIM SHARED meshNames(1 TO MESH_MAX) AS STRING
@@ -41,6 +42,10 @@ meshNames(14) = "S2_BOSS_HYDRA"
 meshNames(15) = "S2_BOSS_ORBITER"
 meshNames(16) = "PUP_FUEL"
 meshNames(17) = "PUP_POINTS"
+meshNames(18) = "A2_CHUNK"
+meshNames(19) = "A2_SHARD"
+meshNames(20) = "A2_CRATER"
+meshNames(21) = "A2_SPLIT"
 
 DIM SHARED meshLib(1 TO MESH_MAX) AS E3D_Mesh
 DIM SHARED boxLib(1 TO MESH_MAX)  AS E3D_AABB
@@ -68,10 +73,14 @@ mdl = _EMBEDDED$("MODELS")
 mdlNew = _EMBEDDED$("NEWMODELS")
 DIM mdlShip AS STRING
 mdlShip = _EMBEDDED$("SHIPMODELS")
+DIM mdlAst AS STRING
+mdlAst = _EMBEDDED$("ASTMODELS")
 DIM mi AS INTEGER
 FOR mi = 1 TO MESH_COUNT
     IF LEFT$(meshNames(mi), 3) = "S2_" THEN
         E3D_LoadMesh mdlShip, meshNames(mi), meshLib(mi), boxLib(mi)
+    ELSEIF LEFT$(meshNames(mi), 3) = "A2_" THEN
+        E3D_LoadMesh mdlAst, meshNames(mi), meshLib(mi), boxLib(mi)
     ELSEIF LEFT$(meshNames(mi), 3) = "E2_" THEN
         E3D_LoadMesh mdlNew, meshNames(mi), meshLib(mi), boxLib(mi)
     ELSE
@@ -171,6 +180,11 @@ IF LEN(sheetDir) > 0 THEN
     SHEET_Ship 13, "new", "boss_bastion", -1
     SHEET_Ship 14, "new", "boss_hydra", -1
     SHEET_Ship 15, "new", "boss_orbiter", -1
+    SHEET_Asteroid 3, "old"
+    SHEET_Asteroid 18, "chunk"
+    SHEET_Asteroid 19, "shard"
+    SHEET_Asteroid 20, "crater"
+    SHEET_Asteroid 21, "split"
     PRINT "wrote sheets to " + sheetDir
     SYSTEM 0
 END IF
@@ -532,4 +546,35 @@ SUB SHEET_Ship (shIdx AS INTEGER, shTag AS STRING, shKey AS STRING, shBoss AS IN
         _DEST 0
         _SAVEIMAGE sheetDir + "/" + shTag + "_" + shKey + "_" + shViewName + ".png", backBuffer
     NEXT shView
+END SUB
+
+' Asteroid review sheet: <outdir>/ast_<key>_<pose>.png, the mesh at the in-game size (scale 1.0) in the base tint
+' (the colour a tint-0 asteroid has) seen from above and ahead, three poses of the spin.
+SUB SHEET_Asteroid (shIdx AS INTEGER, shKey AS STRING)
+    DIM shCam AS E3D_Camera, shViewM AS E3D_Matrix4, shProj AS E3D_Matrix4, shVP AS E3D_Matrix4
+    DIM shPos AS E3D_Coord, shRot AS E3D_Coord, shObj AS E3D_Matrix4, shLit AS E3D_Coord
+    DIM shPose AS INTEGER
+    PRINT "ast " + shKey + " " + meshNames(shIdx) + " verts=" + LTRIM$(STR$(meshLib(shIdx).vCount)) + " faces=" + LTRIM$(STR$(meshLib(shIdx).fCount))
+    shLit.x = -0.4 : shLit.y = 0.7 : shLit.z = -0.5
+    shPos.x = 0 : shPos.y = 0 : shPos.z = 0
+    E3D_MakeCamera shCam, -1.5, 1.2, 0, 0, 0, 0, 72
+    shCam.nearZ = 0.1 : shCam.farZ = 120
+    E3D_MatLookAt shCam, shViewM
+    E3D_MatPerspective shCam, 320 / 240, shProj
+    E3D_MatMul shProj, shViewM, shVP
+    FOR shPose = 1 TO 3
+        SELECT CASE shPose
+            CASE 1 : shRot.x = 0 : shRot.y = 90 : shRot.z = 0
+            CASE 2 : shRot.x = 20 : shRot.y = 70 : shRot.z = 0
+            CASE 3 : shRot.x = -25 : shRot.y = 140 : shRot.z = 30
+        END SELECT
+        _DEST backBuffer
+        LINE (0, 0)-(319, 239), _RGB(4, 5, 22), BF
+        E3D_BuildObjectMat shPos, shRot, 1.0, shObj
+        E3D_SceneBegin
+        E3D_SceneAddMeshLitTinted meshLib(shIdx), shObj, shCam.POS, 0, shLit, 1.0, 0.84, 0.54
+        E3D_SceneFlush shVP, 320, 240
+        _DEST 0
+        _SAVEIMAGE sheetDir + "/ast_" + shKey + "_pose" + LTRIM$(STR$(shPose)) + ".png", backBuffer
+    NEXT shPose
 END SUB

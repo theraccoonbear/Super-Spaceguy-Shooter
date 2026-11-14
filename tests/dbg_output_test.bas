@@ -153,3 +153,10 @@ If stFailed > 0 Then System 1 Else System 0
 Function KEY_Down% (dbgStubCode As Long)
     KEY_Down% = 0
 End Function
+
+' stub: the trajectory lines project through combat.bas, which this test doesn't include
+Sub COMBAT_Project(cpX As Single, cpY As Single, cpZ As Single, cpSX As Single, cpSY As Single, cpOk As Integer)
+    cpSX = cpX
+    cpSY = cpY
+    cpOk = 0
+End Sub

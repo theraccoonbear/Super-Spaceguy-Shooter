@@ -77,4 +77,5 @@ On the data notice, X is "don't ask again" (S on the keyboard).
 
 | Key | Action |
 |---|---|
-| `` ` `` | Toggle the debug HUD overlay. It starts on with `--debug`, but the key works in any build |
+| `` ` `` | Toggle the debug HUD overlay. It starts on with `--debug`, but the key works in any build. In play it also draws hit boxes: enemies green, asteroids orange (the box the hit test uses: one fixed, unscaled size, whatever the rock looks like), your ship cyan |
+| F9 | Toggle asteroid trajectory lines in play (light grey): each rock's straight path from where it is, along its velocity, to the despawn line 20 units behind the ship (200 frames of motion for a rock not moving toward it). The late drift toward the ship in combat levels is not drawn. Off by default; works in any build, with or without `--debug` |

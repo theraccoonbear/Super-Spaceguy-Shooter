@@ -90,6 +90,7 @@ TOOLS=(
   tools/padrecord
   musicplayer
   tools/musrender
+  tools/gen_asteroid_models
 )
 
 RUN_HTTP=1
